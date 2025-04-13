@@ -1,3 +1,5 @@
+// Assets\Scripts\Character.cs
+
 using System.Collections;
 using UnityEngine;
 
@@ -34,36 +36,31 @@ public class Character : MonoBehaviour
 
     private void Start()
     {
-        // 별에 따라 기본 능력치를 가중치로 다르게 설정하거나
-        // 여기서 스위치를 활용해 차등 적용할 수 있습니다.
+        // 별 등급에 따라 공격력/사거리/공격속도를 가중치로 적용
         switch (star)
         {
             case CharacterStar.OneStar:
-                attackPower *= 1f;    // 1성
+                attackPower *= 1f;
                 attackRange *= 1f;
                 attackSpeed *= 1f;
                 break;
             case CharacterStar.TwoStar:
-                attackPower *= 1.3f;  // 2성은 공격력 30% 강화 예시
+                attackPower *= 1.3f;
                 attackRange *= 1.1f;
                 attackSpeed *= 1.1f;
                 break;
             case CharacterStar.ThreeStar:
-                attackPower *= 1.6f;  // 3성은 공격력 60% 강화 예시
+                attackPower *= 1.6f;
                 attackRange *= 1.2f;
                 attackSpeed *= 1.2f;
                 break;
         }
 
-        // 쿨다운 계산 (초당 공격 속도 = 공격속도, 즉 1초에 attackSpeed 번 공격)
+        // 초당 attackSpeed 번 공격 -> 1/attackSpeed 초 간격
         attackCooldown = 1f / attackSpeed;
         StartCoroutine(AttackRoutine());
     }
 
-    /// <summary>
-    /// 일정 주기로 주변 몬스터를 탐색하고, 공격할 수 있는 대상이 있으면 공격
-    /// </summary>
-    /// <returns></returns>
     private IEnumerator AttackRoutine()
     {
         while (true)
@@ -74,21 +71,14 @@ public class Character : MonoBehaviour
             currentTarget = FindTargetInRange();
             if (currentTarget != null)
             {
-                // 공격 수행
                 Attack(currentTarget);
             }
         }
     }
 
-    /// <summary>
-    /// 사거리 내에 있는 가장 가까운(또는 임의의) 몬스터를 찾습니다.
-    /// </summary>
-    /// <returns></returns>
     private Monster FindTargetInRange()
     {
-        // 모든 몬스터를 대상으로 탐색(간단 예시)
         Monster[] allMonsters = FindObjectsOfType<Monster>();
-
         Monster nearest = null;
         float nearestDist = Mathf.Infinity;
 
@@ -105,10 +95,6 @@ public class Character : MonoBehaviour
         return nearest;
     }
 
-    /// <summary>
-    /// 몬스터에게 데미지를 준다. (즉시 처리)
-    /// </summary>
-    /// <param name="target"></param>
     private void Attack(Monster target)
     {
         if (target != null)

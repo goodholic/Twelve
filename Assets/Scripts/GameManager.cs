@@ -1,3 +1,5 @@
+// Assets\Scripts\GameManager.cs
+
 using UnityEngine;
 
 public class GameManager : MonoBehaviour
@@ -27,10 +29,6 @@ public class GameManager : MonoBehaviour
     [Tooltip("캐릭터 배치 매니저")]
     public PlacementManager placementManager;
 
-    // 예: 게임 상태(승패), 점수, 돈 등의 정보도 여기에 추가 가능
-    // public int currentMoney;
-    // public int currentScore;
-
     private void Awake()
     {
         if (instance == null)
@@ -47,7 +45,7 @@ public class GameManager : MonoBehaviour
 
     private void Start()
     {
-        // 초기 설정(WaveSpawner, PlacementManager 등을 연결하거나 씬에 배치)
+        // 초기 설정
         if (waveSpawner == null)
         {
             waveSpawner = FindObjectOfType<WaveSpawner>();
@@ -60,7 +58,7 @@ public class GameManager : MonoBehaviour
 
     private void Update()
     {
-        // 예시: 게임 흐름 제어, Esc 누르면 게임 종료 등
+        // 예: Esc 키로 게임 종료
         if (Input.GetKeyDown(KeyCode.Escape))
         {
             Application.Quit();

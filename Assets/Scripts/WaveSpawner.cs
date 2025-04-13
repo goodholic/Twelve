@@ -1,10 +1,12 @@
+// Assets\Scripts\WaveSpawner.cs
+
 using System.Collections;
 using UnityEngine;
 
 public class WaveSpawner : MonoBehaviour
 {
     [Header("Wave Settings")]
-    [Tooltip("스폰할 몬스터 프리팹")]
+    [Tooltip("몬스터 프리팹")]
     public GameObject monsterPrefab;
 
     [Tooltip("몬스터가 이동할 웨이포인트(씬에서 참조)")]
@@ -13,20 +15,20 @@ public class WaveSpawner : MonoBehaviour
     [Tooltip("웨이브 간 간격(초)")]
     public float timeBetweenWaves = 5f;
 
-    [Tooltip("한 웨이브에 생성할 몬스터 수")]
+    [Tooltip("한 웨이브당 생성할 몬스터 수")]
     public int monstersPerWave = 5;
 
     [Tooltip("몬스터 생성 간격(초)")]
     public float spawnInterval = 1f;
 
-    [Tooltip("현재 진행 중인 웨이브 번호")]
+    [Tooltip("현재 웨이브 번호")]
     public int currentWave = 0;
 
     private bool isSpawning = false;
 
     private void Update()
     {
-        // 예시: 키보드 입력으로 다음 웨이브 강제 시작
+        // 예: Space 키로 다음 웨이브 스폰
         if (Input.GetKeyDown(KeyCode.Space))
         {
             StartNextWave();
@@ -34,7 +36,7 @@ public class WaveSpawner : MonoBehaviour
     }
 
     /// <summary>
-    /// 다음 웨이브 스폰 시작
+    /// 웨이브 시작
     /// </summary>
     public void StartNextWave()
     {
@@ -49,13 +51,19 @@ public class WaveSpawner : MonoBehaviour
         isSpawning = true;
         currentWave++;
 
+        // 웨이포인트가 비었으면 경고
+        if (pathWaypoints == null || pathWaypoints.Length == 0)
+        {
+            Debug.LogWarning("WaveSpawner: pathWaypoints가 비어있습니다!");
+        }
+
         for (int i = 0; i < monstersPerWave; i++)
         {
             SpawnMonster();
             yield return new WaitForSeconds(spawnInterval);
         }
 
-        // 웨이브 1회 스폰 완료 후 대기
+        // 한 웨이브 끝
         yield return new WaitForSeconds(timeBetweenWaves);
         isSpawning = false;
     }
@@ -65,15 +73,27 @@ public class WaveSpawner : MonoBehaviour
     /// </summary>
     private void SpawnMonster()
     {
-        if (monsterPrefab != null)
+        if (monsterPrefab == null)
         {
-            // 스폰 위치는 웨이포인트 첫 번째 지점 등으로 설정(가장 앞 웨이포인트)
-            GameObject monsterObj = Instantiate(monsterPrefab, pathWaypoints[0].position, Quaternion.identity);
-            Monster monster = monsterObj.GetComponent<Monster>();
-            if (monster != null)
-            {
-                monster.pathWaypoints = pathWaypoints;
-            }
+            Debug.LogWarning("WaveSpawner: monsterPrefab이 설정되지 않았습니다.");
+            return;
+        }
+
+        // 웨이포인트[0] 위치에서 스폰 (없으면 자기 transform 위치)
+        Vector3 spawnPos = transform.position;
+        if (pathWaypoints != null && pathWaypoints.Length > 0)
+        {
+            spawnPos = pathWaypoints[0].position;
+        }
+
+        // 몬스터 인스턴스화
+        GameObject monsterObj = Instantiate(monsterPrefab, spawnPos, Quaternion.identity);
+
+        // Monster 스크립트에 웨이포인트 배열 할당
+        Monster monster = monsterObj.GetComponent<Monster>();
+        if (monster != null && pathWaypoints != null && pathWaypoints.Length > 0)
+        {
+            monster.pathWaypoints = pathWaypoints;
         }
     }
 }
