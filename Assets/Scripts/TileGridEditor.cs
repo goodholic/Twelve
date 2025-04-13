@@ -8,10 +8,10 @@ using System;
 
 public enum GridTileType
 {
-    None,      
-    Walkable,  
-    Placable,  
-    Occupied   
+    None,
+    Walkable,
+    Placable,
+    Occupied
 }
 
 [Serializable]
@@ -69,6 +69,7 @@ public class TileGridEditor : MonoBehaviour
         switch (state)
         {
             case GridTileType.None:
+                // 아무것도 안 함
                 break;
             case GridTileType.Walkable:
                 tile.isWalkable = true;
@@ -143,8 +144,7 @@ public class TileGridEditorInspector : Editor
 
                 if (GUILayout.Button(shape, wOpt, hOpt))
                 {
-                    GridTileType next = GetNextType(currentVal);
-                    cellProp.enumValueIndex = (int)next;
+                    cellProp.enumValueIndex = (int)GetNextType(currentVal);
                 }
             }
             EditorGUILayout.EndHorizontal();

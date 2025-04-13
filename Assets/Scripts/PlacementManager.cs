@@ -3,16 +3,19 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
 
+/// <summary>
+/// 2D에서 마우스로 타일을 클릭했을 때 캐릭터를 생성/배치
+/// </summary>
 public class PlacementManager : MonoBehaviour
 {
     [Header("Placement Settings")]
-    [Tooltip("배치 가능한 캐릭터 프리팹 (1성, 2성, 3성 등 다양하게 배열로 관리 가능)")]
+    [Tooltip("배치 가능한 캐릭터 프리팹 배열")]
     public GameObject[] characterPrefabs;
 
     [Tooltip("현재 선택된 캐릭터 인덱스")]
     public int currentCharacterIndex = 0;
 
-    [Tooltip("메인 카메라")]
+    [Tooltip("2D 카메라 (Orthographic)")]
     public Camera mainCamera;
 
     private void Start()
@@ -25,13 +28,11 @@ public class PlacementManager : MonoBehaviour
 
     private void Update()
     {
-        // 마우스 왼쪽 클릭 시 캐릭터 배치
         if (Input.GetMouseButtonDown(0) && !IsPointerOverUI())
         {
-            TryPlaceCharacter();
+            TryPlaceCharacter2D();
         }
 
-        // 예시: 숫자키로 캐릭터 선택
         if (Input.GetKeyDown(KeyCode.Alpha1)) currentCharacterIndex = 0;
         if (Input.GetKeyDown(KeyCode.Alpha2)) currentCharacterIndex = 1;
         if (Input.GetKeyDown(KeyCode.Alpha3)) currentCharacterIndex = 2;
@@ -43,24 +44,24 @@ public class PlacementManager : MonoBehaviour
         return EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
     }
 
-    private void TryPlaceCharacter()
+    /// <summary>
+    /// 2D Raycast를 이용해 Tile을 찾고, 배치 가능하면 캐릭터 생성
+    /// </summary>
+    private void TryPlaceCharacter2D()
     {
-        Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
-        RaycastHit hit;
+        Vector2 mousePos = mainCamera.ScreenToWorldPoint(Input.mousePosition);
+        RaycastHit2D hit2D = Physics2D.Raycast(mousePos, Vector2.zero);
 
-        if (Physics.Raycast(ray, out hit))
+        if (hit2D.collider != null)
         {
-            Tile tile = hit.collider.GetComponent<Tile>();
+            Tile tile = hit2D.collider.GetComponent<Tile>();
             if (tile != null)
             {
                 if (tile.CanPlaceCharacter())
                 {
                     // 캐릭터 생성
-                    GameObject characterObj = Instantiate(
-                        characterPrefabs[currentCharacterIndex],
-                        tile.transform.position,
-                        Quaternion.identity
-                    );
+                    Vector3 spawnPos = tile.transform.position; // 타일의 위치
+                    GameObject characterObj = Instantiate(characterPrefabs[currentCharacterIndex], spawnPos, Quaternion.identity);
 
                     Character character = characterObj.GetComponent<Character>();
                     if (character != null)

@@ -1,16 +1,18 @@
 // Assets\Scripts\Tile.cs
 
 using UnityEngine;
+using UnityEngine.UI; // Image 사용
 using System;
 #if UNITY_EDITOR
-using UnityEditor;  // PrefabUtility, EditorApplication 사용
+using UnityEditor;  
 #endif
 
 /// <summary>
-/// 맵 타일을 나타내는 스크립트.
-/// 에디터 모드에서 OnValidate 시점에 DestroyImmediate를 호출하지 않고,
-/// 런타임에서만 Destroy/Instantiate 되도록 작성.
+/// 2D 타일(칸)에 해당하는 스크립트.
+/// Image 컴포넌트를 이용해 색상 변경, 
+/// 캐릭터 배치 가능 여부(isPlacable), 몬스터 경로 여부(isWalkable) 등.
 /// </summary>
+[RequireComponent(typeof(Image), typeof(BoxCollider2D))]
 public class Tile : MonoBehaviour
 {
     [Header("Tile Settings")]
@@ -20,11 +22,11 @@ public class Tile : MonoBehaviour
     [Tooltip("플레이어가 캐릭터를 배치할 수 있는 타일이면 true, 아니면 false")]
     public bool isPlacable = true;
 
-    [Tooltip("현재 타일에 캐릭터가 배치되어 있는지 여부(전투 중 점유 상태)")]
+    [Tooltip("현재 타일에 캐릭터가 배치되어 있는지 여부")]
     public bool isOccupied = false;
 
     [Header("Tile Color Settings")]
-    [SerializeField] private Renderer tileRenderer;
+    [SerializeField] private Image tileImage; // 2D에서 Image로 색상 제어
     [SerializeField] private Color defaultColor = Color.white;
     [SerializeField] private Color highlightColor = Color.yellow;
     [SerializeField] private Color blockedColor = Color.red;
@@ -39,26 +41,23 @@ public class Tile : MonoBehaviour
 
     private void Start()
     {
-        // 초기 색상 세팅
-        if (tileRenderer == null)
+        // Image 할당
+        if (tileImage == null)
         {
-            tileRenderer = GetComponent<Renderer>();
+            tileImage = GetComponent<Image>();
         }
-        if (tileRenderer != null)
+        if (tileImage != null)
         {
-            tileRenderer.material.color = defaultColor;
+            tileImage.color = defaultColor;
         }
 
-        // 플레이 모드일 때만 자동으로 비주얼 갱신
+        // 플레이 모드일 때만 비주얼 갱신
         if (Application.isPlaying)
         {
             UpdateTileVisual_Runtime();
         }
     }
 
-    /// <summary>
-    /// (OnValidate 대신) 에디터에서 수동 Refresh할 때 사용
-    /// </summary>
     public void RefreshInEditor()
     {
 #if UNITY_EDITOR
@@ -74,14 +73,10 @@ public class Tile : MonoBehaviour
     }
 
 #if UNITY_EDITOR
-    /// <summary>
-    /// 에디터 모드(미플레이)에서 DestroyImmediate / InstantiatePrefab
-    /// </summary>
     private void UpdateTileVisual_Editor()
     {
         if (currentVisual != null)
         {
-            // 혹시 currentVisual이 에셋이면 제거 불가이므로 체크
             if (!IsAssetObject(currentVisual))
             {
                 DestroyImmediate(currentVisual, false);
@@ -93,12 +88,10 @@ public class Tile : MonoBehaviour
         if (prefabToUse != null)
         {
             GameObject newObj = (GameObject)PrefabUtility.InstantiatePrefab(prefabToUse, transform);
-            newObj.transform.localPosition = Vector3.zero;
-            newObj.transform.localRotation = Quaternion.identity;
+            newObj.GetComponent<RectTransform>().anchoredPosition = Vector2.zero;
+            newObj.GetComponent<RectTransform>().localRotation = Quaternion.identity;
 
-            // 혹시 프리팹 내부에 Tile.cs가 있으면 제거(자식 타일 무한증식 방지)
             RemoveTileScriptsInEditor(newObj);
-
             currentVisual = newObj;
         }
     }
@@ -121,9 +114,6 @@ public class Tile : MonoBehaviour
     }
 #endif
 
-    /// <summary>
-    /// 런타임(플레이 중) Destroy + Instantiate
-    /// </summary>
     private void UpdateTileVisual_Runtime()
     {
         if (currentVisual != null)
@@ -143,10 +133,10 @@ public class Tile : MonoBehaviour
         if (prefabToUse != null)
         {
             GameObject newObj = Instantiate(prefabToUse, transform);
-            newObj.transform.localPosition = Vector3.zero;
-            newObj.transform.localRotation = Quaternion.identity;
-            RemoveTileScriptsAtRuntime(newObj);
+            newObj.GetComponent<RectTransform>().anchoredPosition = Vector2.zero;
+            newObj.GetComponent<RectTransform>().localRotation = Quaternion.identity;
 
+            RemoveTileScriptsAtRuntime(newObj);
             currentVisual = newObj;
         }
     }
@@ -172,9 +162,6 @@ public class Tile : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// 타일 상태(isWalkable/isPlacable/isOccupied)에 따라 사용할 프리팹 결정
-    /// </summary>
     private GameObject SelectPrefabBasedOnState()
     {
         if (isWalkable && !isPlacable && !isOccupied)
@@ -209,17 +196,17 @@ public class Tile : MonoBehaviour
     // ------------------- 기존 기능 -------------------
     public void HighlightTile()
     {
-        if (tileRenderer != null)
+        if (tileImage != null)
         {
-            tileRenderer.material.color = (isPlacable && !isOccupied) ? highlightColor : blockedColor;
+            tileImage.color = (isPlacable && !isOccupied) ? highlightColor : blockedColor;
         }
     }
 
     public void ResetHighlight()
     {
-        if (tileRenderer != null)
+        if (tileImage != null)
         {
-            tileRenderer.material.color = defaultColor;
+            tileImage.color = defaultColor;
         }
     }
 

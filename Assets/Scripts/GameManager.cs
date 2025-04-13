@@ -2,6 +2,9 @@
 
 using UnityEngine;
 
+/// <summary>
+/// 2D 게임 전체를 관리하는 GameManager 예시.
+/// </summary>
 public class GameManager : MonoBehaviour
 {
     private static GameManager instance;
@@ -23,10 +26,7 @@ public class GameManager : MonoBehaviour
     }
 
     [Header("Managers")]
-    [Tooltip("웨이브 스포너")]
     public WaveSpawner waveSpawner;
-
-    [Tooltip("캐릭터 배치 매니저")]
     public PlacementManager placementManager;
 
     private void Awake()
@@ -45,7 +45,6 @@ public class GameManager : MonoBehaviour
 
     private void Start()
     {
-        // 초기 설정
         if (waveSpawner == null)
         {
             waveSpawner = FindObjectOfType<WaveSpawner>();
@@ -58,16 +57,12 @@ public class GameManager : MonoBehaviour
 
     private void Update()
     {
-        // 예: Esc 키로 게임 종료
         if (Input.GetKeyDown(KeyCode.Escape))
         {
             Application.Quit();
         }
     }
 
-    /// <summary>
-    /// 웨이브 시작(버튼 등에 연결 가능)
-    /// </summary>
     public void StartWave()
     {
         if (waveSpawner != null)
