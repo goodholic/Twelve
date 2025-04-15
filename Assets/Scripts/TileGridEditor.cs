@@ -15,84 +15,114 @@ public enum GridTileType
 [Serializable]
 public class TileRow
 {
-    // 열 크기를 10으로 고정
     public GridTileType[] columns = new GridTileType[10];
 }
 
+// [추가] 실제 씬에 존재하는 Tile 레퍼런스 10×10을 Inspector에서 넣기 위한 구조
+[Serializable]
+public class TileReferenceRow
+{
+    public Tile[] tiles = new Tile[10];
+}
+
 /// <summary>
-/// 10×10 그리드를 에디터에서 설정하고, 자식 Tile들에게 적용하는 스크립트
+/// 10×10 그리드를 에디터에서 설정하고,
+/// 1) tileReferences[r].tiles[c]로 Inspector에서 직접 연결된 Tile을 가져온 뒤
+/// 2) rows[r].columns[c] 상태(Placable/Walkable/Occupied 등)를 적용하여
+///    Tile 자식 오브젝트를 생성/삭제한다.
 /// </summary>
 public class TileGridEditor : MonoBehaviour
 {
-    [Header("Grid Size: 10 x 10")]
-    // 이전에는 15줄(rows)였지만, 이제 10줄로 변경
+    [Header("Grid State: 10 x 10 (Placable/Walkable/Occupied)")]
     public TileRow[] rows = new TileRow[10];
+
+    [Header("Tile References: 10 x 10")]
+    [Tooltip("씬에 배치된 Tile 오브젝트를 10×10 배열에 수동으로 넣으세요.")]
+    public TileReferenceRow[] tileReferences = new TileReferenceRow[10];
 
     private void Reset()
     {
-        // rows 배열(10줄)을 초기화
+        // 1) rows 배열(상태) 초기화
         for (int r = 0; r < rows.Length; r++)
         {
             rows[r] = new TileRow();
-            // 각 줄의 columns도 10칸
             for (int c = 0; c < rows[r].columns.Length; c++)
             {
                 rows[r].columns[c] = GridTileType.None;
             }
         }
+
+        // 2) tileReferences 배열(실제 Tile 참조) 초기화
+        for (int r = 0; r < tileReferences.Length; r++)
+        {
+            tileReferences[r] = new TileReferenceRow();
+            for (int c = 0; c < tileReferences[r].tiles.Length; c++)
+            {
+                tileReferences[r].tiles[c] = null;
+            }
+        }
     }
 
-    public void ApplyGridToChildTiles()
+    /// <summary>
+    /// 10×10 각각의 Tile 레퍼런스(tileReferences[r].tiles[c])에 대해
+    /// rows[r].columns[c] 상태를 적용(Placable/Walkable/Occupied 자식 생성/삭제).
+    /// </summary>
+    public void ApplyGridToReferencedTiles()
     {
-        // 자식 타일들을 전부 가져옴
-        Tile[] childTiles = GetComponentsInChildren<Tile>(true);
-
-        // 10×10이면 타일은 총 100개
-        int expectedCount = 10 * 10;
-        if (childTiles.Length != expectedCount)
+        // 10×10 반복
+        for (int r = 0; r < 10; r++)
         {
-            Debug.LogError($"TileGridEditor: 자식 Tile 개수가 {childTiles.Length}개 입니다. (예상: {expectedCount}개).");
-            return;
+            for (int c = 0; c < 10; c++)
+            {
+                Tile tile = tileReferences[r].tiles[c];
+                if (tile == null)
+                {
+                    // 해당 칸이 null이면 넘어감
+                    continue;
+                }
+
+                // 행/열, 인덱스 설정
+                tile.row = r;
+                tile.column = c;
+                tile.tileIndex = (r * 10) + c;
+
+                // rows[r].columns[c]로부터 상태 가져옴
+                GridTileType gridType = rows[r].columns[c];
+
+                // 타일에 상태 적용
+                ApplyStateToTile(tile, gridType);
+            }
         }
 
-        // 히에라르키 순서에 맞춰 정렬 (위~아래, 왼쪽~오른쪽 순으로 정렬되도록)
-        childTiles = SortTilesByHierarchy(childTiles);
-
-        // 정렬된 타일에 rows 정보를 적용
-        for (int i = 0; i < childTiles.Length; i++)
-        {
-            // 1차원 인덱스 i → (행, 열) 변환
-            int r = i / 10;
-            int c = i % 10;
-
-            GridTileType gridType = rows[r].columns[c];
-            ApplyStateToTile(childTiles[i], gridType);
-        }
-
-        Debug.Log("TileGridEditor: 자식 Tile들에 Grid 상태를 적용했습니다.");
+        Debug.Log("TileGridEditor: 모든 Referenced Tile에 Grid 상태를 적용 완료.");
     }
 
+    /// <summary>
+    /// Tile에 대해 자식 오브젝트("Placable", "Walkable", "Occupied")를 생성/삭제
+    /// </summary>
     private void ApplyStateToTile(Tile tile, GridTileType state)
     {
-        // 기본값
-        tile.isWalkable = false;
-        tile.isPlacable = false;
-        tile.isOccupied = false;
+        if (tile == null) return;
 
-        // 설정된 enum 값에 따라 타일 속성 부여
+        // 기존 "Placable"/"Occupied"/"Walkable" 자식 전부 제거
+        RemoveChildIfExists(tile.transform, "Placable");
+        RemoveChildIfExists(tile.transform, "Occupied");
+        RemoveChildIfExists(tile.transform, "Walkable");
+
+        // 필요한 상태만 새로 생성
         switch (state)
         {
             case GridTileType.None:
-                // 아무것도 안함
+                // 아무것도 안 만듦
                 break;
             case GridTileType.Walkable:
-                tile.isWalkable = true;
+                CreateChildObject(tile.transform, "Walkable");
                 break;
             case GridTileType.Placable:
-                tile.isPlacable = true;
+                CreateChildObject(tile.transform, "Placable");
                 break;
             case GridTileType.Occupied:
-                tile.isOccupied = true;
+                CreateChildObject(tile.transform, "Occupied");
                 break;
         }
 
@@ -100,14 +130,28 @@ public class TileGridEditor : MonoBehaviour
         tile.RefreshTileVisual();
     }
 
-    public Tile[] SortTilesByHierarchy(Tile[] tiles)
+    private void RemoveChildIfExists(Transform parent, string childName)
     {
-        // transform의 SiblingIndex(계층 순서) 기준으로 정렬
-        System.Array.Sort(tiles, (t1, t2) =>
+        Transform child = parent.Find(childName);
+        if (child != null)
         {
-            return t1.transform.GetSiblingIndex().CompareTo(t2.transform.GetSiblingIndex());
-        });
-        return tiles;
+#if UNITY_EDITOR
+            DestroyImmediate(child.gameObject, false);
+#else
+            Destroy(child.gameObject);
+#endif
+        }
+    }
+
+    private void CreateChildObject(Transform parent, string childName)
+    {
+        // 이미 있으면 중복 생성하지 않음
+        if (parent.Find(childName) != null) return;
+
+        // 이름만 있는 빈 오브젝트 생성
+        GameObject go = new GameObject(childName);
+        go.transform.SetParent(parent, false);
+        go.transform.localPosition = Vector3.zero;
     }
 }
 
@@ -115,7 +159,6 @@ public class TileGridEditor : MonoBehaviour
 [CustomEditor(typeof(TileGridEditor))]
 public class TileGridEditorInspector : Editor
 {
-    // 셀 버튼 UI 크기
     private const float CellWidth = 35f;
     private const float CellHeight = 22f;
 
@@ -123,25 +166,21 @@ public class TileGridEditorInspector : Editor
     {
         serializedObject.Update();
 
+        // 대상 스크립트
         TileGridEditor gridEditor = (TileGridEditor)target;
+
+        // -----------------------------
+        // (1) rows: GridTileType 10×10
+        // -----------------------------
+        EditorGUILayout.LabelField("[Grid State] 10×10 (None / Walkable / Placable / Occupied)", EditorStyles.boldLabel);
         SerializedProperty rowsProp = serializedObject.FindProperty("rows");
+        if (rowsProp.arraySize != 10) rowsProp.arraySize = 10;
 
-        // rows 배열 크기를 10으로
-        if (rowsProp.arraySize != 10)
-        {
-            rowsProp.arraySize = 10;
-        }
-
-        // 각 row(줄)은 10개
         for (int r = 0; r < 10; r++)
         {
             SerializedProperty rowProp = rowsProp.GetArrayElementAtIndex(r);
             SerializedProperty colsProp = rowProp.FindPropertyRelative("columns");
-            // columns 배열 크기도 10으로
-            if (colsProp.arraySize != 10)
-            {
-                colsProp.arraySize = 10;
-            }
+            if (colsProp.arraySize != 10) colsProp.arraySize = 10;
 
             EditorGUILayout.BeginHorizontal();
             for (int c = 0; c < 10; c++)
@@ -149,22 +188,17 @@ public class TileGridEditorInspector : Editor
                 SerializedProperty cellProp = colsProp.GetArrayElementAtIndex(c);
                 GridTileType currentVal = (GridTileType)cellProp.enumValueIndex;
 
-                // 현재 상태에 따라 버튼 표시 문자
-                string shape;
+                // 버튼으로 표시
+                string shape = "?";
                 switch (currentVal)
                 {
                     case GridTileType.None:     shape = "X"; break;
                     case GridTileType.Walkable: shape = "△"; break;
                     case GridTileType.Placable: shape = "□"; break;
                     case GridTileType.Occupied: shape = "○"; break;
-                    default:                    shape = "?"; break;
                 }
 
-                GUILayoutOption wOpt = GUILayout.Width(CellWidth);
-                GUILayoutOption hOpt = GUILayout.Height(CellHeight);
-
-                // 클릭 시 순환하여 다음 상태로 전환
-                if (GUILayout.Button(shape, wOpt, hOpt))
+                if (GUILayout.Button(shape, GUILayout.Width(CellWidth), GUILayout.Height(CellHeight)))
                 {
                     cellProp.enumValueIndex = (int)GetNextType(currentVal);
                 }
@@ -173,25 +207,56 @@ public class TileGridEditorInspector : Editor
         }
 
         EditorGUILayout.Space();
-        if (GUILayout.Button("Apply to Tiles"))
+        EditorGUILayout.LabelField("", GUI.skin.horizontalSlider);
+
+        // -----------------------------
+        // (2) tileReferences: Tile 10×10
+        // -----------------------------
+        EditorGUILayout.LabelField("[Tile References] 10×10 (씬에 존재하는 Tile 오브젝트)", EditorStyles.boldLabel);
+        SerializedProperty tileRefsProp = serializedObject.FindProperty("tileReferences");
+        if (tileRefsProp.arraySize != 10) tileRefsProp.arraySize = 10;
+
+        for (int r = 0; r < 10; r++)
         {
-            // "Apply to Tiles" 버튼 누르면 자식 타일에 적용
-            gridEditor.ApplyGridToChildTiles();
+            SerializedProperty refRowProp = tileRefsProp.GetArrayElementAtIndex(r);
+            SerializedProperty tilesProp = refRowProp.FindPropertyRelative("tiles");
+            if (tilesProp.arraySize != 10) tilesProp.arraySize = 10;
+
+            EditorGUILayout.BeginHorizontal();
+            for (int c = 0; c < 10; c++)
+            {
+                SerializedProperty tileProp = tilesProp.GetArrayElementAtIndex(c);
+                EditorGUILayout.PropertyField(tileProp, GUIContent.none, GUILayout.Width(100));
+            }
+            EditorGUILayout.EndHorizontal();
         }
 
-        // 안내 문구
+        EditorGUILayout.Space();
+        EditorGUILayout.LabelField("", GUI.skin.horizontalSlider);
+
+        // -----------------------------
+        // (3) "Apply to Referenced Tiles" 버튼
+        // -----------------------------
+        if (GUILayout.Button("Apply to Referenced Tiles (10×10)"))
+        {
+            gridEditor.ApplyGridToReferencedTiles();
+        }
+
         EditorGUILayout.HelpBox(
-            "가로 10 × 세로 10의 Grid.\n" +
-            "X(None), △(Walkable), □(Placable), ○(Occupied)\n" +
-            "[Apply to Tiles] 버튼을 누르면 자식 Tile에 적용됩니다.\n" +
-            "자식 Tile 개수는 100개여야 합니다.",
+            "[사용 방법]\n" +
+            "1) [Grid State] 10×10에서 각 셀의 상태(None/Walkable/Placable/Occupied)를 설정\n" +
+            "2) [Tile References] 10×10에 씬의 Tile 오브젝트를 연결(Drag&Drop)\n" +
+            "3) 'Apply to Referenced Tiles' 버튼 클릭 -> Tile.cs에 (row, col, tileIndex) 지정 + 자식 오브젝트 생성/삭제\n" +
+            "   -> Tile이 Placable/Walkable/Occupied 상태를 인식하게 됨",
             MessageType.Info
         );
 
         serializedObject.ApplyModifiedProperties();
     }
 
-    // 버튼 클릭 시 순환 규칙
+    /// <summary>
+    /// 버튼 클릭 시 GridTileType을 순환( None -> Walkable -> Placable -> Occupied -> None )
+    /// </summary>
     private GridTileType GetNextType(GridTileType current)
     {
         switch (current)

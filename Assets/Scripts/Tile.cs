@@ -1,47 +1,74 @@
-// Assets\Scripts\Tile.cs
-
 using UnityEngine;
-using UnityEngine.UI; // Image 사용
+using UnityEngine.UI;
 using System;
 #if UNITY_EDITOR
-using UnityEditor;  
+using UnityEditor;
 #endif
 
 /// <summary>
-/// 2D 타일(칸)에 해당하는 스크립트.
-/// Image 컴포넌트를 이용해 색상 변경, 
-/// 캐릭터 배치 가능 여부(isPlacable), 몬스터 경로 여부(isWalkable) 등.
+/// 2D 타일(칸).
+/// 자식 오브젝트("Placable", "Walkable", "Occupied")의 존재 여부로 상태를 판단.
+/// Button을 통해 OnClickPlacableTile() 호출 -> 캐릭터 배치 로직.
 /// </summary>
 [RequireComponent(typeof(Image), typeof(BoxCollider2D))]
 public class Tile : MonoBehaviour
 {
-    [Header("Tile Settings")]
-    [Tooltip("몬스터가 지나갈 수 있는 타일이면 true, 아니면 false")]
-    public bool isWalkable = false;
-
-    [Tooltip("플레이어가 캐릭터를 배치할 수 있는 타일이면 true, 아니면 false")]
-    public bool isPlacable = true;
-
-    [Tooltip("현재 타일에 캐릭터가 배치되어 있는지 여부")]
-    public bool isOccupied = false;
-
-    [Header("Tile Color Settings")]
-    [SerializeField] private Image tileImage; // 2D에서 Image로 색상 제어
+    [Header("Tile Color Settings (시각 효과)")]
+    [SerializeField] private Image tileImage;
     [SerializeField] private Color defaultColor = Color.white;
     [SerializeField] private Color highlightColor = Color.yellow;
     [SerializeField] private Color blockedColor = Color.red;
 
-    [Header("Tile Prefabs (Walkable / Placable / Occupied)")]
+    [Header("Tile Prefabs (시각용)")]
     public GameObject walkablePrefab;
     public GameObject placablePrefab;
     public GameObject occupiedPrefab;
 
-    [Tooltip("현재 표시 중인 타일 비주얼(동적으로 생성)")]
     [SerializeField] private GameObject currentVisual;
+
+    [Header("Optional: Button for OnClick")]
+    public Button tileButton;
+
+    // [추가] 타일이 몇 번째 인덱스(또는 행/열)에 위치하는지 저장
+    [HideInInspector] public int row;
+    [HideInInspector] public int column;
+    [HideInInspector] public int tileIndex;
+
+    /// <summary>
+    /// 자식 중 이름이 "Placable"인 오브젝트가 있으면 true
+    /// </summary>
+    public bool IsPlacable()
+    {
+        return (transform.Find("Placable") != null);
+    }
+
+    /// <summary>
+    /// 자식 중 이름이 "Occupied"인 오브젝트가 있으면 true
+    /// </summary>
+    public bool IsOccupied()
+    {
+        return (transform.Find("Occupied") != null);
+    }
+
+    /// <summary>
+    /// 자식 중 이름이 "Walkable"인 오브젝트가 있으면 true
+    /// </summary>
+    public bool IsWalkable()
+    {
+        return (transform.Find("Walkable") != null);
+    }
+
+    /// <summary>
+    /// 배치 가능 조건: Walkable=false && Placable=true && Occupied=false
+    /// </summary>
+    public bool CanPlaceCharacter()
+    {
+        return (!IsWalkable() && IsPlacable() && !IsOccupied());
+    }
 
     private void Start()
     {
-        // Image 할당
+        // 1) Tile Image 설정
         if (tileImage == null)
         {
             tileImage = GetComponent<Image>();
@@ -49,18 +76,63 @@ public class Tile : MonoBehaviour
         if (tileImage != null)
         {
             tileImage.color = defaultColor;
+            tileImage.raycastTarget = true; // UI 클릭 이벤트 인식
         }
 
-        // 플레이 모드일 때만 비주얼 갱신
+        // 2) Button 설정
+        if (tileButton != null)
+        {
+            if (tileButton.targetGraphic == null && tileImage != null)
+            {
+                tileButton.targetGraphic = tileImage;
+            }
+            tileButton.onClick.RemoveAllListeners();
+            tileButton.onClick.AddListener(OnClickPlacableTile);
+        }
+
+        // 3) 런타임 시 비주얼 갱신
         if (Application.isPlaying)
         {
             UpdateTileVisual_Runtime();
         }
     }
 
+    /// <summary>
+    /// Tile에 붙은 Button 클릭 시 호출되는 메서드
+    /// </summary>
+    public void OnClickPlacableTile()
+    {
+        // [추가] 몇 번째 타일(또는 row/column)인지 로그로 확인
+        Debug.Log($"Tile 클릭됨: {name} (Index: {tileIndex}, Row={row}, Col={column})");
+
+        if (CanPlaceCharacter())
+        {
+            var mgr = PlacementManager.Instance;
+            if (mgr != null)
+            {
+                mgr.PlaceCharacterOnTile(this);
+            }
+            else
+            {
+                Debug.LogWarning("PlacementManager.Instance가 null입니다.");
+            }
+        }
+        else
+        {
+            // 에디터에서 맵 상태("Placable", "Walkable", "Occupied") 확인용 디버그
+            bool p = IsPlacable();
+            bool w = IsWalkable();
+            bool o = IsOccupied();
+            Debug.Log($"[Tile] 배치 불가: Placable={p}, Walkable={w}, Occupied={o}");
+        }
+    }
+
+    // ------------------------------------
+    // 아래는 타일 비주얼(프리팹) 업데이트 로직
+    // ------------------------------------
+#if UNITY_EDITOR
     public void RefreshInEditor()
     {
-#if UNITY_EDITOR
         if (Application.isPlaying)
         {
             UpdateTileVisual_Runtime();
@@ -69,10 +141,8 @@ public class Tile : MonoBehaviour
         {
             UpdateTileVisual_Editor();
         }
-#endif
     }
 
-#if UNITY_EDITOR
     private void UpdateTileVisual_Editor()
     {
         if (currentVisual != null)
@@ -84,13 +154,15 @@ public class Tile : MonoBehaviour
             currentVisual = null;
         }
 
-        GameObject prefabToUse = SelectPrefabBasedOnState();
+        GameObject prefabToUse = SelectVisualPrefab();
         if (prefabToUse != null)
         {
             GameObject newObj = (GameObject)PrefabUtility.InstantiatePrefab(prefabToUse, transform);
-            newObj.GetComponent<RectTransform>().anchoredPosition = Vector2.zero;
-            newObj.GetComponent<RectTransform>().localRotation = Quaternion.identity;
-
+            if (newObj.TryGetComponent<RectTransform>(out RectTransform rt))
+            {
+                rt.anchoredPosition = Vector2.zero;
+                rt.localRotation = Quaternion.identity;
+            }
             RemoveTileScriptsInEditor(newObj);
             currentVisual = newObj;
         }
@@ -129,13 +201,15 @@ public class Tile : MonoBehaviour
             currentVisual = null;
         }
 
-        GameObject prefabToUse = SelectPrefabBasedOnState();
+        GameObject prefabToUse = SelectVisualPrefab();
         if (prefabToUse != null)
         {
             GameObject newObj = Instantiate(prefabToUse, transform);
-            newObj.GetComponent<RectTransform>().anchoredPosition = Vector2.zero;
-            newObj.GetComponent<RectTransform>().localRotation = Quaternion.identity;
-
+            if (newObj.TryGetComponent<RectTransform>(out RectTransform rt))
+            {
+                rt.anchoredPosition = Vector2.zero;
+                rt.localRotation = Quaternion.identity;
+            }
             RemoveTileScriptsAtRuntime(newObj);
             currentVisual = newObj;
         }
@@ -162,43 +236,43 @@ public class Tile : MonoBehaviour
         }
     }
 
-    private GameObject SelectPrefabBasedOnState()
+    /// <summary>
+    /// 자식("Placable"/"Walkable"/"Occupied") 상태에 따라 어떤 비주얼 프리팹을 붙일지 결정
+    /// </summary>
+    private GameObject SelectVisualPrefab()
     {
-        if (isWalkable && !isPlacable && !isOccupied)
-        {
-            return walkablePrefab;
-        }
-        else if (!isWalkable && isPlacable && !isOccupied)
-        {
-            return placablePrefab;
-        }
-        else if (!isWalkable && !isPlacable && isOccupied)
-        {
-            return occupiedPrefab;
-        }
+        bool p = IsPlacable();
+        bool w = IsWalkable();
+        bool o = IsOccupied();
+
+        // Walkable 전용
+        if (w && !p && !o) return walkablePrefab;
+
+        // Placable 전용
+        if (!w && p && !o) return placablePrefab;
+
+        // Occupied 전용
+        if (!w && !p && o) return occupiedPrefab;
+
+        // 그 외 (아무 자식도 없는 경우나, 여러개가 동시에 있는 경우)
         return null;
     }
 
     public void RefreshTileVisual()
     {
-        if (Application.isPlaying)
-        {
-            UpdateTileVisual_Runtime();
-        }
 #if UNITY_EDITOR
-        else
-        {
-            UpdateTileVisual_Editor();
-        }
+        if (Application.isPlaying) UpdateTileVisual_Runtime();
+        else UpdateTileVisual_Editor();
+#else
+        UpdateTileVisual_Runtime();
 #endif
     }
 
-    // ------------------- 기존 기능 -------------------
     public void HighlightTile()
     {
         if (tileImage != null)
         {
-            tileImage.color = (isPlacable && !isOccupied) ? highlightColor : blockedColor;
+            tileImage.color = (CanPlaceCharacter()) ? highlightColor : blockedColor;
         }
     }
 
@@ -209,10 +283,35 @@ public class Tile : MonoBehaviour
             tileImage.color = defaultColor;
         }
     }
+}
 
-    public bool CanPlaceCharacter()
+#if UNITY_EDITOR
+/// <summary>
+/// (추가) Tile용 CustomEditor
+/// 에디터에서 "Placable / Walkable / Occupied" 상태를 Inspector에서 간단히 확인
+/// </summary>
+[CustomEditor(typeof(Tile))]
+public class TileEditor : Editor
+{
+    public override void OnInspectorGUI()
     {
-        if (isWalkable) return false;
-        return isPlacable && !isOccupied;
+        // 기본 Inspector
+        base.OnInspectorGUI();
+
+        // 상태 확인
+        Tile tile = (Tile)target;
+        bool p = tile.IsPlacable();
+        bool w = tile.IsWalkable();
+        bool o = tile.IsOccupied();
+
+        EditorGUILayout.Space();
+        EditorGUILayout.LabelField("=== Tile 상태 (자식 오브젝트) ===", EditorStyles.boldLabel);
+        EditorGUILayout.LabelField($"Placable : {p}");
+        EditorGUILayout.LabelField($"Walkable : {w}");
+        EditorGUILayout.LabelField($"Occupied : {o}");
+
+        // 필요하면 실시간 갱신 버튼 추가 가능
+        // if (GUILayout.Button("Refresh Visual")) { tile.RefreshInEditor(); }
     }
 }
+#endif

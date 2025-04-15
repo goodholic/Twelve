@@ -1,5 +1,3 @@
-// Assets\Scripts\Character.cs
-
 using System.Collections;
 using UnityEngine;
 
@@ -68,7 +66,7 @@ public class Character : MonoBehaviour
 
     private Monster FindTargetInRange()
     {
-        Monster[] allMonsters = FindObjectsOfType<Monster>();
+        Monster[] allMonsters = FindObjectsByType<Monster>(FindObjectsSortMode.None);
         Monster nearest = null;
         float nearestDist = Mathf.Infinity;
 

@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 6174890658289948800}
   - component: {fileID: 6501261230350656595}
   - component: {fileID: 723834111109176976}
+  - component: {fileID: 6978667422176186202}
   m_Layer: 5
   m_Name: PlacableTile(Clone)
   m_TagString: Untagged
@@ -91,7 +92,7 @@ MonoBehaviour:
   isWalkable: 0
   isPlacable: 1
   isOccupied: 0
-  tileRenderer: {fileID: 0}
+  tileImage: {fileID: 0}
   defaultColor: {r: 1, g: 1, b: 1, a: 1}
   highlightColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
   blockedColor: {r: 1, g: 0, b: 0, a: 1}
@@ -99,6 +100,53 @@ MonoBehaviour:
   placablePrefab: {fileID: 0}
   occupiedPrefab: {fileID: 0}
   currentVisual: {fileID: 0}
+  tileButton: {fileID: 0}
+--- !u!61 &6978667422176186202
+BoxCollider2D:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1358838878142185134}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Density: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ForceSendLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ForceReceiveLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ContactCaptureLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_CallbackLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_IsTrigger: 0
+  m_UsedByEffector: 0
+  m_CompositeOperation: 0
+  m_CompositeOrder: 0
+  m_Offset: {x: 0, y: 0}
+  m_SpriteTilingProperty:
+    border: {x: 0, y: 0, z: 0, w: 0}
+    pivot: {x: 0, y: 0}
+    oldSize: {x: 0, y: 0}
+    newSize: {x: 0, y: 0}
+    adaptiveTilingThreshold: 0
+    drawMode: 0
+    adaptiveTiling: 0
+  m_AutoTiling: 0
+  m_Size: {x: 1, y: 1}
+  m_EdgeRadius: 0
 --- !u!1 &3465646274040222936
 GameObject:
   m_ObjectHideFlags: 0
@@ -111,6 +159,7 @@ GameObject:
   - component: {fileID: 2227111326464064226}
   - component: {fileID: 3468510623463136786}
   - component: {fileID: 2831417635839897079}
+  - component: {fileID: 1925345843852507551}
   m_Layer: 5
   m_Name: PlacableTile(Clone)
   m_TagString: Untagged
@@ -190,7 +239,7 @@ MonoBehaviour:
   isWalkable: 0
   isPlacable: 1
   isOccupied: 0
-  tileRenderer: {fileID: 0}
+  tileImage: {fileID: 0}
   defaultColor: {r: 1, g: 1, b: 1, a: 1}
   highlightColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
   blockedColor: {r: 1, g: 0, b: 0, a: 1}
@@ -198,6 +247,53 @@ MonoBehaviour:
   placablePrefab: {fileID: 0}
   occupiedPrefab: {fileID: 0}
   currentVisual: {fileID: 0}
+  tileButton: {fileID: 0}
+--- !u!61 &1925345843852507551
+BoxCollider2D:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3465646274040222936}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Density: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ForceSendLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ForceReceiveLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ContactCaptureLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_CallbackLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_IsTrigger: 0
+  m_UsedByEffector: 0
+  m_CompositeOperation: 0
+  m_CompositeOrder: 0
+  m_Offset: {x: 0, y: 0}
+  m_SpriteTilingProperty:
+    border: {x: 0, y: 0, z: 0, w: 0}
+    pivot: {x: 0, y: 0}
+    oldSize: {x: 0, y: 0}
+    newSize: {x: 0, y: 0}
+    adaptiveTilingThreshold: 0
+    drawMode: 0
+    adaptiveTiling: 0
+  m_AutoTiling: 0
+  m_Size: {x: 1, y: 1}
+  m_EdgeRadius: 0
 --- !u!1 &4504932782119433587
 GameObject:
   m_ObjectHideFlags: 0
@@ -210,6 +306,7 @@ GameObject:
   - component: {fileID: 2459600094062636635}
   - component: {fileID: 2835549223970666937}
   - component: {fileID: 6737249861184050383}
+  - component: {fileID: 6338251797045402800}
   m_Layer: 5
   m_Name: PlacableTile(Clone)
   m_TagString: Untagged
@@ -289,7 +386,7 @@ MonoBehaviour:
   isWalkable: 0
   isPlacable: 1
   isOccupied: 0
-  tileRenderer: {fileID: 0}
+  tileImage: {fileID: 0}
   defaultColor: {r: 1, g: 1, b: 1, a: 1}
   highlightColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
   blockedColor: {r: 1, g: 0, b: 0, a: 1}
@@ -297,6 +394,53 @@ MonoBehaviour:
   placablePrefab: {fileID: 0}
   occupiedPrefab: {fileID: 0}
   currentVisual: {fileID: 0}
+  tileButton: {fileID: 0}
+--- !u!61 &6338251797045402800
+BoxCollider2D:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4504932782119433587}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Density: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ForceSendLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ForceReceiveLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ContactCaptureLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_CallbackLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_IsTrigger: 0
+  m_UsedByEffector: 0
+  m_CompositeOperation: 0
+  m_CompositeOrder: 0
+  m_Offset: {x: 0, y: 0}
+  m_SpriteTilingProperty:
+    border: {x: 0, y: 0, z: 0, w: 0}
+    pivot: {x: 0, y: 0}
+    oldSize: {x: 0, y: 0}
+    newSize: {x: 0, y: 0}
+    adaptiveTilingThreshold: 0
+    drawMode: 0
+    adaptiveTiling: 0
+  m_AutoTiling: 0
+  m_Size: {x: 1, y: 1}
+  m_EdgeRadius: 0
 --- !u!1 &5262296934028475438
 GameObject:
   m_ObjectHideFlags: 0
@@ -309,6 +453,7 @@ GameObject:
   - component: {fileID: 3492305915576198678}
   - component: {fileID: 8746473797093434779}
   - component: {fileID: 7545775644027960174}
+  - component: {fileID: 3281731558410892922}
   m_Layer: 5
   m_Name: PlacableTile(Clone)
   m_TagString: Untagged
@@ -388,7 +533,7 @@ MonoBehaviour:
   isWalkable: 0
   isPlacable: 1
   isOccupied: 0
-  tileRenderer: {fileID: 0}
+  tileImage: {fileID: 0}
   defaultColor: {r: 1, g: 1, b: 1, a: 1}
   highlightColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
   blockedColor: {r: 1, g: 0, b: 0, a: 1}
@@ -396,6 +541,53 @@ MonoBehaviour:
   placablePrefab: {fileID: 0}
   occupiedPrefab: {fileID: 0}
   currentVisual: {fileID: 0}
+  tileButton: {fileID: 0}
+--- !u!61 &3281731558410892922
+BoxCollider2D:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5262296934028475438}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Density: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ForceSendLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ForceReceiveLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ContactCaptureLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_CallbackLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_IsTrigger: 0
+  m_UsedByEffector: 0
+  m_CompositeOperation: 0
+  m_CompositeOrder: 0
+  m_Offset: {x: 0, y: 0}
+  m_SpriteTilingProperty:
+    border: {x: 0, y: 0, z: 0, w: 0}
+    pivot: {x: 0, y: 0}
+    oldSize: {x: 0, y: 0}
+    newSize: {x: 0, y: 0}
+    adaptiveTilingThreshold: 0
+    drawMode: 0
+    adaptiveTiling: 0
+  m_AutoTiling: 0
+  m_Size: {x: 1, y: 1}
+  m_EdgeRadius: 0
 --- !u!1 &7937580692530569598
 GameObject:
   m_ObjectHideFlags: 0
@@ -408,6 +600,7 @@ GameObject:
   - component: {fileID: 98103798134246118}
   - component: {fileID: 7859259961838513137}
   - component: {fileID: 7758357806774100344}
+  - component: {fileID: 707038974139573703}
   m_Layer: 5
   m_Name: PlacableTile(Clone)
   m_TagString: Untagged
@@ -487,7 +680,7 @@ MonoBehaviour:
   isWalkable: 0
   isPlacable: 1
   isOccupied: 0
-  tileRenderer: {fileID: 0}
+  tileImage: {fileID: 0}
   defaultColor: {r: 1, g: 1, b: 1, a: 1}
   highlightColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
   blockedColor: {r: 1, g: 0, b: 0, a: 1}
@@ -495,6 +688,53 @@ MonoBehaviour:
   placablePrefab: {fileID: 0}
   occupiedPrefab: {fileID: 0}
   currentVisual: {fileID: 0}
+  tileButton: {fileID: 0}
+--- !u!61 &707038974139573703
+BoxCollider2D:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7937580692530569598}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Density: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ForceSendLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ForceReceiveLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ContactCaptureLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_CallbackLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_IsTrigger: 0
+  m_UsedByEffector: 0
+  m_CompositeOperation: 0
+  m_CompositeOrder: 0
+  m_Offset: {x: 0, y: 0}
+  m_SpriteTilingProperty:
+    border: {x: 0, y: 0, z: 0, w: 0}
+    pivot: {x: 0, y: 0}
+    oldSize: {x: 0, y: 0}
+    newSize: {x: 0, y: 0}
+    adaptiveTilingThreshold: 0
+    drawMode: 0
+    adaptiveTiling: 0
+  m_AutoTiling: 0
+  m_Size: {x: 1, y: 1}
+  m_EdgeRadius: 0
 --- !u!1 &8083378088100250648
 GameObject:
   m_ObjectHideFlags: 0
@@ -508,6 +748,7 @@ GameObject:
   - component: {fileID: 8554291807101207508}
   - component: {fileID: 2180392329284106666}
   - component: {fileID: 5492441025159057556}
+  - component: {fileID: -477364798650710222}
   m_Layer: 5
   m_Name: Tile
   m_TagString: Untagged
@@ -594,7 +835,7 @@ MonoBehaviour:
   isWalkable: 0
   isPlacable: 0
   isOccupied: 0
-  tileRenderer: {fileID: 0}
+  tileImage: {fileID: 0}
   defaultColor: {r: 1, g: 1, b: 1, a: 1}
   highlightColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
   blockedColor: {r: 1, g: 0, b: 0, a: 1}
@@ -602,6 +843,7 @@ MonoBehaviour:
   placablePrefab: {fileID: 3174726448645328520, guid: 3620584c6edf7494eac937a9149ea4c0, type: 3}
   occupiedPrefab: {fileID: 4692362406737092058, guid: 3d9908dea6881434a95fe43d458245b6, type: 3}
   currentVisual: {fileID: 0}
+  tileButton: {fileID: -1972888538719204349, guid: 3620584c6edf7494eac937a9149ea4c0, type: 3}
 --- !u!61 &5492441025159057556
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -648,6 +890,62 @@ BoxCollider2D:
   m_AutoTiling: 0
   m_Size: {x: 1, y: 1}
   m_EdgeRadius: 0
+--- !u!114 &-477364798650710222
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8083378088100250648}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4e29b1a8efbd4b44bb3f3716e73f07ff, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_Navigation:
+    m_Mode: 3
+    m_WrapAround: 0
+    m_SelectOnUp: {fileID: 0}
+    m_SelectOnDown: {fileID: 0}
+    m_SelectOnLeft: {fileID: 0}
+    m_SelectOnRight: {fileID: 0}
+  m_Transition: 1
+  m_Colors:
+    m_NormalColor: {r: 1, g: 1, b: 1, a: 1}
+    m_HighlightedColor: {r: 0.9607843, g: 0.9607843, b: 0.9607843, a: 1}
+    m_PressedColor: {r: 0.78431374, g: 0.78431374, b: 0.78431374, a: 1}
+    m_SelectedColor: {r: 0.9607843, g: 0.9607843, b: 0.9607843, a: 1}
+    m_DisabledColor: {r: 0.78431374, g: 0.78431374, b: 0.78431374, a: 0.5019608}
+    m_ColorMultiplier: 1
+    m_FadeDuration: 0.1
+  m_SpriteState:
+    m_HighlightedSprite: {fileID: 0}
+    m_PressedSprite: {fileID: 0}
+    m_SelectedSprite: {fileID: 0}
+    m_DisabledSprite: {fileID: 0}
+  m_AnimationTriggers:
+    m_NormalTrigger: Normal
+    m_HighlightedTrigger: Highlighted
+    m_PressedTrigger: Pressed
+    m_SelectedTrigger: Selected
+    m_DisabledTrigger: Disabled
+  m_Interactable: 1
+  m_TargetGraphic: {fileID: 8554291807101207508}
+  m_OnClick:
+    m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 2180392329284106666}
+        m_TargetAssemblyTypeName: Tile, Assembly-CSharp
+        m_MethodName: OnClickPlacableTile
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!1 &8104851935013597943
 GameObject:
   m_ObjectHideFlags: 0
@@ -660,6 +958,7 @@ GameObject:
   - component: {fileID: 3440750297504073711}
   - component: {fileID: 4123176569473394495}
   - component: {fileID: 4486258614033219560}
+  - component: {fileID: 7456868741169084955}
   m_Layer: 5
   m_Name: PlacableTile(Clone)
   m_TagString: Untagged
@@ -739,7 +1038,7 @@ MonoBehaviour:
   isWalkable: 0
   isPlacable: 1
   isOccupied: 0
-  tileRenderer: {fileID: 0}
+  tileImage: {fileID: 0}
   defaultColor: {r: 1, g: 1, b: 1, a: 1}
   highlightColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
   blockedColor: {r: 1, g: 0, b: 0, a: 1}
@@ -747,6 +1046,53 @@ MonoBehaviour:
   placablePrefab: {fileID: 0}
   occupiedPrefab: {fileID: 0}
   currentVisual: {fileID: 0}
+  tileButton: {fileID: 0}
+--- !u!61 &7456868741169084955
+BoxCollider2D:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8104851935013597943}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Density: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ForceSendLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ForceReceiveLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ContactCaptureLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_CallbackLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_IsTrigger: 0
+  m_UsedByEffector: 0
+  m_CompositeOperation: 0
+  m_CompositeOrder: 0
+  m_Offset: {x: 0, y: 0}
+  m_SpriteTilingProperty:
+    border: {x: 0, y: 0, z: 0, w: 0}
+    pivot: {x: 0, y: 0}
+    oldSize: {x: 0, y: 0}
+    newSize: {x: 0, y: 0}
+    adaptiveTilingThreshold: 0
+    drawMode: 0
+    adaptiveTiling: 0
+  m_AutoTiling: 0
+  m_Size: {x: 1, y: 1}
+  m_EdgeRadius: 0
 --- !u!1 &8746548549909402153
 GameObject:
   m_ObjectHideFlags: 0
@@ -759,6 +1105,7 @@ GameObject:
   - component: {fileID: 7398557200880627189}
   - component: {fileID: 5343772593086634477}
   - component: {fileID: 7128337837941400211}
+  - component: {fileID: 4079438892232380878}
   m_Layer: 5
   m_Name: PlacableTile(Clone)
   m_TagString: Untagged
@@ -838,7 +1185,7 @@ MonoBehaviour:
   isWalkable: 0
   isPlacable: 1
   isOccupied: 0
-  tileRenderer: {fileID: 0}
+  tileImage: {fileID: 0}
   defaultColor: {r: 1, g: 1, b: 1, a: 1}
   highlightColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
   blockedColor: {r: 1, g: 0, b: 0, a: 1}
@@ -846,3 +1193,50 @@ MonoBehaviour:
   placablePrefab: {fileID: 0}
   occupiedPrefab: {fileID: 0}
   currentVisual: {fileID: 0}
+  tileButton: {fileID: 0}
+--- !u!61 &4079438892232380878
+BoxCollider2D:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8746548549909402153}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Density: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ForceSendLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ForceReceiveLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ContactCaptureLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_CallbackLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_IsTrigger: 0
+  m_UsedByEffector: 0
+  m_CompositeOperation: 0
+  m_CompositeOrder: 0
+  m_Offset: {x: 0, y: 0}
+  m_SpriteTilingProperty:
+    border: {x: 0, y: 0, z: 0, w: 0}
+    pivot: {x: 0, y: 0}
+    oldSize: {x: 0, y: 0}
+    newSize: {x: 0, y: 0}
+    adaptiveTilingThreshold: 0
+    drawMode: 0
+    adaptiveTiling: 0
+  m_AutoTiling: 0
+  m_Size: {x: 1, y: 1}
+  m_EdgeRadius: 0

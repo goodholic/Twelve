@@ -92,7 +92,7 @@ MonoBehaviour:
   isWalkable: 0
   isPlacable: 1
   isOccupied: 0
-  tileRenderer: {fileID: 0}
+  tileImage: {fileID: 0}
   defaultColor: {r: 1, g: 1, b: 1, a: 1}
   highlightColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
   blockedColor: {r: 1, g: 0, b: 0, a: 1}
@@ -100,6 +100,7 @@ MonoBehaviour:
   placablePrefab: {fileID: 0}
   occupiedPrefab: {fileID: 0}
   currentVisual: {fileID: 0}
+  tileButton: {fileID: 0}
 --- !u!61 &-177574824054312300
 BoxCollider2D:
   m_ObjectHideFlags: 0

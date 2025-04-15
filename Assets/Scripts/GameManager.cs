@@ -1,9 +1,7 @@
-// Assets\Scripts\GameManager.cs
-
 using UnityEngine;
 
 /// <summary>
-/// 2D 게임 전체를 관리하는 GameManager 예시.
+/// 2D 게임 전체 매니저 예시
 /// </summary>
 public class GameManager : MonoBehaviour
 {
@@ -14,7 +12,7 @@ public class GameManager : MonoBehaviour
         {
             if (instance == null)
             {
-                instance = FindObjectOfType<GameManager>();
+                instance = FindAnyObjectByType<GameManager>();
                 if (instance == null)
                 {
                     GameObject go = new GameObject("GameManager");
@@ -38,8 +36,15 @@ public class GameManager : MonoBehaviour
         else if (instance != this)
         {
             Destroy(gameObject);
+            return;
         }
-
+        
+        // Make sure this is a root GameObject before calling DontDestroyOnLoad
+        if (transform.parent != null)
+        {
+            transform.SetParent(null);
+        }
+        
         DontDestroyOnLoad(gameObject);
     }
 
@@ -47,11 +52,11 @@ public class GameManager : MonoBehaviour
     {
         if (waveSpawner == null)
         {
-            waveSpawner = FindObjectOfType<WaveSpawner>();
+            waveSpawner = FindAnyObjectByType<WaveSpawner>();
         }
         if (placementManager == null)
         {
-            placementManager = FindObjectOfType<PlacementManager>();
+            placementManager = FindAnyObjectByType<PlacementManager>();
         }
     }
 

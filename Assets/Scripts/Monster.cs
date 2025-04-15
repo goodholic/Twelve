@@ -1,11 +1,8 @@
-// Assets\Scripts\Monster.cs
-
 using UnityEngine;
 
 /// <summary>
 /// 2D 몬스터 예시.
-/// 만약 실제로 이동시키고 싶다면, RectTransform이 아닌 SpriteRenderer + Rigidbody2D 방식 등을 사용.
-/// (지금 예시는 단순 2D transform 이동)
+/// 단순 이동. Waypoints를 따라 이동한 뒤 끝에 도달하면 제거.
 /// </summary>
 public class Monster : MonoBehaviour
 {
