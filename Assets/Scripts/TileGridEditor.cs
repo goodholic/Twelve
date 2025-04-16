@@ -63,34 +63,88 @@ public class TileGridEditor : MonoBehaviour
         }
     }
 
+    private void OnValidate()
+    {
+        // 배열 길이 보장
+        if (rows == null || rows.Length != 10)
+        {
+            rows = new TileRow[10];
+            for (int r = 0; r < 10; r++)
+            {
+                rows[r] = new TileRow();
+            }
+        }
+
+        if (tileReferences == null || tileReferences.Length != 10)
+        {
+            tileReferences = new TileReferenceRow[10];
+            for (int r = 0; r < 10; r++)
+            {
+                tileReferences[r] = new TileReferenceRow();
+            }
+        }
+
+        // 각 행의 열 배열 확인
+        for (int r = 0; r < 10; r++)
+        {
+            if (rows[r] == null)
+            {
+                rows[r] = new TileRow();
+            }
+            if (rows[r].columns == null || rows[r].columns.Length != 10)
+            {
+                rows[r].columns = new GridTileType[10];
+            }
+
+            if (tileReferences[r] == null)
+            {
+                tileReferences[r] = new TileReferenceRow();
+            }
+            if (tileReferences[r].tiles == null || tileReferences[r].tiles.Length != 10)
+            {
+                tileReferences[r].tiles = new Tile[10];
+            }
+        }
+    }
+
     /// <summary>
     /// 10×10 각각의 Tile 레퍼런스(tileReferences[r].tiles[c])에 대해
     /// rows[r].columns[c] 상태를 적용(Placable/Walkable/Occupied 자식 생성/삭제).
     /// </summary>
     public void ApplyGridToReferencedTiles()
     {
+        // 먼저 OnValidate를 호출하여 배열이 올바르게 초기화되었는지 확인
+        OnValidate();
+
         // 10×10 반복
         for (int r = 0; r < 10; r++)
         {
             for (int c = 0; c < 10; c++)
             {
-                Tile tile = tileReferences[r].tiles[c];
-                if (tile == null)
+                try 
                 {
-                    // 해당 칸이 null이면 넘어감
-                    continue;
+                    Tile tile = tileReferences[r].tiles[c];
+                    if (tile == null)
+                    {
+                        // 해당 칸이 null이면 넘어감
+                        continue;
+                    }
+
+                    // 행/열, 인덱스 설정
+                    tile.row = r;
+                    tile.column = c;
+                    tile.tileIndex = (r * 10) + c;
+
+                    // rows[r].columns[c]로부터 상태 가져옴
+                    GridTileType gridType = rows[r].columns[c];
+
+                    // 타일에 상태 적용
+                    ApplyStateToTile(tile, gridType);
                 }
-
-                // 행/열, 인덱스 설정
-                tile.row = r;
-                tile.column = c;
-                tile.tileIndex = (r * 10) + c;
-
-                // rows[r].columns[c]로부터 상태 가져옴
-                GridTileType gridType = rows[r].columns[c];
-
-                // 타일에 상태 적용
-                ApplyStateToTile(tile, gridType);
+                catch (System.Exception e)
+                {
+                    Debug.LogError($"Error applying grid at [{r},{c}]: {e.Message}");
+                }
             }
         }
 
@@ -126,32 +180,67 @@ public class TileGridEditor : MonoBehaviour
                 break;
         }
 
-        // 타일 비주얼 갱신
-        tile.RefreshTileVisual();
+        // 타일 비주얼 갱신 (null 체크)
+        if (tile != null)
+        {
+            try
+            {
+                tile.RefreshTileVisual();
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning($"Error refreshing tile visual: {e.Message}");
+            }
+        }
     }
 
     private void RemoveChildIfExists(Transform parent, string childName)
     {
+        if (parent == null) return;
+
         Transform child = parent.Find(childName);
         if (child != null)
         {
+            try
+            {
 #if UNITY_EDITOR
-            DestroyImmediate(child.gameObject, false);
+                DestroyImmediate(child.gameObject, false);
 #else
-            Destroy(child.gameObject);
+                Destroy(child.gameObject);
 #endif
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning($"Failed to destroy {childName}: {e.Message}");
+            }
         }
     }
 
     private void CreateChildObject(Transform parent, string childName)
     {
+        if (parent == null) return;
+
         // 이미 있으면 중복 생성하지 않음
         if (parent.Find(childName) != null) return;
 
-        // 이름만 있는 빈 오브젝트 생성
-        GameObject go = new GameObject(childName);
-        go.transform.SetParent(parent, false);
-        go.transform.localPosition = Vector3.zero;
+        try
+        {
+            // 이름만 있는 빈 오브젝트 생성
+            GameObject go = new GameObject(childName);
+#if UNITY_EDITOR
+            // 에디터에서 HideFlags 설정을 명시적으로 지정
+            go.hideFlags = HideFlags.None; // DontSaveInEditor 플래그를 사용하지 않음
+#endif
+            if (parent != null && go != null)
+            {
+                go.transform.SetParent(parent, false);
+                go.transform.localPosition = Vector3.zero;
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"Failed to create child object {childName}: {e.Message}");
+        }
     }
 }
 
@@ -164,46 +253,73 @@ public class TileGridEditorInspector : Editor
 
     public override void OnInspectorGUI()
     {
+        if (target == null)
+        {
+            EditorGUILayout.HelpBox("Target object is null or destroyed", MessageType.Error);
+            return;
+        }
+
         serializedObject.Update();
 
         // 대상 스크립트
         TileGridEditor gridEditor = (TileGridEditor)target;
+        if (gridEditor == null)
+        {
+            EditorGUILayout.HelpBox("TileGridEditor component is missing", MessageType.Error);
+            return;
+        }
 
         // -----------------------------
         // (1) rows: GridTileType 10×10
         // -----------------------------
         EditorGUILayout.LabelField("[Grid State] 10×10 (None / Walkable / Placable / Occupied)", EditorStyles.boldLabel);
         SerializedProperty rowsProp = serializedObject.FindProperty("rows");
-        if (rowsProp.arraySize != 10) rowsProp.arraySize = 10;
-
-        for (int r = 0; r < 10; r++)
+        if (rowsProp == null || rowsProp.arraySize != 10) 
         {
-            SerializedProperty rowProp = rowsProp.GetArrayElementAtIndex(r);
-            SerializedProperty colsProp = rowProp.FindPropertyRelative("columns");
-            if (colsProp.arraySize != 10) colsProp.arraySize = 10;
+            if (rowsProp != null) rowsProp.arraySize = 10;
+        }
 
-            EditorGUILayout.BeginHorizontal();
-            for (int c = 0; c < 10; c++)
+        if (rowsProp != null)
+        {
+            for (int r = 0; r < 10; r++)
             {
-                SerializedProperty cellProp = colsProp.GetArrayElementAtIndex(c);
-                GridTileType currentVal = (GridTileType)cellProp.enumValueIndex;
-
-                // 버튼으로 표시
-                string shape = "?";
-                switch (currentVal)
+                SerializedProperty rowProp = rowsProp.GetArrayElementAtIndex(r);
+                if (rowProp == null) continue;
+                
+                SerializedProperty colsProp = rowProp.FindPropertyRelative("columns");
+                if (colsProp == null || colsProp.arraySize != 10)
                 {
-                    case GridTileType.None:     shape = "X"; break;
-                    case GridTileType.Walkable: shape = "△"; break;
-                    case GridTileType.Placable: shape = "□"; break;
-                    case GridTileType.Occupied: shape = "○"; break;
+                    if (colsProp != null) colsProp.arraySize = 10;
+                    else continue;
                 }
 
-                if (GUILayout.Button(shape, GUILayout.Width(CellWidth), GUILayout.Height(CellHeight)))
+                EditorGUILayout.BeginHorizontal();
+                for (int c = 0; c < 10; c++)
                 {
-                    cellProp.enumValueIndex = (int)GetNextType(currentVal);
+                    if (colsProp == null) continue;
+                    
+                    SerializedProperty cellProp = colsProp.GetArrayElementAtIndex(c);
+                    if (cellProp == null) continue;
+                    
+                    GridTileType currentVal = (GridTileType)cellProp.enumValueIndex;
+
+                    // 버튼으로 표시
+                    string shape = "?";
+                    switch (currentVal)
+                    {
+                        case GridTileType.None:     shape = "X"; break;
+                        case GridTileType.Walkable: shape = "△"; break;
+                        case GridTileType.Placable: shape = "□"; break;
+                        case GridTileType.Occupied: shape = "○"; break;
+                    }
+
+                    if (GUILayout.Button(shape, GUILayout.Width(CellWidth), GUILayout.Height(CellHeight)))
+                    {
+                        cellProp.enumValueIndex = (int)GetNextType(currentVal);
+                    }
                 }
+                EditorGUILayout.EndHorizontal();
             }
-            EditorGUILayout.EndHorizontal();
         }
 
         EditorGUILayout.Space();
@@ -214,21 +330,37 @@ public class TileGridEditorInspector : Editor
         // -----------------------------
         EditorGUILayout.LabelField("[Tile References] 10×10 (씬에 존재하는 Tile 오브젝트)", EditorStyles.boldLabel);
         SerializedProperty tileRefsProp = serializedObject.FindProperty("tileReferences");
-        if (tileRefsProp.arraySize != 10) tileRefsProp.arraySize = 10;
-
-        for (int r = 0; r < 10; r++)
+        if (tileRefsProp == null || tileRefsProp.arraySize != 10)
         {
-            SerializedProperty refRowProp = tileRefsProp.GetArrayElementAtIndex(r);
-            SerializedProperty tilesProp = refRowProp.FindPropertyRelative("tiles");
-            if (tilesProp.arraySize != 10) tilesProp.arraySize = 10;
+            if (tileRefsProp != null) tileRefsProp.arraySize = 10;
+        }
 
-            EditorGUILayout.BeginHorizontal();
-            for (int c = 0; c < 10; c++)
+        if (tileRefsProp != null)
+        {
+            for (int r = 0; r < 10; r++)
             {
-                SerializedProperty tileProp = tilesProp.GetArrayElementAtIndex(c);
-                EditorGUILayout.PropertyField(tileProp, GUIContent.none, GUILayout.Width(100));
+                SerializedProperty refRowProp = tileRefsProp.GetArrayElementAtIndex(r);
+                if (refRowProp == null) continue;
+                
+                SerializedProperty tilesProp = refRowProp.FindPropertyRelative("tiles");
+                if (tilesProp == null || tilesProp.arraySize != 10)
+                {
+                    if (tilesProp != null) tilesProp.arraySize = 10;
+                    else continue;
+                }
+
+                EditorGUILayout.BeginHorizontal();
+                for (int c = 0; c < 10; c++)
+                {
+                    if (tilesProp == null) continue;
+                    
+                    SerializedProperty tileProp = tilesProp.GetArrayElementAtIndex(c);
+                    if (tileProp == null) continue;
+                    
+                    EditorGUILayout.PropertyField(tileProp, GUIContent.none, GUILayout.Width(100));
+                }
+                EditorGUILayout.EndHorizontal();
             }
-            EditorGUILayout.EndHorizontal();
         }
 
         EditorGUILayout.Space();

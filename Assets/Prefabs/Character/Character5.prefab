@@ -11,6 +11,8 @@ GameObject:
   - component: {fileID: 7757698325044012188}
   - component: {fileID: 6547565524093513889}
   - component: {fileID: 8878933597924578351}
+  - component: {fileID: 6641776908979734302}
+  - component: {fileID: 5979927560491927259}
   m_Layer: 5
   m_Name: Character5
   m_TagString: Untagged
@@ -75,3 +77,39 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
+--- !u!114 &6641776908979734302
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7588350706562194230}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 410f83dab09a00e4ab011246ce25bedf, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  star: 1
+  attackPower: 10
+  attackSpeed: 1
+  attackRange: 1.5
+  currentTile: {fileID: 0}
+  currentTarget: {fileID: 0}
+  rangeIndicatorPrefab: {fileID: 3037178901491863121, guid: 70e5c5e981d70c247a317a909d42c752, type: 3}
+  showRangeIndicator: 0
+  bulletPrefab: {fileID: 4838677500344597568, guid: 98e2d8dedad69744188b9d82f84a8124, type: 3}
+  bulletSpeed: 5
+  bulletPanel: {fileID: 0}
+--- !u!114 &5979927560491927259
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7588350706562194230}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5ef25c6c32a9edc4498664c9cea94a44, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  parentPanel: {fileID: 3504338384272343577, guid: 9a44fedc711c03541adc233db7cd34dd, type: 3}

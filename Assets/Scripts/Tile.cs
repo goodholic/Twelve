@@ -127,9 +127,6 @@ public class Tile : MonoBehaviour
         }
     }
 
-    // ------------------------------------
-    // 아래는 타일 비주얼(프리팹) 업데이트 로직
-    // ------------------------------------
 #if UNITY_EDITOR
     public void RefreshInEditor()
     {
