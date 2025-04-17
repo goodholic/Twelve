@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.UI; // <-- Image를 사용하기 위해 추가
 
 /// <summary>
 /// 캐릭터의 기본 정보를 담는 데이터 구조 (에디터에서 일괄 관리용)
@@ -35,9 +36,12 @@ public class CharacterData
     public GameObject spawnPrefab;
 
     [Header("UI Display")]
-    [Tooltip("버튼 UI에 표시될 캐릭터 아이콘 (예: Sprite)")]
-    public Sprite buttonIcon;
+    [Tooltip("버튼 UI에 표시될 캐릭터 아이콘(Image 컴포넌트)")]
+    public Image buttonIcon; // <-- Sprite가 아니라 Image로 변경
 
     [Tooltip("캐릭터 소환 비용 (UI 표시용)")]
     public int cost = 10;
+
+    [Tooltip("현재 경험치")]
+    public int currentExp = 0;
 }

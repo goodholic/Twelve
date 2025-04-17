@@ -1,0 +1,143 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9f2762cef45bf064c9fef051ce08565f, type: 3}
+  m_Name: NewCharacterDatabase
+  m_EditorClassIdentifier: 
+  characters:
+  - characterName: RandomChar_0
+    attackPower: 10
+    rangeType: 1
+    isAreaAttack: 0
+    isBuffSupport: 0
+    spawnPrefab: {fileID: 7523245838576688815, guid: 33827b2050e8c574f91802ec50be47a3, type: 3}
+    buttonIcon: {fileID: 7236766125737254632, guid: 33827b2050e8c574f91802ec50be47a3, type: 3}
+    cost: 1
+  - characterName: RandomChar_1
+    attackPower: 21
+    rangeType: 1
+    isAreaAttack: 0
+    isBuffSupport: 0
+    spawnPrefab: {fileID: 6497203006395393862, guid: ce01d9c52746429479fcbf12b49ef066, type: 3}
+    buttonIcon: {fileID: 1694314178426791800, guid: ce01d9c52746429479fcbf12b49ef066, type: 3}
+    cost: 2
+  - characterName: RandomChar_2
+    attackPower: 19
+    rangeType: 1
+    isAreaAttack: 0
+    isBuffSupport: 0
+    spawnPrefab: {fileID: 5040215403468651748, guid: 2e4c2c83f4484b7498b3c7067113d374, type: 3}
+    buttonIcon: {fileID: 1332933059243693980, guid: 2e4c2c83f4484b7498b3c7067113d374, type: 3}
+    cost: 3
+  - characterName: RandomChar_3
+    attackPower: 23
+    rangeType: 0
+    isAreaAttack: 1
+    isBuffSupport: 0
+    spawnPrefab: {fileID: 8895695897639534604, guid: c6b408b27df546f41977b0e95d49d7b7, type: 3}
+    buttonIcon: {fileID: 6004588532143739646, guid: c6b408b27df546f41977b0e95d49d7b7, type: 3}
+    cost: 1
+  - characterName: RandomChar_4
+    attackPower: 13
+    rangeType: 1
+    isAreaAttack: 1
+    isBuffSupport: 1
+    spawnPrefab: {fileID: 7588350706562194230, guid: 914654e895f844a44b9598dd98a1efbe, type: 3}
+    buttonIcon: {fileID: 8878933597924578351, guid: 914654e895f844a44b9598dd98a1efbe, type: 3}
+    cost: 2
+  - characterName: RandomChar_5
+    attackPower: 13
+    rangeType: 2
+    isAreaAttack: 1
+    isBuffSupport: 0
+    spawnPrefab: {fileID: 4979731227650850975, guid: c39aec2280a8b5e41b8aa7b163fd82a7, type: 3}
+    buttonIcon: {fileID: 8988810308385394411, guid: c39aec2280a8b5e41b8aa7b163fd82a7, type: 3}
+    cost: 3
+  - characterName: RandomChar_6
+    attackPower: 13
+    rangeType: 2
+    isAreaAttack: 1
+    isBuffSupport: 0
+    spawnPrefab: {fileID: 1950899213704442080, guid: bd19a13b449565140a9a8e558bfcc522, type: 3}
+    buttonIcon: {fileID: 6106013283023880490, guid: bd19a13b449565140a9a8e558bfcc522, type: 3}
+    cost: 1
+  - characterName: RandomChar_7
+    attackPower: 27
+    rangeType: 2
+    isAreaAttack: 1
+    isBuffSupport: 1
+    spawnPrefab: {fileID: 5215759941223714055, guid: 483de03c5748a4d45bfad4e92e746180, type: 3}
+    buttonIcon: {fileID: 7805715403713417398, guid: 483de03c5748a4d45bfad4e92e746180, type: 3}
+    cost: 2
+  - characterName: RandomChar_8
+    attackPower: 23
+    rangeType: 1
+    isAreaAttack: 1
+    isBuffSupport: 0
+    spawnPrefab: {fileID: 6792480581454997192, guid: 237b827ae7483524484801b65d2f5320, type: 3}
+    buttonIcon: {fileID: 3072882309534413969, guid: 237b827ae7483524484801b65d2f5320, type: 3}
+    cost: 3
+  - characterName: RandomChar_9
+    attackPower: 22
+    rangeType: 2
+    isAreaAttack: 0
+    isBuffSupport: 0
+    spawnPrefab: {fileID: 8993134592322615940, guid: b36de921a9bd7d648b18a7bc2deee3a4, type: 3}
+    buttonIcon: {fileID: 8531221937582585413, guid: b36de921a9bd7d648b18a7bc2deee3a4, type: 3}
+    cost: 1
+  - characterName: RandomChar_10
+    attackPower: 19
+    rangeType: 1
+    isAreaAttack: 0
+    isBuffSupport: 0
+    spawnPrefab: {fileID: 795255040326307183, guid: 7947e293a2454af41b64dea7ca7cbeb4, type: 3}
+    buttonIcon: {fileID: 2179804913659897597, guid: 7947e293a2454af41b64dea7ca7cbeb4, type: 3}
+    cost: 2
+  - characterName: RandomChar_11
+    attackPower: 14
+    rangeType: 0
+    isAreaAttack: 0
+    isBuffSupport: 1
+    spawnPrefab: {fileID: 6392274472475127239, guid: fa5fb01680d2e29418571fb290c4807a, type: 3}
+    buttonIcon: {fileID: 2824750473231441682, guid: fa5fb01680d2e29418571fb290c4807a, type: 3}
+    cost: 3
+  - characterName: RandomChar_12
+    attackPower: 18
+    rangeType: 1
+    isAreaAttack: 0
+    isBuffSupport: 0
+    spawnPrefab: {fileID: 1254708931771991488, guid: 7ca692847c205f0499658b561efe8622, type: 3}
+    buttonIcon: {fileID: 6265036377982088387, guid: 7ca692847c205f0499658b561efe8622, type: 3}
+    cost: 1
+  - characterName: RandomChar_13
+    attackPower: 15
+    rangeType: 2
+    isAreaAttack: 0
+    isBuffSupport: 1
+    spawnPrefab: {fileID: 4720073040146381944, guid: 5b5fc66634aba7249843628131f33833, type: 3}
+    buttonIcon: {fileID: 3426231752425530176, guid: 5b5fc66634aba7249843628131f33833, type: 3}
+    cost: 2
+  - characterName: RandomChar_14
+    attackPower: 6
+    rangeType: 1
+    isAreaAttack: 0
+    isBuffSupport: 1
+    spawnPrefab: {fileID: 6508673691324167935, guid: 7936e178f1a3e5f4d86de85e7410fa87, type: 3}
+    buttonIcon: {fileID: 7287768745929089230, guid: 7936e178f1a3e5f4d86de85e7410fa87, type: 3}
+    cost: 3
+  - characterName: RandomChar_15
+    attackPower: 17
+    rangeType: 0
+    isAreaAttack: 1
+    isBuffSupport: 1
+    spawnPrefab: {fileID: 798199079303885805, guid: 081d099a307f4de40b4401d8ce1c0ae4, type: 3}
+    buttonIcon: {fileID: 3674951291747274099, guid: 081d099a307f4de40b4401d8ce1c0ae4, type: 3}
+    cost: 1

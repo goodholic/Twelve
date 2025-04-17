@@ -129,7 +129,8 @@ public class CharacterSelectUI : MonoBehaviour
         // 이미지
         if (nextUnitImage != null && data.buttonIcon != null)
         {
-            nextUnitImage.sprite = data.buttonIcon;
+            // buttonIcon이 Image이므로 sprite 속성을 가져옴
+            nextUnitImage.sprite = data.buttonIcon.sprite;
         }
         // 코스트
         if (nextUnitCost != null)
@@ -164,7 +165,7 @@ public class CharacterSelectUI : MonoBehaviour
         {
             // 아이콘
             if (sb.iconImage != null && data.buttonIcon != null)
-                sb.iconImage.sprite = data.buttonIcon;
+                sb.iconImage.sprite = data.buttonIcon.sprite;
 
             // 코스트
             if (sb.costText != null)
