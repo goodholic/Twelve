@@ -75,7 +75,7 @@ public class DrawPanelManager : MonoBehaviour
             UpgradePanelManager upm = FindFirstObjectByType<UpgradePanelManager>();
             if (upm)
             {
-                upm.RefreshUpgradeDisplay();
+                upm.RefreshDisplay();
             }
 
             DeckPanelManager dpm = FindFirstObjectByType<DeckPanelManager>();

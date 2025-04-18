@@ -1,3 +1,8 @@
+// ================================================
+//  Assets\OX UI Scripts\CharacterInventoryManager.cs
+//   - 공용 20칸 데이터배열(sharedSlotData20) 추가
+// ================================================
+
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -11,14 +16,20 @@ public class CharacterInventoryManager : MonoBehaviour
     [Tooltip("CharacterDatabaseObject(.asset) 파일을 할당하세요.")]
     [SerializeField] private CharacterDatabaseObject characterDatabaseObject;
 
-    // 소유(인벤토리) 중인 캐릭터 목록
+    // 소유(인벤토리) 중인 캐릭터 목록 (최대 20개라 가정, 실제 제한은 없음)
     [SerializeField] private List<CharacterData> ownedCharacters = new List<CharacterData>();
 
-    // [추가] 덱에 등록된 캐릭터 목록 (인벤토리와 별도)
+    // [추가] 덱에 등록된 캐릭터 목록 (인벤토리에서 빼고 별도 관리)
     private List<CharacterData> deckCharacters = new List<CharacterData>();
 
     // 뽑기(Gacha) 풀
     private List<CharacterData> gachaPool = new List<CharacterData>();
+
+    // =============================
+    //  새로 추가된 "공용 20칸" 데이터
+    // =============================
+    public CharacterData[] sharedSlotData20 = new CharacterData[20];
+    // ↑ 덱/업그레이드 패널 모두 이 배열을 참조하여 동기화
 
     private const string PLAYER_PREFS_OWNED_KEY = "OwnedCharactersJson";
 
@@ -93,7 +104,7 @@ public class CharacterInventoryManager : MonoBehaviour
     }
 
     /// <summary>
-    /// [추가] owned → deck 으로 이동
+    /// 인벤토리 -> 덱 이동
     /// </summary>
     public void MoveToDeck(CharacterData c)
     {
@@ -183,11 +194,10 @@ public class CharacterInventoryManager : MonoBehaviour
 
     /// <summary>
     /// 보유 캐릭터 정보(PlayerPrefs)에 JSON 형태로 저장
+    /// (덱 등록 캐릭터는 여기선 따로 저장 안 하지만 확장 가능)
     /// </summary>
     public void SaveCharacters()
     {
-        // ownedCharacters만 저장(예시) -- 덱 등록 캐릭터도 같이 저장하려면 확장 필요
-        // 여기서는 덱 캐릭터도 함께 저장하려면 합쳐서 레코드화하면 됨.
         List<CharacterRecord> recordList = new List<CharacterRecord>();
         foreach (var c in ownedCharacters)
         {
@@ -210,6 +220,7 @@ public class CharacterInventoryManager : MonoBehaviour
 
     /// <summary>
     /// 보유 캐릭터 로드(PlayerPrefs → JSON → ownedCharacters)
+    /// 덱 등록 캐릭터(deckCharacters)는 초기화
     /// </summary>
     public void LoadCharacters()
     {
@@ -265,20 +276,13 @@ public class CharacterInventoryManager : MonoBehaviour
     }
 }
 
-/// <summary>
-/// PlayerPrefs 저장용 최소 정보 (캐릭터 이름 등)
-/// </summary>
 [System.Serializable]
 public class CharacterRecord
 {
     public string characterName;
-    // public int level;
-    // public int currentExp;
+    // 필요 시 level, currentExp 등 확장 가능
 }
 
-/// <summary>
-/// JSON 직렬화를 위한 래퍼 클래스
-/// </summary>
 [System.Serializable]
 public class CharacterRecordWrapper
 {

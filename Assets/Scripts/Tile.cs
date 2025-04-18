@@ -165,6 +165,9 @@ public class Tile : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 프리팹 오브젝트가 프로젝트 에셋인지 여부(씬 객체가 아닌지) 체크
+    /// </summary>
     private bool IsAssetObject(UnityEngine.Object obj)
     {
         return PrefabUtility.IsPartOfPrefabAsset(obj) || AssetDatabase.Contains(obj);

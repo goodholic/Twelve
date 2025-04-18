@@ -55041,6 +55041,10 @@ PrefabInstance:
       value: 20
       objectReference: {fileID: 0}
     - target: {fileID: 7814946632234991469, guid: d6d8004540d9df641aa915439babae98, type: 3}
+      propertyPath: deckSlots20.Array.size
+      value: 20
+      objectReference: {fileID: 0}
+    - target: {fileID: 7814946632234991469, guid: d6d8004540d9df641aa915439babae98, type: 3}
       propertyPath: 'deckSlots.Array.data[0]'
       value: 
       objectReference: {fileID: 40913657}
@@ -55121,6 +55125,90 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 1291244862}
     - target: {fileID: 7814946632234991469, guid: d6d8004540d9df641aa915439babae98, type: 3}
+      propertyPath: 'deckSlots20.Array.data[0]'
+      value: 
+      objectReference: {fileID: 40913657}
+    - target: {fileID: 7814946632234991469, guid: d6d8004540d9df641aa915439babae98, type: 3}
+      propertyPath: 'deckSlots20.Array.data[1]'
+      value: 
+      objectReference: {fileID: 1497697538}
+    - target: {fileID: 7814946632234991469, guid: d6d8004540d9df641aa915439babae98, type: 3}
+      propertyPath: 'deckSlots20.Array.data[2]'
+      value: 
+      objectReference: {fileID: 1493058336}
+    - target: {fileID: 7814946632234991469, guid: d6d8004540d9df641aa915439babae98, type: 3}
+      propertyPath: 'deckSlots20.Array.data[3]'
+      value: 
+      objectReference: {fileID: 1289734061}
+    - target: {fileID: 7814946632234991469, guid: d6d8004540d9df641aa915439babae98, type: 3}
+      propertyPath: 'deckSlots20.Array.data[4]'
+      value: 
+      objectReference: {fileID: 74162876}
+    - target: {fileID: 7814946632234991469, guid: d6d8004540d9df641aa915439babae98, type: 3}
+      propertyPath: 'deckSlots20.Array.data[5]'
+      value: 
+      objectReference: {fileID: 853020868}
+    - target: {fileID: 7814946632234991469, guid: d6d8004540d9df641aa915439babae98, type: 3}
+      propertyPath: 'deckSlots20.Array.data[6]'
+      value: 
+      objectReference: {fileID: 43075688}
+    - target: {fileID: 7814946632234991469, guid: d6d8004540d9df641aa915439babae98, type: 3}
+      propertyPath: 'deckSlots20.Array.data[7]'
+      value: 
+      objectReference: {fileID: 411493044}
+    - target: {fileID: 7814946632234991469, guid: d6d8004540d9df641aa915439babae98, type: 3}
+      propertyPath: 'deckSlots20.Array.data[8]'
+      value: 
+      objectReference: {fileID: 1373567444}
+    - target: {fileID: 7814946632234991469, guid: d6d8004540d9df641aa915439babae98, type: 3}
+      propertyPath: 'deckSlots20.Array.data[9]'
+      value: 
+      objectReference: {fileID: 667488023}
+    - target: {fileID: 7814946632234991469, guid: d6d8004540d9df641aa915439babae98, type: 3}
+      propertyPath: inventorySlots.Array.size
+      value: 20
+      objectReference: {fileID: 0}
+    - target: {fileID: 7814946632234991469, guid: d6d8004540d9df641aa915439babae98, type: 3}
+      propertyPath: 'deckSlots20.Array.data[10]'
+      value: 
+      objectReference: {fileID: 1918383500}
+    - target: {fileID: 7814946632234991469, guid: d6d8004540d9df641aa915439babae98, type: 3}
+      propertyPath: 'deckSlots20.Array.data[11]'
+      value: 
+      objectReference: {fileID: 1226427998}
+    - target: {fileID: 7814946632234991469, guid: d6d8004540d9df641aa915439babae98, type: 3}
+      propertyPath: 'deckSlots20.Array.data[12]'
+      value: 
+      objectReference: {fileID: 1462986241}
+    - target: {fileID: 7814946632234991469, guid: d6d8004540d9df641aa915439babae98, type: 3}
+      propertyPath: 'deckSlots20.Array.data[13]'
+      value: 
+      objectReference: {fileID: 1002784848}
+    - target: {fileID: 7814946632234991469, guid: d6d8004540d9df641aa915439babae98, type: 3}
+      propertyPath: 'deckSlots20.Array.data[14]'
+      value: 
+      objectReference: {fileID: 408498229}
+    - target: {fileID: 7814946632234991469, guid: d6d8004540d9df641aa915439babae98, type: 3}
+      propertyPath: 'deckSlots20.Array.data[15]'
+      value: 
+      objectReference: {fileID: 560318876}
+    - target: {fileID: 7814946632234991469, guid: d6d8004540d9df641aa915439babae98, type: 3}
+      propertyPath: 'deckSlots20.Array.data[16]'
+      value: 
+      objectReference: {fileID: 194537202}
+    - target: {fileID: 7814946632234991469, guid: d6d8004540d9df641aa915439babae98, type: 3}
+      propertyPath: 'deckSlots20.Array.data[17]'
+      value: 
+      objectReference: {fileID: 264589277}
+    - target: {fileID: 7814946632234991469, guid: d6d8004540d9df641aa915439babae98, type: 3}
+      propertyPath: 'deckSlots20.Array.data[18]'
+      value: 
+      objectReference: {fileID: 1041952812}
+    - target: {fileID: 7814946632234991469, guid: d6d8004540d9df641aa915439babae98, type: 3}
+      propertyPath: 'deckSlots20.Array.data[19]'
+      value: 
+      objectReference: {fileID: 1291244862}
+    - target: {fileID: 7814946632234991469, guid: d6d8004540d9df641aa915439babae98, type: 3}
       propertyPath: registerButtons.Array.size
       value: 8
       objectReference: {fileID: 0}
@@ -55129,37 +55217,117 @@ PrefabInstance:
       value: 8
       objectReference: {fileID: 0}
     - target: {fileID: 7814946632234991469, guid: d6d8004540d9df641aa915439babae98, type: 3}
+      propertyPath: 'inventorySlots.Array.data[0]'
+      value: 
+      objectReference: {fileID: 40913657}
+    - target: {fileID: 7814946632234991469, guid: d6d8004540d9df641aa915439babae98, type: 3}
+      propertyPath: 'inventorySlots.Array.data[1]'
+      value: 
+      objectReference: {fileID: 1497697538}
+    - target: {fileID: 7814946632234991469, guid: d6d8004540d9df641aa915439babae98, type: 3}
+      propertyPath: 'inventorySlots.Array.data[2]'
+      value: 
+      objectReference: {fileID: 1493058336}
+    - target: {fileID: 7814946632234991469, guid: d6d8004540d9df641aa915439babae98, type: 3}
+      propertyPath: 'inventorySlots.Array.data[3]'
+      value: 
+      objectReference: {fileID: 1289734061}
+    - target: {fileID: 7814946632234991469, guid: d6d8004540d9df641aa915439babae98, type: 3}
+      propertyPath: 'inventorySlots.Array.data[4]'
+      value: 
+      objectReference: {fileID: 74162876}
+    - target: {fileID: 7814946632234991469, guid: d6d8004540d9df641aa915439babae98, type: 3}
+      propertyPath: 'inventorySlots.Array.data[5]'
+      value: 
+      objectReference: {fileID: 853020868}
+    - target: {fileID: 7814946632234991469, guid: d6d8004540d9df641aa915439babae98, type: 3}
+      propertyPath: 'inventorySlots.Array.data[6]'
+      value: 
+      objectReference: {fileID: 43075688}
+    - target: {fileID: 7814946632234991469, guid: d6d8004540d9df641aa915439babae98, type: 3}
+      propertyPath: 'inventorySlots.Array.data[7]'
+      value: 
+      objectReference: {fileID: 411493044}
+    - target: {fileID: 7814946632234991469, guid: d6d8004540d9df641aa915439babae98, type: 3}
+      propertyPath: 'inventorySlots.Array.data[8]'
+      value: 
+      objectReference: {fileID: 1373567444}
+    - target: {fileID: 7814946632234991469, guid: d6d8004540d9df641aa915439babae98, type: 3}
+      propertyPath: 'inventorySlots.Array.data[9]'
+      value: 
+      objectReference: {fileID: 667488023}
+    - target: {fileID: 7814946632234991469, guid: d6d8004540d9df641aa915439babae98, type: 3}
+      propertyPath: 'inventorySlots.Array.data[10]'
+      value: 
+      objectReference: {fileID: 1918383500}
+    - target: {fileID: 7814946632234991469, guid: d6d8004540d9df641aa915439babae98, type: 3}
+      propertyPath: 'inventorySlots.Array.data[11]'
+      value: 
+      objectReference: {fileID: 1226427998}
+    - target: {fileID: 7814946632234991469, guid: d6d8004540d9df641aa915439babae98, type: 3}
+      propertyPath: 'inventorySlots.Array.data[12]'
+      value: 
+      objectReference: {fileID: 1462986241}
+    - target: {fileID: 7814946632234991469, guid: d6d8004540d9df641aa915439babae98, type: 3}
+      propertyPath: 'inventorySlots.Array.data[13]'
+      value: 
+      objectReference: {fileID: 1002784848}
+    - target: {fileID: 7814946632234991469, guid: d6d8004540d9df641aa915439babae98, type: 3}
+      propertyPath: 'inventorySlots.Array.data[14]'
+      value: 
+      objectReference: {fileID: 408498229}
+    - target: {fileID: 7814946632234991469, guid: d6d8004540d9df641aa915439babae98, type: 3}
+      propertyPath: 'inventorySlots.Array.data[15]'
+      value: 
+      objectReference: {fileID: 560318876}
+    - target: {fileID: 7814946632234991469, guid: d6d8004540d9df641aa915439babae98, type: 3}
+      propertyPath: 'inventorySlots.Array.data[16]'
+      value: 
+      objectReference: {fileID: 194537202}
+    - target: {fileID: 7814946632234991469, guid: d6d8004540d9df641aa915439babae98, type: 3}
+      propertyPath: 'inventorySlots.Array.data[17]'
+      value: 
+      objectReference: {fileID: 264589277}
+    - target: {fileID: 7814946632234991469, guid: d6d8004540d9df641aa915439babae98, type: 3}
+      propertyPath: 'inventorySlots.Array.data[18]'
+      value: 
+      objectReference: {fileID: 1041952812}
+    - target: {fileID: 7814946632234991469, guid: d6d8004540d9df641aa915439babae98, type: 3}
+      propertyPath: 'inventorySlots.Array.data[19]'
+      value: 
+      objectReference: {fileID: 1291244862}
+    - target: {fileID: 7814946632234991469, guid: d6d8004540d9df641aa915439babae98, type: 3}
       propertyPath: 'registerButtons.Array.data[0]'
       value: 
-      objectReference: {fileID: 1669526341}
+      objectReference: {fileID: 1354939059}
     - target: {fileID: 7814946632234991469, guid: d6d8004540d9df641aa915439babae98, type: 3}
       propertyPath: 'registerButtons.Array.data[1]'
       value: 
-      objectReference: {fileID: 1082545920}
+      objectReference: {fileID: 1833817984}
     - target: {fileID: 7814946632234991469, guid: d6d8004540d9df641aa915439babae98, type: 3}
       propertyPath: 'registerButtons.Array.data[2]'
       value: 
-      objectReference: {fileID: 1427836515}
+      objectReference: {fileID: 1049975053}
     - target: {fileID: 7814946632234991469, guid: d6d8004540d9df641aa915439babae98, type: 3}
       propertyPath: 'registerButtons.Array.data[3]'
       value: 
-      objectReference: {fileID: 1381308112}
+      objectReference: {fileID: 995352129}
     - target: {fileID: 7814946632234991469, guid: d6d8004540d9df641aa915439babae98, type: 3}
       propertyPath: 'registerButtons.Array.data[4]'
       value: 
-      objectReference: {fileID: 2037072458}
+      objectReference: {fileID: 1363762411}
     - target: {fileID: 7814946632234991469, guid: d6d8004540d9df641aa915439babae98, type: 3}
       propertyPath: 'registerButtons.Array.data[5]'
       value: 
-      objectReference: {fileID: 372156125}
+      objectReference: {fileID: 1173196692}
     - target: {fileID: 7814946632234991469, guid: d6d8004540d9df641aa915439babae98, type: 3}
       propertyPath: 'registerButtons.Array.data[6]'
       value: 
-      objectReference: {fileID: 252725051}
+      objectReference: {fileID: 1622786379}
     - target: {fileID: 7814946632234991469, guid: d6d8004540d9df641aa915439babae98, type: 3}
       propertyPath: 'registerButtons.Array.data[7]'
       value: 
-      objectReference: {fileID: 713733637}
+      objectReference: {fileID: 1796858374}
     - target: {fileID: 7814946632234991469, guid: d6d8004540d9df641aa915439babae98, type: 3}
       propertyPath: registerSlotImages.Array.size
       value: 8
@@ -55414,6 +55582,10 @@ PrefabInstance:
       value: 8
       objectReference: {fileID: 0}
     - target: {fileID: 6004819884883725055, guid: 707fec504ebaded46a42b370ef065731, type: 3}
+      propertyPath: upgradeSlots20.Array.size
+      value: 20
+      objectReference: {fileID: 0}
+    - target: {fileID: 6004819884883725055, guid: 707fec504ebaded46a42b370ef065731, type: 3}
       propertyPath: 'upgradeSlots.Array.data[0]'
       value: 
       objectReference: {fileID: 219266062}
@@ -55576,43 +55748,159 @@ PrefabInstance:
     - target: {fileID: 6004819884883725055, guid: 707fec504ebaded46a42b370ef065731, type: 3}
       propertyPath: 'upgradeButtons.Array.data[0]'
       value: 
-      objectReference: {fileID: 1007161594}
+      objectReference: {fileID: 1797040494}
     - target: {fileID: 6004819884883725055, guid: 707fec504ebaded46a42b370ef065731, type: 3}
       propertyPath: 'upgradeButtons.Array.data[1]'
       value: 
-      objectReference: {fileID: 632732776}
+      objectReference: {fileID: 403625111}
     - target: {fileID: 6004819884883725055, guid: 707fec504ebaded46a42b370ef065731, type: 3}
       propertyPath: 'upgradeButtons.Array.data[2]'
       value: 
-      objectReference: {fileID: 2009309161}
+      objectReference: {fileID: 1544108786}
     - target: {fileID: 6004819884883725055, guid: 707fec504ebaded46a42b370ef065731, type: 3}
       propertyPath: 'upgradeButtons.Array.data[3]'
       value: 
-      objectReference: {fileID: 906937898}
+      objectReference: {fileID: 1980988892}
     - target: {fileID: 6004819884883725055, guid: 707fec504ebaded46a42b370ef065731, type: 3}
       propertyPath: 'upgradeButtons.Array.data[4]'
       value: 
-      objectReference: {fileID: 724306287}
+      objectReference: {fileID: 857434737}
     - target: {fileID: 6004819884883725055, guid: 707fec504ebaded46a42b370ef065731, type: 3}
       propertyPath: 'upgradeButtons.Array.data[5]'
       value: 
-      objectReference: {fileID: 121280869}
+      objectReference: {fileID: 1713721724}
     - target: {fileID: 6004819884883725055, guid: 707fec504ebaded46a42b370ef065731, type: 3}
       propertyPath: 'upgradeButtons.Array.data[6]'
       value: 
-      objectReference: {fileID: 698403133}
+      objectReference: {fileID: 1331783527}
     - target: {fileID: 6004819884883725055, guid: 707fec504ebaded46a42b370ef065731, type: 3}
       propertyPath: 'upgradeButtons.Array.data[7]'
       value: 
-      objectReference: {fileID: 1143076326}
+      objectReference: {fileID: 1298208435}
+    - target: {fileID: 6004819884883725055, guid: 707fec504ebaded46a42b370ef065731, type: 3}
+      propertyPath: 'upgradeSlots20.Array.data[0]'
+      value: 
+      objectReference: {fileID: 219266062}
+    - target: {fileID: 6004819884883725055, guid: 707fec504ebaded46a42b370ef065731, type: 3}
+      propertyPath: 'upgradeSlots20.Array.data[1]'
+      value: 
+      objectReference: {fileID: 770387298}
+    - target: {fileID: 6004819884883725055, guid: 707fec504ebaded46a42b370ef065731, type: 3}
+      propertyPath: 'upgradeSlots20.Array.data[2]'
+      value: 
+      objectReference: {fileID: 1621578979}
+    - target: {fileID: 6004819884883725055, guid: 707fec504ebaded46a42b370ef065731, type: 3}
+      propertyPath: 'upgradeSlots20.Array.data[3]'
+      value: 
+      objectReference: {fileID: 1570760532}
+    - target: {fileID: 6004819884883725055, guid: 707fec504ebaded46a42b370ef065731, type: 3}
+      propertyPath: 'upgradeSlots20.Array.data[4]'
+      value: 
+      objectReference: {fileID: 1872911512}
+    - target: {fileID: 6004819884883725055, guid: 707fec504ebaded46a42b370ef065731, type: 3}
+      propertyPath: 'upgradeSlots20.Array.data[5]'
+      value: 
+      objectReference: {fileID: 1965041684}
+    - target: {fileID: 6004819884883725055, guid: 707fec504ebaded46a42b370ef065731, type: 3}
+      propertyPath: 'upgradeSlots20.Array.data[6]'
+      value: 
+      objectReference: {fileID: 1642226597}
+    - target: {fileID: 6004819884883725055, guid: 707fec504ebaded46a42b370ef065731, type: 3}
+      propertyPath: 'upgradeSlots20.Array.data[7]'
+      value: 
+      objectReference: {fileID: 1073038353}
+    - target: {fileID: 6004819884883725055, guid: 707fec504ebaded46a42b370ef065731, type: 3}
+      propertyPath: 'upgradeSlots20.Array.data[8]'
+      value: 
+      objectReference: {fileID: 1459075328}
+    - target: {fileID: 6004819884883725055, guid: 707fec504ebaded46a42b370ef065731, type: 3}
+      propertyPath: 'upgradeSlots20.Array.data[9]'
+      value: 
+      objectReference: {fileID: 376746189}
+    - target: {fileID: 6004819884883725055, guid: 707fec504ebaded46a42b370ef065731, type: 3}
+      propertyPath: 'upgradeSlots20.Array.data[10]'
+      value: 
+      objectReference: {fileID: 1116485817}
+    - target: {fileID: 6004819884883725055, guid: 707fec504ebaded46a42b370ef065731, type: 3}
+      propertyPath: 'upgradeSlots20.Array.data[11]'
+      value: 
+      objectReference: {fileID: 890480184}
+    - target: {fileID: 6004819884883725055, guid: 707fec504ebaded46a42b370ef065731, type: 3}
+      propertyPath: 'upgradeSlots20.Array.data[12]'
+      value: 
+      objectReference: {fileID: 1557997908}
+    - target: {fileID: 6004819884883725055, guid: 707fec504ebaded46a42b370ef065731, type: 3}
+      propertyPath: 'upgradeSlots20.Array.data[13]'
+      value: 
+      objectReference: {fileID: 1377784975}
+    - target: {fileID: 6004819884883725055, guid: 707fec504ebaded46a42b370ef065731, type: 3}
+      propertyPath: 'upgradeSlots20.Array.data[14]'
+      value: 
+      objectReference: {fileID: 1113045720}
+    - target: {fileID: 6004819884883725055, guid: 707fec504ebaded46a42b370ef065731, type: 3}
+      propertyPath: 'upgradeSlots20.Array.data[15]'
+      value: 
+      objectReference: {fileID: 437791594}
+    - target: {fileID: 6004819884883725055, guid: 707fec504ebaded46a42b370ef065731, type: 3}
+      propertyPath: 'upgradeSlots20.Array.data[16]'
+      value: 
+      objectReference: {fileID: 1139256340}
+    - target: {fileID: 6004819884883725055, guid: 707fec504ebaded46a42b370ef065731, type: 3}
+      propertyPath: 'upgradeSlots20.Array.data[17]'
+      value: 
+      objectReference: {fileID: 1671344526}
+    - target: {fileID: 6004819884883725055, guid: 707fec504ebaded46a42b370ef065731, type: 3}
+      propertyPath: 'upgradeSlots20.Array.data[18]'
+      value: 
+      objectReference: {fileID: 899624662}
+    - target: {fileID: 6004819884883725055, guid: 707fec504ebaded46a42b370ef065731, type: 3}
+      propertyPath: 'upgradeSlots20.Array.data[19]'
+      value: 
+      objectReference: {fileID: 1571731907}
+    - target: {fileID: 6004819884883725055, guid: 707fec504ebaded46a42b370ef065731, type: 3}
+      propertyPath: upgradeRegisteredSlotImages.Array.size
+      value: 8
+      objectReference: {fileID: 0}
     - target: {fileID: 6004819884883725055, guid: 707fec504ebaded46a42b370ef065731, type: 3}
       propertyPath: upgradeRegisteredSlotImages1.Array.size
-      value: 0
+      value: 8
       objectReference: {fileID: 0}
     - target: {fileID: 6004819884883725055, guid: 707fec504ebaded46a42b370ef065731, type: 3}
       propertyPath: upgradeRegisteredSlotImages2.Array.size
-      value: 0
+      value: 8
       objectReference: {fileID: 0}
+    - target: {fileID: 6004819884883725055, guid: 707fec504ebaded46a42b370ef065731, type: 3}
+      propertyPath: 'upgradeRegisteredSlotImages.Array.data[0]'
+      value: 
+      objectReference: {fileID: 1007161595}
+    - target: {fileID: 6004819884883725055, guid: 707fec504ebaded46a42b370ef065731, type: 3}
+      propertyPath: 'upgradeRegisteredSlotImages.Array.data[1]'
+      value: 
+      objectReference: {fileID: 632732777}
+    - target: {fileID: 6004819884883725055, guid: 707fec504ebaded46a42b370ef065731, type: 3}
+      propertyPath: 'upgradeRegisteredSlotImages.Array.data[2]'
+      value: 
+      objectReference: {fileID: 2009309162}
+    - target: {fileID: 6004819884883725055, guid: 707fec504ebaded46a42b370ef065731, type: 3}
+      propertyPath: 'upgradeRegisteredSlotImages.Array.data[3]'
+      value: 
+      objectReference: {fileID: 906937899}
+    - target: {fileID: 6004819884883725055, guid: 707fec504ebaded46a42b370ef065731, type: 3}
+      propertyPath: 'upgradeRegisteredSlotImages.Array.data[4]'
+      value: 
+      objectReference: {fileID: 724306288}
+    - target: {fileID: 6004819884883725055, guid: 707fec504ebaded46a42b370ef065731, type: 3}
+      propertyPath: 'upgradeRegisteredSlotImages.Array.data[5]'
+      value: 
+      objectReference: {fileID: 121280870}
+    - target: {fileID: 6004819884883725055, guid: 707fec504ebaded46a42b370ef065731, type: 3}
+      propertyPath: 'upgradeRegisteredSlotImages.Array.data[6]'
+      value: 
+      objectReference: {fileID: 698403134}
+    - target: {fileID: 6004819884883725055, guid: 707fec504ebaded46a42b370ef065731, type: 3}
+      propertyPath: 'upgradeRegisteredSlotImages.Array.data[7]'
+      value: 
+      objectReference: {fileID: 1143076327}
     - target: {fileID: 6004819884883725055, guid: 707fec504ebaded46a42b370ef065731, type: 3}
       propertyPath: 'upgradeRegisteredSlotImages1.Array.data[0]'
       value: 
@@ -55820,6 +56108,227 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   characterDatabaseObject: {fileID: 11400000, guid: bbbb2e1a2e8dbe840953bb0df4580c0f, type: 2}
   ownedCharacters: []
+  sharedSlotData20:
+  - characterName: 
+    attackPower: 10
+    rangeType: 0
+    isAreaAttack: 0
+    isBuffSupport: 0
+    level: 1
+    currentExp: 0
+    expToNextLevel: 5
+    spawnPrefab: {fileID: 0}
+    buttonIcon: {fileID: 0}
+    cost: 10
+  - characterName: 
+    attackPower: 10
+    rangeType: 0
+    isAreaAttack: 0
+    isBuffSupport: 0
+    level: 1
+    currentExp: 0
+    expToNextLevel: 5
+    spawnPrefab: {fileID: 0}
+    buttonIcon: {fileID: 0}
+    cost: 10
+  - characterName: 
+    attackPower: 10
+    rangeType: 0
+    isAreaAttack: 0
+    isBuffSupport: 0
+    level: 1
+    currentExp: 0
+    expToNextLevel: 5
+    spawnPrefab: {fileID: 0}
+    buttonIcon: {fileID: 0}
+    cost: 10
+  - characterName: 
+    attackPower: 10
+    rangeType: 0
+    isAreaAttack: 0
+    isBuffSupport: 0
+    level: 1
+    currentExp: 0
+    expToNextLevel: 5
+    spawnPrefab: {fileID: 0}
+    buttonIcon: {fileID: 0}
+    cost: 10
+  - characterName: 
+    attackPower: 10
+    rangeType: 0
+    isAreaAttack: 0
+    isBuffSupport: 0
+    level: 1
+    currentExp: 0
+    expToNextLevel: 5
+    spawnPrefab: {fileID: 0}
+    buttonIcon: {fileID: 0}
+    cost: 10
+  - characterName: 
+    attackPower: 10
+    rangeType: 0
+    isAreaAttack: 0
+    isBuffSupport: 0
+    level: 1
+    currentExp: 0
+    expToNextLevel: 5
+    spawnPrefab: {fileID: 0}
+    buttonIcon: {fileID: 0}
+    cost: 10
+  - characterName: 
+    attackPower: 10
+    rangeType: 0
+    isAreaAttack: 0
+    isBuffSupport: 0
+    level: 1
+    currentExp: 0
+    expToNextLevel: 5
+    spawnPrefab: {fileID: 0}
+    buttonIcon: {fileID: 0}
+    cost: 10
+  - characterName: 
+    attackPower: 10
+    rangeType: 0
+    isAreaAttack: 0
+    isBuffSupport: 0
+    level: 1
+    currentExp: 0
+    expToNextLevel: 5
+    spawnPrefab: {fileID: 0}
+    buttonIcon: {fileID: 0}
+    cost: 10
+  - characterName: 
+    attackPower: 10
+    rangeType: 0
+    isAreaAttack: 0
+    isBuffSupport: 0
+    level: 1
+    currentExp: 0
+    expToNextLevel: 5
+    spawnPrefab: {fileID: 0}
+    buttonIcon: {fileID: 0}
+    cost: 10
+  - characterName: 
+    attackPower: 10
+    rangeType: 0
+    isAreaAttack: 0
+    isBuffSupport: 0
+    level: 1
+    currentExp: 0
+    expToNextLevel: 5
+    spawnPrefab: {fileID: 0}
+    buttonIcon: {fileID: 0}
+    cost: 10
+  - characterName: 
+    attackPower: 10
+    rangeType: 0
+    isAreaAttack: 0
+    isBuffSupport: 0
+    level: 1
+    currentExp: 0
+    expToNextLevel: 5
+    spawnPrefab: {fileID: 0}
+    buttonIcon: {fileID: 0}
+    cost: 10
+  - characterName: 
+    attackPower: 10
+    rangeType: 0
+    isAreaAttack: 0
+    isBuffSupport: 0
+    level: 1
+    currentExp: 0
+    expToNextLevel: 5
+    spawnPrefab: {fileID: 0}
+    buttonIcon: {fileID: 0}
+    cost: 10
+  - characterName: 
+    attackPower: 10
+    rangeType: 0
+    isAreaAttack: 0
+    isBuffSupport: 0
+    level: 1
+    currentExp: 0
+    expToNextLevel: 5
+    spawnPrefab: {fileID: 0}
+    buttonIcon: {fileID: 0}
+    cost: 10
+  - characterName: 
+    attackPower: 10
+    rangeType: 0
+    isAreaAttack: 0
+    isBuffSupport: 0
+    level: 1
+    currentExp: 0
+    expToNextLevel: 5
+    spawnPrefab: {fileID: 0}
+    buttonIcon: {fileID: 0}
+    cost: 10
+  - characterName: 
+    attackPower: 10
+    rangeType: 0
+    isAreaAttack: 0
+    isBuffSupport: 0
+    level: 1
+    currentExp: 0
+    expToNextLevel: 5
+    spawnPrefab: {fileID: 0}
+    buttonIcon: {fileID: 0}
+    cost: 10
+  - characterName: 
+    attackPower: 10
+    rangeType: 0
+    isAreaAttack: 0
+    isBuffSupport: 0
+    level: 1
+    currentExp: 0
+    expToNextLevel: 5
+    spawnPrefab: {fileID: 0}
+    buttonIcon: {fileID: 0}
+    cost: 10
+  - characterName: 
+    attackPower: 10
+    rangeType: 0
+    isAreaAttack: 0
+    isBuffSupport: 0
+    level: 1
+    currentExp: 0
+    expToNextLevel: 5
+    spawnPrefab: {fileID: 0}
+    buttonIcon: {fileID: 0}
+    cost: 10
+  - characterName: 
+    attackPower: 10
+    rangeType: 0
+    isAreaAttack: 0
+    isBuffSupport: 0
+    level: 1
+    currentExp: 0
+    expToNextLevel: 5
+    spawnPrefab: {fileID: 0}
+    buttonIcon: {fileID: 0}
+    cost: 10
+  - characterName: 
+    attackPower: 10
+    rangeType: 0
+    isAreaAttack: 0
+    isBuffSupport: 0
+    level: 1
+    currentExp: 0
+    expToNextLevel: 5
+    spawnPrefab: {fileID: 0}
+    buttonIcon: {fileID: 0}
+    cost: 10
+  - characterName: 
+    attackPower: 10
+    rangeType: 0
+    isAreaAttack: 0
+    isBuffSupport: 0
+    level: 1
+    currentExp: 0
+    expToNextLevel: 5
+    spawnPrefab: {fileID: 0}
+    buttonIcon: {fileID: 0}
+    cost: 10
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
