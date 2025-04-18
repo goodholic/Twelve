@@ -261,7 +261,7 @@ public class LobbySceneManager : MonoBehaviour
     [SerializeField] private GameObject shopPanel;
     [SerializeField] private GameObject drawPanel;
     [SerializeField] private GameObject clanPanel;
-    [SerializeField] private GameObject characterPanel;
+    [SerializeField] private GameObject characterPanel; // 이전 'CharacterPanelManager' 대신 직접 제어
 
     [Header("덱/업그레이드 관련 오브젝트")]
     [SerializeField] private GameObject deckObject;
@@ -298,27 +298,41 @@ public class LobbySceneManager : MonoBehaviour
         }
     }
 
+    // ============================================
+    //  (수정) 캐릭터 패널 여는 로직을 직접 처리
+    // ============================================
     public void OnClickOpenCharacterPanel()
     {
         CloseAllPanels();
+        // 캐릭터 패널 자체를 활성화
         if (characterPanel)
         {
-            var cpm = characterPanel.GetComponent<CharacterPanelManager>();
-            if (cpm)
+            characterPanel.SetActive(true);
+        }
+        // 열 때마다 '덱 패널'을 기본 표시, '업그레이드'는 숨김
+        if (deckObject)
+        {
+            deckObject.SetActive(true);
+
+            // [추가] 덱 오브젝트 아래 모든 버튼도 활성화
+            Button[] deckButtons = deckObject.GetComponentsInChildren<Button>(true);
+            foreach (var btn in deckButtons)
             {
-                cpm.OpenCharacterPanel();
-            }
-            else
-            {
-                characterPanel.SetActive(true);
+                btn.gameObject.SetActive(true);
             }
         }
+        if (upgradeObject)
+        {
+            upgradeObject.SetActive(false);
+        }
     }
+
     public void OnClickCloseCharacterPanel()
     {
         if (characterPanel) characterPanel.SetActive(false);
     }
 
+    // 프로필/옵션/상점/뽑기/클랜 등 나머지 패널 로직
     public void OnClickOpenProfilePanel()
     {
         CloseAllPanels();
@@ -369,11 +383,28 @@ public class LobbySceneManager : MonoBehaviour
         if (clanPanel) clanPanel.SetActive(false);
     }
 
+    // ============================================
+    //  덱/업그레이드 버튼 (CharacterPanel 안에서)
+    // ============================================
     public void OnClickDeckButton()
     {
+        // 덱 패널 활성화
         if (deckObject) deckObject.SetActive(true);
+
+        // [추가] 덱 오브젝트에 있는 모든 버튼을 강제로 활성화
+        if (deckObject)
+        {
+            Button[] deckButtons = deckObject.GetComponentsInChildren<Button>(true);
+            foreach (var btn in deckButtons)
+            {
+                btn.gameObject.SetActive(true);
+            }
+        }
+
+        // 업그레이드 패널은 숨김
         if (upgradeObject) upgradeObject.SetActive(false);
     }
+
     public void OnClickUpgradeButton()
     {
         if (deckObject) deckObject.SetActive(false);

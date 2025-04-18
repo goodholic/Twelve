@@ -14,6 +14,9 @@ public class CharacterInventoryManager : MonoBehaviour
     // 소유(인벤토리) 중인 캐릭터 목록
     [SerializeField] private List<CharacterData> ownedCharacters = new List<CharacterData>();
 
+    // [추가] 덱에 등록된 캐릭터 목록 (인벤토리와 별도)
+    private List<CharacterData> deckCharacters = new List<CharacterData>();
+
     // 뽑기(Gacha) 풀
     private List<CharacterData> gachaPool = new List<CharacterData>();
 
@@ -69,6 +72,7 @@ public class CharacterInventoryManager : MonoBehaviour
     /// </summary>
     private CharacterData CreateNewCharacter(CharacterData template)
     {
+        // 복제
         CharacterData copy = new CharacterData
         {
             characterName = template.characterName,
@@ -78,19 +82,43 @@ public class CharacterInventoryManager : MonoBehaviour
             isBuffSupport = template.isBuffSupport,
             spawnPrefab   = template.spawnPrefab,
             buttonIcon    = template.buttonIcon,
-            cost          = template.cost
+            cost          = template.cost,
 
-            // 필요하다면 level, currentExp 등도 추가
+            // [추가] 레벨/경험치도 복제(초기값)
+            level         = template.level,
+            currentExp    = 0,
+            expToNextLevel= template.expToNextLevel,
         };
         return copy;
     }
 
     /// <summary>
+    /// [추가] owned → deck 으로 이동
+    /// </summary>
+    public void MoveToDeck(CharacterData c)
+    {
+        if (c == null) return;
+        if (ownedCharacters.Contains(c))
+        {
+            ownedCharacters.Remove(c);
+            deckCharacters.Add(c);
+            Debug.Log($"[CharacterInventoryManager] 덱으로 이동: {c.characterName}");
+        }
+        else
+        {
+            Debug.LogWarning($"[CharacterInventoryManager] 인벤토리에 없는 캐릭터({c.characterName})");
+        }
+    }
+
+    /// <summary>
     /// (덱 패널 등) 중복 제거된 캐릭터 목록 반환
+    /// 인벤토리+덱 전체에서 중복 제거
     /// </summary>
     public List<CharacterData> GetUniqueCharacterList()
     {
         Dictionary<string, CharacterData> dict = new Dictionary<string, CharacterData>();
+
+        // 1) 인벤토리에 있는 캐릭터
         foreach (var c in ownedCharacters)
         {
             if (c != null && !dict.ContainsKey(c.characterName))
@@ -98,19 +126,31 @@ public class CharacterInventoryManager : MonoBehaviour
                 dict.Add(c.characterName, c);
             }
         }
+        // 2) 덱에 있는 캐릭터
+        foreach (var c in deckCharacters)
+        {
+            if (c != null && !dict.ContainsKey(c.characterName))
+            {
+                dict.Add(c.characterName, c);
+            }
+        }
+
         return new List<CharacterData>(dict.Values);
     }
 
     /// <summary>
-    /// (업그레이드 패널 등) 중복 포함 전체 캐릭터 목록 반환
+    /// (업그레이드 패널 등) 중복 포함 전체 캐릭터 목록 반환 (인벤토리 + 덱)
     /// </summary>
     public List<CharacterData> GetAllCharactersWithDuplicates()
     {
-        return new List<CharacterData>(ownedCharacters);
+        List<CharacterData> all = new List<CharacterData>();
+        all.AddRange(ownedCharacters);
+        all.AddRange(deckCharacters);
+        return all;
     }
 
     /// <summary>
-    /// 업그레이드 등의 이유로 캐릭터 소비
+    /// 업그레이드 등의 이유로 캐릭터 소비(여기서는 인벤토리+덱 모두에서 제거)
     /// </summary>
     public void ConsumeCharactersForUpgrade(List<CharacterData> charsToConsume)
     {
@@ -119,12 +159,26 @@ public class CharacterInventoryManager : MonoBehaviour
             if (ownedCharacters.Contains(c))
             {
                 ownedCharacters.Remove(c);
+                Debug.Log($"[CharacterInventoryManager] 인벤토리 캐릭터 제거: {c.characterName}");
+            }
+            else if (deckCharacters.Contains(c))
+            {
+                deckCharacters.Remove(c);
+                Debug.Log($"[CharacterInventoryManager] 덱 캐릭터 제거: {c.characterName}");
             }
             else
             {
-                Debug.LogWarning($"[CharacterInventoryManager] 인벤토리에 없는 캐릭터: {c.characterName}");
+                Debug.LogWarning($"[CharacterInventoryManager] 목록에 없는 캐릭터: {c.characterName}");
             }
         }
+    }
+
+    /// <summary>
+    /// 덱이 아닌 인벤토리에 있는 캐릭터만 반환 (DeckPanelManager에서 사용)
+    /// </summary>
+    public List<CharacterData> GetOwnedCharacters()
+    {
+        return new List<CharacterData>(ownedCharacters);
     }
 
     /// <summary>
@@ -132,12 +186,13 @@ public class CharacterInventoryManager : MonoBehaviour
     /// </summary>
     public void SaveCharacters()
     {
+        // ownedCharacters만 저장(예시) -- 덱 등록 캐릭터도 같이 저장하려면 확장 필요
+        // 여기서는 덱 캐릭터도 함께 저장하려면 합쳐서 레코드화하면 됨.
         List<CharacterRecord> recordList = new List<CharacterRecord>();
         foreach (var c in ownedCharacters)
         {
             if (c == null) continue;
 
-            // 최소한의 필드만 기록 (필요시 더 추가)
             CharacterRecord rec = new CharacterRecord
             {
                 characterName = c.characterName
@@ -173,6 +228,8 @@ public class CharacterInventoryManager : MonoBehaviour
         }
 
         ownedCharacters.Clear();
+        deckCharacters.Clear(); // [추가] 불러올 때 덱 리스트는 초기화(혹은 합쳐서 저장했다면 재구현)
+
         foreach (var rec in wrapper.records)
         {
             // DB(현재 ScriptableObject)에서 이름으로 템플릿 검색
