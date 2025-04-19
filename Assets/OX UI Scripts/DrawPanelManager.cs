@@ -75,7 +75,9 @@ public class DrawPanelManager : MonoBehaviour
             UpgradePanelManager upm = FindFirstObjectByType<UpgradePanelManager>();
             if (upm)
             {
-                upm.RefreshDisplay();
+                // RefreshDisplay 메서드는 제거됨
+                // 대신 등록된 슬롯 정보만 갱신
+                upm.SetUpgradeRegisteredSlotsFromDeck();
             }
 
             DeckPanelManager dpm = FindFirstObjectByType<DeckPanelManager>();

@@ -1,9 +1,4 @@
-// ================================================
-//  Assets\OX UI Scripts\UpgradePanelManager.cs
-//    - 12슬롯 제거, 20슬롯으로 통합
-//    - set2만 남김 (set1 제거)
-//    - 덱/업그레이드 "공용" 배열을 그대로 읽어 UI 반영
-// ================================================
+// Assets\OX UI Scripts\UpgradePanelManager.cs
 
 using UnityEngine;
 using UnityEngine.UI;
@@ -18,100 +13,64 @@ public class UpgradePanelManager : MonoBehaviour
     [Header("DeckPanelManager (등록상태 복사)")]
     [SerializeField] private DeckPanelManager deckPanelManager;
 
-    // =============================
-    //  업그레이드용 20칸 (중복 포함)
-    // =============================
-    [Header("업그레이드 패널용 20칸 슬롯")]
-    [SerializeField] private List<GameObject> upgradeSlots;
+    // ===========================================
+    //  "등록 상태 (set2만)" 10칸
+    // ===========================================
+    [Header("업그레이드 등록 상태 이미지(10칸) - set2")]
+    [SerializeField] private List<Image> upgradeRegisteredSlotImages; // 세트2만
 
-    [Header("빈 슬롯용 스프라이트")]
-    [SerializeField] private Sprite emptySlotSprite;
+    // 덱 패널의 registeredCharactersSet2와 공유할 배열 (10칸)
+    private CharacterData[] registeredSet2_Up = new CharacterData[10];
 
-    [Header("빈 슬롯용 텍스트")]
-    [SerializeField] private string emptySlotText = "";
-
-    // =============================
-    //  업그레이드용 등록 상태 (set2만)
-    // =============================
-    [Header("업그레이드 등록 상태 이미지(8칸) - set2")]
-    [SerializeField] private List<Image> upgradeRegisteredSlotImages;  // 세트2만
-
-    // (세트2만 유지)
-    private CharacterData[] registeredSet2_Up = new CharacterData[8];
-
-    // =============================
-    //  업그레이드 버튼 (8개)
-    // =============================
-    [Header("캐릭터 업그레이드 버튼 (총 8개)")]
+    // ===========================================
+    //  업그레이드 버튼 (10개)
+    // ===========================================
+    [Header("캐릭터 업그레이드 버튼 (총 10개)")]
     [SerializeField] private List<Button> upgradeButtons;
 
-    // =============================
-    //  선택된(토글) 캐릭터들
-    // =============================
-    private List<CharacterData> selectedCharacters = new List<CharacterData>();
+    // ===========================================
+    //   (추가) "재료(feed)"로 사용될 인벤토리 캐릭터
+    // ===========================================
+    private CharacterData feedCharacter = null;
+    private int feedSlotIndex = -1;  // 20칸 중 어떤 슬롯이었나
 
     private void OnEnable()
     {
-        // 20칸 표시
-        RefreshDisplay();
-
-        // 덱 패널에서 set2 등록 상태 복사
+        // 덱 패널에서 현재 등록 상태(10칸) 가져오기
         SetUpgradeRegisteredSlotsFromDeck();
 
-        // 업그레이드 버튼 초기화
+        // 업그레이드 버튼(10개) 초기화
         SetupUpgradeButtons();
     }
 
-    // ===========================================
-    //  20칸에 "sharedSlotData20" 내용을 표시
-    // ===========================================
+    /// <summary>
+    /// 호환성을 위해 남겨둠 - 20칸 슬롯 시각은 제거되었지만, 등록슬롯만 다시 세팅
+    /// </summary>
     public void RefreshDisplay()
     {
-        if (characterInventory == null)
-        {
-            Debug.LogWarning("[UpgradePanelManager] characterInventory가 null");
-            return;
-        }
-        if (upgradeSlots == null || upgradeSlots.Count < 20)
-        {
-            Debug.LogWarning("[UpgradePanelManager] upgradeSlots(20칸) 세팅 안 됨!");
-            return;
-        }
-
-        // deckPanelManager 쪽에서 이미 sharedSlotData20을 채워줬다고 가정
-        CharacterData[] sharedData = characterInventory.sharedSlotData20; // 길이 20
-
-        int slotCount = upgradeSlots.Count; // 20
-
-        // UI 싱크
-        for (int i = 0; i < slotCount; i++)
-        {
-            SetSlotInfo(upgradeSlots[i], sharedData[i]);
-        }
-
-        selectedCharacters.Clear();
+        SetUpgradeRegisteredSlotsFromDeck();
     }
 
     /// <summary>
-    /// 덱 패널에서 세트2 등록 상태만 복사
+    /// 덱 패널에서 set2 등록 상태(10칸)를 복사해와서
+    /// 업그레이드 패널에도 동일하게 표시
     /// </summary>
     public void SetUpgradeRegisteredSlotsFromDeck()
     {
         if (deckPanelManager == null)
         {
-            Debug.LogWarning("[UpgradePanelManager] deckPanelManager가 null");
+            Debug.LogWarning("[UpgradePanelManager] deckPanelManager가 null임");
             return;
         }
 
-        // deckPanelManager가 가진 registeredCharactersSet2를 복사
-        var deckSet2 = deckPanelManager.registeredCharactersSet2;
-        for (int i = 0; i < 8; i++)
+        var deckSet2 = deckPanelManager.registeredCharactersSet2; // 10칸
+        for (int i = 0; i < 10; i++)
         {
             registeredSet2_Up[i] = deckSet2[i];
         }
 
-        // UI에 반영
-        for (int i = 0; i < 8; i++)
+        // 시각적으로 이미지 갱신
+        for (int i = 0; i < 10; i++)
         {
             UpdateUpgradeRegisteredImage(i);
         }
@@ -119,12 +78,14 @@ public class UpgradePanelManager : MonoBehaviour
 
     private void UpdateUpgradeRegisteredImage(int i)
     {
-        if (upgradeRegisteredSlotImages == null || i < 0 || i >= upgradeRegisteredSlotImages.Count) return;
-        Image slotImg = upgradeRegisteredSlotImages[i];
-        CharacterData cData = registeredSet2_Up[i];
+        if (upgradeRegisteredSlotImages == null
+            || i < 0 || i >= upgradeRegisteredSlotImages.Count)
+            return;
 
+        Image slotImg = upgradeRegisteredSlotImages[i];
         if (slotImg == null) return;
 
+        CharacterData cData = registeredSet2_Up[i];
         if (cData == null)
         {
             slotImg.gameObject.SetActive(false);
@@ -132,88 +93,17 @@ public class UpgradePanelManager : MonoBehaviour
         else
         {
             slotImg.gameObject.SetActive(true);
-            slotImg.sprite = (cData.buttonIcon != null) ? cData.buttonIcon.sprite : null;
-        }
-    }
-
-    // =========================================
-    //  (20칸) 슬롯 하나에 data 세팅
-    // =========================================
-    private void SetSlotInfo(GameObject slotObj, CharacterData data)
-    {
-        if (slotObj == null) return;
-
-        Image cardImg = slotObj.transform.Find("CardImage")?.GetComponent<Image>();
-        TextMeshProUGUI cardText = slotObj.transform.Find("CardText")?.GetComponent<TextMeshProUGUI>();
-        Toggle toggle = slotObj.transform.Find("SelectToggle")?.GetComponent<Toggle>();
-        Button btn = slotObj.GetComponent<Button>();
-
-        if (data == null)
-        {
-            // 빈 슬롯
-            if (cardImg)  cardImg.sprite = emptySlotSprite;
-            if (cardText) cardText.text  = emptySlotText;
-            if (toggle)
-            {
-                toggle.onValueChanged.RemoveAllListeners();
-                toggle.isOn = false;
-            }
-            if (btn) btn.onClick.RemoveAllListeners();
-        }
-        else
-        {
-            // 실제 캐릭터
-            if (cardImg)   cardImg.sprite = (data.buttonIcon != null) ? data.buttonIcon.sprite : null;
-            if (cardText)  cardText.text  = $"{data.characterName} (Lv={data.level}, Exp={data.currentExp})";
-
-            if (toggle)
-            {
-                toggle.onValueChanged.RemoveAllListeners();
-                toggle.isOn = false;
-                toggle.onValueChanged.AddListener(isOn =>
-                {
-                    if (isOn) SelectCharacter(data);
-                    else DeselectCharacter(data);
-                });
-            }
-            if (btn)
-            {
-                btn.onClick.RemoveAllListeners();
-                btn.onClick.AddListener(() => OnClickCharacterSlot(data));
-            }
-        }
-    }
-
-    /// <summary>
-    /// (20칸) 슬롯 클릭
-    /// </summary>
-    private void OnClickCharacterSlot(CharacterData data)
-    {
-        Debug.Log($"[UpgradePanelManager] 20칸 슬롯 클릭 => {data.characterName}");
-        // 필요하다면 추가 로직
-    }
-
-    private void SelectCharacter(CharacterData c)
-    {
-        if (!selectedCharacters.Contains(c))
-        {
-            selectedCharacters.Add(c);
-        }
-    }
-
-    private void DeselectCharacter(CharacterData c)
-    {
-        if (selectedCharacters.Contains(c))
-        {
-            selectedCharacters.Remove(c);
+            slotImg.sprite = (cData.buttonIcon != null)
+                ? cData.buttonIcon.sprite
+                : null;
         }
     }
 
     private void SetupUpgradeButtons()
     {
-        if (upgradeButtons == null || upgradeButtons.Count < 8)
+        if (upgradeButtons == null || upgradeButtons.Count < 10)
         {
-            Debug.LogWarning("[UpgradePanelManager] upgradeButtons 설정이 부족합니다.");
+            Debug.LogWarning("[UpgradePanelManager] upgradeButtons(10개) 부족");
             return;
         }
 
@@ -225,42 +115,88 @@ public class UpgradePanelManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// (추가) 인벤토리 20칸 중 어떤 슬롯을 "재료"로 쓸지 지정
+    /// </summary>
+    public void SetFeedFromInventory(int slotIndex, CharacterData feedData)
+    {
+        if (feedData == null)
+        {
+            Debug.LogWarning("[UpgradePanel] 재료가 null임 - 지정 취소");
+            feedCharacter = null;
+            feedSlotIndex = -1;
+            return;
+        }
+        feedCharacter = feedData;
+        feedSlotIndex = slotIndex;
+
+        Debug.Log($"[UpgradePanel] 업그레이드 재료 지정 => slot={slotIndex}, char={feedData.characterName}");
+    }
+
+    /// <summary>
+    /// i번 업그레이드 버튼 -> registeredSet2_Up[i] 캐릭터 업그레이드
+    /// 재료(feedCharacter)가 있다면, 그것을 소비하고 경험치 +1
+    /// </summary>
     private void OnClickUpgradeButton(int index)
     {
-        if (selectedCharacters.Count == 0)
+        if (index < 0 || index >= 10)
         {
-            Debug.LogWarning($"[UpgradePanel] 선택된 캐릭터 없음 (버튼 {index})");
+            Debug.LogWarning($"[UpgradePanel] 잘못된 업그레이드 버튼 인덱스: {index}");
             return;
         }
 
-        // 첫 번째를 베이스로, 나머지는 재료
-        CharacterData baseChar = selectedCharacters[0];
-        int feedCount = selectedCharacters.Count - 1;
-
-        if (feedCount > 0)
+        CharacterData targetChar = registeredSet2_Up[index];
+        if (targetChar == null)
         {
-            List<CharacterData> feedList = new List<CharacterData>(selectedCharacters);
-            feedList.RemoveAt(0); // 베이스는 제외
-            characterInventory.ConsumeCharactersForUpgrade(feedList);
+            Debug.LogWarning($"[UpgradePanel] {index}번 슬롯에 캐릭터가 없습니다.");
+            return;
         }
 
-        // 베이스 캐릭터 경험치 증가
-        baseChar.currentExp += feedCount;
-        baseChar.CheckLevelUp();
-
-        Debug.Log($"[UpgradePanelManager] {index}번 업그레이드 => 베이스={baseChar.characterName}, 재료={feedCount}장 => Exp={baseChar.currentExp}");
-
-        // 다시 갱신(업그레이드 패널 + 등록슬롯 + 덱 패널도 동기화)
-        RefreshDisplay();
-        SetUpgradeRegisteredSlotsFromDeck();
-
-        selectedCharacters.Clear();
-
-        // 덱 패널에도 반영(혹시 필요하다면)
-        DeckPanelManager dpm = FindFirstObjectByType<DeckPanelManager>();
-        if (dpm != null)
+        // -------------------------
+        // (1) 재료가 있는지 확인
+        // -------------------------
+        if (feedCharacter == null)
         {
-            dpm.RefreshDeckDisplay(); // 다시 sharedSlotData20 반영
+            Debug.LogWarning("[UpgradePanel] 업그레이드할 재료(feedCharacter)가 선택되지 않음!");
+            return;
+        }
+        // 혹시 feedSlotIndex도 유효해야 함
+        if (feedSlotIndex < 0
+            || feedSlotIndex >= characterInventory.sharedSlotData20.Length
+            || characterInventory.sharedSlotData20[feedSlotIndex] == null)
+        {
+            Debug.LogWarning("[UpgradePanel] 재료 슬롯 인덱스가 잘못되었거나 빈칸임 - 업그레이드 불가");
+            return;
+        }
+
+        // -------------------------
+        // (2) 재료 소모: 인벤토리에서 제거
+        // -------------------------
+        characterInventory.sharedSlotData20[feedSlotIndex] = null;
+        characterInventory.RemoveFromInventory(feedCharacter);
+
+        // -------------------------
+        // (3) 대상 캐릭터 Exp +1
+        // -------------------------
+        targetChar.currentExp += 1;
+        targetChar.CheckLevelUp();
+
+        Debug.Log($"[UpgradePanel] {index}번 업그레이드 => [{targetChar.characterName}] Exp+1 (재료={feedCharacter.characterName} 소모)");
+
+        // 재료 참조 해제
+        feedCharacter = null;
+        feedSlotIndex = -1;
+
+        // UI 갱신
+        UpdateUpgradeRegisteredImage(index);
+
+        // 덱 패널 쪽 20칸도 새로고침
+        deckPanelManager.RefreshDeckDisplay();
+
+        // 저장
+        if (characterInventory != null)
+        {
+            characterInventory.SaveCharacters();
         }
     }
 }
