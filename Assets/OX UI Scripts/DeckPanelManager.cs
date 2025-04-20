@@ -1,5 +1,3 @@
-// Assets\OX UI Scripts\DeckPanelManager.cs
-
 using UnityEngine;
 using UnityEngine.UI;
 using System.Collections.Generic;
@@ -51,6 +49,9 @@ public class DeckPanelManager : MonoBehaviour
 
     private void OnEnable()
     {
+        // (추가) 덱 패널 활성화 시 => 업그레이드 모드 무조건 해제
+        isUpgradeMode = false;
+
         // 1) 패널 켜질 때마다 인벤토리(20칸) 새로고침
         RefreshDeckDisplay();
 
@@ -210,7 +211,7 @@ public class DeckPanelManager : MonoBehaviour
     // ============================================
     //  등록 버튼(10개) - 세트2만
     // ============================================
-    private void SetupRegisterButtons()
+    public void SetupRegisterButtons()
     {
         if (registerButtons == null || registerButtons.Count < 10)
         {
@@ -231,7 +232,7 @@ public class DeckPanelManager : MonoBehaviour
         }
     }
 
-    private void InitRegisterSlotsVisual()
+    public void InitRegisterSlotsVisual()
     {
         for (int i = 0; i < 10; i++)
         {
@@ -275,7 +276,7 @@ public class DeckPanelManager : MonoBehaviour
     }
 
     /// <summary>
-    /// 세트2 등록 버튼 클릭 -> 캐릭터 등록/교체
+    /// 세트2 등록 버튼 클릭 -> 캐릭터 등록/교체 (이미 있으면 자리 바꿈, 없으면 새로 등록)
     /// </summary>
     private void OnClickRegisterCharacterSet2(int slotIndex)
     {
@@ -291,12 +292,12 @@ public class DeckPanelManager : MonoBehaviour
             return;
         }
 
-        // 덱 슬롯 현재 캐릭터
+        // 덱 슬롯 현재 캐릭터 (기존에 등록된 게 있을 수 있음)
         CharacterData existingChar = registeredCharactersSet2[slotIndex];
 
         if (existingChar == null)
         {
-            // 빈 슬롯에 새로 등록
+            // (1) 빈 슬롯이라면 -> 새로 등록
             Debug.Log($"[DeckPanelManager] 빈 슬롯({slotIndex})에 등록 => {selectedCharacterForRegistration.characterName}");
 
             // 인벤토리->덱 이동
@@ -308,13 +309,15 @@ public class DeckPanelManager : MonoBehaviour
         }
         else
         {
-            // 이미 덱에 있는 캐릭터 교체
+            // (2) 이미 덱에 있는 캐릭터가 있다면 -> 자리 바꾸기(교체)
             Debug.Log($"[DeckPanelManager] 교체 => 기존 {existingChar.characterName} / 새 {selectedCharacterForRegistration.characterName}");
 
+            // 먼저 인벤토리에 'existingChar' 복귀
             characterInventory.sharedSlotData20[selectedInventorySlotIndex] = existingChar;
             characterInventory.RemoveFromDeck(existingChar);
             characterInventory.AddToInventory(existingChar);
 
+            // 그 다음, 이번에 등록할 캐릭터를 덱으로 이동
             characterInventory.RemoveFromInventory(selectedCharacterForRegistration);
             characterInventory.MoveToDeck(selectedCharacterForRegistration);
 

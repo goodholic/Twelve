@@ -1,15 +1,10 @@
+// Assets\OX UI Scripts\BookPanelManager.cs
+
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
-/// <summary>
-/// 도감(Book Panel) 전용 매니저.
-/// 
-/// 1) bookSlots(List<GameObject>) : 아이콘 + 이름(또는 ???) 표시 (슬롯 클릭 시 '큰 이미지'에 표시)
-/// 2) portraitImages(List<Image>) : 캐릭터 초상화를 나열 (DB의 buttonIcon.sprite 사용)
-/// 3) 작은 슬롯 클릭 시, 'motionImage'에 크게 표시 + 이름 텍스트
-/// </summary>
 public class BookPanelManager : MonoBehaviour
 {
     [Header("Character Database (ScriptableObject)")]
@@ -39,15 +34,23 @@ public class BookPanelManager : MonoBehaviour
     [SerializeField] private Color notOwnedColor = Color.gray;
 
     // ----------------------------------------------------
-    // (C) 작은 슬롯 클릭 시 보여줄 '모션 이미지' + 이름
+    // (C) 작은 슬롯 클릭 시 보여줄 '모션 프리팹' + 이름
     // ----------------------------------------------------
-    [Header("슬롯 클릭 시 크게 표시할 '모션 이미지' + 이름 텍스트")]
-    [SerializeField] private Image motionImage;       // 클릭 시 보여줄 큰 이미지
-    [SerializeField] private TextMeshProUGUI motionNameText;  // 큰 이미지 아래 이름 표시
+    [Header("슬롯 클릭 시 크게 표시할 '모션 프리팹' + 이름 텍스트")]
+    [Tooltip("여기에 모션 프리팹을 인스턴스하여 표시할 부모 Transform(또는 GameObject)을 연결하세요.")]
+    [SerializeField] private Transform motionPrefabParent;    
+    [SerializeField] private TextMeshProUGUI motionNameText;
 
-    // ----------------------------------------------------
-    // 내부 구조체: 작은 슬롯 정보
-    // ----------------------------------------------------
+    // ============================
+    // ** 추가: 크기/위치 조절용
+    // ============================
+    [Header("도감용 모션 프리팹 - 스케일/위치 오프셋 설정")]
+    [SerializeField] private Vector3 motionPrefabPositionOffset = Vector3.zero;
+    [SerializeField] private Vector3 motionPrefabScale = Vector3.one;
+
+    /// <summary>
+    /// 작은 슬롯 정보를 저장하기 위한 구조체
+    /// </summary>
     private class BookSlot
     {
         public GameObject root;
@@ -55,11 +58,15 @@ public class BookPanelManager : MonoBehaviour
         public TextMeshProUGUI nameText;
         public Button button;
         public CharacterData charData;
-        public bool isActual; // true=실제 캐릭터, false=??? 슬롯
+        public bool isActual;
     }
 
-    // 작은 슬롯들의 정보를 담을 리스트
     private List<BookSlot> bookSlotInfos = new List<BookSlot>();
+
+    /// <summary>
+    /// 현재 인스턴스된 '모션 프리팹' 참조(기존 것 있으면 지우고 새로 인스턴스)
+    /// </summary>
+    private GameObject currentMotionInstance = null;
 
     private void OnEnable()
     {
@@ -81,34 +88,34 @@ public class BookPanelManager : MonoBehaviour
 
         bookSlotInfos.Clear();
 
-        // 1) bookSlots 각각에 대해 BookSlot 구조를 만든다
+        // 1) bookSlots 각각에 대해 BookSlot 구조체 생성
         foreach (GameObject slotObj in bookSlots)
         {
             if (slotObj == null) continue;
 
-            BookSlot slot = new BookSlot();
-            slot.root       = slotObj;
-            slot.iconImage  = slotObj.transform.Find("IconImage")?.GetComponent<Image>();
-            slot.nameText   = slotObj.transform.Find("NameText")?.GetComponent<TextMeshProUGUI>();
-            slot.button     = slotObj.GetComponent<Button>();
-            slot.charData   = null;
-            slot.isActual   = false;
+            BookSlot slot = new BookSlot
+            {
+                root      = slotObj,
+                iconImage = slotObj.transform.Find("IconImage")?.GetComponent<Image>(),
+                nameText  = slotObj.transform.Find("NameText")?.GetComponent<TextMeshProUGUI>(),
+                button    = slotObj.GetComponent<Button>(),
+                charData  = null,
+                isActual  = false
+            };
 
-            // 버튼이 있다면 클릭 리스너 초기화
             if (slot.button != null)
             {
                 slot.button.onClick.RemoveAllListeners();
             }
-
             bookSlotInfos.Add(slot);
         }
 
-        // 2) DB 캐릭터, 그리고 인벤토리에서 보유한 목록
+        // 2) DB 캐릭터 목록 + 인벤토리(덱 포함)에서 보유한 목록
         CharacterData[] dbChars = characterDatabaseObject.characters;
         List<CharacterData> ownedList = characterInventory.GetAllCharactersWithDuplicates();
         int dbCount = (dbChars != null) ? dbChars.Length : 0;
 
-        // 3) 실제 슬롯에 표시할 개수
+        // 3) 실제 표시할 개수
         int slotCount = bookSlotInfos.Count;
         int displayCount = Mathf.Min(slotCount, dbCount);
 
@@ -118,7 +125,6 @@ public class BookPanelManager : MonoBehaviour
             BookSlot slot = bookSlotInfos[i];
             if (slot.root) slot.root.SetActive(true);
 
-            // DB 범위 내면 캐릭터 할당, 아니면 ??? 슬롯
             if (i < displayCount && dbChars[i] != null)
             {
                 slot.charData = dbChars[i];
@@ -130,7 +136,7 @@ public class BookPanelManager : MonoBehaviour
                 slot.isActual = false;
             }
 
-            // 보유 여부 판단
+            // 보유 여부
             bool isOwned = false;
             if (slot.isActual && slot.charData != null)
             {
@@ -161,15 +167,17 @@ public class BookPanelManager : MonoBehaviour
                 slot.iconImage.sprite = null;
                 slot.iconImage.color  = notOwnedColor;
             }
-            if (slot.nameText) slot.nameText.text = "???";
+            if (slot.nameText)
+            {
+                slot.nameText.text = "???";
+            }
             return;
         }
 
-        // 실제 캐릭터 표시
+        // 실제 캐릭터
         CharacterData cData = slot.charData;
         if (slot.iconImage)
         {
-            // 여기서는 DB에 있는 buttonIcon(sprite)을 표시
             Sprite iconSpr = (cData.buttonIcon != null) ? cData.buttonIcon.sprite : null;
             slot.iconImage.sprite = iconSpr;
             slot.iconImage.color  = isOwned ? ownedColor : notOwnedColor;
@@ -180,24 +188,40 @@ public class BookPanelManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 슬롯 클릭 -> '모션 프리팹'을 표시 + 이름 텍스트
+    /// (여기서 모션 프리팹의 위치/크기를 원하는대로 조정 가능)
+    /// </summary>
     private void OnClickBookSlot(BookSlot slot)
     {
-        // ??? 슬롯이면 클릭 무시
-        if (slot == null || !slot.isActual || slot.charData == null) return;
+        // ??? 슬롯이면 무시
+        if (slot == null || !slot.isActual || slot.charData == null)
+            return;
 
         Debug.Log($"[BookPanelManager] 작은 슬롯 클릭: {slot.charData.characterName}");
 
-        // 모션이미지가 아니라, 이번에는 '큰 이미지'를 보여줄 때도
-        // 원한다면 buttonIcon이든 motionSprite든 쓸 수 있지만,
-        // 여기선 motionImage / motionNameText만 사용(예: motionSprite)
-        // => 만약 "buttonIcon"을 크게 띄우려면 아래 sprite도 buttonIcon으로 변경 가능
-        Sprite bigSpr = slot.charData.motionSprite; // 필요 시 buttonIcon으로 교체 가능
-
-        if (motionImage != null)
+        // 1) 기존에 표시 중인 프리팹이 있다면 파괴
+        if (currentMotionInstance != null)
         {
-            motionImage.sprite = bigSpr;
-            motionImage.color  = (bigSpr != null) ? Color.white : Color.clear;
+            Destroy(currentMotionInstance);
+            currentMotionInstance = null;
         }
+
+        // 2) 새로 표시할 모션 프리팹 가져오기
+        GameObject motionPrefab = slot.charData.motionPrefab;
+        if (motionPrefab != null && motionPrefabParent != null)
+        {
+            currentMotionInstance = Instantiate(motionPrefab, motionPrefabParent);
+
+            // --------------------------
+            // 위치/회전/크기 조정
+            // --------------------------
+            currentMotionInstance.transform.localPosition = motionPrefabPositionOffset;
+            currentMotionInstance.transform.localRotation = Quaternion.identity;
+            currentMotionInstance.transform.localScale    = motionPrefabScale;
+        }
+
+        // 3) 캐릭터 이름 표시
         if (motionNameText != null)
         {
             motionNameText.text = slot.charData.characterName;
@@ -206,7 +230,6 @@ public class BookPanelManager : MonoBehaviour
 
     // =========================================================
     // (2) 초상화 이미지(portraitImages) 갱신
-    //     -> DB 캐릭터 순서대로 buttonIcon.sprite 배치
     // =========================================================
     public void RefreshPortraitPanel()
     {
@@ -223,13 +246,11 @@ public class BookPanelManager : MonoBehaviour
         int dbCount = (dbChars != null) ? dbChars.Length : 0;
 
         int maxCount = Mathf.Min(portraitImages.Count, dbCount);
-
         for (int i = 0; i < portraitImages.Count; i++)
         {
             Image img = portraitImages[i];
             if (img == null) continue;
 
-            // 범위 밖이면 ??? 처리
             if (i >= maxCount || dbChars[i] == null)
             {
                 img.sprite = null;
@@ -241,16 +262,12 @@ public class BookPanelManager : MonoBehaviour
             CharacterData cData = dbChars[i];
             bool isOwned = CheckIfOwned(ownedList, cData.characterName);
 
-            // 초상화 이미지는 DB의 buttonIcon.sprite를 사용
             Sprite portraitSpr = (cData.buttonIcon != null) ? cData.buttonIcon.sprite : null;
             img.sprite = portraitSpr;
-            img.color  = (isOwned) ? ownedColor : notOwnedColor;
+            img.color  = isOwned ? ownedColor : notOwnedColor;
         }
     }
 
-    // =========================================================
-    //  공통
-    // =========================================================
     private bool CheckCommonReferences()
     {
         if (characterDatabaseObject == null)

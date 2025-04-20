@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: efe4e173b90874842a5b3b450820852d
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 296045
+  packageName: Gif For Unity Pro
+  packageVersion: 1.1
+  assetPath: Assets/GifToUnity/Pro/Demo/Demo1.cs
+  uploadId: 729739

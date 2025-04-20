@@ -3,9 +3,6 @@
 using UnityEngine;
 using UnityEngine.UI;
 
-/// <summary>
-/// 캐릭터의 기본 정보를 담는 데이터 구조 (에디터에서 일괄 관리용)
-/// </summary>
 public enum RangeType
 {
     Melee,      // 근거리
@@ -55,23 +52,22 @@ public class CharacterData
     public int cost = 10;
 
     // =================================
-    // 새로 추가: 도감용 모션 이미지
+    // ★ 변경됨: 도감용 "모션"은 Sprite가 아니라
+    //           "모션 프리팹" 으로 교체
     // =================================
-    [Header("도감용 모션 이미지 (선택)")]
-    public Sprite motionSprite;
+    [Header("도감용 모션 프리팹 (선택)")]
+    public GameObject motionPrefab;  // ← 원래 Sprite였던 "motionSprite"를 대체
 
     /// <summary>
     /// [추가] 현재 Exp가 expToNextLevel 이상이면 레벨업
     /// </summary>
     public void CheckLevelUp()
     {
-        // 필요하다면 while 문으로 반복 레벨업도 가능
         if (currentExp >= expToNextLevel)
         {
             currentExp -= expToNextLevel;
             level++;
 
-            // 레벨 오르면 expToNextLevel 등도 조정 가능
             expToNextLevel += 5; // 예: 레벨업마다 +5씩 증가
             Debug.Log($"[CharacterData] {characterName} 레벨업! => Lv.{level}, 남은Exp={currentExp}");
         }

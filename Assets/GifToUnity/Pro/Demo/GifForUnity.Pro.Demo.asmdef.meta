@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 6d2092af46fb14049a562b42e237c42d
+AssemblyDefinitionImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 296045
+  packageName: Gif For Unity Pro
+  packageVersion: 1.1
+  assetPath: Assets/GifToUnity/Pro/Demo/GifForUnity.Pro.Demo.asmdef
+  uploadId: 729739

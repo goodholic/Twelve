@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 772d8fb853a5d9c48acc85e171ee15c0
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 296045
+  packageName: Gif For Unity Pro
+  packageVersion: 1.1
+  assetPath: Assets/GifToUnity/Pro/GifRuntime.cs
+  uploadId: 729739

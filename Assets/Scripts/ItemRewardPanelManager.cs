@@ -18,9 +18,14 @@ public class ItemRewardPanelManager : MonoBehaviour
     [SerializeField] private GameObject itemPanel;
 
     [Header("아이템 카드 슬롯들(3개)")]
-    [SerializeField] private List<Button> itemCardButtons;         // 3개 버튼
-    [SerializeField] private List<Image> itemCardImages;           // 3개 이미지
-    [SerializeField] private List<TextMeshProUGUI> itemCardNameTexts; // 3개 이름
+    [SerializeField] private List<Button> itemCardButtons;      // 3개 버튼
+    [SerializeField] private List<Image> itemCardImages;        // 3개 이미지
+
+    // -----------------------------------------------------------------------------------
+    // ★ 변경됨: 이름 대신 "description"을 표시할 텍스트 (itemCardDescTexts) - 총 3개
+    // -----------------------------------------------------------------------------------
+    [Header("아이템 설명 텍스트들(3개) - 기존 itemCardNameTexts 제거 후 교체")]
+    [SerializeField] private List<TextMeshProUGUI> itemCardDescTexts; // 3개 description
 
     // 뽑힌 3개의 아이템 보관용
     private ItemData[] chosenItems = new ItemData[3];
@@ -60,15 +65,15 @@ public class ItemRewardPanelManager : MonoBehaviour
         {
             if (chosenItems[i] != null)
             {
-                // 이미지 표시
+                // 아이콘 표시
                 if (itemCardImages != null && i < itemCardImages.Count && itemCardImages[i] != null)
                 {
                     itemCardImages[i].sprite = chosenItems[i].itemIcon;
                 }
-                // 이름 표시
-                if (itemCardNameTexts != null && i < itemCardNameTexts.Count && itemCardNameTexts[i] != null)
+                // *** 아이템 설명 표시
+                if (itemCardDescTexts != null && i < itemCardDescTexts.Count && itemCardDescTexts[i] != null)
                 {
-                    itemCardNameTexts[i].text = chosenItems[i].itemName;
+                    itemCardDescTexts[i].text = chosenItems[i].description;
                 }
                 // 버튼 설정
                 if (itemCardButtons != null && i < itemCardButtons.Count && itemCardButtons[i] != null)
@@ -86,9 +91,9 @@ public class ItemRewardPanelManager : MonoBehaviour
                 {
                     itemCardImages[i].sprite = null;
                 }
-                if (itemCardNameTexts != null && i < itemCardNameTexts.Count && itemCardNameTexts[i] != null)
+                if (itemCardDescTexts != null && i < itemCardDescTexts.Count && itemCardDescTexts[i] != null)
                 {
-                    itemCardNameTexts[i].text = "없음";
+                    itemCardDescTexts[i].text = "없음";
                 }
                 if (itemCardButtons != null && i < itemCardButtons.Count && itemCardButtons[i] != null)
                 {

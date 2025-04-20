@@ -17,14 +17,14 @@ MonoBehaviour:
     itemIcon: {fileID: 5946077757829117608, guid: aacb0a1a406a27944b10d78d09f1ea72, type: 3}
     effectType: 0
     effectValue: 1
-    description: 
+    description: "\uACF5\uACA9 +1 \uAC15\uD654"
   - itemName: item2
     itemIcon: {fileID: -1617030066853271768, guid: 6f82d2a0cd21fd341afe2399d3921af4, type: 3}
     effectType: 1
     effectValue: 1
-    description: 
+    description: "HP +1 \uAC15\uD654"
   - itemName: item3
     itemIcon: {fileID: 6357378504039656821, guid: 4718d571eee996e43942c737d6eb75b5, type: 3}
     effectType: 2
     effectValue: 1
-    description: 
+    description: "\uC0AC\uAC70\uB9AC +1 \uAC15\uD654"

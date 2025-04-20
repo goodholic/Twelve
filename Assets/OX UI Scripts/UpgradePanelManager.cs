@@ -1,5 +1,3 @@
-// Assets\OX UI Scripts\UpgradePanelManager.cs
-
 using UnityEngine;
 using UnityEngine.UI;
 using System.Collections.Generic;
@@ -17,7 +15,13 @@ public class UpgradePanelManager : MonoBehaviour
     //  "등록 상태 (set2만)" 10칸
     // ===========================================
     [Header("업그레이드 등록 상태 이미지(10칸) - set2")]
-    [SerializeField] private List<Image> upgradeRegisteredSlotImages; // 세트2만
+    [SerializeField] private List<Image> upgradeRegisteredSlotImages; // 등록된 캐릭터 이미지용 (10칸)
+
+    // ---------------------------------------------------------
+    // (추가) "업그레이드 패널에서 표시할 레벨 텍스트"(10칸)
+    // ---------------------------------------------------------
+    [Header("업그레이드 슬롯(10칸) 레벨 텍스트")]
+    [SerializeField] private List<TextMeshProUGUI> upgradeRegisteredSlotLevelTexts;
 
     // 덱 패널의 registeredCharactersSet2와 공유할 배열 (10칸)
     private CharacterData[] registeredSet2_Up = new CharacterData[10];
@@ -29,13 +33,19 @@ public class UpgradePanelManager : MonoBehaviour
     [SerializeField] private List<Button> upgradeButtons;
 
     // ===========================================
-    //   (추가) "재료(feed)"로 사용될 인벤토리 캐릭터
+    //   "재료(feed)"로 사용될 인벤토리 캐릭터
     // ===========================================
     private CharacterData feedCharacter = null;
     private int feedSlotIndex = -1;  // 20칸 중 어떤 슬롯이었나
 
     private void OnEnable()
     {
+        // (추가) 업그레이드 패널 활성화 시 => 덱 패널 매니저의 업그레이드 모드 true
+        if (deckPanelManager != null)
+        {
+            deckPanelManager.isUpgradeMode = true;
+        }
+
         // 덱 패널에서 현재 등록 상태(10칸) 가져오기
         SetUpgradeRegisteredSlotsFromDeck();
 
@@ -44,7 +54,8 @@ public class UpgradePanelManager : MonoBehaviour
     }
 
     /// <summary>
-    /// 호환성을 위해 남겨둠 - 20칸 슬롯 시각은 제거되었지만, 등록슬롯만 다시 세팅
+    /// 기존 호환성을 위해 남겨둔 메서드
+    /// -> 여기서는 "업그레이드 패널의 등록슬롯만" 다시 세팅
     /// </summary>
     public void RefreshDisplay()
     {
@@ -69,7 +80,7 @@ public class UpgradePanelManager : MonoBehaviour
             registeredSet2_Up[i] = deckSet2[i];
         }
 
-        // 시각적으로 이미지 갱신
+        // 시각적으로 이미지 + 레벨 텍스트 갱신
         for (int i = 0; i < 10; i++)
         {
             UpdateUpgradeRegisteredImage(i);
@@ -78,24 +89,42 @@ public class UpgradePanelManager : MonoBehaviour
 
     private void UpdateUpgradeRegisteredImage(int i)
     {
+        // 이미지 처리
         if (upgradeRegisteredSlotImages == null
             || i < 0 || i >= upgradeRegisteredSlotImages.Count)
             return;
-
         Image slotImg = upgradeRegisteredSlotImages[i];
-        if (slotImg == null) return;
+
+        // 레벨 텍스트 처리
+        TextMeshProUGUI lvlText = null;
+        if (upgradeRegisteredSlotLevelTexts != null
+            && i >= 0 && i < upgradeRegisteredSlotLevelTexts.Count)
+        {
+            lvlText = upgradeRegisteredSlotLevelTexts[i];
+        }
 
         CharacterData cData = registeredSet2_Up[i];
         if (cData == null)
         {
-            slotImg.gameObject.SetActive(false);
+            // 등록되지 않은 칸 -> 이미지/레벨 텍스트 모두 비활성
+            if (slotImg)   slotImg.gameObject.SetActive(false);
+            if (lvlText)   lvlText.gameObject.SetActive(false);
         }
         else
         {
-            slotImg.gameObject.SetActive(true);
-            slotImg.sprite = (cData.buttonIcon != null)
-                ? cData.buttonIcon.sprite
-                : null;
+            // 등록된 캐릭터가 있으면 이미지/레벨 텍스트 표시
+            if (slotImg)
+            {
+                slotImg.gameObject.SetActive(true);
+                slotImg.sprite = (cData.buttonIcon != null)
+                    ? cData.buttonIcon.sprite
+                    : null;
+            }
+            if (lvlText)
+            {
+                lvlText.gameObject.SetActive(true);
+                lvlText.text = $"Lv.{cData.level}";
+            }
         }
     }
 
@@ -116,7 +145,7 @@ public class UpgradePanelManager : MonoBehaviour
     }
 
     /// <summary>
-    /// (추가) 인벤토리 20칸 중 어떤 슬롯을 "재료"로 쓸지 지정
+    /// 인벤토리 20칸 중 어떤 슬롯을 "재료"로 쓸지 지정
     /// </summary>
     public void SetFeedFromInventory(int slotIndex, CharacterData feedData)
     {
@@ -160,7 +189,7 @@ public class UpgradePanelManager : MonoBehaviour
             Debug.LogWarning("[UpgradePanel] 업그레이드할 재료(feedCharacter)가 선택되지 않음!");
             return;
         }
-        // 혹시 feedSlotIndex도 유효해야 함
+        // feedSlotIndex도 유효?
         if (feedSlotIndex < 0
             || feedSlotIndex >= characterInventory.sharedSlotData20.Length
             || characterInventory.sharedSlotData20[feedSlotIndex] == null)
@@ -170,7 +199,7 @@ public class UpgradePanelManager : MonoBehaviour
         }
 
         // -------------------------
-        // (2) 재료 소모: 인벤토리에서 제거
+        // (2) 재료 소모 (인벤토리에서 제거)
         // -------------------------
         characterInventory.sharedSlotData20[feedSlotIndex] = null;
         characterInventory.RemoveFromInventory(feedCharacter);
@@ -187,7 +216,7 @@ public class UpgradePanelManager : MonoBehaviour
         feedCharacter = null;
         feedSlotIndex = -1;
 
-        // UI 갱신
+        // 업그레이드 슬롯 이미지/텍스트 갱신 (해당 슬롯만 갱신)
         UpdateUpgradeRegisteredImage(index);
 
         // 덱 패널 쪽 20칸도 새로고침

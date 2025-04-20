@@ -95,6 +95,18 @@ public class LobbySceneManager : MonoBehaviour
         UpdateGoldAndDiamondUI();
 
         Debug.Log("[LobbySceneManager] ResetGameData() 실행 완료 - 스테이지,재화,인벤토리 전부 초기화.");
+
+        // ------------------------------------------------------
+        // (추가) 덱 패널도 새로고침(등록 버튼/슬롯까지 전부)
+        // ------------------------------------------------------
+        DeckPanelManager dpm = FindFirstObjectByType<DeckPanelManager>();
+        if (dpm != null)
+        {
+            dpm.RefreshDeckDisplay();
+            dpm.SetupRegisterButtons();
+            dpm.InitRegisterSlotsVisual();
+            Debug.Log("[LobbySceneManager] ResetGameData() 이후 DeckPanelManager도 재초기화 완료");
+        }
     }
 
     private void Awake()
@@ -126,7 +138,6 @@ public class LobbySceneManager : MonoBehaviour
 
         // ================================
         // "아이템 인벤토리 패널"은 항상 켜두기
-        // (만약 여러 UI 패널 중 하나여도, 이제는 닫기 로직 안 씀)
         // ================================
         if (itemInventoryPanel != null)
         {
@@ -315,6 +326,15 @@ public class LobbySceneManager : MonoBehaviour
         }
 
         Debug.Log($"Stage {currentStageIndex + 1} 입장 -> GameScene 이동");
+
+        // -------------------------------------------------
+        // (추가) 씬 이동 직전에 아이템 인벤토리 패널 활성화
+        // -------------------------------------------------
+        if (itemInventoryPanel != null)
+        {
+            itemInventoryPanel.SetActive(true);
+        }
+
         SceneManager.LoadScene("GameScene");
     }
 
@@ -356,9 +376,7 @@ public class LobbySceneManager : MonoBehaviour
     [SerializeField] private GameObject rankingGameObject;
 
     // ===========================================
-    //  아이템 패널 (웨이브 클리어 시 열리고,
-    //  아이템 선택 시 닫힘),
-    //  아이템 인벤토리 패널 (항상 켜짐)
+    //  아이템 패널 (웨이브 보상용) + 아이템 인벤토리 패널
     // ===========================================
     [Header("아이템 패널(보상용) + 아이템 인벤토리 패널")]
     public GameObject itemPanel;            // 웨이브 보상용 (기본 false)
@@ -382,11 +400,6 @@ public class LobbySceneManager : MonoBehaviour
         if (friendGameObject)   friendGameObject.SetActive(false);
         if (rankingGameObject)  rankingGameObject.SetActive(false);
 
-        // -----------------------------------------
-        // "itemPanel"은 보상 패널 -> 초기 false
-        // "itemInventoryPanel"은 지금은 세팅만 False,
-        //  뒤에서 Start()에서 true로 켬
-        // -----------------------------------------
         if (itemPanel)
         {
             itemPanel.SetActive(false);
@@ -395,7 +408,6 @@ public class LobbySceneManager : MonoBehaviour
         if (itemInventoryPanel)
         {
             itemInventoryPanel.SetActive(false);
-            // ※ 여기서는 addPanel만, 실제 활성화는 Start()에서
             allPanels.Add(itemInventoryPanel);
         }
     }
@@ -415,6 +427,7 @@ public class LobbySceneManager : MonoBehaviour
     {
         CloseAllPanels();
         if (characterPanel) characterPanel.SetActive(true);
+
         if (deckObject)
         {
             deckObject.SetActive(true);
@@ -425,6 +438,14 @@ public class LobbySceneManager : MonoBehaviour
             }
         }
         if (upgradeObject) upgradeObject.SetActive(false);
+
+        // ★ 추가됨: 캐릭터 패널을 열 때는 무조건 업그레이드 모드 끄기
+        DeckPanelManager dpm = FindFirstObjectByType<DeckPanelManager>();
+        if (dpm != null)
+        {
+            dpm.isUpgradeMode = false;
+            Debug.Log("[LobbySceneManager] 캐릭터 패널 열림 -> DeckPanelManager.isUpgradeMode = false");
+        }
     }
 
     public void OnClickCloseCharacterPanel()
@@ -482,35 +503,37 @@ public class LobbySceneManager : MonoBehaviour
         if (clanPanel) clanPanel.SetActive(false);
     }
 
+    // ====================================================================
+    //  (1) 덱 버튼 -> deckObject On, upgradeObject Off + isUpgradeMode=false
+    // ====================================================================
     public void OnClickDeckButton()
     {
         if (deckObject) deckObject.SetActive(true);
-        if (deckObject)
-        {
-            Button[] deckButtons = deckObject.GetComponentsInChildren<Button>(true);
-            foreach (var btn in deckButtons)
-            {
-                btn.gameObject.SetActive(true);
-            }
-        }
         if (upgradeObject) upgradeObject.SetActive(false);
 
-        var deckPM = FindFirstObjectByType<DeckPanelManager>();
-        if (deckPM != null)
+        // [추가] 덱 버튼 클릭 시 => 업그레이드 모드 해제
+        DeckPanelManager dpm = FindFirstObjectByType<DeckPanelManager>();
+        if (dpm != null)
         {
-            deckPM.isUpgradeMode = false;
+            dpm.isUpgradeMode = false;
+            Debug.Log("[LobbySceneManager] 덱 패널 열림 -> DeckPanelManager.isUpgradeMode = false");
         }
     }
 
+    // ====================================================================
+    //  (2) 업그레이드 버튼 -> deckObject Off, upgradeObject On + isUpgradeMode=true
+    // ====================================================================
     public void OnClickUpgradeButton()
     {
         if (deckObject) deckObject.SetActive(false);
         if (upgradeObject) upgradeObject.SetActive(true);
 
-        var deckPM = FindFirstObjectByType<DeckPanelManager>();
-        if (deckPM != null)
+        // [추가] 업그레이드 버튼 클릭 시 => 업그레이드 모드 활성
+        DeckPanelManager dpm = FindFirstObjectByType<DeckPanelManager>();
+        if (dpm != null)
         {
-            deckPM.isUpgradeMode = true;
+            dpm.isUpgradeMode = true;
+            Debug.Log("[LobbySceneManager] 업그레이드 패널 열림 -> DeckPanelManager.isUpgradeMode = true");
         }
     }
 
@@ -562,4 +585,3 @@ public class LobbySceneManager : MonoBehaviour
         if (explainText) explainText.text = "";
     }
 }
-

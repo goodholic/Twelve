@@ -1,5 +1,3 @@
-// Assets/Scripts/ItemPanelManager.cs
-
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -15,9 +13,6 @@ public class ItemPanelManager : MonoBehaviour
     [SerializeField] private List<Image> itemSlotImages;
     [SerializeField] private List<TextMeshProUGUI> itemSlotNameTexts;
 
-    // ---------------------------------------------------------
-    // (중요) 드래그 시 이동할 부모 패널
-    // ---------------------------------------------------------
     [Header("드래그 이동용 Parent Panel")]
     [SerializeField] private RectTransform dragParentPanel;
 
@@ -28,7 +23,7 @@ public class ItemPanelManager : MonoBehaviour
     private List<ItemData> itemList = new List<ItemData>();
 
     /// <summary>
-    /// 로비씬 등에서 아이템 인벤토리를 새로고침한다.
+    /// 아이템 인벤토리 패널(9칸)을 새로고침
     /// </summary>
     public void RefreshItemPanel()
     {
@@ -54,52 +49,63 @@ public class ItemPanelManager : MonoBehaviour
                 itemSlotButtons[i].onClick.RemoveAllListeners();
             }
 
-            // i번째 인덱스에 아이템이 있다면:
+            // i번째 인덱스에 아이템이 있는지 확인
             if (i < itemList.Count && itemList[i] != null)
             {
+                // 실제 아이템
                 ItemData currentItem = itemList[i];
 
-                // 아이콘 이미지 설정
+                // 아이콘 표시
                 if (itemSlotImages != null && i < itemSlotImages.Count && itemSlotImages[i] != null)
                 {
                     itemSlotImages[i].sprite = currentItem.itemIcon;
-                    itemSlotImages[i].gameObject.SetActive(true); // 아이콘 오브젝트 활성
+                    itemSlotImages[i].gameObject.SetActive(true);
                 }
 
-                // 이름 텍스트 설정
+                // 이름 표시
                 if (itemSlotNameTexts != null && i < itemSlotNameTexts.Count && itemSlotNameTexts[i] != null)
                 {
                     itemSlotNameTexts[i].text = currentItem.itemName;
                 }
 
-                // 드래그 스크립트 연결
+                // 드래그 스크립트(DraggableItemUI) 연결
                 DraggableItemUI dragItem = itemSlotButtons[i].GetComponent<DraggableItemUI>();
                 if (dragItem != null)
                 {
-                    dragItem.currentItem  = currentItem;
-                    dragItem.parentPanel  = dragParentPanel;
+                    dragItem.currentItem = currentItem;         // 여기서 아이템 설정
+                    dragItem.parentPanel = dragParentPanel;
                 }
 
-                // 버튼 클릭 시 로직 (※ 여기서는 예시로 콘솔 로그만)
+                // (선택) 버튼 클릭 시 -> 콘솔 로그
                 int copyIndex = i;
                 itemSlotButtons[i].onClick.AddListener(() => OnClickItemSlot(copyIndex));
-                // ★ 버튼 비활성화 코드를 제거했습니다 (interactable = false X)
             }
             else
             {
-                itemSlotImages[i].sprite = someEmptySprite;
-                // ------------------------------
-                // 아이템이 없는 "빈 칸" 처리:
-                // "버튼 이미지는 그대로" 유지
-                // => sprite/text/interactable 변경 X
-                // ------------------------------
-                // 아무것도 하지 않습니다.
+                // 빈 슬롯 처리
+                if (itemSlotImages != null && i < itemSlotImages.Count && itemSlotImages[i] != null)
+                {
+                    itemSlotImages[i].sprite = someEmptySprite;
+                }
+
+                if (itemSlotNameTexts != null && i < itemSlotNameTexts.Count && itemSlotNameTexts[i] != null)
+                {
+                    itemSlotNameTexts[i].text = "";
+                }
+
+                // 드래그 스크립트가 있다면 currentItem = null로 처리
+                DraggableItemUI dragItem = itemSlotButtons[i].GetComponent<DraggableItemUI>();
+                if (dragItem != null)
+                {
+                    dragItem.currentItem = null;  // 빈칸이므로 null 설정
+                    dragItem.parentPanel = dragParentPanel;
+                }
             }
         }
     }
 
     /// <summary>
-    /// (선택) 슬롯 클릭 시 로직 예시
+    /// (선택) 슬롯 클릭 시 로그 출력 등
     /// </summary>
     private void OnClickItemSlot(int index)
     {
@@ -107,7 +113,6 @@ public class ItemPanelManager : MonoBehaviour
         ItemData clickedItem = itemList[index];
         if (clickedItem == null) return;
 
-        Debug.Log($"[ItemPanelManager] {index}번 슬롯 클릭 -> 아이템: {clickedItem.itemName}");
-        // 여기서 팝업 표시 등 추가 로직을 구현 가능
+        Debug.Log($"[ItemPanelManager] {index}번 슬롯 클릭 => 아이템: {clickedItem.itemName}");
     }
 }

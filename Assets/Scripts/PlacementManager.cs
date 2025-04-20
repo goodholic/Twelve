@@ -43,11 +43,9 @@ public class PlacementManager : MonoBehaviour
             Debug.LogWarning("<color=red>씬에 EventSystem이 없습니다! UI 버튼 클릭 불가 + 드래그 불가!</color>");
         }
 
-        // (추가) 만약 Inspector에서 characterPanel이 미할당이면 경고
         if (characterPanel == null)
         {
-            Debug.LogWarning("PlacementManager: characterPanel이 Inspector에서 할당되지 않았습니다! " +
-                             "캐릭터 배치 로직이 동작하지 않을 수 있습니다.");
+            Debug.LogWarning("PlacementManager: characterPanel(캐릭터가 들어갈 Panel)이 null입니다.");
         }
     }
 
@@ -61,7 +59,7 @@ public class PlacementManager : MonoBehaviour
     }
 
     /// <summary>
-    /// UI 버튼으로 캐릭터를 선택했을 때 호출
+    /// UI 버튼으로 캐릭터를 "선택" (클릭 배치용)
     /// </summary>
     public void OnClickSelectUnit(int index)
     {
@@ -89,7 +87,7 @@ public class PlacementManager : MonoBehaviour
         // 3) characterPanel 검사
         if (characterPanel == null)
         {
-            Debug.LogWarning("PlacementManager: characterPanel이 null임! (Inspector에서 RectTransform 할당 필요)");
+            Debug.LogWarning("PlacementManager: characterPanel이 null임!");
             return;
         }
 
@@ -97,7 +95,7 @@ public class PlacementManager : MonoBehaviour
         CharacterData data = characterDatabase.characters[currentCharacterIndex];
         if (data == null || data.spawnPrefab == null)
         {
-            Debug.LogWarning($"PlacementManager: [{currentCharacterIndex}]번 캐릭터 데이터/프리팹이 null.");
+            Debug.LogWarning($"PlacementManager: [{currentCharacterIndex}]번 캐릭터 spawnPrefab이 null");
             return;
         }
 
@@ -106,15 +104,24 @@ public class PlacementManager : MonoBehaviour
             Debug.LogWarning("PlacementManager: tile이 null");
             return;
         }
+
+        // -----------------------------
+        // "배치 가능"인지 다시 체크
+        // -----------------------------
         if (!tile.CanPlaceCharacter())
         {
-            Debug.Log($"PlacementManager: {tile.name}에 배치 불가 (Placable=false, Occupied=true 등)");
+            Debug.Log($"PlacementManager: {tile.name} 배치 불가 (Placable=false or Occupied=true)");
             return;
         }
 
-        // ==========================
-        // 캐릭터 생성 (부모=characterPanel)
-        // ==========================
+        // *** "마지막 순간"에도 Occupied 재확인 (동시성 문제 대비)
+        if (tile.IsOccupied())
+        {
+            Debug.LogWarning($"[PlacementManager] {tile.name} 이미 다른 캐릭터가 들어옴 -> 배치 취소!");
+            return;
+        }
+
+        // 실제 캐릭터 프리팹 생성
         GameObject charObj = Instantiate(data.spawnPrefab, characterPanel);
 
         // UI 좌표계 변환
@@ -122,14 +129,13 @@ public class PlacementManager : MonoBehaviour
         RectTransform charRect = charObj.GetComponent<RectTransform>();
         if (tileRect != null && charRect != null)
         {
-            // tilePanel이 아닌, characterPanel의 좌표로 변환
-            Vector2 localPosInCharacterPanel = characterPanel.InverseTransformPoint(tileRect.transform.position);
-            charRect.anchoredPosition = localPosInCharacterPanel;
+            Vector2 localPos = characterPanel.InverseTransformPoint(tileRect.transform.position);
+            charRect.anchoredPosition = localPos;
             charRect.localRotation = Quaternion.identity;
         }
         else
         {
-            // (3D 상황) 그냥 worldPosition
+            // 3D 상황
             charObj.transform.position = tile.transform.position;
             charObj.transform.localRotation = Quaternion.identity;
         }
@@ -138,11 +144,9 @@ public class PlacementManager : MonoBehaviour
         Character characterComp = charObj.GetComponent<Character>();
         if (characterComp != null)
         {
-            // 어떤 타일에 배치되었는지 참조만 저장 (물리적으로 같은 부모는 아니다!)
             characterComp.currentTile = tile;
             characterComp.attackPower = data.attackPower;
-
-            // rangeType에 따라 사거리 세팅
+            // rangeType
             switch (data.rangeType)
             {
                 case RangeType.Melee:
@@ -156,13 +160,13 @@ public class PlacementManager : MonoBehaviour
                     break;
             }
 
-            // 총알 패널 설정
+            // 총알 패널
             if (bulletPanel != null)
             {
                 characterComp.SetBulletPanel(bulletPanel);
             }
 
-            // 드래그 스크립트가 있다면, parentPanel을 characterPanel로
+            // 드래그 스크립트가 있다면 parentPanel 설정
             DraggableCharacterUI drag = charObj.GetComponent<DraggableCharacterUI>();
             if (drag != null)
             {
@@ -170,111 +174,241 @@ public class PlacementManager : MonoBehaviour
             }
         }
 
-        // 타일 Occupied 처리
+        // 타일에 "Occupied" 자식 생성
         CreateOccupiedChild(tile);
 
-        Debug.Log($"[PlacementManager] [{data.characterName}] 배치 완료! (cost={data.cost})");
+        Debug.Log($"[PlacementManager] [{data.characterName}] 배치 완료!(cost={data.cost})");
 
-        // 한 번 배치 후에는 인덱스 리셋
+        // 한 번 배치 후에는 인덱스 해제
         currentCharacterIndex = -1;
     }
 
     /// <summary>
-    /// (드래그-드롭 방식) 캐릭터를 새 Tile로 옮길 때
+    /// (드래그 소환) 버튼 → 타일 직접 드롭 시 호출
     /// </summary>
-    public void OnDropCharacter(Character character, Tile newTile)
+    public void SummonCharacterOnTile(int summonIndex, Tile tile)
     {
-        if (character == null || newTile == null)
+        // 캐릭터 DB 검사
+        if (characterDatabase == null || characterDatabase.characters == null || characterDatabase.characters.Length == 0)
+        {
+            Debug.LogWarning("[PlacementManager] characterDatabase가 비어있어 소환 불가!");
+            return;
+        }
+        if (summonIndex < 0 || summonIndex >= characterDatabase.characters.Length)
+        {
+            Debug.LogWarning($"[PlacementManager] 잘못된 summonIndex={summonIndex} => 소환 불가");
+            return;
+        }
+        if (characterPanel == null)
+        {
+            Debug.LogWarning("[PlacementManager] characterPanel이 null => 소환 불가");
+            return;
+        }
+
+        CharacterData data = characterDatabase.characters[summonIndex];
+        if (data == null || data.spawnPrefab == null)
+        {
+            Debug.LogWarning($"[PlacementManager] [{summonIndex}]번 캐릭터 spawnPrefab이 null => 소환 불가");
+            return;
+        }
+        if (tile == null)
+        {
+            Debug.LogWarning("[PlacementManager] tile이 null => 소환 불가");
+            return;
+        }
+
+        // -----------------------------
+        // "배치 가능"인지 다시 체크
+        // -----------------------------
+        if (!tile.CanPlaceCharacter())
+        {
+            Debug.LogWarning($"[PlacementManager] {tile.name} 배치 불가(Placable=false or Occupied=true)");
+            return;
+        }
+
+        // *** 마지막 확인
+        if (tile.IsOccupied())
+        {
+            Debug.LogWarning($"[PlacementManager] {tile.name} 이미 다른 캐릭터 있음 -> 소환 취소!");
+            return;
+        }
+
+        // 캐릭터 생성
+        GameObject charObj = Instantiate(data.spawnPrefab, characterPanel);
+
+        // UI 좌표
+        RectTransform tileRect = tile.GetComponent<RectTransform>();
+        RectTransform charRect = charObj.GetComponent<RectTransform>();
+        if (tileRect != null && charRect != null)
+        {
+            Vector2 localPos = characterPanel.InverseTransformPoint(tileRect.transform.position);
+            charRect.anchoredPosition = localPos;
+            charRect.localRotation = Quaternion.identity;
+        }
+        else
+        {
+            charObj.transform.position = tile.transform.position;
+            charObj.transform.localRotation = Quaternion.identity;
+        }
+
+        // Character 설정
+        Character characterComp = charObj.GetComponent<Character>();
+        if (characterComp != null)
+        {
+            characterComp.currentTile = tile;
+            characterComp.attackPower = data.attackPower;
+            switch (data.rangeType)
+            {
+                case RangeType.Melee:
+                    characterComp.attackRange = 1.2f;
+                    break;
+                case RangeType.Ranged:
+                    characterComp.attackRange = 2.5f;
+                    break;
+                case RangeType.LongRange:
+                    characterComp.attackRange = 4.0f;
+                    break;
+            }
+            if (bulletPanel != null)
+            {
+                characterComp.SetBulletPanel(bulletPanel);
+            }
+            // 드래그 스크립트
+            DraggableCharacterUI drag = charObj.GetComponent<DraggableCharacterUI>();
+            if (drag != null)
+            {
+                drag.parentPanel = characterPanel;
+            }
+        }
+
+        // Occupied
+        CreateOccupiedChild(tile);
+        Debug.Log($"[PlacementManager] (드래그 소환) [{data.characterName}] 소환 완료!");
+    }
+
+    /// <summary>
+    /// (드래그-드롭으로) 이미 배치된 캐릭터를 새 타일로 이동 or 합성 시도
+    /// </summary>
+    public void OnDropCharacter(Character movingChar, Tile newTile)
+    {
+        if (movingChar == null || newTile == null)
         {
             return;
         }
 
-        // 기존 타일 Occupied 해제
-        if (character.currentTile != null)
+        // ----------------------------------------------
+        // **원래 타일**에서 Occupied 해제
+        // ----------------------------------------------
+        Tile oldTile = movingChar.currentTile;
+        if (oldTile != null)
         {
-            RemoveOccupiedChild(character.currentTile);
+            RemoveOccupiedChild(oldTile);
         }
 
-        // 새 타일이 비어있으면 -> 이동
+        // ----------------------------------------------
+        // 새 타일이 비어있으면 "이동"
+        // ----------------------------------------------
         if (newTile.CanPlaceCharacter())
         {
-            MoveCharacterToTile(character, newTile);
-            CreateOccupiedChild(newTile);
-            Debug.Log("캐릭터가 새 타일로 이동 완료");
+            // 최종 중복 체크
+            if (newTile.IsOccupied())
+            {
+                // 이미 다른 캐릭터가 들어온 상황 -> 이동 취소
+                Debug.LogWarning($"[PlacementManager] {newTile.name} 다른 캐릭터가 선점 => 이동 실패!");
+                CreateOccupiedChild(oldTile); // 기존 타일 다시 Occupied로 복구
+                return;
+            }
 
-            // 이동만 해도 이미 사용된 것으로 간주 -> currentCharacterIndex 리셋
+            // ★ 추가됨: 새 타일에 "같은 currentTile"을 가진 캐릭터가 있는지 확인
+            // (동시에 드래그가 이루어졌을 경우를 대비)
+            if (CheckAnyCharacterHasCurrentTile(newTile))
+            {
+                // 이미 다른 캐릭터의 currentTile이 newTile이면 -> 원위치로
+                Debug.LogWarning($"[PlacementManager] {newTile.name}에 이미 캐릭터가 currentTile로 지정 => 이동 취소");
+                CreateOccupiedChild(oldTile);
+                MoveCharacterToTile(movingChar, oldTile);
+                return;
+            }
+
+            // 정상 이동
+            MoveCharacterToTile(movingChar, newTile);
+            CreateOccupiedChild(newTile);
+            Debug.Log("[PlacementManager] 캐릭터가 새 타일로 이동 완료");
             currentCharacterIndex = -1;
         }
         else
         {
-            // 합성 시도
-            bool success = TryMergeCharacter(character, newTile);
+            // ----------------------------------------------
+            // 새 타일에 이미 캐릭터가 있다면 "합성" 시도
+            // ----------------------------------------------
+            bool success = TryMergeCharacter(movingChar, newTile);
             if (!success)
             {
-                // 합성 실패 -> 원래 타일로 복귀
-                if (character.currentTile != null)
+                // 합성 실패 => 원래 위치로 복귀
+                if (oldTile != null)
                 {
-                    MoveCharacterToTile(character, character.currentTile);
-                    CreateOccupiedChild(character.currentTile);
+                    MoveCharacterToTile(movingChar, oldTile);
+                    CreateOccupiedChild(oldTile);
                 }
             }
             else
             {
-                // 합성 성공 시에도 인덱스 리셋
                 currentCharacterIndex = -1;
             }
         }
     }
 
+    /// <summary>
+    /// ★ 추가됨: 씬에 존재하는 캐릭터 중, currentTile == tile 인 애가 있는지 확인
+    /// </summary>
+    private bool CheckAnyCharacterHasCurrentTile(Tile tile)
+    {
+        Character[] allChars = FindObjectsByType<Character>(FindObjectsSortMode.None);
+        foreach (var c in allChars)
+        {
+            if (c != null && c.currentTile == tile)
+            {
+                return true; // 누군가 이 tile을 이미 currentTile로 사용 중
+            }
+        }
+        return false;
+    }
+
     private void MoveCharacterToTile(Character character, Tile tile)
     {
-        // 캐릭터의 부모(Panel)는 characterPanel이므로,
-        // 타일의 position → characterPanel 좌표로 변환
-        if (characterPanel == null)
-        {
-            Debug.LogWarning("PlacementManager: characterPanel이 null임! (Inspector에서 RectTransform 할당 필요)");
-            return;
-        }
+        if (characterPanel == null) return;
 
         RectTransform tileRect = tile.GetComponent<RectTransform>();
         RectTransform charRect = character.GetComponent<RectTransform>();
-
         if (tileRect != null && charRect != null)
         {
-            Vector2 localPosInCharacterPanel = characterPanel.InverseTransformPoint(tileRect.transform.position);
-            charRect.anchoredPosition = localPosInCharacterPanel;
+            Vector2 localPos = characterPanel.InverseTransformPoint(tileRect.transform.position);
+            charRect.anchoredPosition = localPos;
             charRect.localRotation = Quaternion.identity;
         }
         else
         {
-            // 3D 상황
             character.transform.position = tile.transform.position;
             character.transform.localRotation = Quaternion.identity;
         }
-
-        // currentTile 갱신 -> 합성 로직에서 newTile과 같아짐
         character.currentTile = tile;
     }
 
     /// <summary>
-    /// 별이 같은 캐릭터가 이미 그 타일에 있으면 합성
+    /// 이미 있는 캐릭터(otherChar)와 movingChar가 "동일한 캐릭터"면 합성
     /// </summary>
     private bool TryMergeCharacter(Character movingChar, Tile newTile)
     {
-        Debug.Log($"[TryMergeCharacter] 시도: movingChar={movingChar.name}, tile={newTile.name}, star={movingChar.star}");
+        Debug.Log($"[PlacementManager] TryMergeCharacter: movingChar={movingChar.name}, tile={newTile.name}, star={movingChar.star}");
 
         Character[] allChars = FindObjectsByType<Character>(FindObjectsSortMode.None);
         foreach (var otherChar in allChars)
         {
-            if (otherChar == null) continue;
-
-            // 자기 자신 제외, 같은 타일에 있는 캐릭터?
-            if (otherChar != movingChar && otherChar.currentTile == newTile)
+            if (otherChar == null || otherChar == movingChar) continue;
+            if (otherChar.currentTile == newTile)
             {
-                Debug.Log($" -> {newTile.name}에 [{otherChar.name}] 존재 (star={otherChar.star})");
-
-                // 별이 같으면 합성
-                if (otherChar.star == movingChar.star)
+                // 이름+별이 같아야 합성
+                if (otherChar.star == movingChar.star && otherChar.name == movingChar.name)
                 {
                     if (otherChar.star == CharacterStar.OneStar)
                         otherChar.star = CharacterStar.TwoStar;
@@ -282,61 +416,58 @@ public class PlacementManager : MonoBehaviour
                         otherChar.star = CharacterStar.ThreeStar;
                     else
                     {
-                        Debug.Log("이미 3성이라 더 이상 합성 불가!");
+                        Debug.Log("[PlacementManager] 이미 3성이므로 더이상 합성 불가");
                     }
-
                     UpgradeStats(otherChar);
                     Destroy(movingChar.gameObject);
-
-                    Debug.Log("합성 성공! 별 한 단계 상승");
+                    Debug.Log("[PlacementManager] 합성 성공 -> 별 상승");
                     return true;
                 }
                 else
                 {
-                    Debug.Log("별이 달라 합성 실패!");
+                    Debug.Log("[PlacementManager] 캐릭터 이름이나 별이 달라 합성 실패");
                 }
             }
         }
-
-        Debug.Log("합성할 캐릭터가 없어 실패");
         return false;
     }
 
     private void UpgradeStats(Character ch)
     {
+        // 기존값 역산
         float baseAtk = ch.attackPower / 1.6f;
         float baseRange = ch.attackRange / 1.2f;
         float baseSpeed = ch.attackSpeed / 1.2f;
 
-        if (ch.star == CharacterStar.OneStar)
+        switch (ch.star)
         {
-            ch.attackPower = baseAtk;
-            ch.attackRange = baseRange;
-            ch.attackSpeed = baseSpeed;
+            case CharacterStar.OneStar:
+                ch.attackPower = baseAtk;
+                ch.attackRange = baseRange;
+                ch.attackSpeed = baseSpeed;
+                break;
+            case CharacterStar.TwoStar:
+                ch.attackPower = baseAtk * 1.3f;
+                ch.attackRange = baseRange * 1.1f;
+                ch.attackSpeed = baseSpeed * 1.1f;
+                break;
+            case CharacterStar.ThreeStar:
+                ch.attackPower = baseAtk * 1.6f;
+                ch.attackRange = baseRange * 1.2f;
+                ch.attackSpeed = baseSpeed * 1.2f;
+                break;
         }
-        else if (ch.star == CharacterStar.TwoStar)
-        {
-            ch.attackPower = baseAtk * 1.3f;
-            ch.attackRange = baseRange * 1.1f;
-            ch.attackSpeed = baseSpeed * 1.1f;
-        }
-        else if (ch.star == CharacterStar.ThreeStar)
-        {
-            ch.attackPower = baseAtk * 1.6f;
-            ch.attackRange = baseRange * 1.2f;
-            ch.attackSpeed = baseSpeed * 1.2f;
-        }
-        // 필요하면 공격 쿨타임 재계산도 가능
     }
 
     private void CreateOccupiedChild(Tile tile)
     {
         Transform exist = tile.transform.Find("Occupied");
-        if (exist != null) return;
-
-        GameObject occupiedObj = new GameObject("Occupied");
-        occupiedObj.transform.SetParent(tile.transform, false);
-        occupiedObj.transform.localPosition = Vector3.zero;
+        if (exist == null)
+        {
+            GameObject occupiedObj = new GameObject("Occupied");
+            occupiedObj.transform.SetParent(tile.transform, false);
+            occupiedObj.transform.localPosition = Vector3.zero;
+        }
     }
 
     private void RemoveOccupiedChild(Tile tile)

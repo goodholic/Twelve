@@ -1,5 +1,3 @@
-// Assets/Scripts/ItemData.cs
-
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -26,18 +24,27 @@ public class ItemData
     [TextArea]
     public string description;    // (선택) 아이템 설명
 
-    // =========================
-    // 실제로 아이템을 사용해
-    // 캐릭터에게 효과를 부여할 로직
-    // =========================
-    public void ApplyEffectToCharacter(Character target)
+    /// <summary>
+    /// 아이템을 캐릭터에게 적용하는 메서드.
+    /// effectValue가 0 이하라면 적용하지 않고 false 반환.
+    /// 적용 성공 시 true 반환.
+    /// </summary>
+    public bool ApplyEffectToCharacter(Character target)
     {
         if (target == null)
         {
             Debug.LogWarning($"[ItemData] {itemName} 아이템 효과 적용 실패: Character가 null");
-            return;
+            return false;
         }
 
+        // 만약 효과값이 0 이하라면 "적용하지 않는다"
+        if (effectValue <= 0f)
+        {
+            Debug.LogWarning($"[ItemData] {itemName} 은(는) 효과값이 0 이하이므로 적용 불가.");
+            return false;
+        }
+
+        // 여기까지 왔으면 효과를 적용
         switch (effectType)
         {
             case ItemEffectType.IncreaseAttack:
@@ -46,9 +53,7 @@ public class ItemData
                 break;
 
             case ItemEffectType.IncreaseHP:
-                // 체력(Hp)이 따로 있다면, 별도 HP 속성 증가
-                // 여기서는 Monster처럼 HP가 없을 수 있으므로, 별도 구현 필요
-                // 예: target.AddAdditionalHP(effectValue);
+                // 체력이 따로 있다면 이 부분에서 증가시켜야 함 (예: target.AddHp(effectValue))
                 Debug.Log($"[ItemData] {itemName} 사용 -> HP +{effectValue}");
                 break;
 
@@ -57,5 +62,7 @@ public class ItemData
                 Debug.Log($"[ItemData] {itemName} 사용 -> 사거리 +{effectValue}, 결과={target.attackRange}");
                 break;
         }
+
+        return true; // 적용 성공
     }
 }
