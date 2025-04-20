@@ -6,21 +6,13 @@ public class CharacterInventoryManager : MonoBehaviour
     [Header("ScriptableObject DB 참조")]
     [SerializeField] private CharacterDatabaseObject characterDatabaseObject;
 
-    // ===========================
-    // 인벤토리/덱 캐릭터 목록
-    // ===========================
     [SerializeField] private List<CharacterData> ownedCharacters = new List<CharacterData>();
     private List<CharacterData> deckCharacters = new List<CharacterData>();
 
-    // 뽑기(Gacha) 풀
     private List<CharacterData> gachaPool = new List<CharacterData>();
 
-    // =============================
-    //  공용 20칸 데이터 배열
-    // =============================
     public CharacterData[] sharedSlotData20 = new CharacterData[20];
 
-    // PlayerPrefs 키값
     private const string PLAYER_PREFS_OWNED_KEY = "OwnedCharactersJsonV2";
 
     private void Awake()
@@ -31,7 +23,7 @@ public class CharacterInventoryManager : MonoBehaviour
             return;
         }
 
-        // gachaPool 구성
+        // 가챠 풀 구성
         gachaPool.Clear();
         foreach (var cData in characterDatabaseObject.characters)
         {
@@ -44,18 +36,31 @@ public class CharacterInventoryManager : MonoBehaviour
         LoadCharacters();
     }
 
-    /// <summary>
-    /// 현재 덱(Deck)에 들어있는 캐릭터들을 그대로 반환
-    /// </summary>
+    // --------------------------------------
+    //  새로 추가: 모든 데이터 초기화 메서드
+    // --------------------------------------
+    public void ClearAllData()
+    {
+        Debug.Log("[CharacterInventoryManager] ClearAllData() 호출 -> 인벤토리 및 덱 초기화 & PlayerPrefs Key 삭제");
+
+        // 1) 현재 메모리상 데이터 초기화
+        ownedCharacters.Clear();
+        deckCharacters.Clear();
+        for (int i = 0; i < sharedSlotData20.Length; i++)
+        {
+            sharedSlotData20[i] = null;
+        }
+
+        // 2) PlayerPrefs 에 저장된 OwnedCharactersJsonV2 키 삭제
+        PlayerPrefs.DeleteKey(PLAYER_PREFS_OWNED_KEY);
+        PlayerPrefs.Save();
+    }
+
     public List<CharacterData> GetDeckCharacters()
     {
-        // (DeckPanelManager가 'SyncRegisteredSet2WithDeck'에서 사용)
         return new List<CharacterData>(deckCharacters);
     }
 
-    /// <summary>
-    /// 무작위 뽑기
-    /// </summary>
     public CharacterData DrawRandomCharacter()
     {
         if (gachaPool.Count == 0)
@@ -66,10 +71,8 @@ public class CharacterInventoryManager : MonoBehaviour
 
         int randIdx = Random.Range(0, gachaPool.Count);
         CharacterData template = gachaPool[randIdx];
-        // 템플릿 복제
         CharacterData newChar = CreateNewCharacter(template);
 
-        // 인벤토리에 추가
         ownedCharacters.Add(newChar);
         Debug.Log($"[CharacterInventoryManager] 뽑기 결과: {newChar.characterName}");
 
@@ -89,7 +92,6 @@ public class CharacterInventoryManager : MonoBehaviour
             buttonIcon    = template.buttonIcon,
             cost          = template.cost,
 
-            // 레벨/경험치
             level         = template.level,
             currentExp    = 0,
             expToNextLevel= template.expToNextLevel,
@@ -97,9 +99,6 @@ public class CharacterInventoryManager : MonoBehaviour
         return copy;
     }
 
-    // ===========================
-    // 인벤토리 <-> 덱 이동
-    // ===========================
     public void MoveToDeck(CharacterData c)
     {
         if (c == null) return;
@@ -130,15 +129,11 @@ public class CharacterInventoryManager : MonoBehaviour
         }
     }
 
-    // ===========================
-    // 인벤토리 목록 등
-    // ===========================
     public List<CharacterData> GetOwnedCharacters()
     {
         return new List<CharacterData>(ownedCharacters);
     }
 
-    // 전체(인벤토리+덱)
     public List<CharacterData> GetAllCharactersWithDuplicates()
     {
         List<CharacterData> all = new List<CharacterData>();
@@ -205,9 +200,6 @@ public class CharacterInventoryManager : MonoBehaviour
         }
     }
 
-    // ===========================
-    // JSON 저장/로드
-    // ===========================
     public void SaveCharacters()
     {
         List<CharacterRecord> recordList = new List<CharacterRecord>();
@@ -270,22 +262,17 @@ public class CharacterInventoryManager : MonoBehaviour
                 continue;
             }
 
-            // 복제
             CharacterData newChar = CreateNewCharacter(template);
-
-            // 레벨/경험치 반영
             newChar.level      = rec.level;
             newChar.currentExp = rec.currentExp;
 
-            // 덱 여부
             if (rec.isInDeck)
                 deckCharacters.Add(newChar);
             else
                 ownedCharacters.Add(newChar);
         }
 
-        Debug.Log($"[CharacterInventoryManager] LoadCharacters() 완료. "
-                + $"인벤토리={ownedCharacters.Count}, 덱={deckCharacters.Count}");
+        Debug.Log($"[CharacterInventoryManager] LoadCharacters() 완료. 인벤토리={ownedCharacters.Count}, 덱={deckCharacters.Count}");
     }
 
     public CharacterData FindTemplateByName(string name)
@@ -302,7 +289,6 @@ public class CharacterInventoryManager : MonoBehaviour
     }
 }
 
-// 저장용 구조체
 [System.Serializable]
 public class CharacterRecord
 {

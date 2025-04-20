@@ -1,3 +1,5 @@
+// Assets\Scripts\CharacterData.cs
+
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -31,7 +33,7 @@ public class CharacterData
     [Tooltip("버프형 캐릭터 여부 (버프 역할인지)")]
     public bool isBuffSupport = false;
 
-    [Header("레벨/경험치")] // [추가]
+    [Header("레벨/경험치")] 
     [Tooltip("캐릭터 레벨(1~N)")]
     public int level = 1;
 
@@ -52,20 +54,25 @@ public class CharacterData
     [Tooltip("캐릭터 소환 비용 (UI 표시용)")]
     public int cost = 10;
 
+    // =================================
+    // 새로 추가: 도감용 모션 이미지
+    // =================================
+    [Header("도감용 모션 이미지 (선택)")]
+    public Sprite motionSprite;
+
     /// <summary>
     /// [추가] 현재 Exp가 expToNextLevel 이상이면 레벨업
     /// </summary>
     public void CheckLevelUp()
     {
-        // 필요하다면 반복(while)로 여러 레벨업도 가능
+        // 필요하다면 while 문으로 반복 레벨업도 가능
         if (currentExp >= expToNextLevel)
         {
             currentExp -= expToNextLevel;
             level++;
 
-            // 레벨이 오르면 expToNextLevel도 증가시키거나,
-            // 공격력, 코스트 등을 올릴 수 있음
-            expToNextLevel += 5; // 예: 다음 레벨로 갈 때마다 +5
+            // 레벨 오르면 expToNextLevel 등도 조정 가능
+            expToNextLevel += 5; // 예: 레벨업마다 +5씩 증가
             Debug.Log($"[CharacterData] {characterName} 레벨업! => Lv.{level}, 남은Exp={currentExp}");
         }
     }

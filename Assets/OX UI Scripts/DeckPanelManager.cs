@@ -1,3 +1,5 @@
+// Assets\OX UI Scripts\DeckPanelManager.cs
+
 using UnityEngine;
 using UnityEngine.UI;
 using System.Collections.Generic;
@@ -40,6 +42,12 @@ public class DeckPanelManager : MonoBehaviour
     // ============================================
     private CharacterData selectedCharacterForRegistration = null;
     private int selectedInventorySlotIndex = -1; // 20칸 중 몇 번째였는지
+
+    // ------------------------------------------------------
+    // (추가) 현재 "업그레이드 모드"인지 여부를 저장하는 플래그
+    // ------------------------------------------------------
+    [Header("업그레이드 모드인지 여부 (true면 클릭 시 재료 선택)")]
+    public bool isUpgradeMode = false;
 
     private void OnEnable()
     {
@@ -170,10 +178,30 @@ public class DeckPanelManager : MonoBehaviour
     }
 
     /// <summary>
-    /// (20칸) 슬롯 클릭 -> 등록 후보 지정
+    /// (20칸) 슬롯 클릭
+    ///  - (기존) 덱에 등록할 캐릭터를 선택하는 용도
+    ///  - (추가) 업그레이드 모드면 -> UpgradePanelManager.SetFeedFromInventory(...) 호출
     /// </summary>
     private void OnClickInventoryCharacter(CharacterData data, int inventorySlotIndex)
     {
+        // -----------------------------------------------------
+        // (추가) 만약 isUpgradeMode=true면 "재료 선택" 로직 호출
+        // -----------------------------------------------------
+        if (isUpgradeMode)
+        {
+            UpgradePanelManager upm = FindFirstObjectByType<UpgradePanelManager>();
+            if (upm != null)
+            {
+                upm.SetFeedFromInventory(inventorySlotIndex, data);
+                Debug.Log($"[DeckPanelManager] 인벤토리 {inventorySlotIndex}번 -> 업그레이드 재료 선택: {data.characterName}");
+            }
+            // 선택만 하고 끝 (덱에 등록하는 로직 X)
+            return;
+        }
+
+        // -----------------------------------------------------
+        // (기존) 덱 등록용 로직
+        // -----------------------------------------------------
         selectedCharacterForRegistration = data;
         selectedInventorySlotIndex = inventorySlotIndex;
         Debug.Log($"[DeckPanelManager] 20칸 {inventorySlotIndex}번 슬롯 클릭 => {data.characterName}");

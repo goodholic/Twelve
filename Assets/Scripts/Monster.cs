@@ -1,4 +1,5 @@
 using UnityEngine;
+using System;
 
 /// <summary>
 /// 2D 몬스터 예시.
@@ -13,6 +14,9 @@ public class Monster : MonoBehaviour
     [Header("Waypoint Path (2D)")]
     [Tooltip("2D에서 몬스터가 이동할 경로(Transform[]). x,y만 사용")]
     public Transform[] pathWaypoints;
+
+    // 죽을 때 WaveSpawner 등에서 구독하는 이벤트
+    public event Action OnDeath;
 
     private int currentWaypointIndex = 0;
     private bool isDead = false;
@@ -63,6 +67,10 @@ public class Monster : MonoBehaviour
     private void Die()
     {
         isDead = true;
+        
+        // 이벤트 발생
+        OnDeath?.Invoke();
+        
         Destroy(gameObject);
     }
 }
