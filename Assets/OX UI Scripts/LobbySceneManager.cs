@@ -1,5 +1,3 @@
-// Assets\OX UI Scripts\LobbySceneManager.cs
-
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -47,6 +45,12 @@ public class LobbySceneManager : MonoBehaviour
     [Header("CharacterInventoryManager(인벤토리)")]
     [Tooltip("게임 데이터 리셋 시 인벤토리까지 초기화하려면 연결 필요")]
     [SerializeField] private CharacterInventoryManager characterInventoryManager;
+
+    // ============================================
+    //  DeckPanelManager 참조 추가
+    // ============================================
+    [Header("DeckPanelManager(덱 패널)")]
+    [SerializeField] private DeckPanelManager deckPanelManager;
 
     private List<StageInfo> stages = new List<StageInfo>();
     private int currentStageIndex = 0;
@@ -102,7 +106,7 @@ public class LobbySceneManager : MonoBehaviour
         DeckPanelManager dpm = FindFirstObjectByType<DeckPanelManager>();
         if (dpm != null)
         {
-            dpm.RefreshDeckDisplay();
+            dpm.RefreshInventoryUI();
             dpm.SetupRegisterButtons();
             dpm.InitRegisterSlotsVisual();
             Debug.Log("[LobbySceneManager] ResetGameData() 이후 DeckPanelManager도 재초기화 완료");
@@ -127,7 +131,7 @@ public class LobbySceneManager : MonoBehaviour
         DeckPanelManager dpm = FindFirstObjectByType<DeckPanelManager>();
         if (dpm != null)
         {
-            dpm.RefreshDeckDisplay();
+            dpm.RefreshInventoryUI();
         }
         UpgradePanelManager upm = FindFirstObjectByType<UpgradePanelManager>();
         if (upm != null)
@@ -241,7 +245,7 @@ public class LobbySceneManager : MonoBehaviour
     private void UpdateStageUI()
     {
         if (stageIndexText)
-            stageIndexText.text = $"Stage {currentStageIndex + 1}";
+            stageIndexText.text = $"{currentStageIndex + 1}";
 
         StageInfo info = stages[currentStageIndex];
         bool locked = !info.isUnlocked;
@@ -317,7 +321,20 @@ public class LobbySceneManager : MonoBehaviour
                 }
             }
 
+            // (기존) 9칸 캐릭터 세팅
             GameManager.Instance.SetDeckForGame(deck9);
+
+            // (추가) 10번째(인덱스9) 주인공 캐릭터 따로 세팅
+            // 만약 10번째 덱에 null이 아닐 경우 -> 주인공으로 등록
+            if (deckSet.Length == 10 && deckSet[9] != null)
+            {
+                GameManager.Instance.SetHeroCharacter(deckSet[9]);
+            }
+            else
+            {
+                // 10번째 슬롯이 없거나 null이면, 주인공은 비어있음
+                GameManager.Instance.SetHeroCharacter(null);
+            }
         }
         else
         {
@@ -583,5 +600,10 @@ public class LobbySceneManager : MonoBehaviour
     public void OnClickClearExplainText()
     {
         if (explainText) explainText.text = "";
+    }
+
+    public void RefreshPanel()
+    {
+        deckPanelManager.RefreshInventoryUI();
     }
 }

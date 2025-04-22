@@ -10,89 +10,83 @@ public class DrawPanelManager : MonoBehaviour
     [Header("뽑기 결과 텍스트")]
     [SerializeField] private TextMeshProUGUI drawResultText;
 
-    [Header("뽑기 결과 이미지 (새로 추가)")]
+    [Header("뽑기 결과 이미지")]
     [SerializeField] private Image drawResultImage;
 
     [Header("뽑기 버튼")]
     [SerializeField] private Button drawButton;
 
-    // ===========================
-    //  (추가) 중복 클릭 방지용
-    // ===========================
+    // 중복 클릭 방지용
     private bool isDrawing = false;
 
     private void Awake()
     {
-        if (drawButton) drawButton.onClick.AddListener(OnClickDraw);
+        if (drawButton)
+            drawButton.onClick.AddListener(OnClickDraw);
     }
 
     private void OnClickDraw()
     {
-        // 이미 뽑기 진행중이면 무시(연타 방지)
+        // 이미 뽑기 진행중이면 무시
         if (isDrawing)
         {
             Debug.LogWarning("[DrawPanelManager] 이미 뽑기 진행 중!");
             return;
         }
-
-        if (!characterInventory)
+        if (characterInventory == null)
         {
             Debug.LogWarning("[DrawPanelManager] characterInventory가 없음");
             return;
         }
 
-        // 뽑기 시작
-        isDrawing = true;
+        isDrawing = true; // 뽑기 시작
 
-        // 1) 한 개만 뽑기
-        CharacterData newCharacter = characterInventory.DrawRandomCharacter();
+        // 1) 캐릭터 한 명 뽑기
+        CharacterData newChar = characterInventory.DrawRandomCharacter();
 
-        // 2) 뽑은 결과 반영
-        if (newCharacter != null)
+        // 2) 결과 반영
+        if (newChar != null)
         {
-            // 뽑은 캐릭터 즉시 저장
+            // 즉시 저장
             characterInventory.SaveCharacters();
 
-            if (drawResultText)
+            if (drawResultText != null)
             {
-                drawResultText.text = $"뽑기 성공: {newCharacter.characterName}";
+                drawResultText.text = $"뽑기 성공: {newChar.characterName}";
             }
-            if (drawResultImage)
+
+            if (drawResultImage != null)
             {
-                drawResultImage.sprite = (newCharacter.buttonIcon != null)
-                    ? newCharacter.buttonIcon.sprite
+                drawResultImage.gameObject.SetActive(true);
+                drawResultImage.color = Color.white;
+                drawResultImage.enabled = true;
+
+                // 아이콘이 있으면 사용, 없으면 null
+                drawResultImage.sprite = (newChar.buttonIcon != null)
+                    ? newChar.buttonIcon.sprite
                     : null;
             }
 
-            // 추가 코드: 다른 패널 UI 갱신
-            GameManager gm = FindFirstObjectByType<GameManager>();
-            if (gm)
+            // 인벤토리 UI 갱신(20칸)
+            DeckPanelManager deckPanel = FindFirstObjectByType<DeckPanelManager>();
+            if (deckPanel != null)
             {
-                Debug.Log("[DrawPanelManager] GameManager가 존재하므로 인벤토리 갱신 등 수행");
-                // gm.RefreshInventoryDisplay() 등의 메서드가 있다면 호출 가능
-            }
-
-            UpgradePanelManager upm = FindFirstObjectByType<UpgradePanelManager>();
-            if (upm)
-            {
-                // RefreshDisplay 메서드는 제거됨
-                // 대신 등록된 슬롯 정보만 갱신
-                upm.SetUpgradeRegisteredSlotsFromDeck();
-            }
-
-            DeckPanelManager dpm = FindFirstObjectByType<DeckPanelManager>();
-            if (dpm)
-            {
-                dpm.RefreshDeckDisplay();
+                deckPanel.RefreshInventoryUI();
             }
         }
         else
         {
-            if (drawResultText) drawResultText.text = "뽑기 실패(풀 비어있음)";
-            if (drawResultImage) drawResultImage.sprite = null;
+            // 풀 비어있으면 실패
+            if (drawResultText != null)
+                drawResultText.text = "뽑기 실패(풀 비어있음)";
+
+            if (drawResultImage != null)
+            {
+                drawResultImage.gameObject.SetActive(true);
+                drawResultImage.sprite = null;
+            }
         }
 
-        // 3) 뽑기 종료(버튼 다시 누를 수 있게)
         isDrawing = false;
     }
 }

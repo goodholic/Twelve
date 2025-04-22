@@ -60,14 +60,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
-  m_Color: {r: 0, g: 0, b: 0, a: 1}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 0}
+  m_Sprite: {fileID: -5530781715760837572, guid: a528957d05e2e60468227ce0004a9fde, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -89,10 +89,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d4ba59c64d440da43b1fd6675e7f4f72, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  isWalkable: 1
-  isPlacable: 0
-  isOccupied: 0
-  tileRenderer: {fileID: 0}
+  tileImage: {fileID: 0}
   defaultColor: {r: 1, g: 1, b: 1, a: 1}
   highlightColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
   blockedColor: {r: 1, g: 0, b: 0, a: 1}
@@ -100,6 +97,10 @@ MonoBehaviour:
   placablePrefab: {fileID: 0}
   occupiedPrefab: {fileID: 0}
   currentVisual: {fileID: 0}
+  tileButton: {fileID: 0}
+  row: 0
+  column: 0
+  tileIndex: 0
 --- !u!61 &7464122629590421874
 BoxCollider2D:
   m_ObjectHideFlags: 0

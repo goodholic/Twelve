@@ -1,14 +1,6 @@
-// Assets\Scripts\GameManager.cs
-
 using UnityEngine;
 using System.Collections.Generic;
 
-/// <summary>
-/// 2D 게임 전체 매니저 예시
-///  - 싱글톤(DontDestroyOnLoad)
-///  - WaveSpawner, PlacementManager 등 관리
-///  - (신규) "씬간 9개 덱 데이터" 저장/호출
-/// </summary>
 public class GameManager : MonoBehaviour
 {
     private static GameManager instance;
@@ -35,8 +27,12 @@ public class GameManager : MonoBehaviour
 
     // =============================
     // (신규) 로비씬 → 게임씬 전달용
+    // 9칸 + 주인공(10번째) 분리
     // =============================
     private CharacterData[] deckForGame = new CharacterData[9];
+
+    // (추가) 10번째 덱용 주인공
+    private CharacterData heroForGame = null;
 
     private void Awake()
     {
@@ -63,11 +59,11 @@ public class GameManager : MonoBehaviour
     {
         if (waveSpawner == null)
         {
-            waveSpawner = FindAnyObjectByType<WaveSpawner>();
+            waveSpawner = FindFirstObjectByType<WaveSpawner>();
         }
         if (placementManager == null)
         {
-            placementManager = FindAnyObjectByType<PlacementManager>();
+            placementManager = FindFirstObjectByType<PlacementManager>();
         }
     }
 
@@ -91,13 +87,13 @@ public class GameManager : MonoBehaviour
     }
 
     // =========================================================
-    //  (신규) 로비씬 → 게임씬으로 '등록된 9개 캐릭터'를 전달하는 인터페이스
+    //  로비씬 → 게임씬으로 '등록된 9개 캐릭터'를 전달
     // =========================================================
     public void SetDeckForGame(CharacterData[] deck9)
     {
         if (deck9 == null || deck9.Length < 9)
         {
-            Debug.LogWarning("[GameManager] SetDeckForGame: 인자가 null 이거나 9칸 미만!");
+            Debug.LogWarning("[GameManager] SetDeckForGame: 인자가 null이거나 9칸 미만!");
             return;
         }
 
@@ -112,5 +108,18 @@ public class GameManager : MonoBehaviour
     {
         // 단순 참조 반환
         return deckForGame;
+    }
+
+    // =========================================================
+    //  (추가) 10번째(주인공) 캐릭터 전달
+    // =========================================================
+    public void SetHeroCharacter(CharacterData hero)
+    {
+        heroForGame = hero;
+    }
+
+    public CharacterData GetHeroCharacter()
+    {
+        return heroForGame;
     }
 }
