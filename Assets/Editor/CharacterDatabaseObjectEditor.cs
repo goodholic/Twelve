@@ -228,13 +228,27 @@ public class CharacterDatabaseObjectEditor : Editor
         var newAsset = ScriptableObject.CreateInstance<CharacterDatabaseObject>();
         newAsset.name = "NewCharacterDatabase_Auto";
 
-        if (sceneDb.characters != null && sceneDb.characters.Length > 0)
+        if (sceneDb.currentRegisteredCharacters != null && sceneDb.currentRegisteredCharacters.Length > 0)
         {
-            // 배열 복사
-            newAsset.characters = new CharacterData[sceneDb.characters.Length];
-            for (int i = 0; i < sceneDb.characters.Length; i++)
+            // 깊은 복사 수행
+            newAsset.characters = new CharacterData[sceneDb.currentRegisteredCharacters.Length];
+            for (int i = 0; i < sceneDb.currentRegisteredCharacters.Length; i++)
             {
-                newAsset.characters[i] = sceneDb.characters[i];
+                if (sceneDb.currentRegisteredCharacters[i] != null)
+                {
+                    // 새 CharacterData 인스턴스 생성하여 값만 복사
+                    newAsset.characters[i] = new CharacterData();
+                    newAsset.characters[i].characterName = sceneDb.currentRegisteredCharacters[i].characterName;
+                    newAsset.characters[i].attackPower = sceneDb.currentRegisteredCharacters[i].attackPower;
+                    newAsset.characters[i].rangeType = sceneDb.currentRegisteredCharacters[i].rangeType;
+                    newAsset.characters[i].isAreaAttack = sceneDb.currentRegisteredCharacters[i].isAreaAttack;
+                    newAsset.characters[i].isBuffSupport = sceneDb.currentRegisteredCharacters[i].isBuffSupport;
+                    newAsset.characters[i].cost = sceneDb.currentRegisteredCharacters[i].cost;
+                    newAsset.characters[i].level = sceneDb.currentRegisteredCharacters[i].level;
+                    
+                    // 다른 필드들도 필요에 따라 복사
+                    // newAsset.characters[i].otherField = sceneDb.currentRegisteredCharacters[i].otherField;
+                }
             }
         }
         else
@@ -255,10 +269,25 @@ public class CharacterDatabaseObjectEditor : Editor
 
         if (dbObj != null && dbObj.characters != null && dbObj.characters.Length > 0)
         {
+            // 참조 복사가 아닌 깊은 복사로 변경
             newAsset.characters = new CharacterData[dbObj.characters.Length];
             for (int i = 0; i < dbObj.characters.Length; i++)
             {
-                newAsset.characters[i] = dbObj.characters[i];
+                if (dbObj.characters[i] != null)
+                {
+                    // 새 CharacterData 인스턴스 생성하여 값만 복사
+                    newAsset.characters[i] = new CharacterData();
+                    newAsset.characters[i].characterName = dbObj.characters[i].characterName;
+                    newAsset.characters[i].attackPower = dbObj.characters[i].attackPower;
+                    newAsset.characters[i].rangeType = dbObj.characters[i].rangeType;
+                    newAsset.characters[i].isAreaAttack = dbObj.characters[i].isAreaAttack;
+                    newAsset.characters[i].isBuffSupport = dbObj.characters[i].isBuffSupport;
+                    newAsset.characters[i].cost = dbObj.characters[i].cost;
+                    newAsset.characters[i].level = dbObj.characters[i].level;
+                    
+                    // 다른 필드들도 필요에 따라 복사
+                    // newAsset.characters[i].otherField = dbObj.characters[i].otherField;
+                }
             }
         }
         else

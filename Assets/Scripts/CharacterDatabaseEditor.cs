@@ -23,7 +23,7 @@ public class CharacterDatabaseEditor : Editor
         CharacterDatabase db = (CharacterDatabase)target;
 
         // 1) 기존 캐릭터 배열 (개별 수정 가능)
-        SerializedProperty charactersProp = serializedObject.FindProperty("characters");
+        SerializedProperty charactersProp = serializedObject.FindProperty("currentRegisteredCharacters");
         EditorGUILayout.PropertyField(charactersProp, new GUIContent("Characters"), includeChildren: true);
 
         EditorGUILayout.Space();
@@ -87,7 +87,7 @@ public class CharacterDatabaseEditor : Editor
 
         // 안전하게 SerializedObject를 통해 작업
         SerializedObject serializedDB = new SerializedObject(db);
-        SerializedProperty charactersProp = serializedDB.FindProperty("characters");
+        SerializedProperty charactersProp = serializedDB.FindProperty("currentRegisteredCharacters");
         
         // 배열 크기 조정
         int oldSize = charactersProp.arraySize;
@@ -164,7 +164,7 @@ public class CharacterDatabaseEditor : Editor
 
         // 안전하게 SerializedObject를 통해 작업
         SerializedObject serializedDB = new SerializedObject(db);
-        SerializedProperty charactersProp = serializedDB.FindProperty("characters");
+        SerializedProperty charactersProp = serializedDB.FindProperty("currentRegisteredCharacters");
         
         // 배열 크기 조정
         int oldSize = charactersProp.arraySize;

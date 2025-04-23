@@ -73,13 +73,13 @@ public class PlacementManager : MonoBehaviour
     public void PlaceCharacterOnTile(Tile tile)
     {
         // 1) 캐릭터 DB 검사
-        if (characterDatabase == null || characterDatabase.characters == null || characterDatabase.characters.Length == 0)
+        if (characterDatabase == null || characterDatabase.currentRegisteredCharacters == null || characterDatabase.currentRegisteredCharacters.Length == 0)
         {
             Debug.LogWarning("PlacementManager: characterDatabase가 비어있음.");
             return;
         }
         // 2) 현재 인덱스 검사
-        if (currentCharacterIndex < 0 || currentCharacterIndex >= characterDatabase.characters.Length)
+        if (currentCharacterIndex < 0 || currentCharacterIndex >= characterDatabase.currentRegisteredCharacters.Length)
         {
             Debug.LogWarning($"PlacementManager: 잘못된 인덱스({currentCharacterIndex})");
             return;
@@ -92,7 +92,7 @@ public class PlacementManager : MonoBehaviour
         }
 
         // 캐릭터 데이터
-        CharacterData data = characterDatabase.characters[currentCharacterIndex];
+        CharacterData data = characterDatabase.currentRegisteredCharacters[currentCharacterIndex];
         if (data == null || data.spawnPrefab == null)
         {
             Debug.LogWarning($"PlacementManager: [{currentCharacterIndex}]번 캐릭터 spawnPrefab이 null");
@@ -189,12 +189,12 @@ public class PlacementManager : MonoBehaviour
     public void SummonCharacterOnTile(int summonIndex, Tile tile)
     {
         // 캐릭터 DB 검사
-        if (characterDatabase == null || characterDatabase.characters == null || characterDatabase.characters.Length == 0)
+        if (characterDatabase == null || characterDatabase.currentRegisteredCharacters == null || characterDatabase.currentRegisteredCharacters.Length == 0)
         {
             Debug.LogWarning("[PlacementManager] characterDatabase가 비어있어 소환 불가!");
             return;
         }
-        if (summonIndex < 0 || summonIndex >= characterDatabase.characters.Length)
+        if (summonIndex < 0 || summonIndex >= characterDatabase.currentRegisteredCharacters.Length)
         {
             Debug.LogWarning($"[PlacementManager] 잘못된 summonIndex={summonIndex} => 소환 불가");
             return;
@@ -205,7 +205,7 @@ public class PlacementManager : MonoBehaviour
             return;
         }
 
-        CharacterData data = characterDatabase.characters[summonIndex];
+        CharacterData data = characterDatabase.currentRegisteredCharacters[summonIndex];
         if (data == null || data.spawnPrefab == null)
         {
             Debug.LogWarning($"[PlacementManager] [{summonIndex}]번 캐릭터 spawnPrefab이 null => 소환 불가");

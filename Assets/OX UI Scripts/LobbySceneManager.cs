@@ -324,7 +324,27 @@ public class LobbySceneManager : MonoBehaviour
                     idx++;
                 }
             }
-            GameManager.Instance.SetDeckForGame(deck9);
+            // GameManager.Instance.SetDeckForGame(deck9) 메서드가 제거됨
+            // 대신 GameManager.currentRegisteredCharacters에 직접 설정
+
+            // ============================================
+            //  덱(10칸)을 GameManager의 currentRegisteredCharacters에 대입
+            // ============================================
+            if (GameManager.Instance != null && 
+                GameManager.Instance.currentRegisteredCharacters != null && 
+                GameManager.Instance.currentRegisteredCharacters.Length >= 10)
+            {
+                // 덱 정보를 GameManager의 currentRegisteredCharacters에 복사
+                for (int i = 0; i < deckSet.Length && i < 10; i++)
+                {
+                    GameManager.Instance.currentRegisteredCharacters[i] = deckSet[i];
+                }
+                Debug.Log("[LobbySceneManager] 덱(10개)을 GameManager.currentRegisteredCharacters에 반영 완료");
+            }
+            else
+            {
+                Debug.LogWarning("[LobbySceneManager] GameManager.currentRegisteredCharacters가 없거나 초기화되지 않음");
+            }
 
             // ============================================
             //  (추가) 덱(10칸)을 CharacterDatabase[0..9]에 대입
@@ -351,26 +371,6 @@ public class LobbySceneManager : MonoBehaviour
         {
             Debug.LogWarning("[LobbySceneManager] DeckPanelManager를 찾지 못함 => 게임 시작 불가");
             return;
-        }
-
-        // =======================================
-        //   (수정) Hero: DB의 10번째 캐릭터 -> Hero
-        // =======================================
-        if (characterInventoryManager != null &&
-            characterInventoryManager.characterDatabaseObject != null &&
-            characterInventoryManager.characterDatabaseObject.characters != null &&
-            characterInventoryManager.characterDatabaseObject.characters.Length >= 10)
-        {
-            // 10번째 = index 9
-            var heroData = characterInventoryManager.characterDatabaseObject.characters[9];
-            GameManager.Instance.SetHeroCharacter(heroData);
-
-            Debug.Log("[LobbySceneManager] 10번째 캐릭터를 Hero로 설정 완료");
-        }
-        else
-        {
-            GameManager.Instance.SetHeroCharacter(null);
-            Debug.LogWarning("[LobbySceneManager] 캐릭터DB에 10번째 캐릭터가 없습니다!");
         }
 
         Debug.Log($"Stage {currentStageIndex + 1} 입장 -> GameScene 이동");
