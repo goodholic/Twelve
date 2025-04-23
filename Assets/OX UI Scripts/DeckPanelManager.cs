@@ -1,7 +1,3 @@
-// =========================================
-// DeckPanelManager.cs (수정본)
-// =========================================
-
 using UnityEngine;
 using UnityEngine.UI;
 using System.Collections.Generic;
@@ -59,7 +55,7 @@ public class DeckPanelManager : MonoBehaviour
     // -----------------------------------------------------------------
     // (추가됨) 실시간 null판별을 위해 이전 프레임의 sharedSlotData20 상태를 보관
     // -----------------------------------------------------------------
-    private CharacterData[] prevSharedSlotData20 = new CharacterData[20]; // 추가된 멤버
+    private CharacterData[] prevSharedSlotData20 = new CharacterData[20];
 
     // ----------------------------------------------------------------------------------
     // (기존) 빈 슬롯 시 표시할 텍스트 필드 + 로직은 제거 (Text가 없어졌으므로 사용 안 함)
@@ -76,12 +72,13 @@ public class DeckPanelManager : MonoBehaviour
         // 덱 등록 버튼 초기화
         SetupRegisterButtons();
 
+        // (추가됨) 저장된 덱 정보를 registeredCharactersSet2에 로드
+        LoadDeckSlotsFromInventoryManager();  // (추가됨)
+
         // 덱 슬롯(10칸) 시각 갱신
         InitRegisterSlotsVisual();
 
-        // -------------------------------------------------------------------
-        // (추가됨) 패널 켜질 때 현재 sharedSlotData20 상태를 prev 배열에 복사
-        // -------------------------------------------------------------------
+        // (추가됨) prevSharedSlotData20 동기화
         if (characterInventory != null)
         {
             for (int i = 0; i < 20; i++)
@@ -91,9 +88,31 @@ public class DeckPanelManager : MonoBehaviour
         }
     }
 
-    // -------------------------------------------------------------------
-    // (추가됨) Update()에서 sharedSlotData20 변화를 실시간으로 감지하여 UI 갱신
-    // -------------------------------------------------------------------
+    // -----------------------------------------------------
+    // (추가됨) 인벤토리 매니저에 저장된 '덱 캐릭터' 10칸을
+    //          registeredCharactersSet2 에 로딩하는 메서드
+    // -----------------------------------------------------
+    private void LoadDeckSlotsFromInventoryManager()
+    {
+        if (characterInventory == null) return;
+
+        // deckCharacters (현재 덱 목록) 가져오기
+        var deckList = characterInventory.GetDeckCharacters(); 
+        // ↑ 이 목록은 "SaveCharacters() / LoadCharacters()" 통해 저장/불러오기
+
+        // 10칸에 맞춰 등록
+        for (int i = 0; i < 10; i++)
+        {
+            if (i < deckList.Count)
+                registeredCharactersSet2[i] = deckList[i];
+            else
+                registeredCharactersSet2[i] = null;
+        }
+    }
+
+    // -----------------------------------------------------
+    // (추가됨) Update()에서 sharedSlotData20 변화를 실시간 감지
+    // -----------------------------------------------------
     private void Update()
     {
         if (characterInventory == null) return;
@@ -103,16 +122,14 @@ public class DeckPanelManager : MonoBehaviour
         {
             if (characterInventory.sharedSlotData20[i] != prevSharedSlotData20[i])
             {
-                // ---------------------------------------------------------------
-                // (추가됨) null이 된 칸이 있다면 즉시 '비정상' 데이터 정리 후 재정렬
-                // ---------------------------------------------------------------
-                characterInventory.CondenseAndReorderSharedSlots(); // <-- null/빈칸 제거
-                characterInventory.SyncOwnedFromSharedSlots();      // <-- 인벤토리 리스트와 동기화
+                // null 또는 빈 데이터 정리
+                characterInventory.CondenseAndReorderSharedSlots();
+                characterInventory.SyncOwnedFromSharedSlots();
 
                 // 그리고 UI 다시 갱신
                 RefreshInventoryUI();
 
-                // 갱신 직후, prevSharedSlotData20도 최신화
+                // prevSharedSlotData20 최신화
                 for (int j = 0; j < 20; j++)
                 {
                     prevSharedSlotData20[j] = characterInventory.sharedSlotData20[j];
@@ -123,8 +140,7 @@ public class DeckPanelManager : MonoBehaviour
     }
 
     // ==========================================================================
-    // (1) 20칸 인벤토리 표시
-    // => CharacterInventoryManager의 sharedSlotData20을 이용
+    // (1) 20칸 인벤토리 표시 => CharacterInventoryManager의 sharedSlotData20 활용
     // ==========================================================================
     public void RefreshInventoryUI()
     {
@@ -145,7 +161,6 @@ public class DeckPanelManager : MonoBehaviour
         }
 
         // (A) ownedCharacters를 sharedSlotData20에 복사
-        // CharacterInventoryManager에는 SyncOwnedToSharedSlots가 없으므로 여기서 직접 구현
         var ownedList = characterInventory.GetOwnedCharacters();
         for (int i = 0; i < 20; i++)
         {
@@ -164,14 +179,10 @@ public class DeckPanelManager : MonoBehaviour
             CharacterData cData = characterInventory.sharedSlotData20[i];
             if (cData != null)
             {
-                // 실제 캐릭터
-                // 1) 아이콘
-                if (cData.buttonIcon != null)
-                    slotImg.sprite = cData.buttonIcon.sprite;
-                else
-                    slotImg.sprite = emptyInventorySlotSprite;
+                // 아이콘
+                slotImg.sprite = (cData.buttonIcon != null) ? cData.buttonIcon.sprite : emptyInventorySlotSprite;
 
-                // 2) 버튼 클릭 리스너
+                // 버튼
                 slotBtn.onClick.RemoveAllListeners();
                 slotBtn.interactable = true;
 
@@ -181,10 +192,7 @@ public class DeckPanelManager : MonoBehaviour
             }
             else
             {
-                // ============ null이면 => 빈칸 처리 ============ 
                 slotImg.sprite = emptyInventorySlotSprite;
-
-                // 클릭 불가
                 slotBtn.onClick.RemoveAllListeners();
                 slotBtn.interactable = false;
             }
@@ -192,8 +200,7 @@ public class DeckPanelManager : MonoBehaviour
     }
 
     /// <summary>
-    /// 인벤토리 슬롯(20개 중 하나) 클릭 시 로직
-    /// (업그레이드 모드면 재료 선택, 아니면 덱 등록용)
+    /// 인벤토리 슬롯(20개) 클릭 시: 업그레이드모드면 재료 선택, 아니면 덱 등록용
     /// </summary>
     private void OnClickInventoryCharacter(CharacterData data, int inventorySlotIndex)
     {
@@ -217,7 +224,7 @@ public class DeckPanelManager : MonoBehaviour
     }
 
     // =====================================================================
-    // (2) 덱(10칸) 관련 - 버튼/슬롯
+    // (2) 덱(10칸) 관련: 등록버튼/슬롯
     // =====================================================================
     public void SetupRegisterButtons()
     {
@@ -256,8 +263,8 @@ public class DeckPanelManager : MonoBehaviour
 
         Image slotImg = registerSlotImages[i];
         TextMeshProUGUI lvlText = (registerSlotLevelTexts != null && i < registerSlotLevelTexts.Count)
-                                  ? registerSlotLevelTexts[i]
-                                  : null;
+            ? registerSlotLevelTexts[i]
+            : null;
 
         CharacterData cData = registeredCharactersSet2[i];
         if (cData == null)
@@ -268,16 +275,8 @@ public class DeckPanelManager : MonoBehaviour
         }
         else
         {
-            // 캐릭터가 있으면
-            if (cData.buttonIcon != null)
-                slotImg.sprite = cData.buttonIcon.sprite;
-            else
-                slotImg.sprite = emptyDeckSlotSprite;
-
-            if (lvlText != null)
-            {
-                lvlText.text = $"Lv.{cData.level}";
-            }
+            slotImg.sprite = (cData.buttonIcon != null) ? cData.buttonIcon.sprite : emptyDeckSlotSprite;
+            if (lvlText != null) lvlText.text = $"Lv.{cData.level}";
         }
     }
 
@@ -294,7 +293,7 @@ public class DeckPanelManager : MonoBehaviour
             return;
         }
 
-        // 기존에 등록된 캐릭터가 있는지 확인
+        // 덱에 이미 있나 확인
         CharacterData existingChar = registeredCharactersSet2[slotIndex];
         if (existingChar == null)
         {
@@ -304,16 +303,15 @@ public class DeckPanelManager : MonoBehaviour
             // 인벤토리 목록에서 제거 -> 덱 목록에 추가
             characterInventory.RemoveFromInventory(selectedCharacterForRegistration);
             characterInventory.MoveToDeck(selectedCharacterForRegistration);
-            selectedCharacterForRegistration = null;
 
-            // 새로 등록된 캐릭터를 registeredCharactersSet2[slotIndex]에 할당
+            // registeredCharactersSet2[slotIndex]에 반영
             registeredCharactersSet2[slotIndex] = characterInventory.GetDeckCharacters()
                 .Find(c => c == registeredCharactersSet2[slotIndex]) 
                 ?? selectedCharacterForRegistration;
         }
         else
         {
-            // 이미 덱에 있던 캐릭터 교체
+            // 이미 있던 캐릭터 교체
             Debug.Log($"[DeckPanelManager] 교체: 기존={existingChar.characterName} / 새={selectedCharacterForRegistration.characterName}");
             characterInventory.RemoveFromDeck(existingChar);
             characterInventory.AddToInventory(existingChar);
@@ -331,10 +329,10 @@ public class DeckPanelManager : MonoBehaviour
         // 덱 슬롯 UI 갱신
         UpdateRegisterSlotVisual(slotIndex);
 
-        // 인벤토리 다시 표시(20칸)
+        // 인벤토리 UI 갱신
         RefreshInventoryUI();
 
-        // 저장
+        // 저장 (인벤토리+덱 변경 반영)
         characterInventory.SaveCharacters();
 
         // 업그레이드 패널 갱신

@@ -297,6 +297,9 @@ public class LobbySceneManager : MonoBehaviour
         DeckPanelManager dpm = FindFirstObjectByType<DeckPanelManager>();
         if (dpm != null)
         {
+            // ================================
+            //   (기존) 9칸 캐릭터 세팅
+            // ================================
             CharacterData[] deckSet = dpm.registeredCharactersSet2;
             int count = 0;
             foreach (var c in deckSet)
@@ -309,6 +312,7 @@ public class LobbySceneManager : MonoBehaviour
                 return;
             }
 
+            // 9칸만 우선 추려서 GameManager에 전달
             CharacterData[] deck9 = new CharacterData[9];
             int idx = 0;
             for (int i = 0; i < deckSet.Length; i++)
@@ -320,20 +324,27 @@ public class LobbySceneManager : MonoBehaviour
                     idx++;
                 }
             }
-
-            // (기존) 9칸 캐릭터 세팅
             GameManager.Instance.SetDeckForGame(deck9);
 
-            // (추가) 10번째(인덱스9) 주인공 캐릭터 따로 세팅
-            // 만약 10번째 덱에 null이 아닐 경우 -> 주인공으로 등록
-            if (deckSet.Length == 10 && deckSet[9] != null)
+            // ============================================
+            //  (추가) 덱(10칸)을 CharacterDatabase[0..9]에 대입
+            // ============================================
+            if (characterInventoryManager != null &&
+                characterInventoryManager.characterDatabaseObject != null &&
+                characterInventoryManager.characterDatabaseObject.characters != null &&
+                characterInventoryManager.characterDatabaseObject.characters.Length >= 10)
             {
-                GameManager.Instance.SetHeroCharacter(deckSet[9]);
+                // 10칸 모두 DB에 복사
+                for (int i = 0; i < 10; i++)
+                {
+                    characterInventoryManager.characterDatabaseObject.characters[i] = deckSet[i];
+                }
+
+                Debug.Log("[LobbySceneManager] 로비씬 덱(10개)을 CharacterDatabase(0~9)에 반영 완료");
             }
             else
             {
-                // 10번째 슬롯이 없거나 null이면, 주인공은 비어있음
-                GameManager.Instance.SetHeroCharacter(null);
+                Debug.LogWarning("[LobbySceneManager] CharacterDatabase에 10개 슬롯이 없거나 InventoryManager가 연결 안 됨");
             }
         }
         else
@@ -342,10 +353,30 @@ public class LobbySceneManager : MonoBehaviour
             return;
         }
 
+        // =======================================
+        //   (수정) Hero: DB의 10번째 캐릭터 -> Hero
+        // =======================================
+        if (characterInventoryManager != null &&
+            characterInventoryManager.characterDatabaseObject != null &&
+            characterInventoryManager.characterDatabaseObject.characters != null &&
+            characterInventoryManager.characterDatabaseObject.characters.Length >= 10)
+        {
+            // 10번째 = index 9
+            var heroData = characterInventoryManager.characterDatabaseObject.characters[9];
+            GameManager.Instance.SetHeroCharacter(heroData);
+
+            Debug.Log("[LobbySceneManager] 10번째 캐릭터를 Hero로 설정 완료");
+        }
+        else
+        {
+            GameManager.Instance.SetHeroCharacter(null);
+            Debug.LogWarning("[LobbySceneManager] 캐릭터DB에 10번째 캐릭터가 없습니다!");
+        }
+
         Debug.Log($"Stage {currentStageIndex + 1} 입장 -> GameScene 이동");
 
         // -------------------------------------------------
-        // (추가) 씬 이동 직전에 아이템 인벤토리 패널 활성화
+        // 씬 이동 직전에 아이템 인벤토리 패널 활성화(옵션)
         // -------------------------------------------------
         if (itemInventoryPanel != null)
         {
@@ -456,7 +487,7 @@ public class LobbySceneManager : MonoBehaviour
         }
         if (upgradeObject) upgradeObject.SetActive(false);
 
-        // ★ 추가됨: 캐릭터 패널을 열 때는 무조건 업그레이드 모드 끄기
+        // ★ 업그레이드 모드 끄기
         DeckPanelManager dpm = FindFirstObjectByType<DeckPanelManager>();
         if (dpm != null)
         {
@@ -528,7 +559,7 @@ public class LobbySceneManager : MonoBehaviour
         if (deckObject) deckObject.SetActive(true);
         if (upgradeObject) upgradeObject.SetActive(false);
 
-        // [추가] 덱 버튼 클릭 시 => 업그레이드 모드 해제
+        // 업그레이드 모드 해제
         DeckPanelManager dpm = FindFirstObjectByType<DeckPanelManager>();
         if (dpm != null)
         {
@@ -545,7 +576,7 @@ public class LobbySceneManager : MonoBehaviour
         if (deckObject) deckObject.SetActive(false);
         if (upgradeObject) upgradeObject.SetActive(true);
 
-        // [추가] 업그레이드 버튼 클릭 시 => 업그레이드 모드 활성
+        // 업그레이드 모드 활성
         DeckPanelManager dpm = FindFirstObjectByType<DeckPanelManager>();
         if (dpm != null)
         {

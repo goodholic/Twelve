@@ -6,7 +6,7 @@ using UnityEngine;
 public class CharacterInventoryManager : MonoBehaviour
 {
     [Header("ScriptableObject DB 참조")]
-    [SerializeField] private CharacterDatabaseObject characterDatabaseObject;
+    [SerializeField] public CharacterDatabaseObject characterDatabaseObject;
 
     [SerializeField] private List<CharacterData> ownedCharacters = new List<CharacterData>();
     private List<CharacterData> deckCharacters = new List<CharacterData>();
@@ -95,7 +95,7 @@ public class CharacterInventoryManager : MonoBehaviour
                 }
                 else
                 {
-                    // allEmpty==true => “null 취급”해서 버림
+                    // allEmpty==true => "null 취급"해서 버림
                     Debug.Log($"[CharacterInventoryManager] '{cd.characterName}' 은(는) 이름/프리팹/아이콘 다 없으므로 제거됨");
                 }
             }

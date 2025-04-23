@@ -1,86 +1,78 @@
 using UnityEngine;
 
 /// <summary>
-/// "10번째 덱"으로 등록된 주인공 캐릭터가 
-/// Hero Panel(혹은 해당 부모)의 RectTransform 영역 안에서
-/// 자유롭게 이동하도록 만들어주는 예시 스크립트.
+/// "10번째 덱"으로 등록된 주인공 캐릭터가
+///   1) 다른 캐릭터와 동일하게 공격 가능
+///   2) 가까운 몬스터를 자동으로 추적(이동)하도록 만들어주는 예시 스크립트.
 ///
-/// [사용 방식]
-/// - 이 스크립트가 붙은 오브젝트(주인공)는 RectTransform이 있다면
-///   해당 위치에서 랜덤하게 돌아다님(UI 상에서 방치형 이동).
-/// - RectTransform이 없다면(3D Transform) 월드 좌표에서 움직이는 식.
-/// - moveSpeed, roamRangeX/Y 등은 상황에 맞게 조절.
+/// [주의]
+///  - 이 HeroAutoMover가 활성화되어 있으면, 매 프레임 "가장 가까운 몬스터"를 찾아 이동합니다.
+///  - 만약 유저가 드래그로 Hero를 옮기려 할 때, 이 스크립트의 이동과 충돌할 수 있습니다.
+///    필요하면 드래그 중엔 이 스크립트를 임시로 끄거나, 드래그가 끝난 후 다시 켜주는 식으로 관리하세요.
 /// </summary>
 public class HeroAutoMover : MonoBehaviour
 {
-    [Header("주인공 이동 속도")]
-    public float moveSpeed = 100f;
+    [Header("주인공 이동 속도(초당)")]
+    public float moveSpeed = 2f;
 
-    [Header("UI 모드에서 돌아다닐 범위 (사각형)")]
-    public float roamRangeX = 400f;
-    public float roamRangeY = 200f;
+    [Header("몬스터와 얼마나 가까워져야 멈출지 (가까이 다가가기 범위)")]
+    public float stopDistance = 1.0f;
 
-    // (월드 좌표 전용) 범위
-    private float worldRangeX = 5f;
-    private float worldRangeY = 3f;
-
-    private RectTransform rect;
-    private Vector2 targetPosUI;
-    private Vector3 targetPosWorld;
+    // Hero 자신의 Character 스크립트(공격/스탯 관리)를 가져올 수 있음(필요시)
+    private Character heroCharacter;
 
     private void Start()
     {
-        // 만약 RectTransform 컴포넌트를 찾으면(=UI 공간)
-        rect = GetComponent<RectTransform>();
-        PickNewDestination();
+        // Hero 본인 Character 컴포넌트 참조(선택 사항)
+        heroCharacter = GetComponent<Character>();
     }
 
     private void Update()
     {
-        if (rect != null) // UI 모드
+        // 1) 가장 가까운 몬스터 찾기
+        Monster nearest = FindNearestMonster();
+        if (nearest == null)
         {
-            Vector2 current = rect.anchoredPosition;
-            rect.anchoredPosition = Vector2.MoveTowards(
-                current, 
-                targetPosUI, 
-                moveSpeed * Time.deltaTime
-            );
-
-            // 목적지 근처 도달 시 새로운 목적지
-            if (Vector2.Distance(current, targetPosUI) < 1f)
-            {
-                PickNewDestination();
-            }
+            // 주변에 몬스터가 없으면 이동 중단(그냥 제자리에 있음)
+            return;
         }
-        else // 3D(또는 월드) 모드
+
+        // 2) 몬스터와의 거리 측정
+        float dist = Vector2.Distance(transform.position, nearest.transform.position);
+
+        // 3) 너무 가까우면(예: stopDistance 이하) 더 안 움직임
+        if (dist <= stopDistance)
         {
-            Vector3 current = transform.position;
-            float moveStep = (moveSpeed * 0.01f) * Time.deltaTime;
-            transform.position = Vector3.MoveTowards(current, targetPosWorld, moveStep);
-
-            // 목적지 근처 도달 시 새로운 목적지
-            if (Vector3.Distance(current, targetPosWorld) < 0.1f)
-            {
-                PickNewDestination();
-            }
+            return;
         }
+
+        // 4) 그렇지 않다면, 몬스터 방향으로 이동
+        Vector2 dir = (nearest.transform.position - transform.position).normalized;
+        // 2D 이동이라 가정, UI(RectTransform) 모드인지 3D 모드인지에 따라 달라질 수 있음
+        // 여기서는 transform.position을 직접 갱신하는 단순 예시
+        transform.position += (Vector3)(dir * moveSpeed * Time.deltaTime);
     }
 
-    private void PickNewDestination()
+    /// <summary>
+    /// 씬 내 모든 Monster를 찾아, 가장 가까운 한 마리를 반환.
+    /// 없으면 null.
+    /// </summary>
+    private Monster FindNearestMonster()
     {
-        if (rect != null)
+        Monster[] allMonsters = FindObjectsByType<Monster>(FindObjectsSortMode.None);
+        Monster nearest = null;
+        float nearestDist = float.MaxValue;
+
+        foreach (var m in allMonsters)
         {
-            // UI 공간에서 랜덤 위치
-            float x = Random.Range(-roamRangeX, roamRangeX);
-            float y = Random.Range(-roamRangeY, roamRangeY);
-            targetPosUI = new Vector2(x, y);
+            if (m == null) continue;
+            float dist = Vector2.Distance(transform.position, m.transform.position);
+            if (dist < nearestDist)
+            {
+                nearestDist = dist;
+                nearest = m;
+            }
         }
-        else
-        {
-            // 월드 좌표상 랜덤 위치
-            float x = Random.Range(-worldRangeX, worldRangeX);
-            float y = Random.Range(-worldRangeY, worldRangeY);
-            targetPosWorld = new Vector3(x, y, 0f);
-        }
+        return nearest;
     }
 }

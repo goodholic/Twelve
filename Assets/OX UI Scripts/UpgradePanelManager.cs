@@ -1,7 +1,3 @@
-// =========================================
-// UpgradePanelManager.cs (수정본)
-// =========================================
-
 using UnityEngine;
 using UnityEngine.UI;
 using System.Collections.Generic;
@@ -47,10 +43,6 @@ public class UpgradePanelManager : MonoBehaviour
     // ===========================================
     private CharacterData feedCharacter = null;
     private int feedSlotIndex = -1;
-
-    // (과거에는 "재료 캐릭터가 덱에 있어야 한다"는 로직으로 deckIndex를 보관)
-    // 현재는 인벤토리에만 있어도 업그레이드 허용하도록 바꾸므로 -1로 두거나 사용 X.
-    private int feedDeckSlotIndex = -1; 
 
     private void OnEnable()
     {
@@ -179,7 +171,6 @@ public class UpgradePanelManager : MonoBehaviour
             Debug.LogWarning("[UpgradePanel] 재료가 null => 지정 취소");
             feedCharacter = null;
             feedSlotIndex = -1;
-            feedDeckSlotIndex = -1; 
             return;
         }
 
@@ -192,7 +183,6 @@ public class UpgradePanelManager : MonoBehaviour
         // → 제거
 
         // 이제는 인벤토리에만 있어도 재료 사용 OK
-        feedDeckSlotIndex = -1; // 덱 인덱스는 사용하지 않음
         feedCharacter = feedData;
         feedSlotIndex = slotIndex;
 
@@ -254,7 +244,6 @@ public class UpgradePanelManager : MonoBehaviour
         // 업그레이드 후 재료 해제
         feedCharacter = null;
         feedSlotIndex = -1;
-        feedDeckSlotIndex = -1; 
 
         // 슬롯 UI 갱신
         UpdateUpgradeRegisteredImage(index);
