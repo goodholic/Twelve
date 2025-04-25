@@ -13,6 +13,8 @@ public class FirebaseAuthManager : MonoBehaviour
 
     private FirebaseAuth firebaseAuth;
     private FirebaseUser currentUser;
+    
+    [SerializeField] private string databaseUrl = "https://twelve-31d24-default-rtdb.firebaseio.com/";
 
     // 인증 완료/실패 시 알림용
     public event Action<FirebaseUser> OnLoginSuccess;
@@ -24,11 +26,18 @@ public class FirebaseAuthManager : MonoBehaviour
         if (Instance == null)
         {
             Instance = this;
+
+            // (추가) 만약 현재 오브젝트가 루트가 아니라면, 부모에서 떼어낸다.
+            if (transform.parent != null)
+            {
+                transform.SetParent(null);
+            }
             DontDestroyOnLoad(gameObject);
         }
         else
         {
             Destroy(gameObject);
+            return;
         }
     }
 
@@ -41,6 +50,23 @@ public class FirebaseAuthManager : MonoBehaviour
             if (result == DependencyStatus.Available)
             {
                 Debug.Log("[FirebaseAuthManager] Firebase Ready.");
+                
+                // Firebase 앱이 이미 초기화되었는지 확인
+                if (FirebaseApp.DefaultInstance == null)
+                {
+                    // Firebase 앱이 초기화되지 않았으면 초기화 (DB URL 포함)
+                    AppOptions options = new AppOptions();
+                    options.DatabaseUrl = new System.Uri(databaseUrl);
+                    FirebaseApp.Create(options);
+                    Debug.Log("[FirebaseAuthManager] Firebase app initialized with database URL.");
+                }
+                else if (FirebaseApp.DefaultInstance.Options.DatabaseUrl == null)
+                {
+                    // Firebase 앱은 초기화되었으나 DB URL이 설정되지 않은 경우
+                    FirebaseApp.DefaultInstance.Options.DatabaseUrl = new System.Uri(databaseUrl);
+                    Debug.Log("[FirebaseAuthManager] Set database URL to existing Firebase app.");
+                }
+                
                 firebaseAuth = FirebaseAuth.DefaultInstance;
 
                 // 만약 이미 로그인된 상태가 있다면 currentUser에 세팅

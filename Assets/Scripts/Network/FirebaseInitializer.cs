@@ -6,6 +6,8 @@ using System.Threading.Tasks;
 public class FirebaseInitializer : MonoBehaviour
 {
     private FirebaseApp app;
+    
+    [SerializeField] private string databaseUrl = "https://twelve-31d24-default-rtdb.firebaseio.com/";
 
     private async void Awake()
     {
@@ -19,6 +21,10 @@ public class FirebaseInitializer : MonoBehaviour
         var dependencyStatus = await FirebaseApp.CheckAndFixDependenciesAsync();
         if (dependencyStatus == DependencyStatus.Available)
         {
+            // Firebase 앱 옵션 설정 (Database URL 포함)
+            FirebaseApp.DefaultInstance.Options.DatabaseUrl = 
+                new System.Uri(databaseUrl);
+                
             app = FirebaseApp.DefaultInstance;
             Debug.Log("Firebase is ready to use.");
         }

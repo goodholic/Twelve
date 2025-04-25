@@ -9982,17 +9982,6 @@ RectTransform:
   m_CorrespondingSourceObject: {fileID: 8411175505051344749, guid: b0483dfe182f8e3458454a965289af97, type: 3}
   m_PrefabInstance: {fileID: 1513306225042022323}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &770907423 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 5575269543005144017, guid: b0483dfe182f8e3458454a965289af97, type: 3}
-  m_PrefabInstance: {fileID: 1513306225042022323}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 74f9fcd66375b424589343fa235d55e4, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!1 &774145425
 GameObject:
   m_ObjectHideFlags: 0
@@ -14118,6 +14107,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: dc7678a59858e5d42a6733f1f8591d91, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  databaseUrl: https://twelve-31d24-default-rtdb.firebaseio.com/
 --- !u!1 &1067169641
 GameObject:
   m_ObjectHideFlags: 0
@@ -19614,19 +19604,7 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 1528214642}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls:
-      - m_Target: {fileID: 770907423}
-        m_TargetAssemblyTypeName: FirebaseAuthManager, Assembly-CSharp
-        m_MethodName: SignInWithGoogle
-        m_Mode: 5
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
+      m_Calls: []
 --- !u!114 &1528214642
 MonoBehaviour:
   m_ObjectHideFlags: 0

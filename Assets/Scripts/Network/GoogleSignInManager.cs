@@ -1,3 +1,5 @@
+// Assets\Scripts\Network\GoogleSignInManager.cs
+
 #if GOOGLE_SIGNIN_AVAILABLE
 // 만약 Google Sign-In SDK 및 필요 라이브러리가 설치되어 있고,
 // Scripting Define Symbols에 'GOOGLE_SIGNIN_AVAILABLE'를 추가했다면,
@@ -10,6 +12,7 @@
 #endif
 
 using UnityEngine;
+using System;
 
 /// <summary>
 /// 구글 로그인 프로세스 담당.
@@ -21,6 +24,9 @@ public class GoogleSignInManager : MonoBehaviour
     [Header("Google SignIn 설정")]
     [Tooltip("Firebase 콘솔과 GCP 콘솔에서 발급받은 Web Client ID를 입력하세요.")]
     [SerializeField] private string webClientId = "";
+
+    // 로그인 성공 시 호출될 이벤트
+    public event Action<string> OnGoogleSignInSuccess; // idToken 전달
 
     private static GoogleSignInManager _instance;
     public static GoogleSignInManager Instance
@@ -47,6 +53,12 @@ public class GoogleSignInManager : MonoBehaviour
         if (_instance == null)
         {
             _instance = this;
+
+            // (추가) 루트로 이동 후 DontDestroyOnLoad
+            if (transform.parent != null)
+            {
+                transform.SetParent(null);
+            }
             DontDestroyOnLoad(this.gameObject);
         }
         else if (_instance != this)
@@ -75,12 +87,12 @@ public class GoogleSignInManager : MonoBehaviour
 #endif
     }
 
+#if GOOGLE_SIGNIN_AVAILABLE
     /// <summary>
     /// (실제) Google Sign-In 프로세스
     /// </summary>
     private void SignInWithGoogleSDK()
     {
-#if GOOGLE_SIGNIN_AVAILABLE
         // 아래는 실제 Google Sign-In SDK 사용 시의 예시 로직입니다.
         // (GoogleSignIn, GoogleSignInConfiguration, etc.)
         //
@@ -117,10 +129,16 @@ public class GoogleSignInManager : MonoBehaviour
         // });
         
         Debug.Log("[GoogleSignInManager] 실제 구글 로그인 SDK를 통한 로그인이 진행됩니다. (예시)");
-#else
-        Debug.LogWarning("[GoogleSignInManager] 구글 SDK 없음 -> SignInWithGoogleSDK() 호출 무의미");
-#endif
     }
+#else
+    /// <summary>
+    /// Google Sign-In SDK가 없을 때 사용되는 더미 메서드
+    /// </summary>
+    private void SignInWithGoogleSDK()
+    {
+        Debug.LogWarning("[GoogleSignInManager] 구글 SDK 없음 -> SignInWithGoogleSDK() 호출 무의미");
+    }
+#endif
 
     /// <summary>
     /// 구글 로그아웃

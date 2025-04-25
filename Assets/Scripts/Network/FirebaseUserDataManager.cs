@@ -25,11 +25,21 @@ public class FirebaseUserDataManager : MonoBehaviour
 
     private void Awake()
     {
-        if (Instance == null) {
+        if (Instance == null)
+        {
             Instance = this;
+
+            // (추가) 루트 이동 후 DontDestroyOnLoad
+            if (transform.parent != null)
+            {
+                transform.SetParent(null);
+            }
             DontDestroyOnLoad(gameObject);
-        } else {
+        }
+        else
+        {
             Destroy(gameObject);
+            return;
         }
     }
 
@@ -41,7 +51,7 @@ public class FirebaseUserDataManager : MonoBehaviour
     }
 
     // ----------------------------------------
-    // (1) 유저 정보 로드
+    // (1) 유저 정보 로드 (임시 Mock)
     // ----------------------------------------
     public void LoadUserData(string userId, System.Action<UserProfileData> onSuccess, System.Action<string> onFail)
     {
@@ -74,7 +84,7 @@ public class FirebaseUserDataManager : MonoBehaviour
     }
 
     // ----------------------------------------
-    // (2) 유저 정보 저장(업데이트)
+    // (2) 유저 정보 저장(업데이트) (임시 Mock)
     // ----------------------------------------
     public void SaveUserData(string userId, UserProfileData data, System.Action onSuccess, System.Action<string> onFail)
     {
@@ -108,6 +118,12 @@ public class UnityMainThreadDispatcher : MonoBehaviour
         {
             GameObject go = new GameObject("UnityMainThreadDispatcher");
             _instance = go.AddComponent<UnityMainThreadDispatcher>();
+
+            // (추가) 루트로 이동해놓고 DontDestroyOnLoad
+            if (_instance.transform.parent != null)
+            {
+                _instance.transform.SetParent(null);
+            }
             DontDestroyOnLoad(go);
         }
         return _instance;

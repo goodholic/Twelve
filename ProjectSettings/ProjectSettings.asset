@@ -799,7 +799,7 @@ PlayerSettings:
   webGLCloseOnQuit: 0
   webWasm2023: 0
   scriptingDefineSymbols:
-    Standalone: FUSION_LOGLEVEL_INFO;FUSION_WEAVER;FUSION2
+    Standalone: FUSION_LOGLEVEL_INFO;FUSION_WEAVER;FUSION2;GOOGLE_SIGNIN_AVAILABLE
   additionalCompilerArguments: {}
   platformArchitecture: {}
   scriptingBackend:
