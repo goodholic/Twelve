@@ -109,6 +109,8 @@ MonoBehaviour:
   attackRange: 1.5
   currentTile: {fileID: 0}
   currentTarget: {fileID: 0}
+  isAreaAttack: 0
+  areaAttackRadius: 1
   rangeIndicatorPrefab: {fileID: 3037178901491863121, guid: 70e5c5e981d70c247a317a909d42c752, type: 3}
   showRangeIndicator: 0
   bulletPrefab: {fileID: 4838677500344597568, guid: 98e2d8dedad69744188b9d82f84a8124, type: 3}

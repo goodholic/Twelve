@@ -14,22 +14,17 @@ public class PlacementManager : MonoBehaviour
     [Tooltip("2D 카메라 (Orthographic)")]
     public Camera mainCamera;
 
-    // ============================
-    // [중요] 씬 상의 Panel 레퍼런스
-    // ============================
     [Header("UI Panels")]
-    [Tooltip("타일들이 있는 Panel (GridLayout 등 적용)")]
     public RectTransform tilePanel;
-
-    [Tooltip("캐릭터들이 들어갈 Panel (GridLayout 없음)")]
-    public RectTransform characterPanel;  // <-- 반드시 Inspector에 할당 필요!
-
-    [Tooltip("총알이 들어갈 Panel")]
+    public RectTransform characterPanel;
     public RectTransform bulletPanel;
+
+    // ===== 추가: 미네랄 바 참조 =====
+    [Header("Mineral Bar 참조 (소환 시 cost 차감용)")]
+    [SerializeField] private MineralBar mineralBar;
 
     private void Awake()
     {
-        // 싱글톤
         if (Instance != null && Instance != this)
         {
             Destroy(gameObject);
@@ -45,7 +40,7 @@ public class PlacementManager : MonoBehaviour
 
         if (characterPanel == null)
         {
-            Debug.LogWarning("PlacementManager: characterPanel(캐릭터가 들어갈 Panel)이 null입니다.");
+            Debug.LogWarning("PlacementManager: characterPanel이 null입니다.");
         }
     }
 
@@ -72,22 +67,27 @@ public class PlacementManager : MonoBehaviour
     /// </summary>
     public void PlaceCharacterOnTile(Tile tile)
     {
-        // 1) 캐릭터 DB 검사
-        if (characterDatabase == null || characterDatabase.currentRegisteredCharacters == null || characterDatabase.currentRegisteredCharacters.Length == 0)
+        if (characterDatabase == null || 
+            characterDatabase.currentRegisteredCharacters == null ||
+            characterDatabase.currentRegisteredCharacters.Length == 0)
         {
             Debug.LogWarning("PlacementManager: characterDatabase가 비어있음.");
             return;
         }
-        // 2) 현재 인덱스 검사
-        if (currentCharacterIndex < 0 || currentCharacterIndex >= characterDatabase.currentRegisteredCharacters.Length)
+        if (currentCharacterIndex < 0 ||
+            currentCharacterIndex >= characterDatabase.currentRegisteredCharacters.Length)
         {
             Debug.LogWarning($"PlacementManager: 잘못된 인덱스({currentCharacterIndex})");
             return;
         }
-        // 3) characterPanel 검사
         if (characterPanel == null)
         {
             Debug.LogWarning("PlacementManager: characterPanel이 null임!");
+            return;
+        }
+        if (tile == null)
+        {
+            Debug.LogWarning("PlacementManager: tile이 null");
             return;
         }
 
@@ -99,22 +99,23 @@ public class PlacementManager : MonoBehaviour
             return;
         }
 
-        if (tile == null)
+        // 미네랄 체크: cost가 충분한지?
+        if (mineralBar != null)
         {
-            Debug.LogWarning("PlacementManager: tile이 null");
-            return;
+            if (!mineralBar.TrySpend(data.cost))
+            {
+                Debug.LogWarning($"미네랄 부족 -> {data.characterName} 소환 취소");
+                return;
+            }
         }
 
-        // -----------------------------
-        // "배치 가능"인지 다시 체크
-        // -----------------------------
+        // 배치 가능 여부
         if (!tile.CanPlaceCharacter())
         {
             Debug.Log($"PlacementManager: {tile.name} 배치 불가 (Placable=false or Occupied=true)");
             return;
         }
 
-        // *** "마지막 순간"에도 Occupied 재확인 (동시성 문제 대비)
         if (tile.IsOccupied())
         {
             Debug.LogWarning($"[PlacementManager] {tile.name} 이미 다른 캐릭터가 들어옴 -> 배치 취소!");
@@ -124,7 +125,6 @@ public class PlacementManager : MonoBehaviour
         // 실제 캐릭터 프리팹 생성
         GameObject charObj = Instantiate(data.spawnPrefab, characterPanel);
 
-        // UI 좌표계 변환
         RectTransform tileRect = tile.GetComponent<RectTransform>();
         RectTransform charRect = charObj.GetComponent<RectTransform>();
         if (tileRect != null && charRect != null)
@@ -135,7 +135,6 @@ public class PlacementManager : MonoBehaviour
         }
         else
         {
-            // 3D 상황
             charObj.transform.position = tile.transform.position;
             charObj.transform.localRotation = Quaternion.identity;
         }
@@ -146,50 +145,33 @@ public class PlacementManager : MonoBehaviour
         {
             characterComp.currentTile = tile;
             characterComp.attackPower = data.attackPower;
-            // rangeType
             switch (data.rangeType)
             {
-                case RangeType.Melee:
-                    characterComp.attackRange = 1.2f;
-                    break;
-                case RangeType.Ranged:
-                    characterComp.attackRange = 2.5f;
-                    break;
-                case RangeType.LongRange:
-                    characterComp.attackRange = 4.0f;
-                    break;
+                case RangeType.Melee:    characterComp.attackRange = 1.2f;    break;
+                case RangeType.Ranged:   characterComp.attackRange = 2.5f;    break;
+                case RangeType.LongRange:characterComp.attackRange = 4.0f;    break;
             }
-
-            // 총알 패널
             if (bulletPanel != null)
             {
                 characterComp.SetBulletPanel(bulletPanel);
             }
-
-            // 드래그 스크립트가 있다면 parentPanel 설정
-            DraggableCharacterUI drag = charObj.GetComponent<DraggableCharacterUI>();
-            if (drag != null)
-            {
-                drag.parentPanel = characterPanel;
-            }
         }
 
-        // 타일에 "Occupied" 자식 생성
+        // Occupied 표시
         CreateOccupiedChild(tile);
 
         Debug.Log($"[PlacementManager] [{data.characterName}] 배치 완료!(cost={data.cost})");
-
-        // 한 번 배치 후에는 인덱스 해제
         currentCharacterIndex = -1;
     }
 
     /// <summary>
-    /// (드래그 소환) 버튼 → 타일 직접 드롭 시 호출
+    /// (드래그 소환) 버튼 → 타일 드롭 시 호출
     /// </summary>
     public void SummonCharacterOnTile(int summonIndex, Tile tile)
     {
-        // 캐릭터 DB 검사
-        if (characterDatabase == null || characterDatabase.currentRegisteredCharacters == null || characterDatabase.currentRegisteredCharacters.Length == 0)
+        if (characterDatabase == null ||
+            characterDatabase.currentRegisteredCharacters == null ||
+            characterDatabase.currentRegisteredCharacters.Length == 0)
         {
             Debug.LogWarning("[PlacementManager] characterDatabase가 비어있어 소환 불가!");
             return;
@@ -204,6 +186,11 @@ public class PlacementManager : MonoBehaviour
             Debug.LogWarning("[PlacementManager] characterPanel이 null => 소환 불가");
             return;
         }
+        if (tile == null)
+        {
+            Debug.LogWarning("[PlacementManager] tile이 null => 소환 불가");
+            return;
+        }
 
         CharacterData data = characterDatabase.currentRegisteredCharacters[summonIndex];
         if (data == null || data.spawnPrefab == null)
@@ -211,32 +198,32 @@ public class PlacementManager : MonoBehaviour
             Debug.LogWarning($"[PlacementManager] [{summonIndex}]번 캐릭터 spawnPrefab이 null => 소환 불가");
             return;
         }
-        if (tile == null)
+
+        // 미네랄 체크
+        if (mineralBar != null)
         {
-            Debug.LogWarning("[PlacementManager] tile이 null => 소환 불가");
-            return;
+            if (!mineralBar.TrySpend(data.cost))
+            {
+                Debug.LogWarning($"미네랄 부족 -> {data.characterName} 소환 취소");
+                return;
+            }
         }
 
-        // -----------------------------
-        // "배치 가능"인지 다시 체크
-        // -----------------------------
+        // 배치 가능 여부
         if (!tile.CanPlaceCharacter())
         {
             Debug.LogWarning($"[PlacementManager] {tile.name} 배치 불가(Placable=false or Occupied=true)");
             return;
         }
-
-        // *** 마지막 확인
         if (tile.IsOccupied())
         {
             Debug.LogWarning($"[PlacementManager] {tile.name} 이미 다른 캐릭터 있음 -> 소환 취소!");
             return;
         }
 
-        // 캐릭터 생성
+        // 소환
         GameObject charObj = Instantiate(data.spawnPrefab, characterPanel);
 
-        // UI 좌표
         RectTransform tileRect = tile.GetComponent<RectTransform>();
         RectTransform charRect = charObj.GetComponent<RectTransform>();
         if (tileRect != null && charRect != null)
@@ -251,7 +238,6 @@ public class PlacementManager : MonoBehaviour
             charObj.transform.localRotation = Quaternion.identity;
         }
 
-        // Character 설정
         Character characterComp = charObj.GetComponent<Character>();
         if (characterComp != null)
         {
@@ -259,78 +245,51 @@ public class PlacementManager : MonoBehaviour
             characterComp.attackPower = data.attackPower;
             switch (data.rangeType)
             {
-                case RangeType.Melee:
-                    characterComp.attackRange = 1.2f;
-                    break;
-                case RangeType.Ranged:
-                    characterComp.attackRange = 2.5f;
-                    break;
-                case RangeType.LongRange:
-                    characterComp.attackRange = 4.0f;
-                    break;
+                case RangeType.Melee:    characterComp.attackRange = 1.2f;    break;
+                case RangeType.Ranged:   characterComp.attackRange = 2.5f;    break;
+                case RangeType.LongRange:characterComp.attackRange = 4.0f;    break;
             }
             if (bulletPanel != null)
             {
                 characterComp.SetBulletPanel(bulletPanel);
             }
-            // 드래그 스크립트
-            DraggableCharacterUI drag = charObj.GetComponent<DraggableCharacterUI>();
-            if (drag != null)
-            {
-                drag.parentPanel = characterPanel;
-            }
         }
 
-        // Occupied
         CreateOccupiedChild(tile);
         Debug.Log($"[PlacementManager] (드래그 소환) [{data.characterName}] 소환 완료!");
     }
 
     /// <summary>
-    /// (드래그-드롭으로) 이미 배치된 캐릭터를 새 타일로 이동 or 합성 시도
+    /// 이미 배치된 캐릭터를 새 타일로 이동 or 합성 시도
     /// </summary>
     public void OnDropCharacter(Character movingChar, Tile newTile)
     {
-        if (movingChar == null || newTile == null)
-        {
-            return;
-        }
+        if (movingChar == null || newTile == null) return;
 
-        // ----------------------------------------------
-        // **원래 타일**에서 Occupied 해제
-        // ----------------------------------------------
         Tile oldTile = movingChar.currentTile;
         if (oldTile != null)
         {
             RemoveOccupiedChild(oldTile);
         }
 
-        // ----------------------------------------------
-        // 새 타일이 비어있으면 "이동"
-        // ----------------------------------------------
+        // 새 타일이 비어있으면 이동
         if (newTile.CanPlaceCharacter())
         {
-            // 최종 중복 체크
             if (newTile.IsOccupied())
             {
-                // 이미 다른 캐릭터가 들어온 상황 -> 이동 취소
                 Debug.LogWarning($"[PlacementManager] {newTile.name} 다른 캐릭터가 선점 => 이동 실패!");
-                CreateOccupiedChild(oldTile); // 기존 타일 다시 Occupied로 복구
+                CreateOccupiedChild(oldTile);
                 return;
             }
 
-            // ★ 추가됨: 새 타일에 "같은 currentTile"을 가진 캐릭터가 있는지 확인
-            // (동시에 드래그가 이루어졌을 경우를 대비)
             if (CheckAnyCharacterHasCurrentTile(newTile))
             {
-                // 이미 다른 캐릭터의 currentTile이 newTile이면 -> 원위치로
                 Debug.LogWarning($"[PlacementManager] {newTile.name}에 이미 캐릭터가 currentTile로 지정 => 이동 취소");
                 CreateOccupiedChild(oldTile);
                 MoveCharacterToTile(movingChar, oldTile);
                 return;
             }
 
-            // 정상 이동
             MoveCharacterToTile(movingChar, newTile);
             CreateOccupiedChild(newTile);
             Debug.Log("[PlacementManager] 캐릭터가 새 타일로 이동 완료");
@@ -338,13 +297,10 @@ public class PlacementManager : MonoBehaviour
         }
         else
         {
-            // ----------------------------------------------
-            // 새 타일에 이미 캐릭터가 있다면 "합성" 시도
-            // ----------------------------------------------
+            // 합성 시도
             bool success = TryMergeCharacter(movingChar, newTile);
             if (!success)
             {
-                // 합성 실패 => 원래 위치로 복귀
                 if (oldTile != null)
                 {
                     MoveCharacterToTile(movingChar, oldTile);
@@ -358,9 +314,6 @@ public class PlacementManager : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// ★ 추가됨: 씬에 존재하는 캐릭터 중, currentTile == tile 인 애가 있는지 확인
-    /// </summary>
     private bool CheckAnyCharacterHasCurrentTile(Tile tile)
     {
         Character[] allChars = FindObjectsByType<Character>(FindObjectsSortMode.None);
@@ -368,7 +321,7 @@ public class PlacementManager : MonoBehaviour
         {
             if (c != null && c.currentTile == tile)
             {
-                return true; // 누군가 이 tile을 이미 currentTile로 사용 중
+                return true;
             }
         }
         return false;
@@ -394,13 +347,8 @@ public class PlacementManager : MonoBehaviour
         character.currentTile = tile;
     }
 
-    /// <summary>
-    /// 이미 있는 캐릭터(otherChar)와 movingChar가 "동일한 캐릭터"면 합성
-    /// </summary>
     private bool TryMergeCharacter(Character movingChar, Tile newTile)
     {
-        Debug.Log($"[PlacementManager] TryMergeCharacter: movingChar={movingChar.name}, tile={newTile.name}, star={movingChar.star}");
-
         Character[] allChars = FindObjectsByType<Character>(FindObjectsSortMode.None);
         foreach (var otherChar in allChars)
         {
@@ -434,7 +382,6 @@ public class PlacementManager : MonoBehaviour
 
     private void UpgradeStats(Character ch)
     {
-        // 기존값 역산
         float baseAtk = ch.attackPower / 1.6f;
         float baseRange = ch.attackRange / 1.2f;
         float baseSpeed = ch.attackSpeed / 1.2f;

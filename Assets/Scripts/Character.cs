@@ -29,6 +29,15 @@ public class Character : MonoBehaviour
     [Tooltip("현재 공격 중인 몬스터(2D)")]
     public Monster currentTarget;
 
+    // ===================================
+    // (추가) 광역 공격 관련 필드
+    // ===================================
+    [Tooltip("이 캐릭터가 광역 공격인지 여부")]
+    public bool isAreaAttack = false;
+
+    [Tooltip("광역 공격 범위(반경) - isAreaAttack=true일 때만 사용")]
+    public float areaAttackRadius = 1f;
+
     [Header("Range Indicator Settings")]
     [Tooltip("원(서클) 형태로 시각화해줄 프리팹(예: 반투명 Circle Sprite 등)")]
     public GameObject rangeIndicatorPrefab;
@@ -41,15 +50,13 @@ public class Character : MonoBehaviour
     private float attackCooldown;
 
     // ===========================
-    // [변경] 총알 발사 관련 설정
+    // 총알 발사 관련 설정
     // ===========================
     [Header("Bullet Settings")]
     [Tooltip("캐릭터가 발사할 총알(Projectile) 프리팹 (Bullet.cs가 붙은 오브젝트)")]
     public GameObject bulletPrefab;
     public float bulletSpeed = 5f;
 
-    // [제거] -> Character.cs에서 bulletPanel을 Inspector로 받지 않음
-    // 대신 PlacementManager가 Scene의 bulletPanel을 가지고 있다가 할당해줄 예정
     private RectTransform bulletPanel;  // 내부적으로만 사용할 참조
 
     /// <summary>
@@ -129,46 +136,82 @@ public class Character : MonoBehaviour
     {
         if (target == null) return;
 
-        if (bulletPrefab == null)
+        // ---------------------------
+        //  (1) 총알 프리팹 사용
+        // ---------------------------
+        if (bulletPrefab != null)
         {
-            // 총알 프리팹이 없다면 근접 공격처럼 즉시 데미지
-            target.TakeDamage(attackPower);
-            return;
-        }
+            // bulletPrefab(프로젝트 자산) -> 런타임 인스턴스화
+            GameObject bulletObj = Instantiate(bulletPrefab);
 
-        // bulletPrefab(프로젝트 자산) -> 런타임 인스턴스화
-        GameObject bulletObj = Instantiate(bulletPrefab);
+            // bulletPanel이 존재한다면, bulletObj를 그 자식으로 붙임
+            if (bulletPanel != null && bulletPanel.gameObject.scene.IsValid())
+            {
+                bulletObj.transform.SetParent(bulletPanel, false);
+            }
+            else
+            {
+                Debug.LogWarning($"[Character] bulletPanel이 유효하지 않음. (bulletObj 단독 생성)");
+            }
 
-        // bulletPanel이 존재한다면, bulletObj를 그 자식으로 붙임
-        if (bulletPanel != null && bulletPanel.gameObject.scene.IsValid())
-        {
-            bulletObj.transform.SetParent(bulletPanel, false);
+            // UI(RectTransform)로 좌표 잡기
+            RectTransform bulletRect = bulletObj.GetComponent<RectTransform>();
+            if (bulletRect != null && bulletPanel != null)
+            {
+                Vector2 localPos = bulletPanel.InverseTransformPoint(transform.position);
+                bulletRect.anchoredPosition = localPos;
+                bulletRect.localRotation = Quaternion.identity;
+            }
+            else
+            {
+                // 3D Transform 경우 -> worldPosition
+                bulletObj.transform.position = transform.position;
+            }
+
+            // 초기값 세팅 (광역 공격 여부 + 범위 포함)
+            Bullet bulletComp = bulletObj.GetComponent<Bullet>();
+            if (bulletComp != null)
+            {
+                bulletComp.Init(target, attackPower, bulletSpeed, isAreaAttack, areaAttackRadius);
+            }
         }
         else
         {
-            Debug.LogWarning($"[Character] bulletPanel이 유효하지 않음. (bulletObj 단독 생성)");
+            // ---------------------------
+            //  (2) 총알 프리팹이 없으면 즉시 공격
+            // ---------------------------
+            if (isAreaAttack)
+            {
+                // 광역 공격: 해당 target 위치를 기준으로 범위 내 모든 몬스터에 데미지
+                DoAreaDamage(target.transform.position);
+            }
+            else
+            {
+                // 단일 공격
+                target.TakeDamage(attackPower);
+            }
         }
+    }
 
-        // UI(RectTransform)로 좌표 잡기
-        RectTransform bulletRect = bulletObj.GetComponent<RectTransform>();
-        if (bulletRect != null && bulletPanel != null)
+    /// <summary>
+    /// 광역 공격(즉시형)을 처리하는 메서드(총알 프리팹 없이 직접 타격하는 경우)
+    /// </summary>
+    private void DoAreaDamage(Vector3 centerPos)
+    {
+        // 모든 몬스터 검색
+        GameObject[] monsterObjs = GameObject.FindGameObjectsWithTag("Monster");
+        foreach (GameObject mo in monsterObjs)
         {
-            Vector2 localPos = bulletPanel.InverseTransformPoint(transform.position);
-            bulletRect.anchoredPosition = localPos;
-            bulletRect.localRotation = Quaternion.identity;
-        }
-        else
-        {
-            // 3D Transform 경우 -> worldPosition
-            bulletObj.transform.position = transform.position;
-        }
+            Monster m = mo.GetComponent<Monster>();
+            if (m == null) continue;
 
-        // 초기값 세팅
-        Bullet bulletComp = bulletObj.GetComponent<Bullet>();
-        if (bulletComp != null)
-        {
-            bulletComp.Init(target, attackPower, bulletSpeed);
+            float dist = Vector2.Distance(centerPos, m.transform.position);
+            if (dist <= areaAttackRadius)
+            {
+                m.TakeDamage(attackPower);
+            }
         }
+        Debug.Log($"[Character] 광역 공격 발생! 범위={areaAttackRadius}, Damage={attackPower}");
     }
 
     private void CreateRangeIndicator()

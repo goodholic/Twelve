@@ -1,5 +1,3 @@
-// Assets\Scripts\CharacterData.cs
-
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -24,7 +22,7 @@ public class CharacterData
     [Tooltip("사거리 타입 (근거리/원거리/장거리 구분)")]
     public RangeType rangeType = RangeType.Melee;
 
-    [Tooltip("광역 공격 여부")]
+    [Tooltip("광역 공격 여부 (true면 AOE 공격)")]
     public bool isAreaAttack = false;
 
     [Tooltip("버프형 캐릭터 여부 (버프 역할인지)")]
@@ -51,12 +49,18 @@ public class CharacterData
     [Tooltip("캐릭터 소환 비용 (UI 표시용)")]
     public int cost = 10;
 
-    // =================================
-    // ★ 변경됨: 도감용 "모션"은 Sprite가 아니라
-    //           "모션 프리팹" 으로 교체
-    // =================================
+    // ============================================
+    //   (추가) 광역 공격 반경 (인스펙터에서 설정)
+    // ============================================
+    [Header("Area Attack Settings")]
+    [Tooltip("광역 공격일 때 범위(반경)")]
+    public float areaAttackRadius = 1f;
+
+    // ============================================
+    //   도감/모션용
+    // ============================================
     [Header("도감용 모션 프리팹 (선택)")]
-    public GameObject motionPrefab;  // ← 원래 Sprite였던 "motionSprite"를 대체
+    public GameObject motionPrefab;
 
     /// <summary>
     /// [추가] 현재 Exp가 expToNextLevel 이상이면 레벨업

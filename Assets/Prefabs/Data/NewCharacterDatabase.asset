@@ -13,195 +13,133 @@ MonoBehaviour:
   m_Name: NewCharacterDatabase
   m_EditorClassIdentifier: 
   characters:
-  - characterName: RandomChar_13
-    attackPower: 15
+  - characterName: RandomChar_0
+    attackPower: 9
+    rangeType: 1
+    isAreaAttack: 0
+    isBuffSupport: 0
+    level: 0
+    currentExp: 0
+    expToNextLevel: 0
+    spawnPrefab: {fileID: 8786608230712049741, guid: 49605d17a370da74c98dd4fedb85994e, type: 3}
+    buttonIcon: {fileID: 5490369301062840869, guid: 49605d17a370da74c98dd4fedb85994e, type: 3}
+    cost: 1
+    areaAttackRadius: 0
+    motionPrefab: {fileID: 8786608230712049741, guid: 49605d17a370da74c98dd4fedb85994e, type: 3}
+  - characterName: RandomChar_1
+    attackPower: 5
     rangeType: 2
     isAreaAttack: 0
-    isBuffSupport: 1
-    level: 1
+    isBuffSupport: 0
+    level: 0
     currentExp: 0
-    expToNextLevel: 5
-    spawnPrefab: {fileID: 4720073040146381944, guid: 5b5fc66634aba7249843628131f33833, type: 3}
-    buttonIcon: {fileID: 3426231752425530176, guid: 5b5fc66634aba7249843628131f33833, type: 3}
+    expToNextLevel: 0
+    spawnPrefab: {fileID: 1970497639547063621, guid: f15ae567fdadac94284405d92741e4d5, type: 3}
+    buttonIcon: {fileID: 3826763924869295683, guid: f15ae567fdadac94284405d92741e4d5, type: 3}
     cost: 2
-    motionPrefab: {fileID: 0}
-  - characterName: RandomChar_9
-    attackPower: 22
-    rangeType: 2
-    isAreaAttack: 0
-    isBuffSupport: 0
-    level: 1
-    currentExp: 0
-    expToNextLevel: 5
-    spawnPrefab: {fileID: 5801439680409142473, guid: 50a98071b5fb9b94aa5cbd72ad39fcad, type: 3}
-    buttonIcon: {fileID: 262685849678513024, guid: 50a98071b5fb9b94aa5cbd72ad39fcad, type: 3}
-    cost: 1
-    motionPrefab: {fileID: 0}
-  - characterName: RandomChar_11
-    attackPower: 14
+    areaAttackRadius: 0
+    motionPrefab: {fileID: 1970497639547063621, guid: f15ae567fdadac94284405d92741e4d5, type: 3}
+  - characterName: RandomChar_2
+    attackPower: 27
     rangeType: 0
     isAreaAttack: 0
     isBuffSupport: 1
-    level: 1
+    level: 0
     currentExp: 0
-    expToNextLevel: 5
-    spawnPrefab: {fileID: 6392274472475127239, guid: fa5fb01680d2e29418571fb290c4807a, type: 3}
-    buttonIcon: {fileID: 2824750473231441682, guid: fa5fb01680d2e29418571fb290c4807a, type: 3}
+    expToNextLevel: 0
+    spawnPrefab: {fileID: 2511997084044682121, guid: 6dcaad573d5bcac49b111baf9950ec63, type: 3}
+    buttonIcon: {fileID: 4105201130940705118, guid: 6dcaad573d5bcac49b111baf9950ec63, type: 3}
     cost: 3
-    motionPrefab: {fileID: 0}
-  - characterName: RandomChar_12
-    attackPower: 18
-    rangeType: 1
-    isAreaAttack: 0
-    isBuffSupport: 0
-    level: 1
-    currentExp: 0
-    expToNextLevel: 5
-    spawnPrefab: {fileID: 1254708931771991488, guid: 7ca692847c205f0499658b561efe8622, type: 3}
-    buttonIcon: {fileID: 6265036377982088387, guid: 7ca692847c205f0499658b561efe8622, type: 3}
-    cost: 1
-    motionPrefab: {fileID: 0}
-  - characterName: RandomChar_12
-    attackPower: 18
-    rangeType: 1
-    isAreaAttack: 0
-    isBuffSupport: 0
-    level: 1
-    currentExp: 0
-    expToNextLevel: 5
-    spawnPrefab: {fileID: 1254708931771991488, guid: 7ca692847c205f0499658b561efe8622, type: 3}
-    buttonIcon: {fileID: 6265036377982088387, guid: 7ca692847c205f0499658b561efe8622, type: 3}
-    cost: 1
-    motionPrefab: {fileID: 0}
-  - characterName: RandomChar_12
-    attackPower: 18
-    rangeType: 1
-    isAreaAttack: 0
-    isBuffSupport: 0
-    level: 1
-    currentExp: 0
-    expToNextLevel: 5
-    spawnPrefab: {fileID: 1254708931771991488, guid: 7ca692847c205f0499658b561efe8622, type: 3}
-    buttonIcon: {fileID: 6265036377982088387, guid: 7ca692847c205f0499658b561efe8622, type: 3}
-    cost: 1
-    motionPrefab: {fileID: 0}
-  - characterName: RandomChar_11
-    attackPower: 14
-    rangeType: 0
-    isAreaAttack: 0
-    isBuffSupport: 1
-    level: 1
-    currentExp: 0
-    expToNextLevel: 5
-    spawnPrefab: {fileID: 6392274472475127239, guid: fa5fb01680d2e29418571fb290c4807a, type: 3}
-    buttonIcon: {fileID: 2824750473231441682, guid: fa5fb01680d2e29418571fb290c4807a, type: 3}
-    cost: 3
-    motionPrefab: {fileID: 0}
-  - characterName: RandomChar_9
-    attackPower: 22
+    areaAttackRadius: 0
+    motionPrefab: {fileID: 2511997084044682121, guid: 6dcaad573d5bcac49b111baf9950ec63, type: 3}
+  - characterName: RandomChar_3
+    attackPower: 10
     rangeType: 2
-    isAreaAttack: 0
-    isBuffSupport: 0
-    level: 1
-    currentExp: 0
-    expToNextLevel: 5
-    spawnPrefab: {fileID: 5801439680409142473, guid: 50a98071b5fb9b94aa5cbd72ad39fcad, type: 3}
-    buttonIcon: {fileID: 262685849678513024, guid: 50a98071b5fb9b94aa5cbd72ad39fcad, type: 3}
-    cost: 1
-    motionPrefab: {fileID: 0}
-  - characterName: RandomChar_15
-    attackPower: 17
-    rangeType: 0
     isAreaAttack: 1
-    isBuffSupport: 1
-    level: 1
+    isBuffSupport: 0
+    level: 0
     currentExp: 0
-    expToNextLevel: 5
-    spawnPrefab: {fileID: 798199079303885805, guid: 081d099a307f4de40b4401d8ce1c0ae4, type: 3}
-    buttonIcon: {fileID: 3674951291747274099, guid: 081d099a307f4de40b4401d8ce1c0ae4, type: 3}
+    expToNextLevel: 0
+    spawnPrefab: {fileID: 4332806432069123864, guid: 8cce27294d56b9d479370c5f3be7d235, type: 3}
+    buttonIcon: {fileID: 4211932184896465709, guid: 8cce27294d56b9d479370c5f3be7d235, type: 3}
     cost: 1
-    motionPrefab: {fileID: 0}
-  - characterName: RandomChar_14
-    attackPower: 6
-    rangeType: 1
-    isAreaAttack: 0
-    isBuffSupport: 1
-    level: 1
-    currentExp: 0
-    expToNextLevel: 5
-    spawnPrefab: {fileID: 6508673691324167935, guid: 7936e178f1a3e5f4d86de85e7410fa87, type: 3}
-    buttonIcon: {fileID: 7287768745929089230, guid: 7936e178f1a3e5f4d86de85e7410fa87, type: 3}
-    cost: 3
-    motionPrefab: {fileID: 0}
-  - characterName: RandomChar_10
+    areaAttackRadius: 0
+    motionPrefab: {fileID: 4332806432069123864, guid: 8cce27294d56b9d479370c5f3be7d235, type: 3}
+  - characterName: RandomChar_4
     attackPower: 19
-    rangeType: 1
-    isAreaAttack: 0
-    isBuffSupport: 0
-    level: 1
-    currentExp: 0
-    expToNextLevel: 5
-    spawnPrefab: {fileID: 795255040326307183, guid: 7947e293a2454af41b64dea7ca7cbeb4, type: 3}
-    buttonIcon: {fileID: 2179804913659897597, guid: 7947e293a2454af41b64dea7ca7cbeb4, type: 3}
-    cost: 2
-    motionPrefab: {fileID: 0}
-  - characterName: RandomChar_11
-    attackPower: 14
-    rangeType: 0
-    isAreaAttack: 0
-    isBuffSupport: 1
-    level: 1
-    currentExp: 0
-    expToNextLevel: 5
-    spawnPrefab: {fileID: 6392274472475127239, guid: fa5fb01680d2e29418571fb290c4807a, type: 3}
-    buttonIcon: {fileID: 2824750473231441682, guid: fa5fb01680d2e29418571fb290c4807a, type: 3}
-    cost: 3
-    motionPrefab: {fileID: 0}
-  - characterName: RandomChar_12
-    attackPower: 18
-    rangeType: 1
-    isAreaAttack: 0
-    isBuffSupport: 0
-    level: 1
-    currentExp: 0
-    expToNextLevel: 5
-    spawnPrefab: {fileID: 1254708931771991488, guid: 7ca692847c205f0499658b561efe8622, type: 3}
-    buttonIcon: {fileID: 6265036377982088387, guid: 7ca692847c205f0499658b561efe8622, type: 3}
-    cost: 1
-    motionPrefab: {fileID: 0}
-  - characterName: RandomChar_13
-    attackPower: 15
     rangeType: 2
-    isAreaAttack: 0
-    isBuffSupport: 1
-    level: 1
-    currentExp: 0
-    expToNextLevel: 5
-    spawnPrefab: {fileID: 4720073040146381944, guid: 5b5fc66634aba7249843628131f33833, type: 3}
-    buttonIcon: {fileID: 3426231752425530176, guid: 5b5fc66634aba7249843628131f33833, type: 3}
-    cost: 2
-    motionPrefab: {fileID: 0}
-  - characterName: RandomChar_14
-    attackPower: 6
-    rangeType: 1
-    isAreaAttack: 0
-    isBuffSupport: 1
-    level: 1
-    currentExp: 0
-    expToNextLevel: 5
-    spawnPrefab: {fileID: 6508673691324167935, guid: 7936e178f1a3e5f4d86de85e7410fa87, type: 3}
-    buttonIcon: {fileID: 7287768745929089230, guid: 7936e178f1a3e5f4d86de85e7410fa87, type: 3}
-    cost: 3
-    motionPrefab: {fileID: 0}
-  - characterName: RandomChar_15
-    attackPower: 17
-    rangeType: 0
     isAreaAttack: 1
     isBuffSupport: 1
-    level: 1
+    level: 0
     currentExp: 0
-    expToNextLevel: 5
-    spawnPrefab: {fileID: 798199079303885805, guid: 081d099a307f4de40b4401d8ce1c0ae4, type: 3}
-    buttonIcon: {fileID: 3674951291747274099, guid: 081d099a307f4de40b4401d8ce1c0ae4, type: 3}
+    expToNextLevel: 0
+    spawnPrefab: {fileID: 9176415509751804172, guid: 6869d4cb534cf7e4e887855468885a13, type: 3}
+    buttonIcon: {fileID: 8519823030489811609, guid: 6869d4cb534cf7e4e887855468885a13, type: 3}
+    cost: 2
+    areaAttackRadius: 0
+    motionPrefab: {fileID: 9176415509751804172, guid: 6869d4cb534cf7e4e887855468885a13, type: 3}
+  - characterName: RandomChar_5
+    attackPower: 11
+    rangeType: 2
+    isAreaAttack: 0
+    isBuffSupport: 0
+    level: 0
+    currentExp: 0
+    expToNextLevel: 0
+    spawnPrefab: {fileID: 9146468120310428533, guid: 5e736b9b70e5ec74c9e95c538a8b57dc, type: 3}
+    buttonIcon: {fileID: 6680396247339770550, guid: 5e736b9b70e5ec74c9e95c538a8b57dc, type: 3}
+    cost: 3
+    areaAttackRadius: 0
+    motionPrefab: {fileID: 9146468120310428533, guid: 5e736b9b70e5ec74c9e95c538a8b57dc, type: 3}
+  - characterName: RandomChar_6
+    attackPower: 28
+    rangeType: 1
+    isAreaAttack: 1
+    isBuffSupport: 0
+    level: 0
+    currentExp: 0
+    expToNextLevel: 0
+    spawnPrefab: {fileID: 4326882089972318273, guid: 8561be47d89fa1f42bc1ecd66e58fdf6, type: 3}
+    buttonIcon: {fileID: 236177863141098582, guid: 8561be47d89fa1f42bc1ecd66e58fdf6, type: 3}
     cost: 1
-    motionPrefab: {fileID: 0}
+    areaAttackRadius: 0
+    motionPrefab: {fileID: 4326882089972318273, guid: 8561be47d89fa1f42bc1ecd66e58fdf6, type: 3}
+  - characterName: RandomChar_7
+    attackPower: 11
+    rangeType: 2
+    isAreaAttack: 0
+    isBuffSupport: 0
+    level: 0
+    currentExp: 0
+    expToNextLevel: 0
+    spawnPrefab: {fileID: 2768998443333610624, guid: 76f40db2bbc4349499188e4c779c2768, type: 3}
+    buttonIcon: {fileID: 2524350021502841476, guid: 76f40db2bbc4349499188e4c779c2768, type: 3}
+    cost: 2
+    areaAttackRadius: 0
+    motionPrefab: {fileID: 2768998443333610624, guid: 76f40db2bbc4349499188e4c779c2768, type: 3}
+  - characterName: RandomChar_8
+    attackPower: 11
+    rangeType: 2
+    isAreaAttack: 0
+    isBuffSupport: 0
+    level: 0
+    currentExp: 0
+    expToNextLevel: 0
+    spawnPrefab: {fileID: 7009747068067306124, guid: 3fa8e210839545c4da0cfc914f7a862c, type: 3}
+    buttonIcon: {fileID: 5939687862498206448, guid: 3fa8e210839545c4da0cfc914f7a862c, type: 3}
+    cost: 3
+    areaAttackRadius: 0
+    motionPrefab: {fileID: 7009747068067306124, guid: 3fa8e210839545c4da0cfc914f7a862c, type: 3}
+  - characterName: RandomChar_9
+    attackPower: 11
+    rangeType: 2
+    isAreaAttack: 0
+    isBuffSupport: 0
+    level: 0
+    currentExp: 0
+    expToNextLevel: 0
+    spawnPrefab: {fileID: 5801439680409142473, guid: 50a98071b5fb9b94aa5cbd72ad39fcad, type: 3}
+    buttonIcon: {fileID: 262685849678513024, guid: 50a98071b5fb9b94aa5cbd72ad39fcad, type: 3}
+    cost: 1
+    areaAttackRadius: 0
+    motionPrefab: {fileID: 5801439680409142473, guid: 50a98071b5fb9b94aa5cbd72ad39fcad, type: 3}

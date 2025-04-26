@@ -4,6 +4,8 @@ using System;
 /// <summary>
 /// 2D 몬스터 예시.
 /// 단순 이동. Waypoints를 따라 이동한 뒤 끝에 도달하면 제거.
+/// 
+/// [변경] 마지막 웨이포인트(=성)에 도달 시 OnReachedCastle 이벤트를 호출하도록 수정.
 /// </summary>
 public class Monster : MonoBehaviour
 {
@@ -17,6 +19,9 @@ public class Monster : MonoBehaviour
 
     // 죽을 때 WaveSpawner 등에서 구독하는 이벤트
     public event Action OnDeath;
+
+    // === 추가: 성(마지막 지점) 도달 시 알리는 이벤트
+    public event Action OnReachedCastle;
 
     private int currentWaypointIndex = 0;
     private bool isDead = false;
@@ -49,8 +54,14 @@ public class Monster : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 마지막 웨이포인트에 도달했을 때(=성) 호출
+    /// → 성 침투 처리를 위해 OnReachedCastle 이벤트 → 그 후 파괴
+    /// </summary>
     private void OnReachEndPoint()
     {
+        // 기존 Destroy(gameObject); 대신, 아래 이벤트 후 파괴
+        OnReachedCastle?.Invoke();
         Destroy(gameObject);
     }
 
@@ -68,7 +79,7 @@ public class Monster : MonoBehaviour
     {
         isDead = true;
         
-        // 이벤트 발생
+        // 사망 시 이벤트
         OnDeath?.Invoke();
         
         Destroy(gameObject);
