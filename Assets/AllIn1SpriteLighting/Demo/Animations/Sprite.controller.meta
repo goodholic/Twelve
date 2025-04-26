@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 0684e3303dd4ec8449e04775522522ae
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 9100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 161831
+  packageName: All In 1 Sprite Lighting
+  packageVersion: 2.25
+  assetPath: Assets/AllIn1SpriteLighting/Demo/Animations/Sprite.controller
+  uploadId: 412301

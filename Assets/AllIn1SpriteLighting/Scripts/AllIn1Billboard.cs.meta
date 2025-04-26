@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 0dc7c69115ec5d149b12b998cb19b135
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 161831
+  packageName: All In 1 Sprite Lighting
+  packageVersion: 2.25
+  assetPath: Assets/AllIn1SpriteLighting/Scripts/AllIn1Billboard.cs
+  uploadId: 412301

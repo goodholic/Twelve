@@ -1,0 +1,30 @@
+fileFormatVersion: 2
+guid: ec505f35ed88db147b4c93e67588c154
+AudioImporter:
+  externalObjects: {}
+  serializedVersion: 7
+  defaultSettings:
+    serializedVersion: 2
+    loadType: 0
+    sampleRateSetting: 0
+    sampleRateOverride: 44100
+    compressionFormat: 1
+    quality: 1
+    conversionMode: 0
+    preloadAudioData: 0
+  platformSettingOverrides: {}
+  forceToMono: 0
+  normalize: 1
+  loadInBackground: 0
+  ambisonic: 0
+  3D: 1
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 271354
+  packageName: UI Sounds for Cartoon Casual Games and Anime - Vol. 1
+  packageVersion: 1.0
+  assetPath: Assets/UI_Cartoon/Triplet/UI_bell_triplet_246_up_C6.wav
+  uploadId: 629571

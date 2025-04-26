@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: b05779eb67db9b047b44920e01e861b2
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 7400000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 161831
+  packageName: All In 1 Sprite Lighting
+  packageVersion: 2.25
+  assetPath: Assets/AllIn1SpriteLighting/Demo/Animations/SpecularAmount.anim
+  uploadId: 412301

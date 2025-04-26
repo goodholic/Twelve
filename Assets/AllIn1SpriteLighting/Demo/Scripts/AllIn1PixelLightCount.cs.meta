@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: ba9df3369de567c41bb7385932fab133
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 161831
+  packageName: All In 1 Sprite Lighting
+  packageVersion: 2.25
+  assetPath: Assets/AllIn1SpriteLighting/Demo/Scripts/AllIn1PixelLightCount.cs
+  uploadId: 412301

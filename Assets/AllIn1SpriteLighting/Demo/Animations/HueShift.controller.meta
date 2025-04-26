@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 13e8aa833e4b9c84f80997583bdd3b18
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 9100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 161831
+  packageName: All In 1 Sprite Lighting
+  packageVersion: 2.25
+  assetPath: Assets/AllIn1SpriteLighting/Demo/Animations/HueShift.controller
+  uploadId: 412301

@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 471f9b1f20d61834683b572e07e7444f
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 161831
+  packageName: All In 1 Sprite Lighting
+  packageVersion: 2.25
+  assetPath: Assets/AllIn1SpriteLighting/Demo/Scripts/DemoChangeScene.cs
+  uploadId: 412301
