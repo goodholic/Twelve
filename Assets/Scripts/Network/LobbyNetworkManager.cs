@@ -24,58 +24,93 @@ public class LobbyNetworkManager : MonoBehaviour
         if (userInfoText == null)
             Debug.LogError("[LobbyNetworkManager] userInfoText가 Inspector에서 할당되지 않았습니다!");
 
-        // 2) 로그인 패널 열기
-        if (loginPanel)
-            loginPanel.SetActive(true);
-
-        // 3) 버튼 클릭 리스너 설정
-        if (guestLoginButton != null)
+        // [수정됨] 이미 로그인되어 있는지 확인
+        if (FirebaseAuthManager.Instance != null && FirebaseAuthManager.Instance.GetCurrentUser() != null)
         {
-            guestLoginButton.onClick.AddListener(() =>
-            {
-                if (FirebaseAuthManager.Instance == null)
-                {
-                    Debug.LogError("[LobbyNetworkManager] FirebaseAuthManager.Instance가 null입니다. "
-                                   + "씬에 FirebaseAuthManager 오브젝트가 있나요?");
-                    return;
-                }
+            // 이미 로그인된 상태 => 로그인 패널 숨기고, 사용자 데이터 로드
+            if (loginPanel)
+                loginPanel.SetActive(false);
 
-                // 게스트 로그인
-                FirebaseAuthManager.Instance.SignInAnonymously();
-            });
+            FirebaseUser current = FirebaseAuthManager.Instance.GetCurrentUser();
+            Debug.Log($"[LobbyNetworkManager] Already logged in: {current.UserId}");
+
+            // Firestore (또는 임시 Mock)로부터 유저 정보 로드
+            FirebaseUserDataManager.Instance.LoadUserData(
+                current.UserId,
+                (profileData) =>
+                {
+                    Debug.Log($"[LobbyNetworkManager] LoadUserData success. Level={profileData.level}, Gold={profileData.gold}");
+                    // UI 텍스트 표시
+                    if (userInfoText)
+                    {
+                        userInfoText.text = $"Welcome, {profileData.userName}\nLV={profileData.level} / Gold={profileData.gold}";
+                    }
+
+                    // 간단한 Analytics 예시 (커스텀)
+                    FirebaseAnalyticsHelper.SetUserProperty("PlayerLevel", profileData.level.ToString());
+                },
+                (err) =>
+                {
+                    // 로드 실패
+                    Debug.LogWarning($"[LobbyNetworkManager] LoadUserData fail: {err}");
+                }
+            );
         }
-
-        if (googleLoginButton != null)
+        else
         {
-            googleLoginButton.onClick.AddListener(() =>
-            {
-                // GoogleSignInManager 통해 실제 구글 로그인 시도
-                if (GoogleSignInManager.Instance == null)
-                {
-                    Debug.LogError("[LobbyNetworkManager] GoogleSignInManager.Instance가 null입니다. "
-                                   + "씬에 GoogleSignInManager 오브젝트가 있나요?");
-                    return;
-                }
+            // (기존 로직) 아직 로그인 안 됐으므로 로그인 패널 열기
+            if (loginPanel)
+                loginPanel.SetActive(true);
 
-                GoogleSignInManager.Instance.OnPressGoogleSignIn();
-            });
+            // 3) 버튼 클릭 리스너 설정
+            if (guestLoginButton != null)
+            {
+                guestLoginButton.onClick.AddListener(() =>
+                {
+                    if (FirebaseAuthManager.Instance == null)
+                    {
+                        Debug.LogError("[LobbyNetworkManager] FirebaseAuthManager.Instance가 null입니다. "
+                                       + "씬에 FirebaseAuthManager 오브젝트가 있나요?");
+                        return;
+                    }
+                    // 게스트 로그인
+                    FirebaseAuthManager.Instance.SignInAnonymously();
+                });
+            }
+
+            if (googleLoginButton != null)
+            {
+                googleLoginButton.onClick.AddListener(() =>
+                {
+                    // GoogleSignInManager 통해 실제 구글 로그인 시도
+                    if (GoogleSignInManager.Instance == null)
+                    {
+                        Debug.LogError("[LobbyNetworkManager] GoogleSignInManager.Instance가 null입니다. "
+                                       + "씬에 GoogleSignInManager 오브젝트가 있나요?");
+                        return;
+                    }
+
+                    GoogleSignInManager.Instance.OnPressGoogleSignIn();
+                });
 
 #if !GOOGLE_SIGNIN_AVAILABLE
-            // SDK가 없으면 구글 버튼 비활성화
-            googleLoginButton.interactable = false;
-            Debug.LogWarning("[LobbyNetworkManager] GOOGLE_SIGNIN_AVAILABLE가 정의되지 않아 구글 로그인 버튼을 비활성화합니다.");
+                // SDK가 없으면 구글 버튼 비활성화
+                googleLoginButton.interactable = false;
+                Debug.LogWarning("[LobbyNetworkManager] GOOGLE_SIGNIN_AVAILABLE가 정의되지 않아 구글 로그인 버튼을 비활성화합니다.");
 #endif
-        }
+            }
 
-        // 4) FirebaseAuthManager 이벤트 등록
-        if (FirebaseAuthManager.Instance == null)
-        {
-            Debug.LogError("[LobbyNetworkManager] FirebaseAuthManager.Instance가 null이라 이벤트 등록 불가");
-            return;
+            // 4) FirebaseAuthManager 이벤트 등록
+            if (FirebaseAuthManager.Instance == null)
+            {
+                Debug.LogError("[LobbyNetworkManager] FirebaseAuthManager.Instance가 null이라 이벤트 등록 불가");
+            }
+            else
+            {
+                FirebaseAuthManager.Instance.OnLoginSuccess += OnLoginSuccess;
+                FirebaseAuthManager.Instance.OnLoginFail    += OnLoginFail;
+            }
         }
-
-        FirebaseAuthManager.Instance.OnLoginSuccess += OnLoginSuccess;
-        FirebaseAuthManager.Instance.OnLoginFail    += OnLoginFail;
     }
 
     private void OnDestroy()

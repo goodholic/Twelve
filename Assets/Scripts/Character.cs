@@ -1,5 +1,6 @@
 using System.Collections;
 using UnityEngine;
+using UnityEngine.UI; // UI Image를 사용할 때 필요
 
 /// <summary>
 /// 2D 캐릭터(배치 가능 오브젝트) 예시
@@ -59,12 +60,43 @@ public class Character : MonoBehaviour
 
     private RectTransform bulletPanel;  // 내부적으로만 사용할 참조
 
+    // ======================================================
+    // (UI로 사용하는 경우) SpriteRenderer 아닌 Image 사용
+    // ======================================================
+    private SpriteRenderer spriteRenderer; 
+    private Image uiImage;  // Canvas 상에서 Image 컴포넌트를 쓸 때 필요
+
+    // ================================================
+    // (추가) 합성시 별 등급별 테두리/라이팅 효과 재질
+    // ================================================
+    [Header("Material Settings For Star Effects")]
+    [Tooltip("일반 SpriteRenderer용 (월드좌표 스프라이트)")]
+    public Material baseMaterial;       
+    public Material outlineMaterial;    
+    public Material lightingMaterial;   
+
+    [Tooltip("UI Image 전용 머티리얼 (All-in-1 Sprite Shader의 UI 버전)")]
+    public Material baseMaterialUI;     
+    public Material outlineMaterialUI;  
+    public Material lightingMaterialUI; 
+
     /// <summary>
     /// 배치 시, PlacementManager가 bulletPanel을 할당해주는 용도
     /// </summary>
     public void SetBulletPanel(RectTransform panel)
     {
         bulletPanel = panel;
+    }
+
+    private void Awake()
+    {
+        // 1) SpriteRenderer 있는지 확인
+        spriteRenderer = GetComponentInChildren<SpriteRenderer>();
+        if (spriteRenderer == null)
+        {
+            // 2) 없으면 UI Image 컴포넌트 찾기
+            uiImage = GetComponentInChildren<Image>();
+        }
     }
 
     private void Start()
@@ -95,6 +127,9 @@ public class Character : MonoBehaviour
 
         // 공격 루틴 시작
         StartCoroutine(AttackRoutine());
+
+        // (추가) 현재 별 등급에 맞춰 머티리얼 적용
+        ApplyStarVisual();
     }
 
     private IEnumerator AttackRoutine()
@@ -154,7 +189,7 @@ public class Character : MonoBehaviour
                 Debug.LogWarning($"[Character] bulletPanel이 유효하지 않음. (bulletObj 단독 생성)");
             }
 
-            // UI(RectTransform)로 좌표 잡기
+            // UI(RectTransform)로 좌표 잡기 (캔버스 상 총알)
             RectTransform bulletRect = bulletObj.GetComponent<RectTransform>();
             if (bulletRect != null && bulletPanel != null)
             {
@@ -164,8 +199,9 @@ public class Character : MonoBehaviour
             }
             else
             {
-                // 3D Transform 경우 -> worldPosition
+                // 3D Transform(월드좌표) 경우
                 bulletObj.transform.position = transform.position;
+                bulletObj.transform.localRotation = Quaternion.identity;
             }
 
             // 초기값 세팅 (광역 공격 여부 + 범위 포함)
@@ -239,6 +275,61 @@ public class Character : MonoBehaviour
         {
             float diameter = attackRange * 2f;
             rangeIndicatorInstance.transform.localScale = new Vector3(diameter, diameter, 1f);
+        }
+    }
+
+    /// <summary>
+    /// (추가) 합성 결과로 1성→2성 / 2성→3성이 되었을 때,
+    /// 각 등급에 맞는 머티리얼(테두리/라이팅) 적용
+    /// + (UI 전용) Image 컴포넌트면 UI용 머티리얼을 적용.
+    /// </summary>
+    public void ApplyStarVisual()
+    {
+        // 1) SpriteRenderer를 사용하는 경우
+        if (spriteRenderer != null)
+        {
+            switch (star)
+            {
+                case CharacterStar.OneStar:
+                    if (baseMaterial != null)
+                        spriteRenderer.material = baseMaterial;
+                    break;
+
+                case CharacterStar.TwoStar:
+                    if (outlineMaterial != null)
+                        spriteRenderer.material = outlineMaterial;
+                    break;
+
+                case CharacterStar.ThreeStar:
+                    if (lightingMaterial != null)
+                        spriteRenderer.material = lightingMaterial;
+                    break;
+            }
+        }
+        // 2) UI Image를 사용하는 경우
+        else if (uiImage != null)
+        {
+            switch (star)
+            {
+                case CharacterStar.OneStar:
+                    if (baseMaterialUI != null)
+                        uiImage.material = baseMaterialUI;
+                    break;
+
+                case CharacterStar.TwoStar:
+                    if (outlineMaterialUI != null)
+                        uiImage.material = outlineMaterialUI;
+                    break;
+
+                case CharacterStar.ThreeStar:
+                    if (lightingMaterialUI != null)
+                        uiImage.material = lightingMaterialUI;
+                    break;
+            }
+        }
+        else
+        {
+            Debug.LogWarning($"[Character] SpriteRenderer나 Image 컴포넌트를 찾지 못했습니다. 재질 적용 불가.");
         }
     }
 }

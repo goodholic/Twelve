@@ -1,5 +1,3 @@
-// Assets\Scripts\Network\FirebaseAuthManager.cs
-
 using System;
 using UnityEngine;
 using Firebase;
@@ -69,16 +67,13 @@ public class FirebaseAuthManager : MonoBehaviour
                 
                 firebaseAuth = FirebaseAuth.DefaultInstance;
 
-                // 만약 이미 로그인된 상태가 있다면 currentUser에 세팅
+                // (아래 부분) 기존에는 currentUser != null이면 무조건 SignOut()을 했음.
+                // [수정됨] : 이미 로그인되어 있으면 강제 로그아웃하지 않는다.
                 currentUser = firebaseAuth.CurrentUser;
                 if (currentUser != null)
                 {
                     Debug.Log($"[FirebaseAuthManager] Already signed in as {currentUser.UserId}");
-
-                    // (추가) 로그인 화면을 무조건 먼저 띄우고 싶으므로, 이전 세션을 강제로 종료
-                    Debug.Log("[FirebaseAuthManager] Already signed in => forcing sign out now to show login screen first.");
-                    SignOut();      // 실제 로그아웃
-                    currentUser = null;
+                    // ---- 여기에 있던 SignOut()을 제거했습니다. ----
                 }
             }
             else

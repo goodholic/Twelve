@@ -67,7 +67,7 @@ public class PlacementManager : MonoBehaviour
     /// </summary>
     public void PlaceCharacterOnTile(Tile tile)
     {
-        if (characterDatabase == null || 
+        if (characterDatabase == null ||
             characterDatabase.currentRegisteredCharacters == null ||
             characterDatabase.currentRegisteredCharacters.Length == 0)
         {
@@ -366,7 +366,12 @@ public class PlacementManager : MonoBehaviour
                     {
                         Debug.Log("[PlacementManager] 이미 3성이므로 더이상 합성 불가");
                     }
+
                     UpgradeStats(otherChar);
+
+                    // ★ 추가: 별 등급 변경 후, 실제 머티리얼(테두리/라이팅) 적용
+                    otherChar.ApplyStarVisual();
+
                     Destroy(movingChar.gameObject);
                     Debug.Log("[PlacementManager] 합성 성공 -> 별 상승");
                     return true;
@@ -380,6 +385,29 @@ public class PlacementManager : MonoBehaviour
         return false;
     }
 
+    private void CreateOccupiedChild(Tile tile)
+    {
+        Transform exist = tile.transform.Find("Occupied");
+        if (exist == null)
+        {
+            GameObject occupiedObj = new GameObject("Occupied");
+            occupiedObj.transform.SetParent(tile.transform, false);
+            occupiedObj.transform.localPosition = Vector3.zero;
+        }
+    }
+
+    private void RemoveOccupiedChild(Tile tile)
+    {
+        Transform exist = tile.transform.Find("Occupied");
+        if (exist != null)
+        {
+            Destroy(exist.gameObject);
+        }
+    }
+
+    /// <summary>
+    /// 합성 후 스탯 수치 보정
+    /// </summary>
     private void UpgradeStats(Character ch)
     {
         float baseAtk = ch.attackPower / 1.6f;
@@ -403,26 +431,6 @@ public class PlacementManager : MonoBehaviour
                 ch.attackRange = baseRange * 1.2f;
                 ch.attackSpeed = baseSpeed * 1.2f;
                 break;
-        }
-    }
-
-    private void CreateOccupiedChild(Tile tile)
-    {
-        Transform exist = tile.transform.Find("Occupied");
-        if (exist == null)
-        {
-            GameObject occupiedObj = new GameObject("Occupied");
-            occupiedObj.transform.SetParent(tile.transform, false);
-            occupiedObj.transform.localPosition = Vector3.zero;
-        }
-    }
-
-    private void RemoveOccupiedChild(Tile tile)
-    {
-        Transform exist = tile.transform.Find("Occupied");
-        if (exist != null)
-        {
-            Destroy(exist.gameObject);
         }
     }
 }

@@ -73,7 +73,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_Material: {fileID: 0}
+  m_Material: {fileID: 2100000, guid: 72eb60d2746f57b4cbfafc31ac75105f, type: 2}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
@@ -109,10 +109,18 @@ MonoBehaviour:
   attackRange: 1.5
   currentTile: {fileID: 0}
   currentTarget: {fileID: 0}
+  isAreaAttack: 0
+  areaAttackRadius: 1
   rangeIndicatorPrefab: {fileID: 3037178901491863121, guid: 70e5c5e981d70c247a317a909d42c752, type: 3}
   showRangeIndicator: 0
   bulletPrefab: {fileID: 4838677500344597568, guid: 98e2d8dedad69744188b9d82f84a8124, type: 3}
   bulletSpeed: 5
+  baseMaterial: {fileID: 0}
+  outlineMaterial: {fileID: 0}
+  lightingMaterial: {fileID: 0}
+  baseMaterialUI: {fileID: 0}
+  outlineMaterialUI: {fileID: 2100000, guid: bf626d89eae13304e8629c1381108afe, type: 2}
+  lightingMaterialUI: {fileID: 2100000, guid: 72eb60d2746f57b4cbfafc31ac75105f, type: 2}
 --- !u!114 &-312522707320131431
 MonoBehaviour:
   m_ObjectHideFlags: 0
