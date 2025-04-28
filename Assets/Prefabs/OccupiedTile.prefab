@@ -95,9 +95,11 @@ MonoBehaviour:
   blockedColor: {r: 1, g: 0, b: 0, a: 1}
   walkablePrefab: {fileID: 0}
   placablePrefab: {fileID: 0}
-  occupiedPrefab: {fileID: 0}
+  occupiedPrefab: {fileID: 4692362406737092058}
   currentVisual: {fileID: 0}
-  tileButton: {fileID: 0}
+  tileButton: {fileID: -477364798650710222, guid: 6d19736a10d3e8544845433b6f5234a1, type: 3}
+  tileOutlineColor: {r: 0, g: 0, b: 0, a: 1}
+  tileOutlineThickness: 0
   row: 0
   column: 0
   tileIndex: 0
