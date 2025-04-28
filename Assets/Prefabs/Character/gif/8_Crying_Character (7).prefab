@@ -14,6 +14,7 @@ GameObject:
   - component: {fileID: 2524350021502841476}
   - component: {fileID: 8582468147343252403}
   - component: {fileID: 7552802495602455483}
+  - component: {fileID: 2712700398099399136}
   m_Layer: 5
   m_Name: 8_Crying_Character (7)
   m_TagString: Untagged
@@ -73,7 +74,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_Material: {fileID: 2100000, guid: 72eb60d2746f57b4cbfafc31ac75105f, type: 2}
+  m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
@@ -104,23 +105,23 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   star: 1
-  attackPower: 10
-  attackSpeed: 1
-  attackRange: 1.5
+  characterName: 
+  attackPower: 9
+  attackSpeed: 1.5
+  attackRange: 1.1
+  currentHP: 180
   currentTile: {fileID: 0}
   currentTarget: {fileID: 0}
-  isAreaAttack: 0
-  areaAttackRadius: 1
+  isAreaAttack: 1
+  areaAttackRadius: 2
   rangeIndicatorPrefab: {fileID: 3037178901491863121, guid: 70e5c5e981d70c247a317a909d42c752, type: 3}
   showRangeIndicator: 0
-  bulletPrefab: {fileID: 4838677500344597568, guid: 98e2d8dedad69744188b9d82f84a8124, type: 3}
+  bulletPrefab: {fileID: 5776322284297556845, guid: f4fc8c0549ee45246aec1ce0867a64c1, type: 3}
   bulletSpeed: 5
-  baseMaterial: {fileID: 0}
-  outlineMaterial: {fileID: 0}
-  lightingMaterial: {fileID: 0}
-  baseMaterialUI: {fileID: 0}
-  outlineMaterialUI: {fileID: 2100000, guid: bf626d89eae13304e8629c1381108afe, type: 2}
-  lightingMaterialUI: {fileID: 2100000, guid: 72eb60d2746f57b4cbfafc31ac75105f, type: 2}
+  twoStarOutlineColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
+  twoStarOutlineWidth: 10
+  threeStarOutlineColor: {r: 1, g: 0.31569973, b: 0, a: 1}
+  threeStarOutlineWidth: 10
 --- !u!114 &7552802495602455483
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -134,3 +135,39 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   parentPanel: {fileID: 3504338384272343577, guid: 9a44fedc711c03541adc233db7cd34dd, type: 3}
+--- !u!58 &2712700398099399136
+CircleCollider2D:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2768998443333610624}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Density: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ForceSendLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ForceReceiveLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ContactCaptureLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_CallbackLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_IsTrigger: 0
+  m_UsedByEffector: 0
+  m_CompositeOperation: 0
+  m_CompositeOrder: 0
+  m_Offset: {x: 0, y: 0}
+  m_Radius: 0.5

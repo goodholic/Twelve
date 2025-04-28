@@ -15,10 +15,25 @@ public class CharacterData
     [Tooltip("이 캐릭터를 구분하기 위한 이름 (UI 표시용)")]
     public string characterName;
 
-    [Header("Stats")]
-    [Tooltip("이 캐릭터의 공격력(Placement 시 Character.cs로 전달)")]
+    // ========================
+    // (1) 새로 추가된 스탯들
+    // ========================
+    [Header("Stats (요청에 따른 필드 추가)")]
+    [Tooltip("공격력")]
     public float attackPower = 10f;
 
+    [Tooltip("공격속도(초당 공격 횟수)")]
+    public float attackSpeed = 1f;
+
+    [Tooltip("공격 사거리(실수값)")]
+    public float attackRange = 1.5f;
+
+    [Tooltip("최대 체력(캐릭터가 사용할 체력)")]
+    public float maxHP = 100f;
+
+    // ================
+    // (기존) 필드들
+    // ================
     [Tooltip("사거리 타입 (근거리/원거리/장거리 구분)")]
     public RangeType rangeType = RangeType.Melee;
 
@@ -49,16 +64,9 @@ public class CharacterData
     [Tooltip("캐릭터 소환 비용 (UI 표시용)")]
     public int cost = 10;
 
-    // ============================================
-    //   (추가) 광역 공격 반경 (인스펙터에서 설정)
-    // ============================================
-    [Header("Area Attack Settings")]
-    [Tooltip("광역 공격일 때 범위(반경)")]
+    [Header("Area Attack Settings (광역공격 범위)")]
     public float areaAttackRadius = 1f;
 
-    // ============================================
-    //   도감/모션용
-    // ============================================
     [Header("도감용 모션 프리팹 (선택)")]
     public GameObject motionPrefab;
 
@@ -77,3 +85,90 @@ public class CharacterData
         }
     }
 }
+
+
+/* =======================================
+   [예시] 10개 유닛(1성 기준) 밸런스 수치
+   =======================================
+
+1) 검(=Swordsman)
+   - attackPower = 12
+   - attackSpeed = 1.3  // 초당 1.3회 공격
+   - attackRange = 1.1  // 근접
+   - maxHP = 200
+   - isAreaAttack = false
+   - rangeType = Melee
+
+2) 남 법사(=Male Wizard)
+   - attackPower = 15
+   - attackSpeed = 1.0
+   - attackRange = 3.0
+   - maxHP = 120
+   - isAreaAttack = true
+   - rangeType = Ranged
+
+3) 캐논병
+   - attackPower = 20
+   - attackSpeed = 0.8
+   - attackRange = 3.5
+   - maxHP = 150
+   - isAreaAttack = true
+   - rangeType = Ranged
+
+4) 쉴드병
+   - attackPower = 8
+   - attackSpeed = 0.9
+   - attackRange = 1.0
+   - maxHP = 300
+   - isAreaAttack = false
+   - rangeType = Melee
+
+5) 여법사1
+   - attackPower = 13
+   - attackSpeed = 1.1
+   - attackRange = 2.5
+   - maxHP = 100
+   - isAreaAttack = false
+   - rangeType = Ranged
+
+6) 여법사2
+   - attackPower = 18
+   - attackSpeed = 0.9
+   - attackRange = 3.0
+   - maxHP = 100
+   - isAreaAttack = true
+   - rangeType = Ranged
+
+7) 거중기병
+   - attackPower = 25
+   - attackSpeed = 0.7
+   - attackRange = 1.5
+   - maxHP = 250
+   - isAreaAttack = false
+   - rangeType = Melee
+
+8) 완드법사
+   - attackPower = 16
+   - attackSpeed = 1.0
+   - attackRange = 2.8
+   - maxHP = 120
+   - isAreaAttack = false
+   - rangeType = Ranged
+
+9) 우는 병사
+   - attackPower = 9
+   - attackSpeed = 1.5
+   - attackRange = 1.1
+   - maxHP = 180
+   - isAreaAttack = false
+   - rangeType = Melee
+
+10) 레이저 병사
+   - attackPower = 22
+   - attackSpeed = 0.6
+   - attackRange = 4.0
+   - maxHP = 130
+   - isAreaAttack = true
+   - rangeType = LongRange
+
+*/

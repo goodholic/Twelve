@@ -1,10 +1,7 @@
 using System.Collections;
 using UnityEngine;
-using UnityEngine.UI; // UI Image를 사용할 때 필요
+using UnityEngine.UI;
 
-/// <summary>
-/// 2D 캐릭터(배치 가능 오브젝트) 예시
-/// </summary>
 public enum CharacterStar
 {
     OneStar = 1,
@@ -14,122 +11,101 @@ public enum CharacterStar
 
 public class Character : MonoBehaviour
 {
-    [Header("Character Stats")]
+    [Header("Character Star Info (별)")]
     public CharacterStar star = CharacterStar.OneStar;
+
+    [Tooltip("캐릭터 이름")]
+    public string characterName;
+
+    // ==================
+    // 전투 스탯
+    // ==================
     public float attackPower = 10f;
-
-    [Tooltip("1초당 공격 횟수(AttackRoutine 쿨타임 결정)")]
     public float attackSpeed = 1f;
-
-    [Tooltip("공격 사거리(원 범위)")]
     public float attackRange = 1.5f;
+    public float currentHP = 100f;
 
-    [Tooltip("현재 배치된 타일")]
+    // ==================
+    // 타일/몬스터 관련
+    // ==================
     public Tile currentTile;
-
-    [Tooltip("현재 공격 중인 몬스터(2D)")]
     public Monster currentTarget;
-
-    // ===================================
-    // (추가) 광역 공격 관련 필드
-    // ===================================
-    [Tooltip("이 캐릭터가 광역 공격인지 여부")]
     public bool isAreaAttack = false;
-
-    [Tooltip("광역 공격 범위(반경) - isAreaAttack=true일 때만 사용")]
     public float areaAttackRadius = 1f;
 
+    // 사거리 표시용
     [Header("Range Indicator Settings")]
-    [Tooltip("원(서클) 형태로 시각화해줄 프리팹(예: 반투명 Circle Sprite 등)")]
     public GameObject rangeIndicatorPrefab;
-
-    [Tooltip("사거리 원을 보여줄지 여부(체크 해제 시 숨길 수 있음)")]
     public bool showRangeIndicator = true;
+    private GameObject rangeIndicatorInstance;
 
-    private GameObject rangeIndicatorInstance; // 사거리 표시용 런타임 오브젝트
-
-    private float attackCooldown;
-
-    // ===========================
-    // 총알 발사 관련 설정
-    // ===========================
+    // 총알 발사
     [Header("Bullet Settings")]
-    [Tooltip("캐릭터가 발사할 총알(Projectile) 프리팹 (Bullet.cs가 붙은 오브젝트)")]
     public GameObject bulletPrefab;
     public float bulletSpeed = 5f;
+    private RectTransform bulletPanel;
 
-    private RectTransform bulletPanel;  // 내부적으로만 사용할 참조
+    // (2성/3성 아웃라인 등)
+    [Header("2성 아웃라인")]
+    public Color twoStarOutlineColor = Color.yellow;
+    [Range(0f, 10f)] public float twoStarOutlineWidth = 1f;
+    [Header("3성 아웃라인")]
+    public Color threeStarOutlineColor = Color.cyan;
+    [Range(0f, 10f)] public float threeStarOutlineWidth = 1.5f;
 
-    // ======================================================
-    // (UI로 사용하는 경우) SpriteRenderer 아닌 Image 사용
-    // ======================================================
-    private SpriteRenderer spriteRenderer; 
-    private Image uiImage;  // Canvas 상에서 Image 컴포넌트를 쓸 때 필요
+    private SpriteRenderer spriteRenderer;
+    private Image uiImage;
 
-    // ================================================
-    // (추가) 합성시 별 등급별 테두리/라이팅 효과 재질
-    // ================================================
-    [Header("Material Settings For Star Effects")]
-    [Tooltip("일반 SpriteRenderer용 (월드좌표 스프라이트)")]
-    public Material baseMaterial;       
-    public Material outlineMaterial;    
-    public Material lightingMaterial;   
-
-    [Tooltip("UI Image 전용 머티리얼 (All-in-1 Sprite Shader의 UI 버전)")]
-    public Material baseMaterialUI;     
-    public Material outlineMaterialUI;  
-    public Material lightingMaterialUI; 
-
-    /// <summary>
-    /// 배치 시, PlacementManager가 bulletPanel을 할당해주는 용도
-    /// </summary>
-    public void SetBulletPanel(RectTransform panel)
-    {
-        bulletPanel = panel;
-    }
+    // 공격 쿨타임
+    private float attackCooldown;
 
     private void Awake()
     {
-        // 1) SpriteRenderer 있는지 확인
         spriteRenderer = GetComponentInChildren<SpriteRenderer>();
         if (spriteRenderer == null)
         {
-            // 2) 없으면 UI Image 컴포넌트 찾기
             uiImage = GetComponentInChildren<Image>();
         }
     }
 
     private void Start()
     {
-        // 별 등급에 따른 능력치 보정
+        // 별에 따른 기초 스탯 보정 (예시)
         switch (star)
         {
-            case CharacterStar.OneStar:
-                // 그대로
-                break;
+            case CharacterStar.OneStar: break;
             case CharacterStar.TwoStar:
                 attackPower *= 1.3f;
                 attackRange *= 1.1f;
                 attackSpeed *= 1.1f;
+                currentHP   *= 1.2f;
                 break;
             case CharacterStar.ThreeStar:
                 attackPower *= 1.6f;
                 attackRange *= 1.2f;
                 attackSpeed *= 1.2f;
+                currentHP   *= 1.4f;
                 break;
         }
 
-        // 공격속도 -> 쿨타임 계산
         attackCooldown = 1f / attackSpeed;
 
-        // 사거리 표시용 원 생성
+        // 사거리 표시
         CreateRangeIndicator();
 
-        // 공격 루틴 시작
+        // 공격 루틴
         StartCoroutine(AttackRoutine());
 
-        // (추가) 현재 별 등급에 맞춰 머티리얼 적용
+        // 2성/3성 아웃라인 적용
         ApplyStarVisual();
+    }
+
+    /// <summary>
+    /// 드래그/배치 시, PlacementManager에서 호출해줄 수 있음
+    /// </summary>
+    public void SetBulletPanel(RectTransform panel)
+    {
+        bulletPanel = panel;
     }
 
     private IEnumerator AttackRoutine()
@@ -146,6 +122,9 @@ public class Character : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 사거리 내 몬스터 찾기 (단, isAlly == true 몬스터는 제외 → 공격하지 않음)
+    /// </summary>
     private Monster FindTargetInRange()
     {
         GameObject[] monsterObjs = GameObject.FindGameObjectsWithTag("Monster");
@@ -156,6 +135,10 @@ public class Character : MonoBehaviour
         {
             Monster m = mo.GetComponent<Monster>();
             if (m == null) continue;
+
+            // (중요) 아군 몬스터면 스킵
+            if (m.isAlly) 
+                continue;
 
             float dist = Vector2.Distance(transform.position, m.transform.position);
             if (dist <= attackRange && dist < nearestDist)
@@ -171,25 +154,17 @@ public class Character : MonoBehaviour
     {
         if (target == null) return;
 
-        // ---------------------------
-        //  (1) 총알 프리팹 사용
-        // ---------------------------
+        // (A) 총알 프리팹 사용
         if (bulletPrefab != null)
         {
-            // bulletPrefab(프로젝트 자산) -> 런타임 인스턴스화
             GameObject bulletObj = Instantiate(bulletPrefab);
 
-            // bulletPanel이 존재한다면, bulletObj를 그 자식으로 붙임
+            // bulletPanel이 있으면 자식으로 생성
             if (bulletPanel != null && bulletPanel.gameObject.scene.IsValid())
             {
                 bulletObj.transform.SetParent(bulletPanel, false);
             }
-            else
-            {
-                Debug.LogWarning($"[Character] bulletPanel이 유효하지 않음. (bulletObj 단독 생성)");
-            }
 
-            // UI(RectTransform)로 좌표 잡기 (캔버스 상 총알)
             RectTransform bulletRect = bulletObj.GetComponent<RectTransform>();
             if (bulletRect != null && bulletPanel != null)
             {
@@ -199,12 +174,10 @@ public class Character : MonoBehaviour
             }
             else
             {
-                // 3D Transform(월드좌표) 경우
                 bulletObj.transform.position = transform.position;
                 bulletObj.transform.localRotation = Quaternion.identity;
             }
 
-            // 초기값 세팅 (광역 공격 여부 + 범위 포함)
             Bullet bulletComp = bulletObj.GetComponent<Bullet>();
             if (bulletComp != null)
             {
@@ -213,33 +186,32 @@ public class Character : MonoBehaviour
         }
         else
         {
-            // ---------------------------
-            //  (2) 총알 프리팹이 없으면 즉시 공격
-            // ---------------------------
+            // (B) 총알이 없다면 즉시 공격 처리
             if (isAreaAttack)
             {
-                // 광역 공격: 해당 target 위치를 기준으로 범위 내 모든 몬스터에 데미지
                 DoAreaDamage(target.transform.position);
             }
             else
             {
-                // 단일 공격
                 target.TakeDamage(attackPower);
             }
         }
     }
 
     /// <summary>
-    /// 광역 공격(즉시형)을 처리하는 메서드(총알 프리팹 없이 직접 타격하는 경우)
+    /// 광역 공격 처리
     /// </summary>
     private void DoAreaDamage(Vector3 centerPos)
     {
-        // 모든 몬스터 검색
         GameObject[] monsterObjs = GameObject.FindGameObjectsWithTag("Monster");
         foreach (GameObject mo in monsterObjs)
         {
             Monster m = mo.GetComponent<Monster>();
             if (m == null) continue;
+
+            // 아군 몬스터는 스킵
+            if (m.isAlly) 
+                continue;
 
             float dist = Vector2.Distance(centerPos, m.transform.position);
             if (dist <= areaAttackRadius)
@@ -247,9 +219,12 @@ public class Character : MonoBehaviour
                 m.TakeDamage(attackPower);
             }
         }
-        Debug.Log($"[Character] 광역 공격 발생! 범위={areaAttackRadius}, Damage={attackPower}");
+        Debug.Log($"[Character] 광역 공격! 범위={areaAttackRadius}, Damage={attackPower}");
     }
 
+    /// <summary>
+    /// 사거리 보여줄 원형 인디케이터(옵션)
+    /// </summary>
     private void CreateRangeIndicator()
     {
         if (!showRangeIndicator) return;
@@ -258,7 +233,6 @@ public class Character : MonoBehaviour
         if (rangeIndicatorInstance != null)
         {
             Destroy(rangeIndicatorInstance);
-            rangeIndicatorInstance = null;
         }
 
         rangeIndicatorInstance = Instantiate(rangeIndicatorPrefab, transform);
@@ -278,58 +252,22 @@ public class Character : MonoBehaviour
         }
     }
 
+    // ========================================================
+    // (합성 로직) 전부 삭제 - UpgradeStar() 등 제거
+    // ========================================================
+
     /// <summary>
-    /// (추가) 합성 결과로 1성→2성 / 2성→3성이 되었을 때,
-    /// 각 등급에 맞는 머티리얼(테두리/라이팅) 적용
-    /// + (UI 전용) Image 컴포넌트면 UI용 머티리얼을 적용.
+    /// 별 등급 시각적 (예시)
     /// </summary>
     public void ApplyStarVisual()
     {
-        // 1) SpriteRenderer를 사용하는 경우
-        if (spriteRenderer != null)
+        if (star == CharacterStar.TwoStar)
         {
-            switch (star)
-            {
-                case CharacterStar.OneStar:
-                    if (baseMaterial != null)
-                        spriteRenderer.material = baseMaterial;
-                    break;
-
-                case CharacterStar.TwoStar:
-                    if (outlineMaterial != null)
-                        spriteRenderer.material = outlineMaterial;
-                    break;
-
-                case CharacterStar.ThreeStar:
-                    if (lightingMaterial != null)
-                        spriteRenderer.material = lightingMaterial;
-                    break;
-            }
+            Debug.Log($"[Character] 2성 아웃라인 적용: {twoStarOutlineColor}, Width={twoStarOutlineWidth}");
         }
-        // 2) UI Image를 사용하는 경우
-        else if (uiImage != null)
+        else if (star == CharacterStar.ThreeStar)
         {
-            switch (star)
-            {
-                case CharacterStar.OneStar:
-                    if (baseMaterialUI != null)
-                        uiImage.material = baseMaterialUI;
-                    break;
-
-                case CharacterStar.TwoStar:
-                    if (outlineMaterialUI != null)
-                        uiImage.material = outlineMaterialUI;
-                    break;
-
-                case CharacterStar.ThreeStar:
-                    if (lightingMaterialUI != null)
-                        uiImage.material = lightingMaterialUI;
-                    break;
-            }
-        }
-        else
-        {
-            Debug.LogWarning($"[Character] SpriteRenderer나 Image 컴포넌트를 찾지 못했습니다. 재질 적용 불가.");
+            Debug.Log($"[Character] 3성 아웃라인 적용: {threeStarOutlineColor}, Width={threeStarOutlineWidth}");
         }
     }
 }
