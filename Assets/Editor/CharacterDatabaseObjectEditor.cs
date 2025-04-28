@@ -1,5 +1,3 @@
-// Assets\Editor\CharacterDatabaseObjectEditor.cs
-
 #if UNITY_EDITOR
 using UnityEngine;
 using UnityEditor;
