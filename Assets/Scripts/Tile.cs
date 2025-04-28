@@ -7,8 +7,8 @@ using UnityEditor;
 
 /// <summary>
 /// 2D 타일(칸).
-/// 한 타일에 여러 캐릭터 배치 가능하도록 Occupied 체크 제거.
-/// Walkable이면 아군 몬스터 배치, Placable이면 터렛 배치.
+/// 자식 오브젝트("Placable", "Walkable", "Occupied")의 존재 여부로 상태를 판단.
+/// Button을 통해 OnClickPlacableTile() 호출 -> 캐릭터 배치 로직.
 /// </summary>
 [RequireComponent(typeof(Image), typeof(BoxCollider2D))]
 public class Tile : MonoBehaviour
@@ -29,13 +29,13 @@ public class Tile : MonoBehaviour
     [Header("Optional: Button for OnClick")]
     public Button tileButton;
 
-    // (row, col, tileIndex) 디버그용
+    // [추가] 타일이 몇 번째 인덱스(또는 행/열)에 위치하는지 저장
     [HideInInspector] public int row;
     [HideInInspector] public int column;
     [HideInInspector] public int tileIndex;
 
     /// <summary>
-    /// 자식 중 "Placable" 오브젝트가 있는지
+    /// 자식 중 이름이 "Placable"인 오브젝트가 있으면 true
     /// </summary>
     public bool IsPlacable()
     {
@@ -43,7 +43,7 @@ public class Tile : MonoBehaviour
     }
 
     /// <summary>
-    /// 자식 중 "Occupied" 오브젝트가 있는지 (이제 무시 가능)
+    /// 자식 중 이름이 "Occupied"인 오브젝트가 있으면 true
     /// </summary>
     public bool IsOccupied()
     {
@@ -51,7 +51,7 @@ public class Tile : MonoBehaviour
     }
 
     /// <summary>
-    /// 자식 중 "Walkable" 오브젝트가 있는지
+    /// 자식 중 이름이 "Walkable"인 오브젝트가 있으면 true
     /// </summary>
     public bool IsWalkable()
     {
@@ -59,16 +59,16 @@ public class Tile : MonoBehaviour
     }
 
     /// <summary>
-    /// 한 타일에 여러 캐릭터 배치 가능하므로 'Occupied' 체크 제거
+    /// 배치 가능 조건: Walkable=false && Placable=true && Occupied=false
     /// </summary>
     public bool CanPlaceCharacter()
     {
-        // return (!IsWalkable() && IsPlacable() && !IsOccupied());
-        return (!IsWalkable() && IsPlacable());
+        return (!IsWalkable() && IsPlacable() && !IsOccupied());
     }
 
     private void Start()
     {
+        // 1) Tile Image 설정
         if (tileImage == null)
         {
             tileImage = GetComponent<Image>();
@@ -76,9 +76,10 @@ public class Tile : MonoBehaviour
         if (tileImage != null)
         {
             tileImage.color = defaultColor;
-            tileImage.raycastTarget = true;
+            tileImage.raycastTarget = true; // UI 클릭 이벤트 인식
         }
 
+        // 2) Button 설정
         if (tileButton != null)
         {
             if (tileButton.targetGraphic == null && tileImage != null)
@@ -89,19 +90,24 @@ public class Tile : MonoBehaviour
             tileButton.onClick.AddListener(OnClickPlacableTile);
         }
 
+        // 3) 런타임 시 비주얼 갱신
         if (Application.isPlaying)
         {
             UpdateTileVisual_Runtime();
         }
     }
 
+    /// <summary>
+    /// Tile에 붙은 Button 클릭 시 호출되는 메서드
+    /// </summary>
     public void OnClickPlacableTile()
     {
-        Debug.Log($"Tile 클릭: {name} (Index={tileIndex}, row={row}, col={column})");
+        // [추가] 몇 번째 타일(또는 row/column)인지 로그로 확인
+        Debug.Log($"Tile 클릭됨: {name} (Index: {tileIndex}, Row={row}, Col={column})");
 
         if (CanPlaceCharacter())
         {
-            PlacementManager mgr = PlacementManager.Instance;
+            var mgr = PlacementManager.Instance;
             if (mgr != null)
             {
                 mgr.PlaceCharacterOnTile(this);
@@ -113,6 +119,7 @@ public class Tile : MonoBehaviour
         }
         else
         {
+            // 에디터에서 맵 상태("Placable", "Walkable", "Occupied") 확인용 디버그
             bool p = IsPlacable();
             bool w = IsWalkable();
             bool o = IsOccupied();
@@ -131,11 +138,6 @@ public class Tile : MonoBehaviour
         {
             UpdateTileVisual_Editor();
         }
-    }
-
-    public void RefreshTileVisual()
-    {
-        RefreshInEditor();
     }
 
     private void UpdateTileVisual_Editor()
@@ -163,6 +165,9 @@ public class Tile : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 프리팹 오브젝트가 프로젝트 에셋인지 여부(씬 객체가 아닌지) 체크
+    /// </summary>
     private bool IsAssetObject(UnityEngine.Object obj)
     {
         return PrefabUtility.IsPartOfPrefabAsset(obj) || AssetDatabase.Contains(obj);
@@ -215,6 +220,8 @@ public class Tile : MonoBehaviour
     {
         return PrefabUtility.IsPartOfPrefabAsset(obj) || AssetDatabase.Contains(obj);
     }
+#else
+    private bool IsPrefabAsset(GameObject obj) { return false; }
 #endif
 
     private void RemoveTileScriptsAtRuntime(GameObject root)
@@ -229,27 +236,82 @@ public class Tile : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 자식("Placable"/"Walkable"/"Occupied") 상태에 따라 어떤 비주얼 프리팹을 붙일지 결정
+    /// </summary>
     private GameObject SelectVisualPrefab()
     {
         bool p = IsPlacable();
         bool w = IsWalkable();
         bool o = IsOccupied();
 
+        // Walkable 전용
         if (w && !p && !o) return walkablePrefab;
+
+        // Placable 전용
         if (!w && p && !o) return placablePrefab;
-        if (o) return occupiedPrefab;
+
+        // Occupied 전용
+        if (!w && !p && o) return occupiedPrefab;
+
+        // 그 외 (아무 자식도 없는 경우나, 여러개가 동시에 있는 경우)
         return null;
     }
 
-    // ★ '한 타일에 2개 자식 이상 못 넣게'라는 제한은 제거
-    private void LateUpdate()
+    public void RefreshTileVisual()
     {
-        // 여기서는 '타일 자식' 그림 2개(placable/empty)만 유지하면 되니,
-        // 원하는 만큼 여유를 둬도 됩니다.
-        while (transform.childCount > 2)
+#if UNITY_EDITOR
+        if (Application.isPlaying) UpdateTileVisual_Runtime();
+        else UpdateTileVisual_Editor();
+#else
+        UpdateTileVisual_Runtime();
+#endif
+    }
+
+    public void HighlightTile()
+    {
+        if (tileImage != null)
         {
-            Transform child = transform.GetChild(transform.childCount - 1);
-            Destroy(child.gameObject);
+            tileImage.color = (CanPlaceCharacter()) ? highlightColor : blockedColor;
+        }
+    }
+
+    public void ResetHighlight()
+    {
+        if (tileImage != null)
+        {
+            tileImage.color = defaultColor;
         }
     }
 }
+
+#if UNITY_EDITOR
+/// <summary>
+/// (추가) Tile용 CustomEditor
+/// 에디터에서 "Placable / Walkable / Occupied" 상태를 Inspector에서 간단히 확인
+/// </summary>
+[CustomEditor(typeof(Tile))]
+public class TileEditor : Editor
+{
+    public override void OnInspectorGUI()
+    {
+        // 기본 Inspector
+        base.OnInspectorGUI();
+
+        // 상태 확인
+        Tile tile = (Tile)target;
+        bool p = tile.IsPlacable();
+        bool w = tile.IsWalkable();
+        bool o = tile.IsOccupied();
+
+        EditorGUILayout.Space();
+        EditorGUILayout.LabelField("=== Tile 상태 (자식 오브젝트) ===", EditorStyles.boldLabel);
+        EditorGUILayout.LabelField($"Placable : {p}");
+        EditorGUILayout.LabelField($"Walkable : {w}");
+        EditorGUILayout.LabelField($"Occupied : {o}");
+
+        // 필요하면 실시간 갱신 버튼 추가 가능
+        // if (GUILayout.Button("Refresh Visual")) { tile.RefreshInEditor(); }
+    }
+}
+#endif

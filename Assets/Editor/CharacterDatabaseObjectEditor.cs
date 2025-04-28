@@ -63,23 +63,6 @@ public class CharacterDatabaseObjectEditor : Editor
             }
         }
 
-        // ===================================================================
-        // ★ 추가: 'Save Database' 버튼 - 즉시 .asset 파일에 쓰기
-        // ===================================================================
-        EditorGUILayout.Space();
-        GUI.backgroundColor = Color.green;
-        if (GUILayout.Button("Save Database (강제로 .asset에 저장)"))
-        {
-            // Dirty 플래그 설정 후 실제 에셋 저장
-            EditorUtility.SetDirty(dbObj);
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
-            Debug.Log($"[CharacterDatabaseObjectEditor] '{dbObj.name}' 저장 완료!");
-        }
-        GUI.backgroundColor = Color.white;
-
-        // ===================================================================
-
         serializedObject.ApplyModifiedProperties();
     }
 
