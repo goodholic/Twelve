@@ -13,7 +13,7 @@ GameObject:
   - component: {fileID: 548684491681708411}
   m_Layer: 5
   m_Name: VFX 8
-  m_TagString: Untagged
+  m_TagString: ImpactVFX
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0

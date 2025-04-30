@@ -14,7 +14,7 @@ GameObject:
   - component: {fileID: 6689570660790182428}
   m_Layer: 5
   m_Name: BulletPrefab
-  m_TagString: Untagged
+  m_TagString: Bullet
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -55,6 +55,7 @@ MonoBehaviour:
   maxLifeTime: 5
   isAreaAttack: 0
   areaRadius: 0
+  impactEffectPrefab: {fileID: 0}
   subBulletPrefab: {fileID: 4838677500344597568}
   subBulletCount: 0
 --- !u!222 &3055104273813087511

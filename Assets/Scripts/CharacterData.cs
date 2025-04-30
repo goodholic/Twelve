@@ -15,6 +15,9 @@ public class CharacterData
     [Tooltip("이 캐릭터를 구분하기 위한 이름 (UI 표시용)")]
     public string characterName;
 
+    [Tooltip("캐릭터 기본 별 등급")]
+    public CharacterStar initialStar = CharacterStar.OneStar;
+
     // ========================
     // (1) 새로 추가된 스탯들
     // ========================

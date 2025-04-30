@@ -1,7 +1,8 @@
-// Assets/Scripts/WaveSpawner.cs
+// Assets\Scripts\WaveSpawner.cs
 
 using System.Collections;
 using UnityEngine;
+using TMPro; // TextMeshPro 사용을 위해
 
 public class WaveSpawner : MonoBehaviour
 {
@@ -27,6 +28,13 @@ public class WaveSpawner : MonoBehaviour
     [SerializeField] private ItemRewardPanelManager itemRewardPanel; 
     // (만약 itemRewardPanel에 Awake()에서 gameObject.SetActive(false) 하는 코드를 사용)
 
+    // (추가) 자동 웨이브 스타트 플래그
+    private bool autoStarted = false;
+
+    // (추가) 현재 웨이브 번호를 표시할 TextMeshProUGUI
+    [Header("Wave Count Text (현재 웨이브 번호 표시용)")]
+    [SerializeField] private TextMeshProUGUI waveCountText;
+
     private void Start()
     {
         // 아이템 패널을 초기에 비활성화
@@ -34,15 +42,46 @@ public class WaveSpawner : MonoBehaviour
         {
             itemPanel.SetActive(false);
         }
+
+        // (추가) 10초 뒤부터 자동 웨이브 스폰 시작
+        Invoke(nameof(StartAutoWaveSpawn), 10f);
     }
 
     private void Update()
     {
-        // 테스트용 : Space 키로 웨이브 시작
+        // 테스트용 : Space 키로 웨이브 수동 시작(디버그)
         if (Input.GetKeyDown(KeyCode.Space))
         {
             StartNextWave();
         }
+    }
+
+    // (추가) 10초 후에 실행될 메서드 → 200웨이브까지만 자동으로 돌린다
+    private void StartAutoWaveSpawn()
+    {
+        if (!autoStarted)
+        {
+            autoStarted = true;
+            StartCoroutine(AutoWaveRoutine());
+        }
+    }
+
+    // (추가) 200웨이브까지만 반복
+    private IEnumerator AutoWaveRoutine()
+    {
+        while (currentWave < 200)
+        {
+            StartNextWave();
+
+            // StartNextWave() 내에서 isSpawning이 true가 되고, 
+            // SpawnWaveRoutine이 끝나면 다시 false.
+            // => 그 사이(웨이브 진행 중)는 대기
+            while (isSpawning)
+            {
+                yield return null;
+            }
+        }
+        Debug.Log("[WaveSpawner] 200 wave 전부 완료!");
     }
 
     public void StartNextWave()
@@ -57,6 +96,16 @@ public class WaveSpawner : MonoBehaviour
     {
         isSpawning = true;
         currentWave++;
+
+        // (추가) 웨이브 번호 텍스트 갱신
+        if (waveCountText != null)
+        {
+            waveCountText.text = $"Wave : {currentWave}";
+        }
+        else
+        {
+            Debug.LogWarning("[WaveSpawner] waveCountText가 null이라 Wave 번호 표시 불가!");
+        }
 
         aliveMonsters = monstersPerWave;
 

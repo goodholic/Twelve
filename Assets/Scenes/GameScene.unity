@@ -6537,6 +6537,7 @@ RectTransform:
   - {fileID: 66437288}
   - {fileID: 1117132084}
   - {fileID: 112123917}
+  - {fileID: 986786106}
   - {fileID: 1547808224}
   - {fileID: 1324616825}
   - {fileID: 1737966220}
@@ -19872,6 +19873,41 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d4ba59c64d440da43b1fd6675e7f4f72, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!1 &986786105
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 986786106}
+  m_Layer: 5
+  m_Name: VFX Panel
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &986786106
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 986786105}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 316055919}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 100, y: 100}
+  m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &988100120 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 8083378088100250648, guid: 6d19736a10d3e8544845433b6f5234a1, type: 3}
@@ -41556,6 +41592,10 @@ PrefabInstance:
     m_TransformParent: {fileID: 316055919}
     m_Modifications:
     - target: {fileID: 1410521429357769266, guid: 266b75e69abe79e46b84cbc96f25d434, type: 3}
+      propertyPath: vfxPanel
+      value: 
+      objectReference: {fileID: 986786106}
+    - target: {fileID: 1410521429357769266, guid: 266b75e69abe79e46b84cbc96f25d434, type: 3}
       propertyPath: tilePanel
       value: 
       objectReference: {fileID: 1970218295}
@@ -44540,6 +44580,10 @@ PrefabInstance:
       propertyPath: spawnInterval
       value: 0.4
       objectReference: {fileID: 0}
+    - target: {fileID: 2415181723372676124, guid: 38d3015ee017597469af2857f614c612, type: 3}
+      propertyPath: waveCountText
+      value: 
+      objectReference: {fileID: 611451133}
     - target: {fileID: 2415181723372676124, guid: 38d3015ee017597469af2857f614c612, type: 3}
       propertyPath: waveNumberText
       value: 

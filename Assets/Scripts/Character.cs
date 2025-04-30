@@ -33,6 +33,12 @@ public class Character : MonoBehaviour
     public bool isAreaAttack = false;
     public float areaAttackRadius = 1f;
 
+    // 아군 유닛 관련 속성
+    public bool isAlly = false;
+    public bool isHero = false;
+    public Transform[] pathWaypoints;
+    public int currentWaypointIndex = 0;
+
     // 사거리 표시용
     [Header("Range Indicator Settings")]
     public GameObject rangeIndicatorPrefab;
@@ -106,6 +112,48 @@ public class Character : MonoBehaviour
     public void SetBulletPanel(RectTransform panel)
     {
         bulletPanel = panel;
+    }
+
+    private void Update()
+    {
+        // ----------------------------
+        // (추가) 아군이면서 waypoints가 있으면 이동
+        // ----------------------------
+        if (isAlly && pathWaypoints != null && pathWaypoints.Length > 0)
+        {
+            MoveAlongWaypoints();
+        }
+    }
+
+    /// <summary>
+    /// (추가) 아군 캐릭터가 pathWaypoints를 순서대로 따라 이동.
+    /// 마지막 웨이포인트에 도달하면 사라짐( Destroy(gameObject) ).
+    /// </summary>
+    private void MoveAlongWaypoints()
+    {
+        if (currentWaypointIndex >= pathWaypoints.Length) return;
+
+        Transform target = pathWaypoints[currentWaypointIndex];
+        if (target == null) return;
+
+        Vector2 currentPos = transform.position;
+        Vector2 targetPos = target.position;
+        Vector2 dir = (targetPos - currentPos).normalized;
+
+        float distThisFrame = 3f * Time.deltaTime; // 이동속도(예시). 필요시 별도 필드 활용 가능
+        transform.position += (Vector3)(dir * distThisFrame);
+
+        // 목표점에 가까워지면 다음 웨이포인트로
+        float dist = Vector2.Distance(currentPos, targetPos);
+        if (dist < distThisFrame * 1.5f)
+        {
+            currentWaypointIndex++;
+            // 모든 웨이포인트를 돌았다면 즉시 사라짐
+            if (currentWaypointIndex >= pathWaypoints.Length)
+            {
+                Destroy(gameObject);
+            }
+        }
     }
 
     private IEnumerator AttackRoutine()

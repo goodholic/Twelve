@@ -1,3 +1,5 @@
+// Assets\Scripts\Bullet.cs
+
 using UnityEngine;
 using System.Collections;
 
@@ -27,6 +29,17 @@ public class Bullet : MonoBehaviour
 {
     [Header("Bullet Pattern Type")]
     public BulletPattern bulletPattern = BulletPattern.StraightShot;
+
+    // 전역적으로 사용할 VFX 패널 참조
+    private static RectTransform _vfxPanel;
+
+    /// <summary>
+    /// 모든 Bullet이 사용할 VFX Panel 설정 (정적 메서드)
+    /// </summary>
+    public static void SetVfxPanel(RectTransform vfxPanel)
+    {
+        _vfxPanel = vfxPanel;
+    }
 
     [Header("Common Bullet Settings")]
     public float speed = 5f;         // 총알 이동 속도(기본)
@@ -365,19 +378,23 @@ public class Bullet : MonoBehaviour
     // ===========================
     private void HitTarget()
     {
-        // 단일 타겟 공격
         if (isAreaAttack)
         {
+            // 광역 공격
             ApplyAreaDamage(target.transform.position);
         }
         else
         {
-            target.TakeDamage(damage);
-
-            // 단일 충돌 지점에 VFX
-            if (impactEffectPrefab != null)
+            // ** 아군 몬스터인지 체크 후 데미지 적용 **
+            if (!target.isAlly)  // 아군이면 데미지를 주지 않는다
             {
-                Instantiate(impactEffectPrefab, target.transform.position, Quaternion.identity);
+                target.TakeDamage(damage);
+
+                // 단일 충돌 지점에 VFX
+                if (impactEffectPrefab != null)
+                {
+                    Instantiate(impactEffectPrefab, target.transform.position, Quaternion.identity);
+                }
             }
         }
 
@@ -392,6 +409,10 @@ public class Bullet : MonoBehaviour
         {
             Monster m = mo.GetComponent<Monster>();
             if (m == null) continue;
+
+            // 아군 몬스터면 스킵 (데미지 X)
+            if (m.isAlly) 
+                continue;
 
             float dist = Vector2.Distance(centerPos, m.transform.position);
             if (dist <= areaRadius)

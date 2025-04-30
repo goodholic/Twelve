@@ -1,3 +1,5 @@
+// Assets\Scripts\Tile.cs
+
 using UnityEngine;
 using UnityEngine.UI;
 using System;
@@ -59,11 +61,13 @@ public class Tile : MonoBehaviour
     }
 
     /// <summary>
-    /// 배치 가능 조건: Walkable=false && Placable=true && Occupied=false
+    /// [수정] 이제 Walkable이든 Placable이든 둘 중 하나만 true면
+    ///      (그리고 Occupied가 아니면) 배치 가능하게끔 변경
     /// </summary>
     public bool CanPlaceCharacter()
     {
-        return (!IsWalkable() && IsPlacable() && !IsOccupied());
+        // Walkable 또는 Placable 둘 중 하나라도 true이면서, Occupied가 false면 배치 가능
+        return !IsOccupied() && (IsWalkable() || IsPlacable());
     }
 
     private void Start()
@@ -105,6 +109,7 @@ public class Tile : MonoBehaviour
         // [추가] 몇 번째 타일(또는 row/column)인지 로그로 확인
         Debug.Log($"Tile 클릭됨: {name} (Index: {tileIndex}, Row={row}, Col={column})");
 
+        // 이제 CanPlaceCharacter()가 Walkable 이든 Placable 이든 가능하도록 바뀜
         if (CanPlaceCharacter())
         {
             var mgr = PlacementManager.Instance;
@@ -165,9 +170,6 @@ public class Tile : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// 프리팹 오브젝트가 프로젝트 에셋인지 여부(씬 객체가 아닌지) 체크
-    /// </summary>
     private bool IsAssetObject(UnityEngine.Object obj)
     {
         return PrefabUtility.IsPartOfPrefabAsset(obj) || AssetDatabase.Contains(obj);
