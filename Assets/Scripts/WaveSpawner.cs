@@ -1,62 +1,64 @@
-// Assets\Scripts\WaveSpawner.cs
-
 using System.Collections;
 using UnityEngine;
 using TMPro; // TextMeshPro 사용을 위해
 
 public class WaveSpawner : MonoBehaviour
 {
+    [Header("몬스터 관련 설정")]
     public GameObject monsterPrefab;
     public Transform monsterParent;
     public Transform[] pathWaypoints;
 
-    public float timeBetweenWaves = 5f;
-    public int monstersPerWave = 5;
-    public float spawnInterval = 1f;
+    [Header("웨이브/몬스터 설정")]
+    public float timeBetweenWaves = 5f;  // 웨이브 간 대기 시간(두 번째 웨이브부터)
+    public int monstersPerWave = 5;      // 웨이브 당 몬스터 수
+    public float spawnInterval = 1f;     // 몬스터 개별 소환 간격
 
+    private int aliveMonsters = 0;
     public int currentWave = 0;
     private bool isSpawning = false;
-    private int aliveMonsters = 0;
 
     // ================================
-    //    보상 패널 + 아이템 로직
+    //  아이템 보상 패널 관련
     // ================================
-    [Header("아이템 패널(보상용)")]
-    [SerializeField] private GameObject itemPanel;  // ← 이전에는 LobbySceneManager가 가지고 있던 필드를 WaveSpawner로 이동
-    
-    [Header("ItemRewardPanelManager 스크립트")]
-    [SerializeField] private ItemRewardPanelManager itemRewardPanel; 
-    // (만약 itemRewardPanel에 Awake()에서 gameObject.SetActive(false) 하는 코드를 사용)
+    [Header("아이템 패널(웨이브 보상용)")]
+    [SerializeField] private GameObject itemPanel;
 
-    // (추가) 자동 웨이브 스타트 플래그
+    [Header("ItemRewardPanelManager")]
+    [SerializeField] private ItemRewardPanelManager itemRewardPanel;
+
+    // ================================
+    //  자동 웨이브 제어
+    // ================================
     private bool autoStarted = false;
 
-    // (추가) 현재 웨이브 번호를 표시할 TextMeshProUGUI
     [Header("Wave Count Text (현재 웨이브 번호 표시용)")]
     [SerializeField] private TextMeshProUGUI waveCountText;
 
     private void Start()
     {
-        // 아이템 패널을 초기에 비활성화
+        // 아이템 패널 초기 비활성화
         if (itemPanel != null)
         {
             itemPanel.SetActive(false);
         }
 
-        // (추가) 10초 뒤부터 자동 웨이브 스폰 시작
-        Invoke(nameof(StartAutoWaveSpawn), 10f);
+        // 10초 대기 후 첫 웨이브 자동 시작
+        StartCoroutine(DelayFirstWaveRoutine(10f));
     }
 
-    private void Update()
+    /// <summary>
+    /// 10초 기다렸다가 자동 웨이브를 시작
+    /// </summary>
+    private IEnumerator DelayFirstWaveRoutine(float delay)
     {
-        // 테스트용 : Space 키로 웨이브 수동 시작(디버그)
-        if (Input.GetKeyDown(KeyCode.Space))
-        {
-            StartNextWave();
-        }
+        yield return new WaitForSeconds(delay);
+        StartAutoWaveSpawn();
     }
 
-    // (추가) 10초 후에 실행될 메서드 → 200웨이브까지만 자동으로 돌린다
+    /// <summary>
+    /// 자동 웨이브 루틴 시작
+    /// </summary>
     private void StartAutoWaveSpawn()
     {
         if (!autoStarted)
@@ -66,24 +68,28 @@ public class WaveSpawner : MonoBehaviour
         }
     }
 
-    // (추가) 200웨이브까지만 반복
+    /// <summary>
+    /// 최대 200웨이브까지 자동 진행
+    /// </summary>
     private IEnumerator AutoWaveRoutine()
     {
         while (currentWave < 200)
         {
             StartNextWave();
 
-            // StartNextWave() 내에서 isSpawning이 true가 되고, 
-            // SpawnWaveRoutine이 끝나면 다시 false.
-            // => 그 사이(웨이브 진행 중)는 대기
+            // 현재 웨이브의 스폰이 끝날 때까지 대기
             while (isSpawning)
             {
                 yield return null;
             }
         }
+
         Debug.Log("[WaveSpawner] 200 wave 전부 완료!");
     }
 
+    /// <summary>
+    /// 외부(버튼)에서 수동으로도 웨이브 시작 가능
+    /// </summary>
     public void StartNextWave()
     {
         if (!isSpawning)
@@ -92,12 +98,14 @@ public class WaveSpawner : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 웨이브 소환 루틴
+    /// </summary>
     private IEnumerator SpawnWaveRoutine()
     {
         isSpawning = true;
         currentWave++;
 
-        // (추가) 웨이브 번호 텍스트 갱신
         if (waveCountText != null)
         {
             waveCountText.text = $"Wave : {currentWave}";
@@ -116,7 +124,7 @@ public class WaveSpawner : MonoBehaviour
             yield return new WaitForSeconds(spawnInterval);
         }
 
-        // 전부 죽을 때까지 대기
+        // 해당 웨이브의 모든 몬스터가 죽을 때까지 대기
         while (aliveMonsters > 0)
         {
             yield return null;
@@ -125,18 +133,31 @@ public class WaveSpawner : MonoBehaviour
         // 웨이브 클리어 시점
         OnWaveClear();
 
+        // 다음 웨이브 전 대기
         yield return new WaitForSeconds(timeBetweenWaves);
+
         isSpawning = false;
     }
 
+    /// <summary>
+    /// 몬스터 1마리를 소환
+    /// </summary>
     private void SpawnMonster()
     {
-        if (monsterPrefab == null || monsterParent == null) return;
+        if (monsterPrefab == null || monsterParent == null)
+        {
+            Debug.LogError("[WaveSpawner] Monster Prefab 또는 Parent가 설정되지 않음!");
+            return;
+        }
 
         Vector3 spawnPos = transform.position;
-        if (pathWaypoints != null && pathWaypoints.Length > 0)
+        if (pathWaypoints != null && pathWaypoints.Length > 0 && pathWaypoints[0] != null)
         {
             spawnPos = pathWaypoints[0].position;
+        }
+        else
+        {
+            Debug.LogError("[WaveSpawner] pathWaypoints가 올바르게 설정되지 않았습니다!");
         }
 
         GameObject mObj = Instantiate(monsterPrefab, monsterParent);
@@ -145,7 +166,8 @@ public class WaveSpawner : MonoBehaviour
         Monster mComp = mObj.GetComponent<Monster>();
         if (mComp != null)
         {
-            // 몬스터 사망 시 이벤트
+            // 적 몬스터로 간주
+            mComp.isAlly = false;
             mComp.OnDeath += HandleMonsterDeath;
             mComp.pathWaypoints = pathWaypoints;
         }
@@ -157,23 +179,24 @@ public class WaveSpawner : MonoBehaviour
         if (aliveMonsters < 0) aliveMonsters = 0;
     }
 
+    /// <summary>
+    /// 웨이브 클리어 처리
+    /// </summary>
     private void OnWaveClear()
     {
         Debug.Log($"Wave {currentWave} 클리어!");
 
-        // ------------------------------
-        //   아이템 패널 활성화
-        // ------------------------------
+        // 아이템 패널 표시
         if (itemPanel != null)
         {
             itemPanel.SetActive(true);
         }
         else
         {
-            Debug.LogWarning("[WaveSpawner] itemPanel이 null이어서 보상창을 열 수 없음!");
+            Debug.LogWarning("[WaveSpawner] itemPanel이 null이어서 보상 패널을 열 수 없습니다!");
         }
 
-        // itemRewardPanel(스크립트)도 ShowRewardPanel() 호출
+        // 보상 패널 매니저 동작
         if (itemRewardPanel != null)
         {
             itemRewardPanel.ShowRewardPanel();

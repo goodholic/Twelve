@@ -1,432 +1,415 @@
-// Assets\Scripts\Bullet.cs
-
 using UnityEngine;
 using System.Collections;
 
 /// <summary>
-/// Bullet Pattern Enum (Inspector에서 10가지 선택 가능)
+/// 10종의 탄환 타입 정의
 /// </summary>
-public enum BulletPattern
+public enum BulletType
 {
-    StraightShot = 1,   // (1) 직선
-    CurvedShot,         // (2) 곡선
-    SpreadShot,         // (3) 확산(샷건 느낌)
-    HomingShot,         // (4) 추적(유도)
-    SpiralShot,         // (5) 회전(나선)
-    ZigzagShot,         // (6) 지그재그
-    SplitShot,          // (7) 충돌 후 분열
-    AccelerationShot,   // (8) 처음 느리다가 가속
-    RadialBurst,        // (9) 원형 방사
-    LaserBeam           // (10) 지속형 레이저
+    Normal,            // 1) 일반탄
+    Piercing,          // 2) 관통탄
+    Explosive,         // 3) 폭발탄
+    Slow,              // 4) 감속탄
+    Bleed,             // 5) 출혈탄
+    Chain,             // 6) 연쇄탄
+    Stun,              // 7) 마비탄
+    ArmorPenetration,  // 8) 파괴탄(방어 무시)
+    Split,             // 9) 분열탄
+    Energy             // 10) 에너지탄
 }
 
 /// <summary>
-/// 캐릭터가 발사하는 총알(Projectile) 예시.
-/// Inspector창에서 bulletPattern(10가지) 선택.
-/// 각 패턴마다 이동/동작 로직이 조금씩 다름.
+/// 타워(또는 유닛)에서 발사되는 탄환.
+/// 10종의 총알 타입에 따라 서로 다른 효과를 적용함.
 /// </summary>
 public class Bullet : MonoBehaviour
 {
-    [Header("Bullet Pattern Type")]
-    public BulletPattern bulletPattern = BulletPattern.StraightShot;
+    [Header("Bullet Type (10종)")]
+    public BulletType bulletType = BulletType.Normal;
 
-    // 전역적으로 사용할 VFX 패널 참조
-    private static RectTransform _vfxPanel;
+    [Header("공통: 공격력 / 속도 / 최대 생존시간")]
+    public float damage = 10f;         // 기본 공격력
+    public float speed = 5f;           // 탄환 이동 속도
+    public float maxLifeTime = 3f;     // 최대 생존 시간(초) - 지나면 파괴
 
+    [Header("광역 공격 여부(폭발탄 등)")]
+    public bool isAreaAttack = false;  // 범위 폭발 유무
+    public float areaRadius = 1.5f;    // 광역 반경
+
+    [Header("타겟 / 기타")]
+    public Monster target;             // 단일 타겟 (Homing/슬로우탄 등에서 사용)
+    private float aliveTime = 0f;      // 탄환 생존 시간 누적
+
+    // -------------------------------------------------------
+    // [탄환별 추가 옵션]
+    // -------------------------------------------------------
+    [Header("관통탄 옵션")]
+    public int maxPierceCount = 3;   // 최대 관통 가능한 적 수
+
+    [Header("슬로우탄 옵션")]
+    public float slowDuration = 2f;  // 감속 지속시간 (초)
+    public float slowAmount = 0.5f;  // 이동속도 배율(0.5 => 50% 속도로 감소)
+
+    [Header("출혈탄 옵션(DoT)")]
+    public float bleedDuration = 3f;      // 출혈 지속(초)
+    public float bleedDamagePerSec = 2f;  // 초당 출혈 데미지
+
+    [Header("연쇄탄 옵션")]
+    public int chainMaxBounces = 3;       // 최대 튕길 횟수
+    public float chainBounceRange = 2f;   // 인접 몬스터 감지 범위
+
+    [Header("마비탄 옵션")]
+    public float stunDuration = 1f;       // 스턴 지속시간(초)
+
+    [Header("파괴탄 옵션(방어 무시)")]
+    public bool ignoreDefense = true;     // 방어력 계산 무시 여부
+
+    [Header("분열탄 옵션")]
+    public int splitCount = 3;               // 몇 개로 분열할지
+    public float splitBulletAngleSpread = 30f;// 분열 후 퍼지는 각도
+    public GameObject subBulletPrefab;       // 분열 후 생성될 탄환 프리팹
+
+    [Header("에너지탄 옵션")]
+    public float extraRange = 5f;      // 추가 사거리 등
+    public float energySpeedFactor = 1.5f; // 에너지탄은 속도 빠름(기본 speed에 곱)
+
+    [Header("Impact / 폭발 이펙트 (옵션)")]
+    public GameObject impactEffectPrefab;    // 단일 피격/마지막 충돌 이펙트
+    public GameObject explosionEffectPrefab; // 폭발탄 전용 이펙트 등(광역)
+
+    // 관통/연쇄 시 중복 타격 방지용
+    private int piercedCount = 0;           
+    private Monster lastHitMonster = null;  
+    private System.Collections.Generic.List<Monster> chainAttackedMonsters = new System.Collections.Generic.List<Monster>();
+    private int currentBounceCount = 0;
+
+    // VFX 패널 (정적 참조)
+    private static RectTransform vfxPanel;
+    
     /// <summary>
-    /// 모든 Bullet이 사용할 VFX Panel 설정 (정적 메서드)
+    /// VFX 이펙트들이 생성될 부모 패널 설정 (정적 메서드)
     /// </summary>
-    public static void SetVfxPanel(RectTransform vfxPanel)
+    public static void SetVfxPanel(RectTransform panel)
     {
-        _vfxPanel = vfxPanel;
+        vfxPanel = panel;
+        Debug.Log("[Bullet] VFX 패널 설정됨: " + (panel != null ? panel.name : "null"));
     }
 
-    [Header("Common Bullet Settings")]
-    public float speed = 5f;         // 총알 이동 속도(기본)
-    public float maxLifeTime = 3f;   // 총알이 사라지기까지의 최대 시간(초)
-    public bool isAreaAttack = false; // 광역 공격 여부
-    public float areaRadius = 0f;     // 광역 공격 범위
-
-    // ============== 추가 ==============
-    [Header("Impact VFX (optional)")]
-    [Tooltip("몬스터에 닿거나 광역 공격 시 생성될 VFX 프리팹 (선택)")]
-    public GameObject impactEffectPrefab;
-    // =================================
-
-    // (공격 대상) - HomingShot 등 추적형에서 사용
-    private Monster target;
-    // 데미지
-    private float damage;
-    // 살아있는 시간 누적
-    private float aliveTime = 0f;
-
-    // (SplitShot에서 분열할 작은 탄환 프리팹(옵션))
-    [Header("Split Shot SubBullet (옵션)")]
-    public GameObject subBulletPrefab;
-    public int subBulletCount = 3;  // 분열 시 몇 개 생성?
-
-    // 내부적으로 사용할 추가 필드들
-    private Vector3 startPosition;    // 발사 시점 위치(커브/지그재그/스파이럴 등에 사용)
-    private Vector3 initialDirection; // 스프레드샷 등에서 초기에 정해진 방향
-    private float spiralAngle = 0f;   // 스파이럴 각도
-    private float accelRate = 2f;     // 가속 탄에서의 가속도(임의 예시)
-
     /// <summary>
-    /// 캐릭터가 발사할 때 초기값을 세팅
-    /// (bulletPattern은 Inspector에서 설정)
+    /// 탄환 초기화
     /// </summary>
-    public void Init(Monster targetMonster, float damageAmount, float bulletSpeed,
-                     bool isAreaAtk, float areaAtkRadius)
+    public void Init(Monster targetMonster, float baseDamage, float baseSpeed,
+                     bool areaAtk, float areaAtkRadius)
     {
-        target = targetMonster;
-        damage = damageAmount;
-        speed = bulletSpeed;
+        this.target = targetMonster;
+        this.damage = baseDamage;
+        this.speed = baseSpeed;
+        this.isAreaAttack = areaAtk;
+        this.areaRadius = areaAtkRadius;
 
-        isAreaAttack = isAreaAtk;
-        areaRadius = areaAtkRadius;
+        // 에너지탄 속도 보정
+        if (bulletType == BulletType.Energy)
+        {
+            this.speed *= energySpeedFactor; 
+        }
     }
 
     private void Start()
     {
-        // 발사 시점 위치, 초기 방향 등 기록
-        startPosition = transform.position;
-
-        // SpreadShot(확산)인 경우, "초기 방향"을 조금 랜덤 각도로 부채꼴 생성
-        if (bulletPattern == BulletPattern.SpreadShot)
-        {
-            float angle = Random.Range(-15f, 15f);
-            initialDirection = Quaternion.Euler(0f, 0f, angle) * Vector3.right;
-        }
-        else
-        {
-            // StraightShot 등 기본은 target이 있으면 그쪽, 없으면 우측
-            if (target != null)
-            {
-                initialDirection = (target.transform.position - transform.position).normalized;
-            }
-            else
-            {
-                initialDirection = Vector3.right;
-            }
-        }
-
-        // RadialBurst(원형 방사)라면, 생성되자마자 여러 발을 뿌리고 제거
-        if (bulletPattern == BulletPattern.RadialBurst)
-        {
-            DoRadialBurst();
-            Destroy(gameObject);
-        }
+        piercedCount = 0;
+        currentBounceCount = 0;
+        chainAttackedMonsters.Clear();
+        lastHitMonster = null;
     }
 
     private void Update()
     {
         aliveTime += Time.deltaTime;
 
-        // (LaserBeam) → 직선 이동 + maxLifeTime 후 파괴(충돌로는 안 사라짐)
-        if (bulletPattern == BulletPattern.LaserBeam)
-        {
-            MoveStraightIgnoreCollision();
-
-            if (aliveTime >= maxLifeTime)
-            {
-                Destroy(gameObject);
-            }
-            return;
-        }
-
-        // 레이저 외 패턴 -> 일정 시간 지나면 소멸
         if (aliveTime >= maxLifeTime)
         {
             Destroy(gameObject);
             return;
         }
 
-        // 패턴별 이동 로직
-        switch (bulletPattern)
-        {
-            case BulletPattern.StraightShot:
-                MoveStraight();
-                break;
-
-            case BulletPattern.CurvedShot:
-                MoveCurved();
-                break;
-
-            case BulletPattern.SpreadShot:
-                MoveSpread();
-                break;
-
-            case BulletPattern.HomingShot:
-                MoveHoming();
-                break;
-
-            case BulletPattern.SpiralShot:
-                MoveSpiral();
-                break;
-
-            case BulletPattern.ZigzagShot:
-                MoveZigzag();
-                break;
-
-            case BulletPattern.SplitShot:
-                MoveStraight();
-                CheckCollisionAndSplit();
-                break;
-
-            case BulletPattern.AccelerationShot:
-                MoveAcceleration();
-                break;
-
-            // RadialBurst는 Start()에서 처리
-        }
+        MoveBullet();
     }
 
-    // =========================
-    //   각 패턴별 이동 메서드
-    // =========================
-
-    private void MoveStraight()
+    private void MoveBullet()
     {
-        transform.position += initialDirection * speed * Time.deltaTime;
-
-        if (target != null)
+        switch (bulletType)
         {
-            float dist = Vector2.Distance(transform.position, target.transform.position);
-            if (dist < 0.2f)
-            {
-                HitTarget();
-            }
-        }
-    }
-
-    /// <summary>
-    /// LaserBeam 전용 (몬스터와 충돌하더라도 사라지지 않는 직선 이동)
-    /// </summary>
-    private void MoveStraightIgnoreCollision()
-    {
-        transform.position += initialDirection * speed * Time.deltaTime;
-        // 별도의 충돌 판정 없음
-    }
-
-    private void MoveCurved()
-    {
-        float moveX = speed * Time.deltaTime;
-        float moveY = Mathf.Sin(aliveTime * 3f) * 0.02f * speed;
-
-        transform.position += new Vector3(moveX, moveY, 0f);
-
-        if (target != null)
-        {
-            float dist = Vector2.Distance(transform.position, target.transform.position);
-            if (dist < 0.2f)
-            {
-                HitTarget();
-            }
-        }
-    }
-
-    private void MoveSpread()
-    {
-        transform.position += initialDirection * speed * Time.deltaTime;
-
-        if (target != null)
-        {
-            float dist = Vector2.Distance(transform.position, target.transform.position);
-            if (dist < 0.2f)
-            {
-                HitTarget();
-            }
-        }
-    }
-
-    private void MoveHoming()
-    {
-        if (target == null)
-        {
-            Destroy(gameObject);
-            return;
-        }
-
-        Vector3 direction = (target.transform.position - transform.position).normalized;
-        transform.position += direction * speed * Time.deltaTime;
-
-        float dist = Vector2.Distance(transform.position, target.transform.position);
-        if (dist < 0.2f)
-        {
-            HitTarget();
-        }
-    }
-
-    private void MoveSpiral()
-    {
-        spiralAngle += 5f * Time.deltaTime;
-        float radius = 0.5f + 0.5f * aliveTime;
-        float offsetX = Mathf.Cos(spiralAngle * 2f * Mathf.PI) * radius;
-        float offsetY = Mathf.Sin(spiralAngle * 2f * Mathf.PI) * radius;
-
-        transform.position = startPosition + new Vector3(offsetX, offsetY, 0f);
-
-        if (target != null)
-        {
-            float dist = Vector2.Distance(transform.position, target.transform.position);
-            if (dist < 0.2f)
-            {
-                HitTarget();
-            }
-        }
-    }
-
-    private void MoveZigzag()
-    {
-        float zigzagFrequency = 4f;
-        float zigzagAmplitude = 0.5f;
-        float x = speed * aliveTime;
-        float y = Mathf.Sin(aliveTime * zigzagFrequency) * zigzagAmplitude;
-
-        Vector3 offset = new Vector3(x, y, 0f);
-        transform.position = startPosition + offset;
-
-        if (target != null)
-        {
-            float dist = Vector2.Distance(transform.position, target.transform.position);
-            if (dist < 0.2f)
-            {
-                HitTarget();
-            }
-        }
-    }
-
-    private void MoveAcceleration()
-    {
-        speed += accelRate * Time.deltaTime;
-        transform.position += initialDirection * speed * Time.deltaTime;
-
-        if (target != null)
-        {
-            float dist = Vector2.Distance(transform.position, target.transform.position);
-            if (dist < 0.2f)
-            {
-                HitTarget();
-            }
-        }
-    }
-
-    private void CheckCollisionAndSplit()
-    {
-        if (target == null) return;
-
-        float dist = Vector2.Distance(transform.position, target.transform.position);
-        if (dist < 0.2f)
-        {
-            DoSplit();
-            Destroy(gameObject);
-        }
-    }
-
-    private void DoSplit()
-    {
-        if (subBulletPrefab == null) return;
-
-        for (int i = 0; i < subBulletCount; i++)
-        {
-            float angle = 360f * i / subBulletCount;
-            Quaternion rot = Quaternion.Euler(0f, 0f, angle);
-            Vector3 dir = rot * Vector3.right;
-
-            GameObject sub = Instantiate(subBulletPrefab, transform.position, Quaternion.identity);
-            Bullet subB = sub.GetComponent<Bullet>();
-            if (subB != null)
-            {
-                subB.bulletPattern = BulletPattern.StraightShot;
-                subB.Init(null, damage * 0.5f, speed * 0.5f, false, 0f);
-            }
-
-            if (sub.GetComponent<Rigidbody2D>() != null)
-            {
-                sub.GetComponent<Rigidbody2D>().linearVelocity = dir * (speed * 0.5f);
-            }
-        }
-    }
-
-    private void DoRadialBurst()
-    {
-        if (subBulletPrefab == null) return;
-
-        int bulletCount = 12;
-        for (int i = 0; i < bulletCount; i++)
-        {
-            float angle = 360f * i / bulletCount;
-            Vector3 dir = Quaternion.Euler(0f, 0f, angle) * Vector3.right;
-
-            GameObject sub = Instantiate(subBulletPrefab, transform.position, Quaternion.identity);
-            Bullet subB = sub.GetComponent<Bullet>();
-            if (subB != null)
-            {
-                subB.bulletPattern = BulletPattern.StraightShot;
-                subB.Init(null, damage, speed, false, 0f);
-            }
-
-            if (sub.GetComponent<Rigidbody2D>() != null)
-            {
-                sub.GetComponent<Rigidbody2D>().linearVelocity = dir * speed;
-            }
-        }
-    }
-
-    // ===========================
-    //   타격 시 처리 + VFX
-    // ===========================
-    private void HitTarget()
-    {
-        if (isAreaAttack)
-        {
-            // 광역 공격
-            ApplyAreaDamage(target.transform.position);
-        }
-        else
-        {
-            // ** 아군 몬스터인지 체크 후 데미지 적용 **
-            if (!target.isAlly)  // 아군이면 데미지를 주지 않는다
-            {
-                target.TakeDamage(damage);
-
-                // 단일 충돌 지점에 VFX
-                if (impactEffectPrefab != null)
+            case BulletType.Energy:
+            case BulletType.Normal:
+            case BulletType.Piercing:
+            case BulletType.Explosive:
+            case BulletType.Slow:
+            case BulletType.Bleed:
+            case BulletType.Stun:
+            case BulletType.ArmorPenetration:
+            case BulletType.Split:
+                if (target != null)
                 {
-                    Instantiate(impactEffectPrefab, target.transform.position, Quaternion.identity);
-                }
-            }
-        }
+                    Vector3 dir = (target.transform.position - transform.position).normalized;
+                    transform.position += dir * speed * Time.deltaTime;
 
-        Destroy(gameObject);
+                    float dist = Vector2.Distance(transform.position, target.transform.position);
+                    if (dist < 0.2f)
+                    {
+                        OnHitTarget(target);
+                    }
+                }
+                else
+                {
+                    transform.position += transform.right * speed * Time.deltaTime;
+                }
+                break;
+
+            case BulletType.Chain:
+                if (target != null)
+                {
+                    Vector3 dirC = (target.transform.position - transform.position).normalized;
+                    transform.position += dirC * speed * Time.deltaTime;
+
+                    float distC = Vector2.Distance(transform.position, target.transform.position);
+                    if (distC < 0.2f)
+                    {
+                        OnHitTarget(target);
+                    }
+                }
+                else
+                {
+                    Destroy(gameObject);
+                }
+                break;
+        }
     }
 
-    private void ApplyAreaDamage(Vector3 centerPos)
+    private void OnHitTarget(Monster hitMonster)
     {
-        // 범위 내 몬스터 전부 데미지
-        GameObject[] monsters = GameObject.FindGameObjectsWithTag("Monster");
-        foreach (var mo in monsters)
+        switch (bulletType)
         {
-            Monster m = mo.GetComponent<Monster>();
+            case BulletType.Normal:
+                DealDamage(hitMonster);
+                SpawnImpactEffect(hitMonster.transform.position);
+                Destroy(gameObject);
+                break;
+
+            case BulletType.Piercing:
+                DealDamage(hitMonster);
+                piercedCount++;
+                SpawnImpactEffect(hitMonster.transform.position);
+
+                if (piercedCount >= maxPierceCount)
+                {
+                    Destroy(gameObject);
+                }
+                break;
+
+            case BulletType.Explosive:
+                if (isAreaAttack)
+                {
+                    ApplyAreaDamage(hitMonster.transform.position);
+                }
+                SpawnExplosionEffect(hitMonster.transform.position);
+                Destroy(gameObject);
+                break;
+
+            case BulletType.Slow:
+                DealDamage(hitMonster, 0.7f);
+                hitMonster.ApplySlow(slowAmount, slowDuration);
+                SpawnImpactEffect(hitMonster.transform.position);
+                Destroy(gameObject);
+                break;
+
+            case BulletType.Bleed:
+                DealDamage(hitMonster);
+                hitMonster.ApplyBleed(bleedDamagePerSec, bleedDuration);
+                SpawnImpactEffect(hitMonster.transform.position);
+                Destroy(gameObject);
+                break;
+
+            case BulletType.Chain:
+                DealDamage(hitMonster);
+                chainAttackedMonsters.Add(hitMonster);
+                currentBounceCount++;
+                SpawnImpactEffect(hitMonster.transform.position);
+
+                if (currentBounceCount >= chainMaxBounces)
+                {
+                    Destroy(gameObject);
+                }
+                else
+                {
+                    Monster newTarget = FindNearestMonster(hitMonster.transform.position, chainBounceRange);
+                    if (newTarget == null)
+                    {
+                        Destroy(gameObject);
+                    }
+                    else
+                    {
+                        target = newTarget;
+                    }
+                }
+                break;
+
+            case BulletType.Stun:
+                DealDamage(hitMonster, 0.8f);
+                hitMonster.ApplyStun(stunDuration);
+                SpawnImpactEffect(hitMonster.transform.position);
+                Destroy(gameObject);
+                break;
+
+            case BulletType.ArmorPenetration:
+                DealDamage(hitMonster, 1.0f, ignoreDefense);
+                SpawnImpactEffect(hitMonster.transform.position);
+                Destroy(gameObject);
+                break;
+
+            case BulletType.Split:
+                DealDamage(hitMonster);
+                if (subBulletPrefab != null && splitCount > 0)
+                {
+                    DoSplit(hitMonster.transform.position);
+                }
+                SpawnImpactEffect(hitMonster.transform.position);
+                Destroy(gameObject);
+                break;
+
+            case BulletType.Energy:
+                DealDamage(hitMonster, 0.8f);
+                SpawnImpactEffect(hitMonster.transform.position);
+                Destroy(gameObject);
+                break;
+        }
+    }
+
+    private void ApplyAreaDamage(Vector3 center)
+    {
+        if (areaRadius <= 0f) return;
+
+        Monster[] allMonsters = Object.FindObjectsByType<Monster>(FindObjectsSortMode.None);
+        foreach (var m in allMonsters)
+        {
             if (m == null) continue;
-
-            // 아군 몬스터면 스킵 (데미지 X)
-            if (m.isAlly) 
-                continue;
-
-            float dist = Vector2.Distance(centerPos, m.transform.position);
+            float dist = Vector2.Distance(center, m.transform.position);
             if (dist <= areaRadius)
             {
-                m.TakeDamage(damage);
+                DealDamage(m);
+            }
+        }
+    }
 
-                // 광역에도 각각 VFX 표시(옵션)
-                if (impactEffectPrefab != null)
+    private void DealDamage(Monster m, float damageMultiplier = 1f, bool ignoreDef = false)
+    {
+        float finalDamage = damage * damageMultiplier;
+        m.TakeDamage(finalDamage, gameObject);
+    }
+
+    private Monster FindNearestMonster(Vector3 pos, float range)
+    {
+        Monster[] all = Object.FindObjectsByType<Monster>(FindObjectsSortMode.None);
+        Monster nearest = null;
+        float minDist = float.MaxValue;
+
+        foreach (var m in all)
+        {
+            if (m == null) continue;
+            if (chainAttackedMonsters.Contains(m)) continue;
+
+            float dist = Vector2.Distance(pos, m.transform.position);
+            if (dist < range && dist < minDist)
+            {
+                minDist = dist;
+                nearest = m;
+            }
+        }
+        return nearest;
+    }
+
+    private void DoSplit(Vector3 splitCenter)
+    {
+        float halfAngle = (splitBulletAngleSpread * (splitCount - 1)) / 2f;
+        for (int i = 0; i < splitCount; i++)
+        {
+            float angle = -halfAngle + i * splitBulletAngleSpread;
+
+            GameObject sub = Instantiate(subBulletPrefab, splitCenter, Quaternion.identity);
+            Bullet subB = sub.GetComponent<Bullet>();
+            if (subB != null)
+            {
+                subB.bulletType = BulletType.Normal;  
+                subB.damage = this.damage * 0.6f;
+                subB.speed = this.speed * 0.8f;
+                subB.maxLifeTime = 2f;
+
+                Vector2 dir = Quaternion.Euler(0f, 0f, angle) * Vector2.right;
+                subB.Init(null, subB.damage, subB.speed, false, 0f);
+
+                Rigidbody2D rb = sub.GetComponent<Rigidbody2D>();
+                if (rb != null)
                 {
-                    Instantiate(impactEffectPrefab, m.transform.position, Quaternion.identity);
+                    rb.linearVelocity = dir * subB.speed;
                 }
             }
         }
+    }
 
-        Debug.Log($"[Bullet] 광역 공격 발동! 중심={centerPos}, 범위={areaRadius}, damage={damage}");
+    private void SpawnImpactEffect(Vector3 pos)
+    {
+        if (impactEffectPrefab != null)
+        {
+            GameObject effect;
+            if (vfxPanel != null)
+            {
+                effect = Instantiate(impactEffectPrefab, vfxPanel);
+                RectTransform rectTransform = effect.GetComponent<RectTransform>();
+                if (rectTransform != null)
+                {
+                    Vector2 localPos = vfxPanel.InverseTransformPoint(pos);
+                    rectTransform.anchoredPosition = localPos;
+                }
+                else
+                {
+                    effect.transform.position = pos;
+                }
+            }
+            else
+            {
+                effect = Instantiate(impactEffectPrefab, pos, Quaternion.identity);
+            }
+
+            // === (추가) 3초 후 이펙트 자동 파괴 ===
+            Destroy(effect, 3f);
+        }
+    }
+
+    private void SpawnExplosionEffect(Vector3 pos)
+    {
+        if (explosionEffectPrefab != null)
+        {
+            GameObject effect;
+            if (vfxPanel != null)
+            {
+                effect = Instantiate(explosionEffectPrefab, vfxPanel);
+                RectTransform rectTransform = effect.GetComponent<RectTransform>();
+                if (rectTransform != null)
+                {
+                    Vector2 localPos = vfxPanel.InverseTransformPoint(pos);
+                    rectTransform.anchoredPosition = localPos;
+                }
+                else
+                {
+                    effect.transform.position = pos;
+                }
+            }
+            else
+            {
+                effect = Instantiate(explosionEffectPrefab, pos, Quaternion.identity);
+            }
+
+            // === (추가) 3초 후 이펙트 자동 파괴 ===
+            Destroy(effect, 3f);
+        }
     }
 }

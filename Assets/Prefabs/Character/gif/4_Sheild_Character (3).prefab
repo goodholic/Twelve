@@ -39,7 +39,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 100, y: 100}
+  m_SizeDelta: {x: 200, y: 200}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &6204808076470854902
 MonoBehaviour:
@@ -114,6 +114,13 @@ MonoBehaviour:
   currentTarget: {fileID: 0}
   isAreaAttack: 0
   areaAttackRadius: 1
+  isAlly: 0
+  isHero: 0
+  pathWaypoints: []
+  currentWaypointIndex: 0
+  opponentWaypoints: []
+  enemyMonsterPrefab:
+    RawGuidValue: 00000000000000000000000000000000
   rangeIndicatorPrefab: {fileID: 3037178901491863121, guid: 70e5c5e981d70c247a317a909d42c752, type: 3}
   showRangeIndicator: 0
   bulletPrefab: {fileID: 5801004295746515674, guid: 1b1d81b5c756ede4c9b95594b8cf0650, type: 3}

@@ -1,6 +1,7 @@
 using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
+using Fusion;
 
 public enum CharacterStar
 {
@@ -9,7 +10,7 @@ public enum CharacterStar
     ThreeStar = 3
 }
 
-public class Character : MonoBehaviour
+public class Character : NetworkBehaviour
 {
     [Header("Character Star Info (별)")]
     public CharacterStar star = CharacterStar.OneStar;
@@ -33,11 +34,22 @@ public class Character : MonoBehaviour
     public bool isAreaAttack = false;
     public float areaAttackRadius = 1f;
 
-    // 아군 유닛 관련 속성
+    [Header("Ally/Hero Settings")]
     public bool isAlly = false;
     public bool isHero = false;
+
+    // (추가) 길 따라 이동할 때 사용하는 웨이포인트
+    [Header("Path Waypoints for Auto Movement")]
     public Transform[] pathWaypoints;
     public int currentWaypointIndex = 0;
+
+    // (추가) 상대 진영 웨이포인트
+    [Header("[Network] Opponent Side Waypoints (성 도달 시 스폰용)")]
+    public Transform[] opponentWaypoints;
+
+    // (추가) 적 캐릭터(몬스터)로 다시 나타날 네트워크 프리팹
+    [Header("[Network] 적 몬스터 프리팹(네트워크)")]
+    [SerializeField] private NetworkPrefabRef enemyMonsterPrefab;
 
     // 사거리 표시용
     [Header("Range Indicator Settings")]
@@ -101,17 +113,8 @@ public class Character : MonoBehaviour
 
         // 공격 루틴
         StartCoroutine(AttackRoutine());
-
-        // 2성/3성 아웃라인 적용
+        // 2성/3성 시각적 표현
         ApplyStarVisual();
-    }
-
-    /// <summary>
-    /// 드래그/배치 시, PlacementManager에서 호출해줄 수 있음
-    /// </summary>
-    public void SetBulletPanel(RectTransform panel)
-    {
-        bulletPanel = panel;
     }
 
     private void Update()
@@ -127,7 +130,7 @@ public class Character : MonoBehaviour
 
     /// <summary>
     /// (추가) 아군 캐릭터가 pathWaypoints를 순서대로 따라 이동.
-    /// 마지막 웨이포인트에 도달하면 사라짐( Destroy(gameObject) ).
+    /// 마지막 웨이포인트(성)에 도달하면 OnArriveCastle().
     /// </summary>
     private void MoveAlongWaypoints()
     {
@@ -140,19 +143,99 @@ public class Character : MonoBehaviour
         Vector2 targetPos = target.position;
         Vector2 dir = (targetPos - currentPos).normalized;
 
-        float distThisFrame = 3f * Time.deltaTime; // 이동속도(예시). 필요시 별도 필드 활용 가능
+        float distThisFrame = 3f * Time.deltaTime; // 이동속도 예시
         transform.position += (Vector3)(dir * distThisFrame);
 
-        // 목표점에 가까워지면 다음 웨이포인트로
         float dist = Vector2.Distance(currentPos, targetPos);
         if (dist < distThisFrame * 1.5f)
         {
             currentWaypointIndex++;
-            // 모든 웨이포인트를 돌았다면 즉시 사라짐
             if (currentWaypointIndex >= pathWaypoints.Length)
             {
-                Destroy(gameObject);
+                // -------------------------------
+                // 웨이포인트 끝 => 성 도달 처리
+                // -------------------------------
+                OnArriveCastle();
             }
+        }
+    }
+
+    /// <summary>
+    /// (추가) 성 도달 시 로직
+    /// </summary>
+    private void OnArriveCastle()
+    {
+        Debug.Log($"[Character] 아군 캐릭터가 성에 도착: {characterName}");
+
+        // 아군 캐릭터라면 => 상대 진영에 적 몬스터로 스폰
+        if (isAlly)
+        {
+            if (Object == null || !Object.IsValid)
+            {
+                Debug.LogWarning("[Character] NetworkObject가 유효하지 않습니다.");
+            }
+            else if (Runner == null)
+            {
+                Debug.LogError("[Character] NetworkRunner가 null입니다. Photon Fusion이 올바르게 설정되었는지 확인하세요.");
+            }
+            else if (!Object.HasStateAuthority)
+            {
+                Debug.Log("[Character] 이 클라이언트는 상태 권한이 없습니다. 스폰 무시함.");
+            }
+            else
+            {
+                if (opponentWaypoints == null || opponentWaypoints.Length == 0)
+                {
+                    Debug.LogError("[Character] opponentWaypoints가 null이거나 비어 있습니다.");
+                }
+                else if (opponentWaypoints[0] == null)
+                {
+                    Debug.LogError("[Character] opponentWaypoints[0]이 null입니다.");
+                }
+                else if (enemyMonsterPrefab == default(NetworkPrefabRef) || !enemyMonsterPrefab.IsValid)
+                {
+                    Debug.LogError("[Character] enemyMonsterPrefab이 유효하지 않습니다. Inspector에서 설정해주세요.");
+                }
+                else
+                {
+                    try
+                    {
+                        Vector3 spawnPos = opponentWaypoints[0].position;
+
+                        // 적 몬스터로 다시 등장
+                        var newObj = Runner.Spawn(
+                            enemyMonsterPrefab,
+                            spawnPos,
+                            Quaternion.identity,
+                            Object.InputAuthority,
+                            (runner, spawnedObj) =>
+                            {
+                                var newMonster = spawnedObj.GetComponent<Monster>();
+                                if (newMonster != null)
+                                {
+                                    newMonster.isAlly = false; // 상대 입장에서는 적
+                                    newMonster.pathWaypoints = opponentWaypoints;
+                                }
+                            }
+                        );
+                        Debug.Log($"[Character] {characterName} => 상대 진영 몬스터로 스폰 완료");
+                    }
+                    catch (System.Exception e)
+                    {
+                        Debug.LogError($"[Character] 몬스터 스폰 중 오류 발생: {e.Message}");
+                    }
+                }
+            }
+        }
+
+        // 자신 제거 (네트워크상 동기화)
+        if (Object != null && Object.IsValid)
+        {
+            Runner.Despawn(Object);
+        }
+        else
+        {
+            Destroy(gameObject);
         }
     }
 
@@ -170,9 +253,6 @@ public class Character : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// 사거리 내 몬스터 찾기 (단, isAlly == true 몬스터는 제외 → 공격하지 않음)
-    /// </summary>
     private Monster FindTargetInRange()
     {
         GameObject[] monsterObjs = GameObject.FindGameObjectsWithTag("Monster");
@@ -183,8 +263,7 @@ public class Character : MonoBehaviour
         {
             Monster m = mo.GetComponent<Monster>();
             if (m == null) continue;
-
-            // (중요) 아군 몬스터면 스킵
+            // 아군 몬스터면 스킵
             if (m.isAlly) 
                 continue;
 
@@ -202,12 +281,10 @@ public class Character : MonoBehaviour
     {
         if (target == null) return;
 
-        // (A) 총알 프리팹 사용
         if (bulletPrefab != null)
         {
             GameObject bulletObj = Instantiate(bulletPrefab);
 
-            // bulletPanel이 있으면 자식으로 생성
             if (bulletPanel != null && bulletPanel.gameObject.scene.IsValid())
             {
                 bulletObj.transform.SetParent(bulletPanel, false);
@@ -234,7 +311,7 @@ public class Character : MonoBehaviour
         }
         else
         {
-            // (B) 총알이 없다면 즉시 공격 처리
+            // 총알이 없으면 즉시 공격 처리
             if (isAreaAttack)
             {
                 DoAreaDamage(target.transform.position);
@@ -246,9 +323,6 @@ public class Character : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// 광역 공격 처리
-    /// </summary>
     private void DoAreaDamage(Vector3 centerPos)
     {
         GameObject[] monsterObjs = GameObject.FindGameObjectsWithTag("Monster");
@@ -256,8 +330,6 @@ public class Character : MonoBehaviour
         {
             Monster m = mo.GetComponent<Monster>();
             if (m == null) continue;
-
-            // 아군 몬스터는 스킵
             if (m.isAlly) 
                 continue;
 
@@ -270,9 +342,6 @@ public class Character : MonoBehaviour
         Debug.Log($"[Character] 광역 공격! 범위={areaAttackRadius}, Damage={attackPower}");
     }
 
-    /// <summary>
-    /// 사거리 보여줄 원형 인디케이터(옵션)
-    /// </summary>
     private void CreateRangeIndicator()
     {
         if (!showRangeIndicator) return;
@@ -300,13 +369,6 @@ public class Character : MonoBehaviour
         }
     }
 
-    // ========================================================
-    // (합성 로직) 전부 삭제 - UpgradeStar() 등 제거
-    // ========================================================
-
-    /// <summary>
-    /// 별 등급 시각적 (예시)
-    /// </summary>
     public void ApplyStarVisual()
     {
         if (star == CharacterStar.TwoStar)
@@ -317,5 +379,13 @@ public class Character : MonoBehaviour
         {
             Debug.Log($"[Character] 3성 아웃라인 적용: {threeStarOutlineColor}, Width={threeStarOutlineWidth}");
         }
+    }
+
+    /// <summary>
+    /// 외부(PlacementManager)에서 총알 표시할 패널을 연결할 수 있는 메서드
+    /// </summary>
+    public void SetBulletPanel(RectTransform panel)
+    {
+        bulletPanel = panel;
     }
 }
