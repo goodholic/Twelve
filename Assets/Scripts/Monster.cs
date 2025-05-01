@@ -31,7 +31,7 @@ public class Monster : NetworkBehaviour
     private int currentWaypointIndex = 0;
     private bool isDead = false;
 
-    // ======================= (상태 효과) =======================
+    // ===================== (상태 효과) =====================
     [Header("상태 효과")]
     private float slowDuration = 0f;        // 슬로우 지속 시간
     private float slowAmount = 0f;          // 슬로우 비율 (0~1)
@@ -41,7 +41,7 @@ public class Monster : NetworkBehaviour
     private float stunDuration = 0f;        // 스턴 지속 시간
     private bool isStunned = false;         // 스턴 상태 여부
 
-    // ======================== (체력바) ========================
+    // ===================== (체력바) =====================
     [Header("Overhead HP Bar (머리 위 체력바)")]
     [Tooltip("몬스터 머리 위에 표시될 HP Bar용 Canvas (WorldSpace 또는 기타)")]
     public Canvas hpBarCanvas;
@@ -52,19 +52,34 @@ public class Monster : NetworkBehaviour
     [Tooltip("아군 몬스터가 끝 지점에서 사라질 때 보여줄 이펙트 프리팹")]
     public GameObject vanishEffectPrefab;
 
-    // ======================= [수정] 추가된 부분 =======================
+    // ======================= [추가된 부분] =======================
     [Header("Ally Conversion Effects")]
     [Tooltip("적 → 아군 전환 시 나타날 이펙트 프리팹 (VFX Panel 자식으로 생성)")]
     public GameObject allyConversionEffectPrefab;
 
     [Tooltip("아군이 된 이후 적용할 아웃라인 프리팹 (몬스터의 자식으로 생성)")]
     public GameObject allyOutlinePrefab;
-    // ================================================================
+
+    // (기존) 체력 복원용 최댓값 보관
+    private float maxHealth;
+
+    // ==================================================
+    // (추가) 상대편 위치에서 부활하기 위한 참조들
+    // ==================================================
+    [Header("[Opponent Side Settings]")]
+    [Tooltip("이 몬스터가 '상대편'에서 다시 부활할 때 사용할 웨이포인트들")]
+    public Transform[] opponentWaypoints;
+
+    [Tooltip("상대편(적) 몬스터를 담을 부모 패널 (우리 편일 때 ourMonsterPanel처럼 사용)")]
+    public Transform opponentMonsterPanel;
 
     private void Awake()
     {
         // 초기 이동 속도 저장
         originalMoveSpeed = moveSpeed;
+
+        // 처음 설정된 health 값을 maxHealth로 보관
+        maxHealth = health;
 
         // **HP Bar 세팅 확인 및 활성화**
         if (hpBarCanvas == null || hpFillImage == null)
@@ -92,9 +107,9 @@ public class Monster : NetworkBehaviour
         }
     }
 
-    // ========== (체력바 위치 갱신: 2D 상황에서 "머리 위"로) ==========
     private void LateUpdate()
     {
+        // HP Bar가 따로 WorldSpace Canvas일 경우, "머리 위" 위치를 갱신
         if (hpBarCanvas != null && hpBarCanvas.transform.parent == null)
         {
             Vector3 offset = new Vector3(0f, 1.2f, 0f);
@@ -179,13 +194,22 @@ public class Monster : NetworkBehaviour
         }
     }
 
+    /// <summary>
+    /// (중요) 웨이포인트 배열의 끝에 도달했을 때 호출됨.
+    /// 여기서 '아군/적' 구분 없이 몬스터가 **무조건** 사라지도록 수정.
+    /// </summary>
     private void OnReachEndPoint()
     {
+        // 도달 이벤트
         OnReachedCastle?.Invoke(this);
+
+        // [중요] 2웨이브부터 몬스터가 등장하지 않는 문제 해결을 위해
+        //       여기서도 OnDeath를 호출하여 WaveSpawner의 aliveMonsters를 감소시킵니다.
+        OnDeath?.Invoke(); // ← 추가된 한 줄
 
         if (isAlly)
         {
-            // 아군 몬스터 -> 끝지점 도달 시 사라지는 이펙트
+            // 아군 몬스터면 'vanishEffectPrefab' 표시(옵션)
             if (vanishEffectPrefab != null)
             {
                 GameObject effectObj = null;
@@ -217,17 +241,25 @@ public class Monster : NetworkBehaviour
                     effectObj = Instantiate(vanishEffectPrefab, transform.position, Quaternion.identity);
                 }
 
-                Destroy(effectObj, 3f);
+                // === 수정된 부분: 3초 → 1초 후 파괴 ===
+                Destroy(effectObj, 1f);
             }
         }
         else
         {
-            // 적 몬스터라면 성 체력 깎기
+            // 적 몬스터면 성 체력 깎기
             CastleHealthManager.Instance?.TakeDamage(damageToCastle);
         }
 
-        // 여기서는 더 이상 몬스터를 제거하지 않음(주석 처리)
-        // 필요하면 OnReachedCastle 이후 다른 로직 가능
+        // ★★★ 공통: waypoint 끝까지 왔으니 "무조건" 제거 ★★★
+        if (Object != null && Object.IsValid) // Fusion NetworkObject
+        {
+            Runner.Despawn(Object);
+        }
+        else
+        {
+            Destroy(gameObject);
+        }
     }
 
     // ================================
@@ -263,26 +295,193 @@ public class Monster : NetworkBehaviour
         // 웨이브 스포너 등에 "사망" 알림
         OnDeath?.Invoke();
 
-        // ** 1초 뒤 아군으로 부활 **
-        StartCoroutine(RespawnAsAllyCoroutine());
+        if (isAlly)
+        {
+            // 아군 -> 적(상대편)으로 부활
+            StartCoroutine(RespawnAsEnemyInOpponentMapCoroutine());
+        }
+        else
+        {
+            // 적 -> 아군으로 부활
+            StartCoroutine(RespawnInOurMonsterCoroutine());
+        }
     }
 
-    /// <summary>
-    /// 1) gameObject.SetActive(false) 후 1초 대기
-    /// 2) ConvertToAlly() -> 체력/상태 복구 + isAlly=true
-    /// 3) 다시 SetActive(true)로 부활
-    /// </summary>
-    private System.Collections.IEnumerator RespawnAsAllyCoroutine()
+    // ==================================================
+    // (A) 아군이었던 몬스터가 상대편(=적) 맵에서 부활
+    // ==================================================
+    private System.Collections.IEnumerator RespawnAsEnemyInOpponentMapCoroutine()
     {
-        // (A) 먼저 자기 자신을 비활성화 => 총알에 맞지 않도록
+        // 1) 즉시 자기 자신 비활성 -> 무적
         gameObject.SetActive(false);
 
-        // (B) 1초 대기
+        // 2) 1초 후 부활
         yield return new WaitForSeconds(1f);
 
-        // (C) 아군 몬스터로 변환 후 재활성화
-        ConvertToAlly();
+        // 3) "상대 편으로 이동 + 적 몬스터로 설정"
+        MoveToOpponentSideAndRevive();
+
+        // 4) 다시 활성화
         gameObject.SetActive(true);
+    }
+
+    private void MoveToOpponentSideAndRevive()
+    {
+        Debug.Log($"[Monster] {name} 죽음 -> 이제 상대편으로 부활 (적 몬스터).");
+
+        // 상태효과 초기화
+        slowDuration = 0f;
+        slowAmount = 0f;
+        bleedDuration = 0f;
+        bleedDamagePerSec = 0f;
+        stunDuration = 0f;
+        isStunned = false;
+
+        // 체력 회복
+        health = maxHealth;
+        UpdateHpBar();
+
+        // 다시 살아남
+        isDead = false;
+        // 팀: 적
+        isAlly = false;
+
+        // 상대쪽 웨이포인트 사용
+        if (opponentWaypoints != null && opponentWaypoints.Length > 0)
+        {
+            pathWaypoints = opponentWaypoints;
+            transform.position = opponentWaypoints[0].position;
+            currentWaypointIndex = 0;
+        }
+        else
+        {
+            Debug.LogWarning("[Monster] opponentWaypoints가 비어있음 -> 부활 후 위치/경로 설정 불가");
+        }
+
+        // 이동 속도 복구
+        moveSpeed = originalMoveSpeed;
+
+        // 상대편(=적) 패널에 넣기
+        if (opponentMonsterPanel != null)
+        {
+            transform.SetParent(opponentMonsterPanel, false);
+        }
+    }
+
+    // ==================================================
+    // (B) 적이었던 몬스터를 '우리 편'에서 부활
+    //     (원래 코드에 있던 부분)
+    // ==================================================
+    private System.Collections.IEnumerator RespawnInOurMonsterCoroutine()
+    {
+        // (1) 즉시 자기 자신 비활성 -> 총알 등으로부터 무적
+        gameObject.SetActive(false);
+
+        // (2) 1초 후 부활
+        yield return new WaitForSeconds(1f);
+
+        // (3) "ourMonsterPanel" 자식으로 이동 + 풀 체력 + 아군으로 전환
+        MoveToOurMonsterAndRevive();
+
+        // (4) 다시 활성화
+        gameObject.SetActive(true);
+    }
+
+    private void MoveToOurMonsterAndRevive()
+    {
+        Debug.Log($"[Monster] {name} 죽음 → 우리 몬스터 쪽으로 부활합니다.");
+
+        // 모든 상태효과 초기화
+        slowDuration = 0f;
+        slowAmount = 0f;
+        bleedDuration = 0f;
+        bleedDamagePerSec = 0f;
+        stunDuration = 0f;
+        isStunned = false;
+
+        // 체력 완전 회복
+        health = maxHealth;
+        UpdateHpBar();
+
+        // 다시 살아남
+        isDead = false;
+        // 팀 변경(우리 몬스터)
+        isAlly = true;
+
+        // 아군 몬스터 이동 경로 재설정
+        WaveSpawner spawner = FindFirstObjectByType<WaveSpawner>();
+        if (spawner != null && spawner.pathWaypoints != null && spawner.pathWaypoints.Length > 0)
+        {
+            pathWaypoints = spawner.pathWaypoints;
+            transform.position = spawner.pathWaypoints[0].position;
+            currentWaypointIndex = 0;
+        }
+        else
+        {
+            Debug.LogWarning("[Monster] 아군용 웨이포인트를 찾지 못했습니다. 이동 경로가 없으면 제자리에 머무릅니다.");
+        }
+
+        // 이동 속도 복구
+        moveSpeed = originalMoveSpeed;
+
+        // ourMonsterPanel 자식으로 이동
+        if (PlacementManager.Instance != null && PlacementManager.Instance.ourMonsterPanel != null)
+        {
+            transform.SetParent(PlacementManager.Instance.ourMonsterPanel, false);
+        }
+
+        // 아군 전환 이펙트
+        if (allyConversionEffectPrefab != null)
+        {
+            GameObject effectObj = null;
+            RectTransform vfxPanel = null;
+
+            if (PlacementManager.Instance != null)
+            {
+                vfxPanel = PlacementManager.Instance.vfxPanel;
+            }
+
+            if (vfxPanel != null)
+            {
+                effectObj = Instantiate(allyConversionEffectPrefab, vfxPanel);
+                RectTransform effectRect = effectObj.GetComponent<RectTransform>();
+
+                if (effectRect != null)
+                {
+                    Vector2 localPos = vfxPanel.InverseTransformPoint(transform.position);
+                    effectRect.anchoredPosition = localPos;
+                    effectRect.localRotation = Quaternion.identity;
+                }
+                else
+                {
+                    effectObj.transform.position = transform.position;
+                }
+            }
+            else
+            {
+                effectObj = Instantiate(allyConversionEffectPrefab, transform.position, Quaternion.identity);
+            }
+
+            // === 수정된 부분: 3초 → 1초 후 파괴 ===
+            Destroy(effectObj, 1f);
+        }
+
+        // 아군 아웃라인 적용
+        if (allyOutlinePrefab != null)
+        {
+            Transform existingOutline = transform.Find("AllyOutline");
+            if (existingOutline == null)
+            {
+                GameObject outlineObj = Instantiate(allyOutlinePrefab, transform);
+                outlineObj.name = "AllyOutline";
+                outlineObj.transform.localPosition = Vector3.zero;
+                outlineObj.transform.localRotation = Quaternion.identity;
+            }
+            else
+            {
+                existingOutline.gameObject.SetActive(true);
+            }
+        }
     }
 
     // ================================
@@ -329,112 +528,7 @@ public class Monster : NetworkBehaviour
     {
         if (hpFillImage == null) return;
 
-        // 임시로 최대HP를 50으로 가정(본인 로직에 맞게 수정 가능)
-        float maxHP = 50f;
-        float ratio = Mathf.Clamp01(health / maxHP);
-
+        float ratio = Mathf.Clamp01(health / maxHealth);
         hpFillImage.fillAmount = ratio;
-    }
-
-    /// <summary>
-    /// (적 → 아군 전환) 체력/상태 초기화 + 경로 재설정 등
-    /// </summary>
-    private void ConvertToAlly()
-    {
-        Debug.Log($"[Monster] {name} 죽음 → 이제 아군 몬스터가 됩니다.");
-
-        // 상태효과 초기화
-        slowDuration = 0f;
-        slowAmount = 0f;
-        bleedDuration = 0f;
-        bleedDamagePerSec = 0f;
-        stunDuration = 0f;
-        isStunned = false;
-
-        // 체력 다시 회복(최대치 등)
-        health = 50f; // 완전히 체력 회복
-        UpdateHpBar(); // HP Bar 즉시 갱신
-
-        // 다시 살아남
-        isDead = false;
-        // 팀 변경
-        isAlly = true;
-
-        // 아군 몬스터 이동 경로 재설정(필요 시)
-        WaveSpawner spawner = FindFirstObjectByType<WaveSpawner>();
-        if (spawner != null && spawner.pathWaypoints != null && spawner.pathWaypoints.Length > 0)
-        {
-            pathWaypoints = spawner.pathWaypoints;
-            transform.position = pathWaypoints[0].position;
-            currentWaypointIndex = 0;
-        }
-        else
-        {
-            Debug.LogWarning("[Monster] 아군용 웨이포인트가 없어 제자리에 머무릅니다.");
-        }
-
-        // 이동 속도 복구
-        moveSpeed = originalMoveSpeed;
-
-        // =============== [수정된 부분] ===============
-        // "ourMonsterPanel"로 부모 변경 → 활성화 시 재등장
-        if (PlacementManager.Instance != null && PlacementManager.Instance.ourMonsterPanel != null)
-        {
-            transform.SetParent(PlacementManager.Instance.ourMonsterPanel, false);
-        }
-        // ============================================
-
-        // [추가] 아군 전환 이펙트
-        if (allyConversionEffectPrefab != null)
-        {
-            GameObject effectObj = null;
-            RectTransform vfxPanel = null;
-
-            if (PlacementManager.Instance != null)
-            {
-                vfxPanel = PlacementManager.Instance.vfxPanel;
-            }
-
-            if (vfxPanel != null)
-            {
-                effectObj = Instantiate(allyConversionEffectPrefab, vfxPanel);
-                RectTransform effectRect = effectObj.GetComponent<RectTransform>();
-
-                if (effectRect != null)
-                {
-                    Vector2 localPos = vfxPanel.InverseTransformPoint(transform.position);
-                    effectRect.anchoredPosition = localPos;
-                    effectRect.localRotation = Quaternion.identity;
-                }
-                else
-                {
-                    effectObj.transform.position = transform.position;
-                }
-            }
-            else
-            {
-                effectObj = Instantiate(allyConversionEffectPrefab, transform.position, Quaternion.identity);
-            }
-
-            // 3초 후 자동 파괴
-            Destroy(effectObj, 3f);
-        }
-
-        // [추가] 아군 아웃라인 프리팹 적용
-        if (allyOutlinePrefab != null)
-        {
-            Transform existingOutline = transform.Find("AllyOutline");
-            if (existingOutline == null)
-            {
-                GameObject outlineObj = Instantiate(allyOutlinePrefab, transform);
-                outlineObj.name = "AllyOutline";
-                outlineObj.transform.localPosition = Vector3.zero;
-                outlineObj.transform.localRotation = Quaternion.identity;
-            }
-            else
-            {
-                existingOutline.gameObject.SetActive(true);
-            }
-        }
     }
 }

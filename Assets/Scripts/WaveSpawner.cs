@@ -1,3 +1,5 @@
+// Assets\Scripts\Network\WaveSpawner.cs
+
 using System.Collections;
 using UnityEngine;
 using TMPro; // TextMeshPro 사용을 위해
@@ -186,24 +188,18 @@ public class WaveSpawner : MonoBehaviour
     {
         Debug.Log($"Wave {currentWave} 클리어!");
 
-        // 아이템 패널 표시
-        if (itemPanel != null)
+        // === [수정] 5웨이브마다 아이템 패널 표시 ===
+        if (currentWave % 5 == 0)
         {
-            itemPanel.SetActive(true);
-        }
-        else
-        {
-            Debug.LogWarning("[WaveSpawner] itemPanel이 null이어서 보상 패널을 열 수 없습니다!");
-        }
+            if (itemPanel != null)
+            {
+                itemPanel.SetActive(true);
+            }
 
-        // 보상 패널 매니저 동작
-        if (itemRewardPanel != null)
-        {
-            itemRewardPanel.ShowRewardPanel();
-        }
-        else
-        {
-            Debug.LogWarning("[WaveSpawner] itemRewardPanel이 null!");
+            if (itemRewardPanel != null)
+            {
+                itemRewardPanel.ShowRewardPanel();
+            }
         }
     }
 }

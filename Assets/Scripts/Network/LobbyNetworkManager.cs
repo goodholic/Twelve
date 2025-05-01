@@ -1,175 +1,48 @@
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
-using Firebase.Auth;
 using Fusion;
 
+/// <summary>
+/// 로비 씬에서 호스트/클라이언트 진입만 담당하는 간단한 매니저.
+/// - Firebase/GoogleSignIn 관련 로직을 전부 삭제함
+/// - Photon Fusion 호스트/클라이언트 연결만 제공
+/// </summary>
 public class LobbyNetworkManager : MonoBehaviour
 {
-    [Header("Login Panel UI")]
-    [SerializeField] private GameObject loginPanel;              // 로그인 패널
-    [SerializeField] private Button guestLoginButton;            // 게스트 로그인 버튼
-    [SerializeField] private Button googleLoginButton;           // 구글 로그인 버튼
-    [SerializeField] private TextMeshProUGUI userInfoText;       // 로그인 상태 표시 텍스트
+    [Header("UI 관련 (옵션)")]
+    [Tooltip("로비화면에서 안내 문구 등을 표시할 TextMeshProUGUI")]
+    [SerializeField] private TextMeshProUGUI userInfoText;
+
+    [Header("호스트/조인 버튼")]
+    [SerializeField] private Button hostButton;
+    [SerializeField] private Button joinButton;
 
     private void Start()
     {
-        // 1) Inspector 연결 누락 여부 점검
-        if (loginPanel == null)
-            Debug.LogError("[LobbyNetworkManager] loginPanel이 Inspector에서 할당되지 않았습니다!");
-        if (guestLoginButton == null)
-            Debug.LogError("[LobbyNetworkManager] guestLoginButton이 Inspector에서 할당되지 않았습니다!");
-        if (googleLoginButton == null)
-            Debug.LogError("[LobbyNetworkManager] googleLoginButton이 Inspector에서 할당되지 않았습니다!");
-        if (userInfoText == null)
-            Debug.LogError("[LobbyNetworkManager] userInfoText가 Inspector에서 할당되지 않았습니다!");
-
-        // [수정됨] 이미 로그인되어 있는지 확인
-        if (FirebaseAuthManager.Instance != null && FirebaseAuthManager.Instance.GetCurrentUser() != null)
+        // 혹시 Inspector에서 버튼이 미연결 상태면 여기서 처리
+        if (hostButton != null)
         {
-            // 이미 로그인된 상태 => 로그인 패널 숨기고, 사용자 데이터 로드
-            if (loginPanel)
-                loginPanel.SetActive(false);
-
-            FirebaseUser current = FirebaseAuthManager.Instance.GetCurrentUser();
-            Debug.Log($"[LobbyNetworkManager] Already logged in: {current.UserId}");
-
-            // Firestore (또는 임시 Mock)로부터 유저 정보 로드
-            FirebaseUserDataManager.Instance.LoadUserData(
-                current.UserId,
-                (profileData) =>
-                {
-                    Debug.Log($"[LobbyNetworkManager] LoadUserData success. Level={profileData.level}, Gold={profileData.gold}");
-                    // UI 텍스트 표시
-                    if (userInfoText)
-                    {
-                        userInfoText.text = $"Welcome, {profileData.userName}\nLV={profileData.level} / Gold={profileData.gold}";
-                    }
-
-                    // 간단한 Analytics 예시 (커스텀)
-                    FirebaseAnalyticsHelper.SetUserProperty("PlayerLevel", profileData.level.ToString());
-                },
-                (err) =>
-                {
-                    // 로드 실패
-                    Debug.LogWarning($"[LobbyNetworkManager] LoadUserData fail: {err}");
-                }
-            );
+            hostButton.onClick.RemoveAllListeners();
+            hostButton.onClick.AddListener(OnClickHostGame);
         }
-        else
+        if (joinButton != null)
         {
-            // (기존 로직) 아직 로그인 안 됐으므로 로그인 패널 열기
-            if (loginPanel)
-                loginPanel.SetActive(true);
+            joinButton.onClick.RemoveAllListeners();
+            joinButton.onClick.AddListener(OnClickJoinGame);
+        }
 
-            // 3) 버튼 클릭 리스너 설정
-            if (guestLoginButton != null)
-            {
-                guestLoginButton.onClick.AddListener(() =>
-                {
-                    if (FirebaseAuthManager.Instance == null)
-                    {
-                        Debug.LogError("[LobbyNetworkManager] FirebaseAuthManager.Instance가 null입니다. "
-                                       + "씬에 FirebaseAuthManager 오브젝트가 있나요?");
-                        return;
-                    }
-                    // 게스트 로그인
-                    FirebaseAuthManager.Instance.SignInAnonymously();
-                });
-            }
-
-            if (googleLoginButton != null)
-            {
-                googleLoginButton.onClick.AddListener(() =>
-                {
-                    // GoogleSignInManager 통해 실제 구글 로그인 시도
-                    if (GoogleSignInManager.Instance == null)
-                    {
-                        Debug.LogError("[LobbyNetworkManager] GoogleSignInManager.Instance가 null입니다. "
-                                       + "씬에 GoogleSignInManager 오브젝트가 있나요?");
-                        return;
-                    }
-
-                    GoogleSignInManager.Instance.OnPressGoogleSignIn();
-                });
-
-#if !GOOGLE_SIGNIN_AVAILABLE
-                // SDK가 없으면 구글 버튼 비활성화
-                googleLoginButton.interactable = false;
-                Debug.LogWarning("[LobbyNetworkManager] GOOGLE_SIGNIN_AVAILABLE가 정의되지 않아 구글 로그인 버튼을 비활성화합니다.");
-#endif
-            }
-
-            // 4) FirebaseAuthManager 이벤트 등록
-            if (FirebaseAuthManager.Instance == null)
-            {
-                Debug.LogError("[LobbyNetworkManager] FirebaseAuthManager.Instance가 null이라 이벤트 등록 불가");
-            }
-            else
-            {
-                FirebaseAuthManager.Instance.OnLoginSuccess += OnLoginSuccess;
-                FirebaseAuthManager.Instance.OnLoginFail    += OnLoginFail;
-            }
+        // 안내 문구
+        if (userInfoText != null)
+        {
+            userInfoText.text = "Photon Fusion 멀티플레이 데모 로비입니다.\n" +
+                                "Host / Join 버튼으로 게임에 입장하세요!";
         }
     }
 
-    private void OnDestroy()
-    {
-        // 씬이 닫히거나 오브젝트 파괴 시점에 이벤트 해제
-        if (FirebaseAuthManager.Instance != null)
-        {
-            FirebaseAuthManager.Instance.OnLoginSuccess -= OnLoginSuccess;
-            FirebaseAuthManager.Instance.OnLoginFail    -= OnLoginFail;
-        }
-    }
-
-    private void OnLoginSuccess(FirebaseUser user)
-    {
-        // 로그인 성공
-        Debug.Log($"[LobbyNetworkManager] Login success => userId={user.UserId}");
-
-        // 로그인 패널 닫기
-        if (loginPanel)
-            loginPanel.SetActive(false);
-
-        // Firestore (또는 임시 Mock)로부터 유저 정보 로드
-        FirebaseUserDataManager.Instance.LoadUserData(
-            user.UserId,
-            (profileData) =>
-            {
-                Debug.Log($"[LobbyNetworkManager] LoadUserData success. Level={profileData.level}, Gold={profileData.gold}");
-
-                // UI 텍스트 표시
-                if (userInfoText)
-                {
-                    userInfoText.text = $"Welcome, {profileData.userName}\nLV={profileData.level} / Gold={profileData.gold}";
-                }
-
-                // 간단한 Analytics 예시 (커스텀)
-                FirebaseAnalyticsHelper.SetUserProperty("PlayerLevel", profileData.level.ToString());
-            },
-            (err) =>
-            {
-                // 로드 실패
-                Debug.LogWarning($"[LobbyNetworkManager] LoadUserData fail: {err}");
-            }
-        );
-    }
-
-    private void OnLoginFail(string reason)
-    {
-        // 로그인 실패
-        Debug.LogWarning("[LobbyNetworkManager] Login failed => " + reason);
-
-        if (userInfoText)
-        {
-            userInfoText.text = "Login Failed!";
-        }
-    }
-
-    // =================================
-    //    (선택) Fusion 네트워킹 예시
-    // =================================
+    /// <summary>
+    /// Host Game (FusionNetworkManager 호출)
+    /// </summary>
     public void OnClickHostGame()
     {
         FusionNetworkManager fusionMgr = FindFirstObjectByType<FusionNetworkManager>();
@@ -179,10 +52,13 @@ public class LobbyNetworkManager : MonoBehaviour
         }
         else
         {
-            Debug.LogWarning("[LobbyNetworkManager] FusionNetworkManager를 찾지 못했습니다.");
+            Debug.LogWarning("[LobbyNetworkManager] FusionNetworkManager 오브젝트를 찾을 수 없습니다.");
         }
     }
 
+    /// <summary>
+    /// Join Game (FusionNetworkManager 호출)
+    /// </summary>
     public void OnClickJoinGame()
     {
         FusionNetworkManager fusionMgr = FindFirstObjectByType<FusionNetworkManager>();
@@ -192,15 +68,7 @@ public class LobbyNetworkManager : MonoBehaviour
         }
         else
         {
-            Debug.LogWarning("[LobbyNetworkManager] FusionNetworkManager를 찾지 못했습니다.");
+            Debug.LogWarning("[LobbyNetworkManager] FusionNetworkManager 오브젝트를 찾을 수 없습니다.");
         }
-    }
-}
-
-public static class FirebaseAnalyticsHelper
-{
-    public static void SetUserProperty(string propertyName, string propertyValue)
-    {
-        Debug.Log($"[FirebaseAnalyticsHelper] SetUserProperty: {propertyName}={propertyValue}");
     }
 }

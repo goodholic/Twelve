@@ -1,6 +1,12 @@
 using UnityEngine;
 using System.Collections.Generic;
+using Fusion;
 
+/// <summary>
+/// 호스트와 클라이언트가 서로 다른 덱(캐릭터 세트)을 사용하도록 수정.
+/// - hostDeck / clientDeck 두 세트를 Inspector에 할당.
+/// - Awake()에서 NetworkRunner 검사하여, host면 hostDeck을, client면 clientDeck을 currentRegisteredCharacters에 복사.
+/// </summary>
 public class GameManager : MonoBehaviour
 {
     private static GameManager instance;
@@ -25,21 +31,19 @@ public class GameManager : MonoBehaviour
     public WaveSpawner waveSpawner;
     public PlacementManager placementManager;
 
+    // ------------------ 새로 추가된 부분 ------------------
+    [Header("[호스트 전용 9칸 덱]")]
+    public CharacterData[] hostDeck = new CharacterData[9];
 
-    // ============================================
-    // (A) 기존: 1~9 캐릭터 / 10번(주인공) 보관
-    // ============================================
-    // 0~8번(9개): 일반 캐릭터, 9번: Hero
-    private CharacterData[] deckForGame = new CharacterData[9];
-    private CharacterData heroForGame = null;
+    [Header("[클라이언트 전용 9칸 덱]")]
+    public CharacterData[] clientDeck = new CharacterData[9];
+    // -----------------------------------------------------
 
-    // ============================================
-    // (B) 추가: currentRegisteredCharacters[10]
-    // ============================================
     [Header("현재 등록된 캐릭터(총 10개)")]
-    [Tooltip("인덱스 0~8: 일반, 인덱스 9: 히어로")]
+    [Tooltip("인덱스 0~8: 일반, 인덱스 9: 히어로 (옵션)")]
     public CharacterData[] currentRegisteredCharacters = new CharacterData[10];
 
+    private NetworkRunner runner;
 
     private void Awake()
     {
@@ -54,8 +58,46 @@ public class GameManager : MonoBehaviour
             return;
         }
 
-        // 씬 전환 시 유지
         DontDestroyOnLoad(gameObject);
+
+        // 네트워크 런너 찾기
+        runner = FindFirstObjectByType<NetworkRunner>();
+        if (runner != null)
+        {
+            if (runner.GameMode == GameMode.Host)
+            {
+                // 호스트면 hostDeck을 currentRegisteredCharacters[0..8]에 복사
+                for (int i = 0; i < 9; i++)
+                {
+                    currentRegisteredCharacters[i] = (hostDeck != null && i < hostDeck.Length)
+                        ? hostDeck[i]
+                        : null;
+                }
+                Debug.Log("[GameManager] Host => hostDeck 사용");
+            }
+            else if (runner.GameMode == GameMode.Client)
+            {
+                // 클라이언트면 clientDeck을 currentRegisteredCharacters[0..8]에 복사
+                for (int i = 0; i < 9; i++)
+                {
+                    currentRegisteredCharacters[i] = (clientDeck != null && i < clientDeck.Length)
+                        ? clientDeck[i]
+                        : null;
+                }
+                Debug.Log("[GameManager] Client => clientDeck 사용");
+            }
+        }
+        else
+        {
+            // 싱글플레이(네트워크 없음) => 호스트 덱 사용
+            for (int i = 0; i < 9; i++)
+            {
+                currentRegisteredCharacters[i] = (hostDeck != null && i < hostDeck.Length)
+                    ? hostDeck[i]
+                    : null;
+            }
+            Debug.Log("[GameManager] 싱글플레이 => hostDeck 사용");
+        }
     }
 
     private void Start()
@@ -72,6 +114,7 @@ public class GameManager : MonoBehaviour
 
     private void Update()
     {
+        // ESC로 종료 테스트
         if (Input.GetKeyDown(KeyCode.Escape))
         {
             Application.Quit();
@@ -79,7 +122,7 @@ public class GameManager : MonoBehaviour
     }
 
     /// <summary>
-    /// (버튼 등) 웨이브 시작 시 호출
+    /// (버튼) 웨이브 시작
     /// </summary>
     public void StartWave()
     {
@@ -87,49 +130,5 @@ public class GameManager : MonoBehaviour
         {
             waveSpawner.StartNextWave();
         }
-    }
-
-    // -----------------------------------------------------
-    // (1) 1~9번 캐릭터를 세팅 + 반환
-    // -----------------------------------------------------
-    public void SetDeckForGame(CharacterData[] deck9)
-    {
-        if (deck9 == null || deck9.Length < 9)
-        {
-            Debug.LogWarning("[GameManager] SetDeckForGame: 9칸 미만");
-            return;
-        }
-        // 복사
-        for (int i = 0; i < 9; i++)
-        {
-            deckForGame[i] = deck9[i];
-        }
-        Debug.Log("[GameManager] 1~9 캐릭터(9칸) 세팅 완료");
-
-        // 추가로 currentRegisteredCharacters[0..8]에 동기화
-        for (int i = 0; i < 9; i++)
-        {
-            currentRegisteredCharacters[i] = deckForGame[i];
-        }
-    }
-
-    public CharacterData[] GetDeckForGame()
-    {
-        return deckForGame;
-    }
-
-    // -----------------------------------------------------
-    // (2) 10번(Hero) 캐릭터 세팅 + 반환
-    // -----------------------------------------------------
-    public void SetHeroCharacter(CharacterData hero)
-    {
-        heroForGame = hero;
-        currentRegisteredCharacters[9] = heroForGame;  // Hero = 인덱스9
-        Debug.Log($"[GameManager] 주인공(10번) 세팅: {hero?.characterName}");
-    }
-
-    public CharacterData GetHeroCharacter()
-    {
-        return heroForGame;
     }
 }

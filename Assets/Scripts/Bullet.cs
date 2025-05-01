@@ -79,7 +79,6 @@ public class Bullet : MonoBehaviour
 
     // 관통/연쇄 시 중복 타격 방지용
     private int piercedCount = 0;           
-    private Monster lastHitMonster = null;  
     private System.Collections.Generic.List<Monster> chainAttackedMonsters = new System.Collections.Generic.List<Monster>();
     private int currentBounceCount = 0;
 
@@ -119,7 +118,6 @@ public class Bullet : MonoBehaviour
         piercedCount = 0;
         currentBounceCount = 0;
         chainAttackedMonsters.Clear();
-        lastHitMonster = null;
     }
 
     private void Update()
@@ -379,8 +377,8 @@ public class Bullet : MonoBehaviour
                 effect = Instantiate(impactEffectPrefab, pos, Quaternion.identity);
             }
 
-            // === (추가) 3초 후 이펙트 자동 파괴 ===
-            Destroy(effect, 3f);
+            // === 수정된 부분: 3초 → 1초 후 파괴 ===
+            Destroy(effect, 1f);
         }
     }
 
@@ -408,8 +406,8 @@ public class Bullet : MonoBehaviour
                 effect = Instantiate(explosionEffectPrefab, pos, Quaternion.identity);
             }
 
-            // === (추가) 3초 후 이펙트 자동 파괴 ===
-            Destroy(effect, 3f);
+            // === 수정된 부분: 3초 → 1초 후 파괴 ===
+            Destroy(effect, 1f);
         }
     }
 }
