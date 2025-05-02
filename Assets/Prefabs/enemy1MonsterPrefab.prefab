@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 6295056878917645711}
   - component: {fileID: 5670030765548674520}
   - component: {fileID: 2141491803386084039}
+  - component: {fileID: 6630857357964607972}
   m_Layer: 5
   m_Name: enemy1MonsterPrefab
   m_TagString: Untagged
@@ -91,12 +92,12 @@ MonoBehaviour:
   moveSpeed: 1.5
   health: 50
   pathWaypoints:
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
+  - {fileID: 8870864530132773612, guid: 056b317d9e4875f45a50c4cd69148f3b, type: 3}
+  - {fileID: 4135260548019697524, guid: 3dfa4a4749de3374681c0d2b6815dc7e, type: 3}
+  - {fileID: 7052993515450296238, guid: f7691f68b1c1ffe4fb4d79c652d7dd9d, type: 3}
+  - {fileID: 5210701647780469663, guid: 699b367bf23ad6a408eb1c6fad0ab9d9, type: 3}
+  - {fileID: 4818939896627276988, guid: d2e0810630198c148979fa75ad079427, type: 3}
+  - {fileID: 1411693949256981867, guid: 03cdf8ef9ab1edb41ab152615dc955bf, type: 3}
   isAlly: 0
   damageToCastle: 1
   hpBarCanvas: {fileID: 1791476550057396527, guid: 639b613038e53cc4ca6bec5f67536cd0, type: 3}
@@ -105,10 +106,30 @@ MonoBehaviour:
   allyConversionEffectPrefab: {fileID: 0}
   allyOutlinePrefab: {fileID: 0}
   opponentWaypoints:
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  opponentMonsterPanel: {fileID: 0}
+  - {fileID: 7533954594709166238, guid: 2c7af040127463842bb538e73144355c, type: 3}
+  - {fileID: 375125270241151848, guid: 8210aa4d54b99484ab283b8e5a075126, type: 3}
+  - {fileID: 42882207359262647, guid: 7afd324640599d944874bb3817ee81d0, type: 3}
+  - {fileID: 6385198090815582965, guid: 809c2e58c41253d4188a8f22159c1345, type: 3}
+  - {fileID: 6461034117732938839, guid: d988006bd53f4b0468d4fcedc810ac64, type: 3}
+  - {fileID: 8360226188534919249, guid: 975390a5ef2c9ba45a77f5afca985383, type: 3}
+  opponentMonsterPanel: {fileID: 8356178920433332973, guid: 6333955c4fe3dec41b988a81707b75a8, type: 3}
+  areaIndex: 2
+--- !u!114 &6630857357964607972
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8358110294926570447}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: -1552182283, guid: e725a070cec140c4caffb81624c8c787, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  SortKey: 2665391943
+  ObjectInterest: 1
+  Flags: 262145
+  NestedObjects: []
+  NetworkedBehaviours:
+  - {fileID: 2141491803386084039}
+  ForceRemoteRenderTimeframe: 0

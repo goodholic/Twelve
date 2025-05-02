@@ -210,7 +210,10 @@ TextureImporter:
     secondaryTextures: []
     spriteCustomMetadata:
       entries: []
-    nameFileIdTable: {}
+    nameFileIdTable:
+      free-icon-heights-3789467_0: 6357378504039656821
+      free-icon-heights-3789467_1: -2514245475504725937
+      free-icon-heights-3789467_2: -6826352595861425874
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

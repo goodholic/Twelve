@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6940cdda447048efa58605bd546f9920, type: 3}
+  m_Name: character_10
+  m_EditorClassIdentifier: 
+  Frames:
+  - DelayInMs: 200
+    Sprite: {fileID: 21300000, guid: a78f2548c268a9d45969487b6ad38e25, type: 3}
+  - DelayInMs: 200
+    Sprite: {fileID: 21300000, guid: 4a0bb7d6905357c43adec49559e1daf4, type: 3}
+  - DelayInMs: 200
+    Sprite: {fileID: 21300000, guid: 74538fe36d9c44b48968a70e4829e90d, type: 3}
+  - DelayInMs: 200
+    Sprite: {fileID: 21300000, guid: 4db54aba299c9f746857d5c5a6cb8f45, type: 3}

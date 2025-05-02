@@ -342,6 +342,7 @@ GameObject:
   - component: {fileID: 261493572247411542}
   - component: {fileID: 5075032785421146714}
   - component: {fileID: 8453150612973287974}
+  - component: {fileID: -2544330414766078124}
   m_Layer: 5
   m_Name: Monster1
   m_TagString: Monster
@@ -443,6 +444,26 @@ MonoBehaviour:
   - {fileID: 4818939896627276988, guid: d2e0810630198c148979fa75ad079427, type: 3}
   - {fileID: 1411693949256981867, guid: 03cdf8ef9ab1edb41ab152615dc955bf, type: 3}
   opponentMonsterPanel: {fileID: 8356178920433332973, guid: 6333955c4fe3dec41b988a81707b75a8, type: 3}
+  areaIndex: 1
+--- !u!114 &-2544330414766078124
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6657560890044439722}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: -1552182283, guid: e725a070cec140c4caffb81624c8c787, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  SortKey: 1310016320
+  ObjectInterest: 1
+  Flags: 262145
+  NestedObjects: []
+  NetworkedBehaviours:
+  - {fileID: 8453150612973287974}
+  ForceRemoteRenderTimeframe: 0
 --- !u!1 &7177904796367550325
 GameObject:
   m_ObjectHideFlags: 0

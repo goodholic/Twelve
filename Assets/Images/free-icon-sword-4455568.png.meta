@@ -235,7 +235,11 @@ TextureImporter:
     secondaryTextures: []
     spriteCustomMetadata:
       entries: []
-    nameFileIdTable: {}
+    nameFileIdTable:
+      free-icon-sword-4455568_0: 5946077757829117608
+      free-icon-sword-4455568_1: -3877946530945567302
+      free-icon-sword-4455568_2: 5872420362222038967
+      free-icon-sword-4455568_3: -1169228280112123105
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

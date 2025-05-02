@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
+using Fusion;  // <<★ 추가: NetworkRunner 확인을 위해 필요
 
 public class PlacementManager : MonoBehaviour
 {
@@ -39,7 +40,6 @@ public class PlacementManager : MonoBehaviour
 
     private void Awake()
     {
-        // 싱글톤
         if (Instance != null && Instance != this)
         {
             Destroy(gameObject);
@@ -47,13 +47,11 @@ public class PlacementManager : MonoBehaviour
         }
         Instance = this;
 
-        // [추가] MineralBar 자동 찾기 (옵션)
         if (mineralBar == null)
         {
             mineralBar = FindAnyObjectByType<MineralBar>();
         }
 
-        // [추가] VFX Panel 자동 찾기
         if (vfxPanel == null)
         {
             GameObject panelObj = GameObject.Find("VFX Panel");
@@ -95,11 +93,9 @@ public class PlacementManager : MonoBehaviour
 
     /// <summary>
     /// (클릭 방식) 타일 위에 캐릭터를 배치
-    /// Picable2는 Placable과 동일하게 동작하도록 함.
     /// </summary>
     public void PlaceCharacterOnTile(Tile tile)
     {
-        // 1) 캐릭터 DB 검사
         if (characterDatabase == null 
             || characterDatabase.currentRegisteredCharacters == null 
             || characterDatabase.currentRegisteredCharacters.Length == 0)
@@ -108,7 +104,6 @@ public class PlacementManager : MonoBehaviour
             return;
         }
 
-        // 2) 현재 인덱스 유효성
         if (currentCharacterIndex < 0 
             || currentCharacterIndex >= characterDatabase.currentRegisteredCharacters.Length)
         {
@@ -123,7 +118,7 @@ public class PlacementManager : MonoBehaviour
             return;
         }
 
-        // [추가] 미네랄 체크
+        // 미네랄 체크
         if (mineralBar != null)
         {
             if (!mineralBar.TrySpend(data.cost))
@@ -139,14 +134,13 @@ public class PlacementManager : MonoBehaviour
             return;
         }
 
-        // 최종적으로 tile.CanPlaceCharacter() 확인
         if (!tile.CanPlaceCharacter())
         {
             Debug.LogWarning($"[PlacementManager] {tile.name} => 배치 불가(조건 안 맞음)");
             return;
         }
 
-        // (A) Walkable => 아군 몬스터로 소환
+        // (A) 만약 Walkable / Walkable2 => "아군 몬스터"로 소환
         if (tile.IsWalkable() || tile.IsWalkable2())
         {
             Debug.Log($"[PlacementManager] '{tile.name}' 클릭됨 -> Walkable(또는 Walkable2). 아군 몬스터 소환 시도");
@@ -165,7 +159,6 @@ public class PlacementManager : MonoBehaviour
                     return;
                 }
 
-                // pathWaypoints[0] 위치에서 소환
                 Vector3 spawnPos = spawner.pathWaypoints[0].position;
                 GameObject allyObj = Instantiate(prefabToSpawn, ourMonsterPanel);
                 if (allyObj != null)
@@ -183,7 +176,6 @@ public class PlacementManager : MonoBehaviour
                         allyObj.transform.localRotation = Quaternion.identity;
                     }
 
-                    // Character 설정
                     Character allyCharacter = allyObj.GetComponent<Character>();
                     allyCharacter.isAlly = true;
                     allyCharacter.pathWaypoints = spawner.pathWaypoints;
@@ -198,8 +190,21 @@ public class PlacementManager : MonoBehaviour
                     allyCharacter.enabled = true;
                     allyCharacter.ApplyStarVisual();
 
+                    // ===========================================
+                    // === 변경된 핵심 로직 (Host=1, Client=2) ===
+                    // ===========================================
+                    var runner = FindFirstObjectByType<NetworkRunner>();
+                    if (runner != null && runner.GameMode == GameMode.Client)
+                    {
+                        allyCharacter.areaIndex = 2;  // 클라=2
+                    }
+                    else
+                    {
+                        allyCharacter.areaIndex = 1;  // 호스트(또는 싱글)=1
+                    }
+
                     Debug.Log($"[PlacementManager] [{data.characterName}] 아군 몬스터 소환 완료! (cost={data.cost})");
-                    currentCharacterIndex = -1; // 한 번 배치 후 선택 해제
+                    currentCharacterIndex = -1;
                 }
                 else
                 {
@@ -211,7 +216,7 @@ public class PlacementManager : MonoBehaviour
                 Debug.LogWarning("[PlacementManager] WaveSpawner 또는 ourMonsterPanel 설정 불가 -> 아군 소환 실패");
             }
         }
-        // (B) Placable(또는 Picable2) => 기존처럼 characterPanel에 배치
+        // (B) Placable / Picable2 => 기존처럼 characterPanel에 배치
         else if (tile.IsPlacable() || tile.IsPicable2())
         {
             Debug.Log($"[PlacementManager] '{tile.name}' 클릭됨 -> Placable/Picable2 처리");
@@ -233,15 +238,13 @@ public class PlacementManager : MonoBehaviour
                     charObj.transform.localRotation = Quaternion.identity;
                 }
 
-                // Character 설정
                 Character characterComp = charObj.GetComponent<Character>();
                 if (characterComp != null)
                 {
                     characterComp.currentTile = tile;
                     characterComp.attackPower = data.attackPower;
                     characterComp.isHero = (currentCharacterIndex == 9);
-                    characterComp.isAlly = false; // 일반 배치는 적(또는 중립)
-                    // rangeType에 따라 공격 사거리 설정
+                    characterComp.isAlly = false;
                     switch (data.rangeType)
                     {
                         case RangeType.Melee:
@@ -255,14 +258,25 @@ public class PlacementManager : MonoBehaviour
                             break;
                     }
 
-                    // 총알 패널 연결
                     if (bulletPanel != null)
                     {
                         characterComp.SetBulletPanel(bulletPanel);
                     }
+
+                    // ===========================================
+                    // === 변경된 핵심 로직 (Host=1, Client=2) ===
+                    // ===========================================
+                    var runner = FindFirstObjectByType<NetworkRunner>();
+                    if (runner != null && runner.GameMode == GameMode.Client)
+                    {
+                        characterComp.areaIndex = 2;  // 클라=2
+                    }
+                    else
+                    {
+                        characterComp.areaIndex = 1;  // 호스트(또는 싱글)=1
+                    }
                 }
 
-                // Occupied 표시
                 CreateOccupiedChild(tile);
 
                 Debug.Log($"[PlacementManager] [{data.characterName}] 배치 완료 (cost={data.cost})");
@@ -273,7 +287,6 @@ public class PlacementManager : MonoBehaviour
 
     /// <summary>
     /// (드래그 소환) 버튼 → 타일 직접 드롭 시 호출
-    /// Picable2는 Placable과 동일하게, Occupied2는 Occupied와 동일하게 처리.
     /// </summary>
     public void SummonCharacterOnTile(int summonIndex, Tile tile)
     {
@@ -320,15 +333,13 @@ public class PlacementManager : MonoBehaviour
             return;
         }
 
-        // Occupied2 또한 Occupied와 동일하게 "점유 상태"로 처리
-        // => 배치 불가 조건에 포함
         if (!tile.CanPlaceCharacter() || tile.IsOccupied() || tile.IsOccupied2())
         {
             Debug.LogWarning($"[PlacementManager] 드롭된 타일 '{tile.name}' -> 이미 점유 중이거나 배치 불가");
             return;
         }
 
-        // (A) Walkable or Walkable2 => 아군 몬스터
+        // (A) Walkable / Walkable2 => 아군 몬스터
         if (tile.IsWalkable() || tile.IsWalkable2())
         {
             WaveSpawner spawner = FindFirstObjectByType<WaveSpawner>();
@@ -376,6 +387,19 @@ public class PlacementManager : MonoBehaviour
                     allyChar.enabled = true;
                     allyChar.ApplyStarVisual();
 
+                    // ===========================================
+                    // === 변경된 핵심 로직 (Host=1, Client=2) ===
+                    // ===========================================
+                    var runner = FindFirstObjectByType<NetworkRunner>();
+                    if (runner != null && runner.GameMode == GameMode.Client)
+                    {
+                        allyChar.areaIndex = 2;  // 클라=2
+                    }
+                    else
+                    {
+                        allyChar.areaIndex = 1;  // 호스트(또는 싱글)=1
+                    }
+
                     Debug.Log($"[PlacementManager] 드래그로 [{data.characterName}] 아군 몬스터 소환 (cost={data.cost})");
                 }
             }
@@ -384,7 +408,7 @@ public class PlacementManager : MonoBehaviour
                 Debug.LogWarning("[PlacementManager] Walkable(2) => 소환 실패: WaveSpawner/Panel 미설정");
             }
         }
-        // (B) Placable or Picable2 => 기존 배치 로직
+        // (B) Placable / Picable2 => 기존 배치 로직
         else if (tile.IsPlacable() || tile.IsPicable2())
         {
             Debug.Log($"[PlacementManager] (드래그) Placable/Picable2 => 일반 배치 시도");
@@ -424,9 +448,21 @@ public class PlacementManager : MonoBehaviour
                     {
                         cComp.SetBulletPanel(bulletPanel);
                     }
+
+                    // ===========================================
+                    // === 변경된 핵심 로직 (Host=1, Client=2) ===
+                    // ===========================================
+                    var runner = FindFirstObjectByType<NetworkRunner>();
+                    if (runner != null && runner.GameMode == GameMode.Client)
+                    {
+                        cComp.areaIndex = 2;  // 클라=2
+                    }
+                    else
+                    {
+                        cComp.areaIndex = 1;  // 호스트(또는 싱글)=1
+                    }
                 }
 
-                // Occupied2 도 Occupied와 동일하게 처리
                 CreateOccupiedChild(tile);
 
                 Debug.Log($"[PlacementManager] [{data.characterName}] 드래그 배치 완료(Placable/Picable2)");
@@ -441,27 +477,24 @@ public class PlacementManager : MonoBehaviour
     {
         if (movingChar == null || newTile == null) return;
 
-        // 원래 타일에서 Occupied 제거
         Tile oldTile = movingChar.currentTile;
         if (oldTile != null)
         {
             RemoveOccupiedChild(oldTile);
         }
 
-        // 새 타일이 비어 있으면 "이동"
-        // Occupied2도 Occupied와 동일하게 점유 처리
+        // 빈 칸이면 "이동", 아니면 "합성" 시도
         if (newTile.CanPlaceCharacter() && !newTile.IsOccupied() && !newTile.IsOccupied2())
         {
             if (CheckAnyCharacterHasCurrentTile(newTile))
             {
-                // 중복 방지
                 Debug.LogWarning($"[PlacementManager] {newTile.name} 이미 다른 캐릭터가 currentTile로 사용 => 이동 취소");
                 CreateOccupiedChild(oldTile);
                 MoveCharacterToTile(movingChar, oldTile);
                 return;
             }
 
-            // 만약 newTile이 Walkable(2) => 아군 몬스터 위치로 이동
+            // 새 Tile이 Walkable(2) 이면 => 아군 몬스터로 이동
             if (newTile.IsWalkable() || newTile.IsWalkable2())
             {
                 WaveSpawner spawner = FindFirstObjectByType<WaveSpawner>();
@@ -487,11 +520,24 @@ public class PlacementManager : MonoBehaviour
                     movingChar.isAlly = true;
                     movingChar.currentTile = null;
                     movingChar.currentWaypointIndex = 0;
+
+                    // ===========================================
+                    // === 변경된 핵심 로직 (Host=1, Client=2) ===
+                    // ===========================================
+                    var runner = FindFirstObjectByType<NetworkRunner>();
+                    if (runner != null && runner.GameMode == GameMode.Client)
+                    {
+                        movingChar.areaIndex = 2;
+                    }
+                    else
+                    {
+                        movingChar.areaIndex = 1;
+                    }
                 }
             }
             else
             {
-                // Placable(또는 Picable2) 쪽으로 이동
+                // Placable / Picable2
                 MoveCharacterToTile(movingChar, newTile);
             }
 
@@ -501,11 +547,9 @@ public class PlacementManager : MonoBehaviour
         }
         else
         {
-            // 새 타일이 이미 점유 => 합성 시도
             bool success = TryMergeCharacter(movingChar, newTile);
             if (!success)
             {
-                // 실패 시 원래 자리 복원
                 if (oldTile != null)
                 {
                     MoveCharacterToTile(movingChar, oldTile);
@@ -540,7 +584,6 @@ public class PlacementManager : MonoBehaviour
         RectTransform charRect = character.GetComponent<RectTransform>();
         if (tileRect != null && charRect != null)
         {
-            // characterPanel 기준으로 좌표 이동
             Vector2 localPos = characterPanel.InverseTransformPoint(tileRect.transform.position);
             charRect.SetParent(characterPanel, false);
             charRect.anchoredPosition = localPos;
@@ -553,6 +596,20 @@ public class PlacementManager : MonoBehaviour
             character.transform.SetParent(null);
         }
         character.currentTile = tile;
+
+        // ===========================================
+        // === 변경된 핵심 로직 (Host=1, Client=2) ===
+        // ===========================================
+        // (Placable/Picable2로 이동 시)
+        var runner = FindFirstObjectByType<NetworkRunner>();
+        if (runner != null && runner.GameMode == GameMode.Client)
+        {
+            character.areaIndex = 2;
+        }
+        else
+        {
+            character.areaIndex = 1;
+        }
     }
 
     private bool TryMergeCharacter(Character movingChar, Tile newTile)
@@ -592,7 +649,6 @@ public class PlacementManager : MonoBehaviour
 
     private void UpgradeStats(Character ch)
     {
-        // (1성 기준 역산) => 2성/3성 시 보정
         float baseAtk = ch.attackPower / 1.6f;
         float baseRange = ch.attackRange / 1.2f;
         float baseSpeed = ch.attackSpeed / 1.2f;
@@ -619,12 +675,9 @@ public class PlacementManager : MonoBehaviour
 
     private void CreateOccupiedChild(Tile tile)
     {
-        // Occupied2도 Occupied와 동일하게 "점유"를 표시하므로, 
-        // 실제로는 "Occupied"라는 이름으로만 하나 만들어도 문제 없음
         Transform exist = tile.transform.Find("Occupied");
         Transform exist2 = tile.transform.Find("Occupied2");
 
-        // 둘 중 하나라도 있으면 새로 생성 안 함
         if (exist == null && exist2 == null)
         {
             GameObject occupiedObj = new GameObject("Occupied");
@@ -635,7 +688,6 @@ public class PlacementManager : MonoBehaviour
 
     private void RemoveOccupiedChild(Tile tile)
     {
-        // Occupied2도 마찬가지로 제거
         Transform exist = tile.transform.Find("Occupied");
         if (exist != null)
         {

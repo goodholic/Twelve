@@ -77,6 +77,12 @@ public class Character : NetworkBehaviour
     // 공격 쿨타임
     private float attackCooldown;
 
+    // === 수정 부분 ===
+    [Header("Area 구분 (1 or 2)")]
+    [Tooltip("1번 공간인지, 2번 공간인지 구분하기 위한 인덱스")]
+    public int areaIndex = 1;
+    // === 수정 끝 ===
+
     private void Awake()
     {
         spriteRenderer = GetComponentInChildren<SpriteRenderer>();
@@ -306,7 +312,10 @@ public class Character : NetworkBehaviour
             Bullet bulletComp = bulletObj.GetComponent<Bullet>();
             if (bulletComp != null)
             {
-                bulletComp.Init(target, attackPower, bulletSpeed, isAreaAttack, areaAttackRadius);
+                // === 수정 부분 ===
+                // bullet에 areaIndex 전달
+                bulletComp.Init(target, attackPower, bulletSpeed, isAreaAttack, areaAttackRadius, this.areaIndex);
+                // === 수정 끝 ===
             }
         }
         else

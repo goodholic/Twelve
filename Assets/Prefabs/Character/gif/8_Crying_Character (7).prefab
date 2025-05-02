@@ -15,6 +15,7 @@ GameObject:
   - component: {fileID: 8582468147343252403}
   - component: {fileID: 7552802495602455483}
   - component: {fileID: 2712700398099399136}
+  - component: {fileID: -2069209741888913998}
   m_Layer: 5
   m_Name: 8_Crying_Character (7)
   m_TagString: Untagged
@@ -39,7 +40,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 200, y: 200}
+  m_SizeDelta: {x: 150, y: 150}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1776190182165697143
 MonoBehaviour:
@@ -129,6 +130,7 @@ MonoBehaviour:
   twoStarOutlineWidth: 10
   threeStarOutlineColor: {r: 1, g: 0.31569973, b: 0, a: 1}
   threeStarOutlineWidth: 10
+  areaIndex: 1
 --- !u!114 &7552802495602455483
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -178,3 +180,22 @@ CircleCollider2D:
   m_CompositeOrder: 0
   m_Offset: {x: 0, y: 0}
   m_Radius: 0.5
+--- !u!114 &-2069209741888913998
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2768998443333610624}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: -1552182283, guid: e725a070cec140c4caffb81624c8c787, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  SortKey: 1577872423
+  ObjectInterest: 1
+  Flags: 1
+  NestedObjects: []
+  NetworkedBehaviours:
+  - {fileID: 8582468147343252403}
+  ForceRemoteRenderTimeframe: 0

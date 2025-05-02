@@ -78,13 +78,18 @@ public class Bullet : MonoBehaviour
     public GameObject explosionEffectPrefab; // 폭발탄 전용 이펙트 등(광역)
 
     // 관통/연쇄 시 중복 타격 방지용
-    private int piercedCount = 0;           
+    private int piercedCount = 0;
     private System.Collections.Generic.List<Monster> chainAttackedMonsters = new System.Collections.Generic.List<Monster>();
     private int currentBounceCount = 0;
 
     // VFX 패널 (정적 참조)
     private static RectTransform vfxPanel;
-    
+
+    // === 수정 부분 ===
+    [Header("Area 구분 (1 or 2)")]
+    public int areaIndex = 1;
+    // === 수정 끝 ===
+
     /// <summary>
     /// VFX 이펙트들이 생성될 부모 패널 설정 (정적 메서드)
     /// </summary>
@@ -97,21 +102,24 @@ public class Bullet : MonoBehaviour
     /// <summary>
     /// 탄환 초기화
     /// </summary>
+    // === 수정 부분: areaIndex 인자 추가 ===
     public void Init(Monster targetMonster, float baseDamage, float baseSpeed,
-                     bool areaAtk, float areaAtkRadius)
+                     bool areaAtk, float areaAtkRadius, int areaIndex)
     {
         this.target = targetMonster;
         this.damage = baseDamage;
         this.speed = baseSpeed;
         this.isAreaAttack = areaAtk;
         this.areaRadius = areaAtkRadius;
+        this.areaIndex = areaIndex; // 추가된 부분
 
         // 에너지탄 속도 보정
         if (bulletType == BulletType.Energy)
         {
-            this.speed *= energySpeedFactor; 
+            this.speed *= energySpeedFactor;
         }
     }
+    // === 수정 끝 ===
 
     private void Start()
     {
@@ -185,6 +193,15 @@ public class Bullet : MonoBehaviour
 
     private void OnHitTarget(Monster hitMonster)
     {
+        // === 수정 부분 ===
+        // 만약 areaIndex가 다르면 피격 로직 무시 (즉시 return)
+        if (hitMonster != null && this.areaIndex != hitMonster.areaIndex)
+        {
+            // 충돌 무시
+            return;
+        }
+        // === 수정 끝 ===
+
         switch (bulletType)
         {
             case BulletType.Normal:
@@ -293,7 +310,11 @@ public class Bullet : MonoBehaviour
             float dist = Vector2.Distance(center, m.transform.position);
             if (dist <= areaRadius)
             {
-                DealDamage(m);
+                // === 수정 부분: areaIndex 다르면 무시
+                if (m.areaIndex == this.areaIndex)
+                {
+                    DealDamage(m);
+                }
             }
         }
     }
@@ -341,8 +362,12 @@ public class Bullet : MonoBehaviour
                 subB.speed = this.speed * 0.8f;
                 subB.maxLifeTime = 2f;
 
+                // === 수정 부분: 분열탄도 동일 areaIndex
+                subB.areaIndex = this.areaIndex;
+                // === 수정 끝
+
                 Vector2 dir = Quaternion.Euler(0f, 0f, angle) * Vector2.right;
-                subB.Init(null, subB.damage, subB.speed, false, 0f);
+                subB.Init(null, subB.damage, subB.speed, false, 0f, subB.areaIndex);
 
                 Rigidbody2D rb = sub.GetComponent<Rigidbody2D>();
                 if (rb != null)

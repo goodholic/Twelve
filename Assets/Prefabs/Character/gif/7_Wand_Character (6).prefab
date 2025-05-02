@@ -15,6 +15,7 @@ GameObject:
   - component: {fileID: 8121291812550075830}
   - component: {fileID: 189779213084655022}
   - component: {fileID: -3507467696697724352}
+  - component: {fileID: -118556287850659596}
   m_Layer: 5
   m_Name: 7_Wand_Character (6)
   m_TagString: Untagged
@@ -39,7 +40,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 200, y: 200}
+  m_SizeDelta: {x: 150, y: 150}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &2601121629764585565
 MonoBehaviour:
@@ -129,6 +130,7 @@ MonoBehaviour:
   twoStarOutlineWidth: 10
   threeStarOutlineColor: {r: 1, g: 0.31569973, b: 0, a: 1}
   threeStarOutlineWidth: 10
+  areaIndex: 1
 --- !u!114 &189779213084655022
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -178,3 +180,22 @@ CircleCollider2D:
   m_CompositeOrder: 0
   m_Offset: {x: 0, y: 0}
   m_Radius: 0.5
+--- !u!114 &-118556287850659596
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4326882089972318273}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: -1552182283, guid: e725a070cec140c4caffb81624c8c787, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  SortKey: 3183758647
+  ObjectInterest: 1
+  Flags: 1
+  NestedObjects: []
+  NetworkedBehaviours:
+  - {fileID: 8121291812550075830}
+  ForceRemoteRenderTimeframe: 0
