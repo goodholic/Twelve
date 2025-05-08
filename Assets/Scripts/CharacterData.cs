@@ -18,6 +18,10 @@ public class CharacterData
     [Tooltip("캐릭터 기본 별 등급")]
     public CharacterStar initialStar = CharacterStar.OneStar;
 
+    // [추가] 종족 정보
+    [Header("Race Info")]
+    public CharacterRace race = CharacterRace.Human;
+
     // ========================
     // (1) 새로 추가된 스탯들
     // ========================
@@ -33,6 +37,9 @@ public class CharacterData
 
     [Tooltip("최대 체력(캐릭터가 사용할 체력)")]
     public float maxHP = 100f;
+
+    [Tooltip("이동 속도(웨이포인트 이동 시)")]
+    public float moveSpeed = 3f; // 기본값 3f
 
     // ================
     // (기존) 필드들

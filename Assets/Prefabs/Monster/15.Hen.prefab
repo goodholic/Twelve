@@ -370,6 +370,8 @@ GameObject:
   - component: {fileID: 1423470163212545532}
   - component: {fileID: 1423470163212545531}
   - component: {fileID: 8829033274029990554}
+  - component: {fileID: 609399005053740683}
+  - component: {fileID: 4026949244512914839}
   m_Layer: 0
   m_Name: 15.Hen
   m_TagString: Untagged
@@ -523,6 +525,50 @@ CapsuleCollider2D:
   m_Offset: {x: 0, y: 1.9}
   m_Size: {x: 3, y: 4.6}
   m_Direction: 0
+--- !u!114 &609399005053740683
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1423470163212545534}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 34f8b9a1ecb6d4a488409c8421443454, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  moveSpeed: 1.5
+  health: 50
+  pathWaypoints:
+  - {fileID: 7533954594709166238, guid: 2c7af040127463842bb538e73144355c, type: 3}
+  - {fileID: 375125270241151848, guid: 8210aa4d54b99484ab283b8e5a075126, type: 3}
+  - {fileID: 42882207359262647, guid: 7afd324640599d944874bb3817ee81d0, type: 3}
+  - {fileID: 6385198090815582965, guid: 809c2e58c41253d4188a8f22159c1345, type: 3}
+  - {fileID: 6461034117732938839, guid: d988006bd53f4b0468d4fcedc810ac64, type: 3}
+  - {fileID: 8360226188534919249, guid: 975390a5ef2c9ba45a77f5afca985383, type: 3}
+  damageToCastle: 1
+  hpBarCanvas: {fileID: 8931788622985592741, guid: b5939eb57b5d3ff48b4737ae1d059380, type: 3}
+  hpFillImage: {fileID: 38995151560781449, guid: b5939eb57b5d3ff48b4737ae1d059380, type: 3}
+  areaIndex: 1
+--- !u!114 &4026949244512914839
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1423470163212545534}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: -1552182283, guid: e725a070cec140c4caffb81624c8c787, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  SortKey: 1584328526
+  ObjectInterest: 1
+  Flags: 262145
+  NestedObjects: []
+  NetworkedBehaviours:
+  - {fileID: 609399005053740683}
+  ForceRemoteRenderTimeframe: 0
 --- !u!1 &1785783350246851850
 GameObject:
   m_ObjectHideFlags: 0

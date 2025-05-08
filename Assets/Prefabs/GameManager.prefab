@@ -50,3 +50,510 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   waveSpawner: {fileID: 0}
   placementManager: {fileID: 0}
+  hostDeck:
+  - characterName: 
+    initialStar: 1
+    attackPower: 10
+    attackSpeed: 1
+    attackRange: 1.5
+    maxHP: 100
+    moveSpeed: 3
+    rangeType: 0
+    isAreaAttack: 0
+    isBuffSupport: 0
+    level: 1
+    currentExp: 0
+    expToNextLevel: 5
+    spawnPrefab: {fileID: 0}
+    buttonIcon: {fileID: 0}
+    cost: 10
+    areaAttackRadius: 1
+    motionPrefab: {fileID: 0}
+  - characterName: 
+    initialStar: 1
+    attackPower: 10
+    attackSpeed: 1
+    attackRange: 1.5
+    maxHP: 100
+    moveSpeed: 3
+    rangeType: 0
+    isAreaAttack: 0
+    isBuffSupport: 0
+    level: 1
+    currentExp: 0
+    expToNextLevel: 5
+    spawnPrefab: {fileID: 0}
+    buttonIcon: {fileID: 0}
+    cost: 10
+    areaAttackRadius: 1
+    motionPrefab: {fileID: 0}
+  - characterName: 
+    initialStar: 1
+    attackPower: 10
+    attackSpeed: 1
+    attackRange: 1.5
+    maxHP: 100
+    moveSpeed: 3
+    rangeType: 0
+    isAreaAttack: 0
+    isBuffSupport: 0
+    level: 1
+    currentExp: 0
+    expToNextLevel: 5
+    spawnPrefab: {fileID: 0}
+    buttonIcon: {fileID: 0}
+    cost: 10
+    areaAttackRadius: 1
+    motionPrefab: {fileID: 0}
+  - characterName: 
+    initialStar: 1
+    attackPower: 10
+    attackSpeed: 1
+    attackRange: 1.5
+    maxHP: 100
+    moveSpeed: 3
+    rangeType: 0
+    isAreaAttack: 0
+    isBuffSupport: 0
+    level: 1
+    currentExp: 0
+    expToNextLevel: 5
+    spawnPrefab: {fileID: 0}
+    buttonIcon: {fileID: 0}
+    cost: 10
+    areaAttackRadius: 1
+    motionPrefab: {fileID: 0}
+  - characterName: 
+    initialStar: 1
+    attackPower: 10
+    attackSpeed: 1
+    attackRange: 1.5
+    maxHP: 100
+    moveSpeed: 3
+    rangeType: 0
+    isAreaAttack: 0
+    isBuffSupport: 0
+    level: 1
+    currentExp: 0
+    expToNextLevel: 5
+    spawnPrefab: {fileID: 0}
+    buttonIcon: {fileID: 0}
+    cost: 10
+    areaAttackRadius: 1
+    motionPrefab: {fileID: 0}
+  - characterName: 
+    initialStar: 1
+    attackPower: 10
+    attackSpeed: 1
+    attackRange: 1.5
+    maxHP: 100
+    moveSpeed: 3
+    rangeType: 0
+    isAreaAttack: 0
+    isBuffSupport: 0
+    level: 1
+    currentExp: 0
+    expToNextLevel: 5
+    spawnPrefab: {fileID: 0}
+    buttonIcon: {fileID: 0}
+    cost: 10
+    areaAttackRadius: 1
+    motionPrefab: {fileID: 0}
+  - characterName: 
+    initialStar: 1
+    attackPower: 10
+    attackSpeed: 1
+    attackRange: 1.5
+    maxHP: 100
+    moveSpeed: 3
+    rangeType: 0
+    isAreaAttack: 0
+    isBuffSupport: 0
+    level: 1
+    currentExp: 0
+    expToNextLevel: 5
+    spawnPrefab: {fileID: 0}
+    buttonIcon: {fileID: 0}
+    cost: 10
+    areaAttackRadius: 1
+    motionPrefab: {fileID: 0}
+  - characterName: 
+    initialStar: 1
+    attackPower: 10
+    attackSpeed: 1
+    attackRange: 1.5
+    maxHP: 100
+    moveSpeed: 3
+    rangeType: 0
+    isAreaAttack: 0
+    isBuffSupport: 0
+    level: 1
+    currentExp: 0
+    expToNextLevel: 5
+    spawnPrefab: {fileID: 0}
+    buttonIcon: {fileID: 0}
+    cost: 10
+    areaAttackRadius: 1
+    motionPrefab: {fileID: 0}
+  - characterName: 
+    initialStar: 1
+    attackPower: 10
+    attackSpeed: 1
+    attackRange: 1.5
+    maxHP: 100
+    moveSpeed: 3
+    rangeType: 0
+    isAreaAttack: 0
+    isBuffSupport: 0
+    level: 1
+    currentExp: 0
+    expToNextLevel: 5
+    spawnPrefab: {fileID: 0}
+    buttonIcon: {fileID: 0}
+    cost: 10
+    areaAttackRadius: 1
+    motionPrefab: {fileID: 0}
+  clientDeck:
+  - characterName: 
+    initialStar: 1
+    attackPower: 10
+    attackSpeed: 1
+    attackRange: 1.5
+    maxHP: 100
+    moveSpeed: 3
+    rangeType: 0
+    isAreaAttack: 0
+    isBuffSupport: 0
+    level: 1
+    currentExp: 0
+    expToNextLevel: 5
+    spawnPrefab: {fileID: 0}
+    buttonIcon: {fileID: 0}
+    cost: 10
+    areaAttackRadius: 1
+    motionPrefab: {fileID: 0}
+  - characterName: 
+    initialStar: 1
+    attackPower: 10
+    attackSpeed: 1
+    attackRange: 1.5
+    maxHP: 100
+    moveSpeed: 3
+    rangeType: 0
+    isAreaAttack: 0
+    isBuffSupport: 0
+    level: 1
+    currentExp: 0
+    expToNextLevel: 5
+    spawnPrefab: {fileID: 0}
+    buttonIcon: {fileID: 0}
+    cost: 10
+    areaAttackRadius: 1
+    motionPrefab: {fileID: 0}
+  - characterName: 
+    initialStar: 1
+    attackPower: 10
+    attackSpeed: 1
+    attackRange: 1.5
+    maxHP: 100
+    moveSpeed: 3
+    rangeType: 0
+    isAreaAttack: 0
+    isBuffSupport: 0
+    level: 1
+    currentExp: 0
+    expToNextLevel: 5
+    spawnPrefab: {fileID: 0}
+    buttonIcon: {fileID: 0}
+    cost: 10
+    areaAttackRadius: 1
+    motionPrefab: {fileID: 0}
+  - characterName: 
+    initialStar: 1
+    attackPower: 10
+    attackSpeed: 1
+    attackRange: 1.5
+    maxHP: 100
+    moveSpeed: 3
+    rangeType: 0
+    isAreaAttack: 0
+    isBuffSupport: 0
+    level: 1
+    currentExp: 0
+    expToNextLevel: 5
+    spawnPrefab: {fileID: 0}
+    buttonIcon: {fileID: 0}
+    cost: 10
+    areaAttackRadius: 1
+    motionPrefab: {fileID: 0}
+  - characterName: 
+    initialStar: 1
+    attackPower: 10
+    attackSpeed: 1
+    attackRange: 1.5
+    maxHP: 100
+    moveSpeed: 3
+    rangeType: 0
+    isAreaAttack: 0
+    isBuffSupport: 0
+    level: 1
+    currentExp: 0
+    expToNextLevel: 5
+    spawnPrefab: {fileID: 0}
+    buttonIcon: {fileID: 0}
+    cost: 10
+    areaAttackRadius: 1
+    motionPrefab: {fileID: 0}
+  - characterName: 
+    initialStar: 1
+    attackPower: 10
+    attackSpeed: 1
+    attackRange: 1.5
+    maxHP: 100
+    moveSpeed: 3
+    rangeType: 0
+    isAreaAttack: 0
+    isBuffSupport: 0
+    level: 1
+    currentExp: 0
+    expToNextLevel: 5
+    spawnPrefab: {fileID: 0}
+    buttonIcon: {fileID: 0}
+    cost: 10
+    areaAttackRadius: 1
+    motionPrefab: {fileID: 0}
+  - characterName: 
+    initialStar: 1
+    attackPower: 10
+    attackSpeed: 1
+    attackRange: 1.5
+    maxHP: 100
+    moveSpeed: 3
+    rangeType: 0
+    isAreaAttack: 0
+    isBuffSupport: 0
+    level: 1
+    currentExp: 0
+    expToNextLevel: 5
+    spawnPrefab: {fileID: 0}
+    buttonIcon: {fileID: 0}
+    cost: 10
+    areaAttackRadius: 1
+    motionPrefab: {fileID: 0}
+  - characterName: 
+    initialStar: 1
+    attackPower: 10
+    attackSpeed: 1
+    attackRange: 1.5
+    maxHP: 100
+    moveSpeed: 3
+    rangeType: 0
+    isAreaAttack: 0
+    isBuffSupport: 0
+    level: 1
+    currentExp: 0
+    expToNextLevel: 5
+    spawnPrefab: {fileID: 0}
+    buttonIcon: {fileID: 0}
+    cost: 10
+    areaAttackRadius: 1
+    motionPrefab: {fileID: 0}
+  - characterName: 
+    initialStar: 1
+    attackPower: 10
+    attackSpeed: 1
+    attackRange: 1.5
+    maxHP: 100
+    moveSpeed: 3
+    rangeType: 0
+    isAreaAttack: 0
+    isBuffSupport: 0
+    level: 1
+    currentExp: 0
+    expToNextLevel: 5
+    spawnPrefab: {fileID: 0}
+    buttonIcon: {fileID: 0}
+    cost: 10
+    areaAttackRadius: 1
+    motionPrefab: {fileID: 0}
+  currentRegisteredCharacters:
+  - characterName: 
+    initialStar: 1
+    attackPower: 10
+    attackSpeed: 1
+    attackRange: 1.5
+    maxHP: 100
+    moveSpeed: 3
+    rangeType: 0
+    isAreaAttack: 0
+    isBuffSupport: 0
+    level: 1
+    currentExp: 0
+    expToNextLevel: 5
+    spawnPrefab: {fileID: 0}
+    buttonIcon: {fileID: 0}
+    cost: 10
+    areaAttackRadius: 1
+    motionPrefab: {fileID: 0}
+  - characterName: 
+    initialStar: 1
+    attackPower: 10
+    attackSpeed: 1
+    attackRange: 1.5
+    maxHP: 100
+    moveSpeed: 3
+    rangeType: 0
+    isAreaAttack: 0
+    isBuffSupport: 0
+    level: 1
+    currentExp: 0
+    expToNextLevel: 5
+    spawnPrefab: {fileID: 0}
+    buttonIcon: {fileID: 0}
+    cost: 10
+    areaAttackRadius: 1
+    motionPrefab: {fileID: 0}
+  - characterName: 
+    initialStar: 1
+    attackPower: 10
+    attackSpeed: 1
+    attackRange: 1.5
+    maxHP: 100
+    moveSpeed: 3
+    rangeType: 0
+    isAreaAttack: 0
+    isBuffSupport: 0
+    level: 1
+    currentExp: 0
+    expToNextLevel: 5
+    spawnPrefab: {fileID: 0}
+    buttonIcon: {fileID: 0}
+    cost: 10
+    areaAttackRadius: 1
+    motionPrefab: {fileID: 0}
+  - characterName: 
+    initialStar: 1
+    attackPower: 10
+    attackSpeed: 1
+    attackRange: 1.5
+    maxHP: 100
+    moveSpeed: 3
+    rangeType: 0
+    isAreaAttack: 0
+    isBuffSupport: 0
+    level: 1
+    currentExp: 0
+    expToNextLevel: 5
+    spawnPrefab: {fileID: 0}
+    buttonIcon: {fileID: 0}
+    cost: 10
+    areaAttackRadius: 1
+    motionPrefab: {fileID: 0}
+  - characterName: 
+    initialStar: 1
+    attackPower: 10
+    attackSpeed: 1
+    attackRange: 1.5
+    maxHP: 100
+    moveSpeed: 3
+    rangeType: 0
+    isAreaAttack: 0
+    isBuffSupport: 0
+    level: 1
+    currentExp: 0
+    expToNextLevel: 5
+    spawnPrefab: {fileID: 0}
+    buttonIcon: {fileID: 0}
+    cost: 10
+    areaAttackRadius: 1
+    motionPrefab: {fileID: 0}
+  - characterName: 
+    initialStar: 1
+    attackPower: 10
+    attackSpeed: 1
+    attackRange: 1.5
+    maxHP: 100
+    moveSpeed: 3
+    rangeType: 0
+    isAreaAttack: 0
+    isBuffSupport: 0
+    level: 1
+    currentExp: 0
+    expToNextLevel: 5
+    spawnPrefab: {fileID: 0}
+    buttonIcon: {fileID: 0}
+    cost: 10
+    areaAttackRadius: 1
+    motionPrefab: {fileID: 0}
+  - characterName: 
+    initialStar: 1
+    attackPower: 10
+    attackSpeed: 1
+    attackRange: 1.5
+    maxHP: 100
+    moveSpeed: 3
+    rangeType: 0
+    isAreaAttack: 0
+    isBuffSupport: 0
+    level: 1
+    currentExp: 0
+    expToNextLevel: 5
+    spawnPrefab: {fileID: 0}
+    buttonIcon: {fileID: 0}
+    cost: 10
+    areaAttackRadius: 1
+    motionPrefab: {fileID: 0}
+  - characterName: 
+    initialStar: 1
+    attackPower: 10
+    attackSpeed: 1
+    attackRange: 1.5
+    maxHP: 100
+    moveSpeed: 3
+    rangeType: 0
+    isAreaAttack: 0
+    isBuffSupport: 0
+    level: 1
+    currentExp: 0
+    expToNextLevel: 5
+    spawnPrefab: {fileID: 0}
+    buttonIcon: {fileID: 0}
+    cost: 10
+    areaAttackRadius: 1
+    motionPrefab: {fileID: 0}
+  - characterName: 
+    initialStar: 1
+    attackPower: 10
+    attackSpeed: 1
+    attackRange: 1.5
+    maxHP: 100
+    moveSpeed: 3
+    rangeType: 0
+    isAreaAttack: 0
+    isBuffSupport: 0
+    level: 1
+    currentExp: 0
+    expToNextLevel: 5
+    spawnPrefab: {fileID: 0}
+    buttonIcon: {fileID: 0}
+    cost: 10
+    areaAttackRadius: 1
+    motionPrefab: {fileID: 0}
+  - characterName: 
+    initialStar: 1
+    attackPower: 10
+    attackSpeed: 1
+    attackRange: 1.5
+    maxHP: 100
+    moveSpeed: 3
+    rangeType: 0
+    isAreaAttack: 0
+    isBuffSupport: 0
+    level: 1
+    currentExp: 0
+    expToNextLevel: 5
+    spawnPrefab: {fileID: 0}
+    buttonIcon: {fileID: 0}
+    cost: 10
+    areaAttackRadius: 1
+    motionPrefab: {fileID: 0}

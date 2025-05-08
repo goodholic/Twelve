@@ -52,4 +52,5 @@ MonoBehaviour:
   slotTexts9: []
   exitButton: {fileID: 0}
   gameTimeText: {fileID: 0}
+  heroPanel: {fileID: 0}
   itemInventoryPanel: {fileID: 0}

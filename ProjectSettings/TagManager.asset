@@ -5,6 +5,9 @@ TagManager:
   serializedVersion: 3
   tags:
   - Monster
+  - Bullet
+  - ImpactVFX
+  - EnemyMonster
   layers:
   - Default
   - TransparentFX

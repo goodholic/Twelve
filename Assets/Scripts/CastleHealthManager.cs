@@ -1,12 +1,13 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement; // [수정추가] 씬 전환 위해
 
 /// <summary>
 /// 게임 내 "성(캐슬) 체력"을 관리하는 매니저.
 /// - 기본 HP=10
 /// - 하트(GameObject) 10개를 Inspector에서 연결하여
 ///   HP가 깎일 때마다 하트 하나씩 비활성화.
-/// - HP가 0 이하가 되면 게임 오버(또는 다른 처리) 가능.
+/// - HP가 0 이하가 되면 게임 오버 처리(패배).
 /// </summary>
 public class CastleHealthManager : MonoBehaviour
 {
@@ -34,9 +35,6 @@ public class CastleHealthManager : MonoBehaviour
             return;
         }
 
-        // DontDestroyOnLoad 등 필요하면 추가 가능
-        // DontDestroyOnLoad(this.gameObject);
-
         // 시작 시 체력 보정
         if (currentHealth > maxHealth) currentHealth = maxHealth;
         UpdateHeartsUI();
@@ -45,7 +43,7 @@ public class CastleHealthManager : MonoBehaviour
     /// <summary>
     /// 적 몬스터가 성에 도달했을 때 등,
     /// 체력을 amount만큼 깎는 메서드.
-    /// HP가 0 이하로 떨어지면 게임 오버 처리 가능.
+    /// HP가 0 이하로 떨어지면 게임 오버 처리.
     /// </summary>
     public void TakeDamage(int amount)
     {
@@ -79,12 +77,16 @@ public class CastleHealthManager : MonoBehaviour
     }
 
     /// <summary>
-    /// 체력이 0 이하가 되면 실행할 로직(게임 오버 등)
+    /// 체력이 0 이하가 되면 실행할 로직(패배 처리)
     /// </summary>
     private void OnCastleDestroyed()
     {
         Debug.LogWarning("[CastleHealthManager] 성 파괴됨! (HP=0)");
-        // TODO: 게임 오버 UI 표시, 씬 전환 등 원하는 로직
-        // 예) LobbySceneManager로 돌아가거나, 패배 화면 뜨기 등
+
+        // =======================
+        // == [수정추가] 패배 ==
+        // =======================
+        GameManager.Instance.SetGameOver(false); 
+        // false -> 패배로 ResultScene 이동
     }
 }

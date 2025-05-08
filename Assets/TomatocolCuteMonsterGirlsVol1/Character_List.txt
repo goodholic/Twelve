@@ -1,0 +1,85 @@
+Tomatocol Cute Monster Girls - Character List
+-------------------------------------------------
+This is a list of all characters included in this asset pack.
+
+# 10000 Animals
+10100  Cats              (10 images)
+10200  Tigers            (10 images)
+10300  Rabbits           (10 images)
+10400  Wolves            (10 images)
+10500  Cows              (10 images)
+10600  Foxes             (10 images)
+10700  Pandas            (10 images)
+10800  Birds             (10 images)
+10900  Bats              (5 images)
+11000  Snakes            (10 images)
+11100  Frogs             (5 images)
+
+# 20000 Insects
+20100  Bees              (5 images)
+20200  Butterflies       (5 images)
+20300  Mantises          (5 images)
+20400  Spiders           (10 images)
+
+# 30000 Sea Creatures
+30100  Squids            (5 images)
+30200  Octopuses         (5 images)
+30300  Mermaids          (10 images)
+30400  Sea Dragons       (10 images)
+
+# 40000 Plants & Fungi
+40100  Normal Plants     (10 images)
+40200  Thorn Plants      (10 images)
+40300  Carnivorous Plants (10 images)
+40400  Slimes            (10 images)
+40500  Mushrooms         (10 images)
+40600  Parasitic Humans  (10 images)
+
+# 50000 Artificial Beings
+50100  Androids         (10 images)
+50200  Puppets         (10 images)
+50300  Puppets (Princess) (5 images)
+50400  Golems          (10 images)
+
+# 60000 Horror
+60100  Ghosts          (10 images)
+60200  Zombies         (10 images)
+60300  Mummies         (10 images)
+60400  Skeletons       (10 images)
+60500  Pirates         (10 images)
+60600  Vampires        (10 images)
+60700  Grim Reapers    (10 images)
+60800  Clowns          (10 images)
+60900  Dullahans       (10 images)
+69900  Other Horror    (5 images)
+
+# 70000 Fairies
+70100  Fire Fairies     (5 images)
+70200  Water Fairies    (5 images)
+70300  Wind Fairies     (5 images)
+70400  Earth Fairies    (5 images)
+70500  Thunder Fairies  (5 images)
+70600  Ice Fairies      (5 images)
+70700  Forest Fairies   (5 images)
+70800  Poison Fairies   (5 images)
+70900  Light Fairies    (5 images)
+71000  Dark Fairies     (5 images)
+71100  Love Fairies     (5 images)
+
+# 80000 Demons & Monsters
+80100  Dragons         (10 images)
+80200  Demon Lords     (10 images)
+80300  Dark Queens     (10 images)
+80400  Queens of Death (10 images)
+80500  Yuki-onna       (10 images)
+80600  Shadow Monsters (10 images)
+
+# 90000 Angels
+90100  Angels         (5 images)
+90200  Angels of War  (10 images)
+90300  Fallen Angels  (10 images)
+90400  Pseudo Angels  (10 images)
+90500  Angels with Severed Heads (5 images)
+
+-------------------------------------------------
+Total: 500 images

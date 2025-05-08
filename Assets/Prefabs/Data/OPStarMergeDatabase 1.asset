@@ -1,0 +1,1225 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: df7af77151e72a448a47a355a8b50b9c, type: 3}
+  m_Name: OPStarMergeDatabase 1
+  m_EditorClassIdentifier: 
+  twoStarPools:
+  - race: 0
+    possibleCharacters:
+    - characterData:
+        characterName: "\uB0AD\uB9CC\uAC80\uAC1D"
+        initialStar: 2
+        race: 0
+        attackPower: 20
+        attackSpeed: 1.5
+        attackRange: 1.2
+        maxHP: 320
+        moveSpeed: 3
+        rangeType: 0
+        isAreaAttack: 0
+        isBuffSupport: 0
+        level: 1
+        currentExp: 0
+        expToNextLevel: 5
+        spawnPrefab: {fileID: 8786608230712049741, guid: a1016faa07aa47244953e1c670a2c22d, type: 3}
+        buttonIcon: {fileID: 5490369301062840869, guid: a1016faa07aa47244953e1c670a2c22d, type: 3}
+        cost: 10
+        areaAttackRadius: 1
+        motionPrefab: {fileID: 8786608230712049741, guid: a1016faa07aa47244953e1c670a2c22d, type: 3}
+      weight: 1
+    - characterData:
+        characterName: "\uB0A8\uC790 \uC704\uCE58"
+        initialStar: 2
+        race: 0
+        attackPower: 26
+        attackSpeed: 1.1
+        attackRange: 3.2
+        maxHP: 180
+        moveSpeed: 3
+        rangeType: 1
+        isAreaAttack: 1
+        isBuffSupport: 0
+        level: 1
+        currentExp: 0
+        expToNextLevel: 5
+        spawnPrefab: {fileID: 1970497639547063621, guid: b09a6420741db634987d8e84bf45d4fc, type: 3}
+        buttonIcon: {fileID: 3826763924869295683, guid: b09a6420741db634987d8e84bf45d4fc, type: 3}
+        cost: 10
+        areaAttackRadius: 1
+        motionPrefab: {fileID: 1970497639547063621, guid: b09a6420741db634987d8e84bf45d4fc, type: 3}
+      weight: 1
+    - characterData:
+        characterName: "\uCE90\uB17C\uC288\uD130"
+        initialStar: 2
+        race: 0
+        attackPower: 34
+        attackSpeed: 0.85
+        attackRange: 3.8
+        maxHP: 220
+        moveSpeed: 3
+        rangeType: 1
+        isAreaAttack: 1
+        isBuffSupport: 0
+        level: 1
+        currentExp: 0
+        expToNextLevel: 5
+        spawnPrefab: {fileID: 2511997084044682121, guid: 631a275c4d4995e41a9607be7e6eb933, type: 3}
+        buttonIcon: {fileID: 4105201130940705118, guid: 631a275c4d4995e41a9607be7e6eb933, type: 3}
+        cost: 10
+        areaAttackRadius: 1
+        motionPrefab: {fileID: 2511997084044682121, guid: 631a275c4d4995e41a9607be7e6eb933, type: 3}
+      weight: 1
+    - characterData:
+        characterName: "\uBC29\uD328\uAE30\uC0AC"
+        initialStar: 2
+        race: 0
+        attackPower: 13
+        attackSpeed: 0.95
+        attackRange: 1.1
+        maxHP: 480
+        moveSpeed: 3
+        rangeType: 0
+        isAreaAttack: 0
+        isBuffSupport: 0
+        level: 1
+        currentExp: 0
+        expToNextLevel: 5
+        spawnPrefab: {fileID: 4332806432069123864, guid: f1a928e1203207f478e5cce2d539eace, type: 3}
+        buttonIcon: {fileID: 4211932184896465709, guid: f1a928e1203207f478e5cce2d539eace, type: 3}
+        cost: 10
+        areaAttackRadius: 1
+        motionPrefab: {fileID: 4332806432069123864, guid: f1a928e1203207f478e5cce2d539eace, type: 3}
+      weight: 1
+    - characterData:
+        characterName: "\uC624\uD06C\uBC95\uC0AC"
+        initialStar: 2
+        race: 1
+        attackPower: 30
+        attackSpeed: 1
+        attackRange: 3.3
+        maxHP: 180
+        moveSpeed: 3
+        rangeType: 1
+        isAreaAttack: 1
+        isBuffSupport: 0
+        level: 1
+        currentExp: 0
+        expToNextLevel: 5
+        spawnPrefab: {fileID: 9176415509751804172, guid: c911aa14e94247f41a5ebbc1fd14a44a, type: 3}
+        buttonIcon: {fileID: 8519823030489811609, guid: c911aa14e94247f41a5ebbc1fd14a44a, type: 3}
+        cost: 10
+        areaAttackRadius: 1
+        motionPrefab: {fileID: 9176415509751804172, guid: c911aa14e94247f41a5ebbc1fd14a44a, type: 3}
+      weight: 0.5
+    - characterData:
+        characterName: "\uD3ED\uACA9\uAE30"
+        initialStar: 2
+        race: 1
+        attackPower: 38
+        attackSpeed: 0.7
+        attackRange: 3.8
+        maxHP: 230
+        moveSpeed: 3
+        rangeType: 1
+        isAreaAttack: 1
+        isBuffSupport: 0
+        level: 1
+        currentExp: 0
+        expToNextLevel: 5
+        spawnPrefab: {fileID: 9146468120310428533, guid: 3c0e0900defb74143b583bd3364568bb, type: 3}
+        buttonIcon: {fileID: 6680396247339770550, guid: 3c0e0900defb74143b583bd3364568bb, type: 3}
+        cost: 10
+        areaAttackRadius: 1
+        motionPrefab: {fileID: 9146468120310428533, guid: 3c0e0900defb74143b583bd3364568bb, type: 3}
+      weight: 0.5
+    - characterData:
+        characterName: "\uC644\uB4DC\uC2A4\uD0C0"
+        initialStar: 2
+        race: 1
+        attackPower: 28
+        attackSpeed: 1.1
+        attackRange: 3
+        maxHP: 170
+        moveSpeed: 3
+        rangeType: 1
+        isAreaAttack: 0
+        isBuffSupport: 0
+        level: 1
+        currentExp: 0
+        expToNextLevel: 5
+        spawnPrefab: {fileID: 4326882089972318273, guid: 1c657a20e6757d549873ec422863e5a2, type: 3}
+        buttonIcon: {fileID: 236177863141098582, guid: 1c657a20e6757d549873ec422863e5a2, type: 3}
+        cost: 10
+        areaAttackRadius: 1
+        motionPrefab: {fileID: 4326882089972318273, guid: 1c657a20e6757d549873ec422863e5a2, type: 3}
+      weight: 0.5
+    - characterData:
+        characterName: "\uB208\uBB3C\uBC14\uB2E4"
+        initialStar: 2
+        race: 2
+        attackPower: 19
+        attackSpeed: 1.7
+        attackRange: 1.2
+        maxHP: 250
+        moveSpeed: 3
+        rangeType: 0
+        isAreaAttack: 0
+        isBuffSupport: 0
+        level: 1
+        currentExp: 0
+        expToNextLevel: 5
+        spawnPrefab: {fileID: 2768998443333610624, guid: f6dd57dcc98483543bf64a156e103aa9, type: 3}
+        buttonIcon: {fileID: 2524350021502841476, guid: f6dd57dcc98483543bf64a156e103aa9, type: 3}
+        cost: 10
+        areaAttackRadius: 1
+        motionPrefab: {fileID: 2768998443333610624, guid: f6dd57dcc98483543bf64a156e103aa9, type: 3}
+      weight: 0.5
+    - characterData:
+        characterName: "\uD640\uB9AD"
+        initialStar: 2
+        race: 2
+        attackPower: 24
+        attackSpeed: 1.2
+        attackRange: 2.5
+        maxHP: 200
+        moveSpeed: 3
+        rangeType: 1
+        isAreaAttack: 0
+        isBuffSupport: 0
+        level: 1
+        currentExp: 0
+        expToNextLevel: 5
+        spawnPrefab: {fileID: 7009747068067306124, guid: 60879bf0759ffb448b4f8b64591e22dd, type: 3}
+        buttonIcon: {fileID: 5939687862498206448, guid: 60879bf0759ffb448b4f8b64591e22dd, type: 3}
+        cost: 10
+        areaAttackRadius: 1
+        motionPrefab: {fileID: 7009747068067306124, guid: 60879bf0759ffb448b4f8b64591e22dd, type: 3}
+      weight: 0.5
+    - characterData:
+        characterName: "\uD658\uAC01\uBC95\uC0AC"
+        initialStar: 2
+        race: 2
+        attackPower: 32
+        attackSpeed: 0.9
+        attackRange: 3.5
+        maxHP: 180
+        moveSpeed: 3
+        rangeType: 1
+        isAreaAttack: 1
+        isBuffSupport: 0
+        level: 1
+        currentExp: 0
+        expToNextLevel: 5
+        spawnPrefab: {fileID: 5801439680409142473, guid: 79249aae04d1dcc4d9348d6427ef4330, type: 3}
+        buttonIcon: {fileID: 262685849678513024, guid: 79249aae04d1dcc4d9348d6427ef4330, type: 3}
+        cost: 10
+        areaAttackRadius: 1
+        motionPrefab: {fileID: 5801439680409142473, guid: 79249aae04d1dcc4d9348d6427ef4330, type: 3}
+      weight: 0.5
+  - race: 1
+    possibleCharacters:
+    - characterData:
+        characterName: "\uB0AD\uB9CC\uAC80\uAC1D"
+        initialStar: 2
+        race: 0
+        attackPower: 20
+        attackSpeed: 1.5
+        attackRange: 1.2
+        maxHP: 320
+        moveSpeed: 3
+        rangeType: 0
+        isAreaAttack: 0
+        isBuffSupport: 0
+        level: 1
+        currentExp: 0
+        expToNextLevel: 5
+        spawnPrefab: {fileID: 8786608230712049741, guid: a1016faa07aa47244953e1c670a2c22d, type: 3}
+        buttonIcon: {fileID: 5490369301062840869, guid: a1016faa07aa47244953e1c670a2c22d, type: 3}
+        cost: 10
+        areaAttackRadius: 1
+        motionPrefab: {fileID: 8786608230712049741, guid: a1016faa07aa47244953e1c670a2c22d, type: 3}
+      weight: 0.5
+    - characterData:
+        characterName: "\uB0A8\uC790 \uC704\uCE58"
+        initialStar: 2
+        race: 0
+        attackPower: 26
+        attackSpeed: 1.1
+        attackRange: 3.2
+        maxHP: 180
+        moveSpeed: 3
+        rangeType: 1
+        isAreaAttack: 1
+        isBuffSupport: 0
+        level: 1
+        currentExp: 0
+        expToNextLevel: 5
+        spawnPrefab: {fileID: 1970497639547063621, guid: b09a6420741db634987d8e84bf45d4fc, type: 3}
+        buttonIcon: {fileID: 3826763924869295683, guid: b09a6420741db634987d8e84bf45d4fc, type: 3}
+        cost: 10
+        areaAttackRadius: 1
+        motionPrefab: {fileID: 1970497639547063621, guid: b09a6420741db634987d8e84bf45d4fc, type: 3}
+      weight: 0.5
+    - characterData:
+        characterName: "\uCE90\uB17C\uC288\uD130"
+        initialStar: 2
+        race: 0
+        attackPower: 34
+        attackSpeed: 0.85
+        attackRange: 3.8
+        maxHP: 220
+        moveSpeed: 3
+        rangeType: 1
+        isAreaAttack: 1
+        isBuffSupport: 0
+        level: 1
+        currentExp: 0
+        expToNextLevel: 5
+        spawnPrefab: {fileID: 2511997084044682121, guid: 631a275c4d4995e41a9607be7e6eb933, type: 3}
+        buttonIcon: {fileID: 4105201130940705118, guid: 631a275c4d4995e41a9607be7e6eb933, type: 3}
+        cost: 10
+        areaAttackRadius: 1
+        motionPrefab: {fileID: 2511997084044682121, guid: 631a275c4d4995e41a9607be7e6eb933, type: 3}
+      weight: 0.5
+    - characterData:
+        characterName: "\uBC29\uD328\uAE30\uC0AC"
+        initialStar: 2
+        race: 0
+        attackPower: 13
+        attackSpeed: 0.95
+        attackRange: 1.1
+        maxHP: 480
+        moveSpeed: 3
+        rangeType: 0
+        isAreaAttack: 0
+        isBuffSupport: 0
+        level: 1
+        currentExp: 0
+        expToNextLevel: 5
+        spawnPrefab: {fileID: 4332806432069123864, guid: f1a928e1203207f478e5cce2d539eace, type: 3}
+        buttonIcon: {fileID: 8519823030489811609, guid: c911aa14e94247f41a5ebbc1fd14a44a, type: 3}
+        cost: 10
+        areaAttackRadius: 1
+        motionPrefab: {fileID: 4332806432069123864, guid: f1a928e1203207f478e5cce2d539eace, type: 3}
+      weight: 0.5
+    - characterData:
+        characterName: "\uC624\uD06C\uBC95\uC0AC"
+        initialStar: 2
+        race: 1
+        attackPower: 30
+        attackSpeed: 1
+        attackRange: 3.3
+        maxHP: 180
+        moveSpeed: 3
+        rangeType: 1
+        isAreaAttack: 1
+        isBuffSupport: 0
+        level: 1
+        currentExp: 0
+        expToNextLevel: 5
+        spawnPrefab: {fileID: 9176415509751804172, guid: c911aa14e94247f41a5ebbc1fd14a44a, type: 3}
+        buttonIcon: {fileID: 8519823030489811609, guid: c911aa14e94247f41a5ebbc1fd14a44a, type: 3}
+        cost: 10
+        areaAttackRadius: 1
+        motionPrefab: {fileID: 9176415509751804172, guid: c911aa14e94247f41a5ebbc1fd14a44a, type: 3}
+      weight: 1
+    - characterData:
+        characterName: "\uD3ED\uACA9\uAE30"
+        initialStar: 2
+        race: 1
+        attackPower: 38
+        attackSpeed: 0.7
+        attackRange: 3.8
+        maxHP: 230
+        moveSpeed: 3
+        rangeType: 1
+        isAreaAttack: 1
+        isBuffSupport: 0
+        level: 1
+        currentExp: 0
+        expToNextLevel: 5
+        spawnPrefab: {fileID: 9146468120310428533, guid: 3c0e0900defb74143b583bd3364568bb, type: 3}
+        buttonIcon: {fileID: 6680396247339770550, guid: 3c0e0900defb74143b583bd3364568bb, type: 3}
+        cost: 10
+        areaAttackRadius: 1
+        motionPrefab: {fileID: 9146468120310428533, guid: 3c0e0900defb74143b583bd3364568bb, type: 3}
+      weight: 1
+    - characterData:
+        characterName: "\uC644\uB4DC\uC2A4\uD0C0"
+        initialStar: 2
+        race: 1
+        attackPower: 28
+        attackSpeed: 1.1
+        attackRange: 3
+        maxHP: 170
+        moveSpeed: 3
+        rangeType: 1
+        isAreaAttack: 0
+        isBuffSupport: 0
+        level: 1
+        currentExp: 0
+        expToNextLevel: 5
+        spawnPrefab: {fileID: 4326882089972318273, guid: 1c657a20e6757d549873ec422863e5a2, type: 3}
+        buttonIcon: {fileID: 236177863141098582, guid: 1c657a20e6757d549873ec422863e5a2, type: 3}
+        cost: 10
+        areaAttackRadius: 1
+        motionPrefab: {fileID: 4326882089972318273, guid: 1c657a20e6757d549873ec422863e5a2, type: 3}
+      weight: 1
+    - characterData:
+        characterName: "\uB208\uBB3C\uBC14\uB2E4"
+        initialStar: 2
+        race: 2
+        attackPower: 19
+        attackSpeed: 1.7
+        attackRange: 1.2
+        maxHP: 250
+        moveSpeed: 3
+        rangeType: 0
+        isAreaAttack: 0
+        isBuffSupport: 0
+        level: 1
+        currentExp: 0
+        expToNextLevel: 5
+        spawnPrefab: {fileID: 2768998443333610624, guid: d9459c132ce81814c84565b6162610d1, type: 3}
+        buttonIcon: {fileID: 2524350021502841476, guid: d9459c132ce81814c84565b6162610d1, type: 3}
+        cost: 10
+        areaAttackRadius: 1
+        motionPrefab: {fileID: 2768998443333610624, guid: d9459c132ce81814c84565b6162610d1, type: 3}
+      weight: 0.5
+    - characterData:
+        characterName: "\uD640\uB9AD"
+        initialStar: 2
+        race: 2
+        attackPower: 24
+        attackSpeed: 1.2
+        attackRange: 2.5
+        maxHP: 200
+        moveSpeed: 3
+        rangeType: 1
+        isAreaAttack: 0
+        isBuffSupport: 0
+        level: 1
+        currentExp: 0
+        expToNextLevel: 5
+        spawnPrefab: {fileID: 7009747068067306124, guid: ffcc2210a35a3894eb8af13d44e10fc3, type: 3}
+        buttonIcon: {fileID: 5939687862498206448, guid: ffcc2210a35a3894eb8af13d44e10fc3, type: 3}
+        cost: 10
+        areaAttackRadius: 1
+        motionPrefab: {fileID: 7009747068067306124, guid: ffcc2210a35a3894eb8af13d44e10fc3, type: 3}
+      weight: 0.5
+    - characterData:
+        characterName: "\uD658\uAC01\uBC95\uC0AC"
+        initialStar: 2
+        race: 2
+        attackPower: 32
+        attackSpeed: 0.9
+        attackRange: 3.5
+        maxHP: 180
+        moveSpeed: 3
+        rangeType: 1
+        isAreaAttack: 1
+        isBuffSupport: 0
+        level: 1
+        currentExp: 0
+        expToNextLevel: 5
+        spawnPrefab: {fileID: 5801439680409142473, guid: aaa2020d68ee324428548a6bdade337d, type: 3}
+        buttonIcon: {fileID: 262685849678513024, guid: aaa2020d68ee324428548a6bdade337d, type: 3}
+        cost: 10
+        areaAttackRadius: 1
+        motionPrefab: {fileID: 5801439680409142473, guid: aaa2020d68ee324428548a6bdade337d, type: 3}
+      weight: 0.5
+  - race: 2
+    possibleCharacters:
+    - characterData:
+        characterName: "\uB0AD\uB9CC\uAC80\uAC1D"
+        initialStar: 2
+        race: 0
+        attackPower: 20
+        attackSpeed: 1.5
+        attackRange: 1.2
+        maxHP: 320
+        moveSpeed: 3
+        rangeType: 0
+        isAreaAttack: 0
+        isBuffSupport: 0
+        level: 1
+        currentExp: 0
+        expToNextLevel: 5
+        spawnPrefab: {fileID: 8786608230712049741, guid: a1016faa07aa47244953e1c670a2c22d, type: 3}
+        buttonIcon: {fileID: 5490369301062840869, guid: a1016faa07aa47244953e1c670a2c22d, type: 3}
+        cost: 10
+        areaAttackRadius: 1
+        motionPrefab: {fileID: 8786608230712049741, guid: a1016faa07aa47244953e1c670a2c22d, type: 3}
+      weight: 0.5
+    - characterData:
+        characterName: "\uB0A8\uC790 \uC704\uCE58"
+        initialStar: 2
+        race: 0
+        attackPower: 26
+        attackSpeed: 1.1
+        attackRange: 3.2
+        maxHP: 180
+        moveSpeed: 3
+        rangeType: 1
+        isAreaAttack: 1
+        isBuffSupport: 0
+        level: 1
+        currentExp: 0
+        expToNextLevel: 5
+        spawnPrefab: {fileID: 1970497639547063621, guid: b09a6420741db634987d8e84bf45d4fc, type: 3}
+        buttonIcon: {fileID: 3826763924869295683, guid: b09a6420741db634987d8e84bf45d4fc, type: 3}
+        cost: 10
+        areaAttackRadius: 1
+        motionPrefab: {fileID: 1970497639547063621, guid: b09a6420741db634987d8e84bf45d4fc, type: 3}
+      weight: 0.5
+    - characterData:
+        characterName: "\uCE90\uB17C\uC288\uD130"
+        initialStar: 2
+        race: 0
+        attackPower: 34
+        attackSpeed: 0.85
+        attackRange: 3.8
+        maxHP: 220
+        moveSpeed: 3
+        rangeType: 1
+        isAreaAttack: 1
+        isBuffSupport: 0
+        level: 1
+        currentExp: 0
+        expToNextLevel: 5
+        spawnPrefab: {fileID: 2511997084044682121, guid: 631a275c4d4995e41a9607be7e6eb933, type: 3}
+        buttonIcon: {fileID: 4105201130940705118, guid: 631a275c4d4995e41a9607be7e6eb933, type: 3}
+        cost: 10
+        areaAttackRadius: 1
+        motionPrefab: {fileID: 2511997084044682121, guid: 631a275c4d4995e41a9607be7e6eb933, type: 3}
+      weight: 0.5
+    - characterData:
+        characterName: "\uBC29\uD328\uAE30\uC0AC"
+        initialStar: 2
+        race: 0
+        attackPower: 13
+        attackSpeed: 0.95
+        attackRange: 1.1
+        maxHP: 480
+        moveSpeed: 3
+        rangeType: 0
+        isAreaAttack: 0
+        isBuffSupport: 0
+        level: 1
+        currentExp: 0
+        expToNextLevel: 5
+        spawnPrefab: {fileID: 4332806432069123864, guid: f1a928e1203207f478e5cce2d539eace, type: 3}
+        buttonIcon: {fileID: 4211932184896465709, guid: f1a928e1203207f478e5cce2d539eace, type: 3}
+        cost: 10
+        areaAttackRadius: 1
+        motionPrefab: {fileID: 4332806432069123864, guid: f1a928e1203207f478e5cce2d539eace, type: 3}
+      weight: 0.5
+    - characterData:
+        characterName: "\uC624\uD06C\uBC95\uC0AC"
+        initialStar: 2
+        race: 1
+        attackPower: 30
+        attackSpeed: 1
+        attackRange: 3.3
+        maxHP: 180
+        moveSpeed: 3
+        rangeType: 1
+        isAreaAttack: 1
+        isBuffSupport: 0
+        level: 1
+        currentExp: 0
+        expToNextLevel: 5
+        spawnPrefab: {fileID: 9176415509751804172, guid: c911aa14e94247f41a5ebbc1fd14a44a, type: 3}
+        buttonIcon: {fileID: 8519823030489811609, guid: c911aa14e94247f41a5ebbc1fd14a44a, type: 3}
+        cost: 10
+        areaAttackRadius: 1
+        motionPrefab: {fileID: 9176415509751804172, guid: c911aa14e94247f41a5ebbc1fd14a44a, type: 3}
+      weight: 0.5
+    - characterData:
+        characterName: "\uD3ED\uACA9\uAE30"
+        initialStar: 2
+        race: 1
+        attackPower: 38
+        attackSpeed: 0.7
+        attackRange: 3.8
+        maxHP: 230
+        moveSpeed: 3
+        rangeType: 1
+        isAreaAttack: 1
+        isBuffSupport: 0
+        level: 1
+        currentExp: 0
+        expToNextLevel: 5
+        spawnPrefab: {fileID: 9146468120310428533, guid: 3c0e0900defb74143b583bd3364568bb, type: 3}
+        buttonIcon: {fileID: 6680396247339770550, guid: 3c0e0900defb74143b583bd3364568bb, type: 3}
+        cost: 10
+        areaAttackRadius: 1
+        motionPrefab: {fileID: 9146468120310428533, guid: 3c0e0900defb74143b583bd3364568bb, type: 3}
+      weight: 0.5
+    - characterData:
+        characterName: "\uC644\uB4DC\uC2A4\uD0C0"
+        initialStar: 2
+        race: 1
+        attackPower: 28
+        attackSpeed: 1.1
+        attackRange: 3
+        maxHP: 170
+        moveSpeed: 3
+        rangeType: 1
+        isAreaAttack: 0
+        isBuffSupport: 0
+        level: 1
+        currentExp: 0
+        expToNextLevel: 5
+        spawnPrefab: {fileID: 4326882089972318273, guid: 1c657a20e6757d549873ec422863e5a2, type: 3}
+        buttonIcon: {fileID: 236177863141098582, guid: 1c657a20e6757d549873ec422863e5a2, type: 3}
+        cost: 10
+        areaAttackRadius: 1
+        motionPrefab: {fileID: 4326882089972318273, guid: 1c657a20e6757d549873ec422863e5a2, type: 3}
+      weight: 0.5
+    - characterData:
+        characterName: "\uB208\uBB3C\uBC14\uB2E4"
+        initialStar: 2
+        race: 2
+        attackPower: 19
+        attackSpeed: 1.7
+        attackRange: 1.2
+        maxHP: 250
+        moveSpeed: 3
+        rangeType: 0
+        isAreaAttack: 0
+        isBuffSupport: 0
+        level: 1
+        currentExp: 0
+        expToNextLevel: 5
+        spawnPrefab: {fileID: 2768998443333610624, guid: d9459c132ce81814c84565b6162610d1, type: 3}
+        buttonIcon: {fileID: 2524350021502841476, guid: d9459c132ce81814c84565b6162610d1, type: 3}
+        cost: 10
+        areaAttackRadius: 1
+        motionPrefab: {fileID: 2768998443333610624, guid: d9459c132ce81814c84565b6162610d1, type: 3}
+      weight: 1
+    - characterData:
+        characterName: "\uD640\uB9AD"
+        initialStar: 2
+        race: 2
+        attackPower: 24
+        attackSpeed: 1.2
+        attackRange: 2.5
+        maxHP: 200
+        moveSpeed: 3
+        rangeType: 1
+        isAreaAttack: 0
+        isBuffSupport: 0
+        level: 1
+        currentExp: 0
+        expToNextLevel: 5
+        spawnPrefab: {fileID: 7009747068067306124, guid: ffcc2210a35a3894eb8af13d44e10fc3, type: 3}
+        buttonIcon: {fileID: 5939687862498206448, guid: ffcc2210a35a3894eb8af13d44e10fc3, type: 3}
+        cost: 10
+        areaAttackRadius: 1
+        motionPrefab: {fileID: 7009747068067306124, guid: ffcc2210a35a3894eb8af13d44e10fc3, type: 3}
+      weight: 1
+    - characterData:
+        characterName: "\uD658\uAC01\uBC95\uC0AC"
+        initialStar: 2
+        race: 2
+        attackPower: 32
+        attackSpeed: 0.9
+        attackRange: 3.5
+        maxHP: 180
+        moveSpeed: 3
+        rangeType: 1
+        isAreaAttack: 1
+        isBuffSupport: 0
+        level: 1
+        currentExp: 0
+        expToNextLevel: 5
+        spawnPrefab: {fileID: 5801439680409142473, guid: aaa2020d68ee324428548a6bdade337d, type: 3}
+        buttonIcon: {fileID: 262685849678513024, guid: aaa2020d68ee324428548a6bdade337d, type: 3}
+        cost: 10
+        areaAttackRadius: 1
+        motionPrefab: {fileID: 5801439680409142473, guid: aaa2020d68ee324428548a6bdade337d, type: 3}
+      weight: 1
+  threeStarPools:
+  - race: 0
+    possibleCharacters:
+    - characterData:
+        characterName: "\uB2E4\uD06C \uC5D4\uC824"
+        initialStar: 3
+        race: 0
+        attackPower: 40
+        attackSpeed: 1.6
+        attackRange: 2
+        maxHP: 400
+        moveSpeed: 3
+        rangeType: 0
+        isAreaAttack: 1
+        isBuffSupport: 0
+        level: 1
+        currentExp: 0
+        expToNextLevel: 5
+        spawnPrefab: {fileID: 8786608230712049741, guid: 59052dc1ded061e47886548a2724de75, type: 3}
+        buttonIcon: {fileID: 5490369301062840869, guid: 59052dc1ded061e47886548a2724de75, type: 3}
+        cost: 10
+        areaAttackRadius: 1
+        motionPrefab: {fileID: 8786608230712049741, guid: 59052dc1ded061e47886548a2724de75, type: 3}
+      weight: 1
+    - characterData:
+        characterName: "\uBBF8\uCE58\uAD11\uB300"
+        initialStar: 3
+        race: 0
+        attackPower: 32
+        attackSpeed: 2
+        attackRange: 1.5
+        maxHP: 280
+        moveSpeed: 3
+        rangeType: 0
+        isAreaAttack: 0
+        isBuffSupport: 0
+        level: 1
+        currentExp: 0
+        expToNextLevel: 5
+        spawnPrefab: {fileID: 1970497639547063621, guid: 5231ce6ae5c15d64aa371670a3562b26, type: 3}
+        buttonIcon: {fileID: 3826763924869295683, guid: 5231ce6ae5c15d64aa371670a3562b26, type: 3}
+        cost: 10
+        areaAttackRadius: 1
+        motionPrefab: {fileID: 1970497639547063621, guid: 5231ce6ae5c15d64aa371670a3562b26, type: 3}
+      weight: 1
+    - characterData:
+        characterName: "\uC778\uD615\uACF5\uC8FC"
+        initialStar: 3
+        race: 0
+        attackPower: 30
+        attackSpeed: 1.2
+        attackRange: 3
+        maxHP: 350
+        moveSpeed: 3
+        rangeType: 1
+        isAreaAttack: 1
+        isBuffSupport: 0
+        level: 1
+        currentExp: 0
+        expToNextLevel: 5
+        spawnPrefab: {fileID: 2511997084044682121, guid: fa4e7ad3341f2504d90b0da7c37844a9, type: 3}
+        buttonIcon: {fileID: 4105201130940705118, guid: fa4e7ad3341f2504d90b0da7c37844a9, type: 3}
+        cost: 10
+        areaAttackRadius: 1
+        motionPrefab: {fileID: 2511997084044682121, guid: fa4e7ad3341f2504d90b0da7c37844a9, type: 3}
+      weight: 1
+    - characterData:
+        characterName: "\uC608\uC5B8\uC790"
+        initialStar: 3
+        race: 1
+        attackPower: 45
+        attackSpeed: 1.3
+        attackRange: 3.5
+        maxHP: 300
+        moveSpeed: 3
+        rangeType: 1
+        isAreaAttack: 1
+        isBuffSupport: 0
+        level: 1
+        currentExp: 0
+        expToNextLevel: 5
+        spawnPrefab: {fileID: 4332806432069123864, guid: 5e7b9e8db59e6f443ad58abda24b53d7, type: 3}
+        buttonIcon: {fileID: 4211932184896465709, guid: 5e7b9e8db59e6f443ad58abda24b53d7, type: 3}
+        cost: 10
+        areaAttackRadius: 1
+        motionPrefab: {fileID: 4332806432069123864, guid: 5e7b9e8db59e6f443ad58abda24b53d7, type: 3}
+      weight: 0.5
+    - characterData:
+        characterName: "\uC5FC\uB77C\uACF5\uC8FC"
+        initialStar: 3
+        race: 1
+        attackPower: 48
+        attackSpeed: 1
+        attackRange: 4
+        maxHP: 360
+        moveSpeed: 3
+        rangeType: 2
+        isAreaAttack: 1
+        isBuffSupport: 0
+        level: 1
+        currentExp: 0
+        expToNextLevel: 5
+        spawnPrefab: {fileID: 9176415509751804172, guid: b4589927facd5804aaa7bedbada04fd3, type: 3}
+        buttonIcon: {fileID: 8519823030489811609, guid: b4589927facd5804aaa7bedbada04fd3, type: 3}
+        cost: 10
+        areaAttackRadius: 1
+        motionPrefab: {fileID: 9176415509751804172, guid: b4589927facd5804aaa7bedbada04fd3, type: 3}
+      weight: 0.5
+    - characterData:
+        characterName: "\uD751\uACF5\uC8FC"
+        initialStar: 3
+        race: 1
+        attackPower: 42
+        attackSpeed: 1.5
+        attackRange: 2.8
+        maxHP: 330
+        moveSpeed: 3
+        rangeType: 1
+        isAreaAttack: 0
+        isBuffSupport: 0
+        level: 1
+        currentExp: 0
+        expToNextLevel: 5
+        spawnPrefab: {fileID: 9146468120310428533, guid: 31a9b12bee2e46649a5d933b82c9c5f3, type: 3}
+        buttonIcon: {fileID: 6680396247339770550, guid: 31a9b12bee2e46649a5d933b82c9c5f3, type: 3}
+        cost: 10
+        areaAttackRadius: 1
+        motionPrefab: {fileID: 9146468120310428533, guid: 31a9b12bee2e46649a5d933b82c9c5f3, type: 3}
+      weight: 0.5
+    - characterData:
+        characterName: "\uD050\uD53C\uD2B8"
+        initialStar: 3
+        race: 2
+        attackPower: 36
+        attackSpeed: 1.8
+        attackRange: 3.8
+        maxHP: 280
+        moveSpeed: 3
+        rangeType: 2
+        isAreaAttack: 0
+        isBuffSupport: 0
+        level: 1
+        currentExp: 0
+        expToNextLevel: 5
+        spawnPrefab: {fileID: 4326882089972318273, guid: f971bbac7920384419bd866a5702b769, type: 3}
+        buttonIcon: {fileID: 236177863141098582, guid: f971bbac7920384419bd866a5702b769, type: 3}
+        cost: 10
+        areaAttackRadius: 1
+        motionPrefab: {fileID: 4326882089972318273, guid: f971bbac7920384419bd866a5702b769, type: 3}
+      weight: 0.5
+    - characterData:
+        characterName: "\uAF43\uC758 \uC815\uB839"
+        initialStar: 3
+        race: 2
+        attackPower: 40
+        attackSpeed: 1
+        attackRange: 3.5
+        maxHP: 320
+        moveSpeed: 3
+        rangeType: 1
+        isAreaAttack: 1
+        isBuffSupport: 0
+        level: 1
+        currentExp: 0
+        expToNextLevel: 5
+        spawnPrefab: {fileID: 2768998443333610624, guid: f6608bdb906eebc43be75118f4220275, type: 3}
+        buttonIcon: {fileID: 2524350021502841476, guid: f6608bdb906eebc43be75118f4220275, type: 3}
+        cost: 10
+        areaAttackRadius: 1
+        motionPrefab: {fileID: 2768998443333610624, guid: f6608bdb906eebc43be75118f4220275, type: 3}
+      weight: 0.5
+    - characterData:
+        characterName: "\uC554\uD751 \uC815\uB839"
+        initialStar: 3
+        race: 2
+        attackPower: 38
+        attackSpeed: 1.3
+        attackRange: 3.2
+        maxHP: 350
+        moveSpeed: 3
+        rangeType: 1
+        isAreaAttack: 1
+        isBuffSupport: 0
+        level: 1
+        currentExp: 0
+        expToNextLevel: 5
+        spawnPrefab: {fileID: 7009747068067306124, guid: 7f467ed066610b749a72863d7fa215da, type: 3}
+        buttonIcon: {fileID: 5939687862498206448, guid: 7f467ed066610b749a72863d7fa215da, type: 3}
+        cost: 10
+        areaAttackRadius: 1
+        motionPrefab: {fileID: 7009747068067306124, guid: 7f467ed066610b749a72863d7fa215da, type: 3}
+      weight: 0.5
+  - race: 1
+    possibleCharacters:
+    - characterData:
+        characterName: "\uB2E4\uD06C \uC5D4\uC824"
+        initialStar: 3
+        race: 0
+        attackPower: 40
+        attackSpeed: 1.6
+        attackRange: 2
+        maxHP: 400
+        moveSpeed: 3
+        rangeType: 0
+        isAreaAttack: 1
+        isBuffSupport: 0
+        level: 1
+        currentExp: 0
+        expToNextLevel: 5
+        spawnPrefab: {fileID: 8786608230712049741, guid: 59052dc1ded061e47886548a2724de75, type: 3}
+        buttonIcon: {fileID: 5490369301062840869, guid: 59052dc1ded061e47886548a2724de75, type: 3}
+        cost: 10
+        areaAttackRadius: 1
+        motionPrefab: {fileID: 8786608230712049741, guid: 59052dc1ded061e47886548a2724de75, type: 3}
+      weight: 0.5
+    - characterData:
+        characterName: "\uBBF8\uCE58\uAD11\uB300"
+        initialStar: 3
+        race: 0
+        attackPower: 32
+        attackSpeed: 2
+        attackRange: 1.5
+        maxHP: 280
+        moveSpeed: 3
+        rangeType: 0
+        isAreaAttack: 0
+        isBuffSupport: 0
+        level: 1
+        currentExp: 0
+        expToNextLevel: 5
+        spawnPrefab: {fileID: 1970497639547063621, guid: 5231ce6ae5c15d64aa371670a3562b26, type: 3}
+        buttonIcon: {fileID: 3826763924869295683, guid: 5231ce6ae5c15d64aa371670a3562b26, type: 3}
+        cost: 10
+        areaAttackRadius: 1
+        motionPrefab: {fileID: 1970497639547063621, guid: 5231ce6ae5c15d64aa371670a3562b26, type: 3}
+      weight: 0.5
+    - characterData:
+        characterName: "\uC778\uD615\uACF5\uC8FC"
+        initialStar: 3
+        race: 0
+        attackPower: 30
+        attackSpeed: 1.2
+        attackRange: 3
+        maxHP: 350
+        moveSpeed: 3
+        rangeType: 1
+        isAreaAttack: 1
+        isBuffSupport: 0
+        level: 1
+        currentExp: 0
+        expToNextLevel: 5
+        spawnPrefab: {fileID: 2511997084044682121, guid: fa4e7ad3341f2504d90b0da7c37844a9, type: 3}
+        buttonIcon: {fileID: 4105201130940705118, guid: fa4e7ad3341f2504d90b0da7c37844a9, type: 3}
+        cost: 10
+        areaAttackRadius: 1
+        motionPrefab: {fileID: 2511997084044682121, guid: fa4e7ad3341f2504d90b0da7c37844a9, type: 3}
+      weight: 0.5
+    - characterData:
+        characterName: "\uC608\uC5B8\uC790"
+        initialStar: 3
+        race: 1
+        attackPower: 45
+        attackSpeed: 1.3
+        attackRange: 3.5
+        maxHP: 300
+        moveSpeed: 3
+        rangeType: 1
+        isAreaAttack: 1
+        isBuffSupport: 0
+        level: 1
+        currentExp: 0
+        expToNextLevel: 5
+        spawnPrefab: {fileID: 4332806432069123864, guid: 5e7b9e8db59e6f443ad58abda24b53d7, type: 3}
+        buttonIcon: {fileID: 4211932184896465709, guid: 5e7b9e8db59e6f443ad58abda24b53d7, type: 3}
+        cost: 10
+        areaAttackRadius: 1
+        motionPrefab: {fileID: 4332806432069123864, guid: 5e7b9e8db59e6f443ad58abda24b53d7, type: 3}
+      weight: 1
+    - characterData:
+        characterName: "\uC5FC\uB77C\uACF5\uC8FC"
+        initialStar: 3
+        race: 1
+        attackPower: 48
+        attackSpeed: 1
+        attackRange: 4
+        maxHP: 360
+        moveSpeed: 3
+        rangeType: 2
+        isAreaAttack: 1
+        isBuffSupport: 0
+        level: 1
+        currentExp: 0
+        expToNextLevel: 5
+        spawnPrefab: {fileID: 9176415509751804172, guid: b4589927facd5804aaa7bedbada04fd3, type: 3}
+        buttonIcon: {fileID: 8519823030489811609, guid: b4589927facd5804aaa7bedbada04fd3, type: 3}
+        cost: 10
+        areaAttackRadius: 1
+        motionPrefab: {fileID: 9176415509751804172, guid: b4589927facd5804aaa7bedbada04fd3, type: 3}
+      weight: 1
+    - characterData:
+        characterName: "\uD751\uACF5\uC8FC"
+        initialStar: 3
+        race: 1
+        attackPower: 42
+        attackSpeed: 1.5
+        attackRange: 2.8
+        maxHP: 330
+        moveSpeed: 3
+        rangeType: 1
+        isAreaAttack: 0
+        isBuffSupport: 0
+        level: 1
+        currentExp: 0
+        expToNextLevel: 5
+        spawnPrefab: {fileID: 9146468120310428533, guid: 31a9b12bee2e46649a5d933b82c9c5f3, type: 3}
+        buttonIcon: {fileID: 6680396247339770550, guid: 31a9b12bee2e46649a5d933b82c9c5f3, type: 3}
+        cost: 10
+        areaAttackRadius: 1
+        motionPrefab: {fileID: 9146468120310428533, guid: 31a9b12bee2e46649a5d933b82c9c5f3, type: 3}
+      weight: 1
+    - characterData:
+        characterName: "\uD050\uD53C\uD2B8"
+        initialStar: 3
+        race: 2
+        attackPower: 36
+        attackSpeed: 1.8
+        attackRange: 3.8
+        maxHP: 280
+        moveSpeed: 3
+        rangeType: 2
+        isAreaAttack: 0
+        isBuffSupport: 0
+        level: 1
+        currentExp: 0
+        expToNextLevel: 5
+        spawnPrefab: {fileID: 4326882089972318273, guid: f971bbac7920384419bd866a5702b769, type: 3}
+        buttonIcon: {fileID: 236177863141098582, guid: f971bbac7920384419bd866a5702b769, type: 3}
+        cost: 10
+        areaAttackRadius: 1
+        motionPrefab: {fileID: 4326882089972318273, guid: f971bbac7920384419bd866a5702b769, type: 3}
+      weight: 0.5
+    - characterData:
+        characterName: "\uAF43\uC758 \uC815\uB839"
+        initialStar: 3
+        race: 2
+        attackPower: 40
+        attackSpeed: 1
+        attackRange: 3.5
+        maxHP: 320
+        moveSpeed: 3
+        rangeType: 1
+        isAreaAttack: 1
+        isBuffSupport: 0
+        level: 1
+        currentExp: 0
+        expToNextLevel: 5
+        spawnPrefab: {fileID: 2768998443333610624, guid: f6608bdb906eebc43be75118f4220275, type: 3}
+        buttonIcon: {fileID: 2524350021502841476, guid: f6608bdb906eebc43be75118f4220275, type: 3}
+        cost: 10
+        areaAttackRadius: 1
+        motionPrefab: {fileID: 2768998443333610624, guid: f6608bdb906eebc43be75118f4220275, type: 3}
+      weight: 0.5
+    - characterData:
+        characterName: "\uC554\uD751 \uC815\uB839"
+        initialStar: 3
+        race: 2
+        attackPower: 38
+        attackSpeed: 1.3
+        attackRange: 3.2
+        maxHP: 350
+        moveSpeed: 3
+        rangeType: 1
+        isAreaAttack: 1
+        isBuffSupport: 0
+        level: 1
+        currentExp: 0
+        expToNextLevel: 5
+        spawnPrefab: {fileID: 7009747068067306124, guid: 7f467ed066610b749a72863d7fa215da, type: 3}
+        buttonIcon: {fileID: 5939687862498206448, guid: 7f467ed066610b749a72863d7fa215da, type: 3}
+        cost: 10
+        areaAttackRadius: 1
+        motionPrefab: {fileID: 7009747068067306124, guid: 7f467ed066610b749a72863d7fa215da, type: 3}
+      weight: 0.5
+  - race: 2
+    possibleCharacters:
+    - characterData:
+        characterName: "\uB2E4\uD06C \uC5D4\uC824"
+        initialStar: 3
+        race: 0
+        attackPower: 40
+        attackSpeed: 1.6
+        attackRange: 2
+        maxHP: 400
+        moveSpeed: 3
+        rangeType: 0
+        isAreaAttack: 1
+        isBuffSupport: 0
+        level: 1
+        currentExp: 0
+        expToNextLevel: 5
+        spawnPrefab: {fileID: 8786608230712049741, guid: 59052dc1ded061e47886548a2724de75, type: 3}
+        buttonIcon: {fileID: 5490369301062840869, guid: 59052dc1ded061e47886548a2724de75, type: 3}
+        cost: 10
+        areaAttackRadius: 1
+        motionPrefab: {fileID: 8786608230712049741, guid: 59052dc1ded061e47886548a2724de75, type: 3}
+      weight: 0.5
+    - characterData:
+        characterName: "\uBBF8\uCE58\uAD11\uB300"
+        initialStar: 3
+        race: 0
+        attackPower: 32
+        attackSpeed: 2
+        attackRange: 1.5
+        maxHP: 280
+        moveSpeed: 3
+        rangeType: 0
+        isAreaAttack: 0
+        isBuffSupport: 0
+        level: 1
+        currentExp: 0
+        expToNextLevel: 5
+        spawnPrefab: {fileID: 1970497639547063621, guid: 5231ce6ae5c15d64aa371670a3562b26, type: 3}
+        buttonIcon: {fileID: 3826763924869295683, guid: 5231ce6ae5c15d64aa371670a3562b26, type: 3}
+        cost: 10
+        areaAttackRadius: 1
+        motionPrefab: {fileID: 1970497639547063621, guid: 5231ce6ae5c15d64aa371670a3562b26, type: 3}
+      weight: 0.5
+    - characterData:
+        characterName: "\uC778\uD615\uACF5\uC8FC"
+        initialStar: 3
+        race: 0
+        attackPower: 30
+        attackSpeed: 1.2
+        attackRange: 3
+        maxHP: 350
+        moveSpeed: 3
+        rangeType: 1
+        isAreaAttack: 1
+        isBuffSupport: 0
+        level: 1
+        currentExp: 0
+        expToNextLevel: 5
+        spawnPrefab: {fileID: 2511997084044682121, guid: fa4e7ad3341f2504d90b0da7c37844a9, type: 3}
+        buttonIcon: {fileID: 4105201130940705118, guid: fa4e7ad3341f2504d90b0da7c37844a9, type: 3}
+        cost: 10
+        areaAttackRadius: 1
+        motionPrefab: {fileID: 2511997084044682121, guid: fa4e7ad3341f2504d90b0da7c37844a9, type: 3}
+      weight: 0.5
+    - characterData:
+        characterName: "\uC608\uC5B8\uC790"
+        initialStar: 3
+        race: 1
+        attackPower: 45
+        attackSpeed: 1.3
+        attackRange: 3.5
+        maxHP: 300
+        moveSpeed: 3
+        rangeType: 1
+        isAreaAttack: 1
+        isBuffSupport: 0
+        level: 1
+        currentExp: 0
+        expToNextLevel: 5
+        spawnPrefab: {fileID: 4332806432069123864, guid: 5e7b9e8db59e6f443ad58abda24b53d7, type: 3}
+        buttonIcon: {fileID: 4211932184896465709, guid: 5e7b9e8db59e6f443ad58abda24b53d7, type: 3}
+        cost: 10
+        areaAttackRadius: 1
+        motionPrefab: {fileID: 4332806432069123864, guid: 5e7b9e8db59e6f443ad58abda24b53d7, type: 3}
+      weight: 0.5
+    - characterData:
+        characterName: "\uC5FC\uB77C\uACF5\uC8FC"
+        initialStar: 3
+        race: 1
+        attackPower: 48
+        attackSpeed: 1
+        attackRange: 4
+        maxHP: 360
+        moveSpeed: 3
+        rangeType: 2
+        isAreaAttack: 1
+        isBuffSupport: 0
+        level: 1
+        currentExp: 0
+        expToNextLevel: 5
+        spawnPrefab: {fileID: 9176415509751804172, guid: b4589927facd5804aaa7bedbada04fd3, type: 3}
+        buttonIcon: {fileID: 8519823030489811609, guid: b4589927facd5804aaa7bedbada04fd3, type: 3}
+        cost: 10
+        areaAttackRadius: 1
+        motionPrefab: {fileID: 9176415509751804172, guid: b4589927facd5804aaa7bedbada04fd3, type: 3}
+      weight: 0.5
+    - characterData:
+        characterName: "\uD751\uACF5\uC8FC"
+        initialStar: 3
+        race: 1
+        attackPower: 42
+        attackSpeed: 1.5
+        attackRange: 2.8
+        maxHP: 330
+        moveSpeed: 3
+        rangeType: 1
+        isAreaAttack: 0
+        isBuffSupport: 0
+        level: 1
+        currentExp: 0
+        expToNextLevel: 5
+        spawnPrefab: {fileID: 9146468120310428533, guid: 31a9b12bee2e46649a5d933b82c9c5f3, type: 3}
+        buttonIcon: {fileID: 6680396247339770550, guid: 31a9b12bee2e46649a5d933b82c9c5f3, type: 3}
+        cost: 10
+        areaAttackRadius: 1
+        motionPrefab: {fileID: 9146468120310428533, guid: 31a9b12bee2e46649a5d933b82c9c5f3, type: 3}
+      weight: 0.5
+    - characterData:
+        characterName: "\uD050\uD53C\uD2B8"
+        initialStar: 3
+        race: 2
+        attackPower: 36
+        attackSpeed: 1.8
+        attackRange: 3.8
+        maxHP: 280
+        moveSpeed: 3
+        rangeType: 2
+        isAreaAttack: 0
+        isBuffSupport: 0
+        level: 1
+        currentExp: 0
+        expToNextLevel: 5
+        spawnPrefab: {fileID: 4326882089972318273, guid: f971bbac7920384419bd866a5702b769, type: 3}
+        buttonIcon: {fileID: 236177863141098582, guid: f971bbac7920384419bd866a5702b769, type: 3}
+        cost: 10
+        areaAttackRadius: 1
+        motionPrefab: {fileID: 4326882089972318273, guid: f971bbac7920384419bd866a5702b769, type: 3}
+      weight: 1
+    - characterData:
+        characterName: "\uAF43\uC758 \uC815\uB839"
+        initialStar: 3
+        race: 2
+        attackPower: 40
+        attackSpeed: 1
+        attackRange: 3.5
+        maxHP: 320
+        moveSpeed: 3
+        rangeType: 1
+        isAreaAttack: 1
+        isBuffSupport: 0
+        level: 1
+        currentExp: 0
+        expToNextLevel: 5
+        spawnPrefab: {fileID: 2768998443333610624, guid: f6608bdb906eebc43be75118f4220275, type: 3}
+        buttonIcon: {fileID: 2524350021502841476, guid: f6608bdb906eebc43be75118f4220275, type: 3}
+        cost: 10
+        areaAttackRadius: 1
+        motionPrefab: {fileID: 2768998443333610624, guid: f6608bdb906eebc43be75118f4220275, type: 3}
+      weight: 1
+    - characterData:
+        characterName: "\uC554\uD751 \uC815\uB839"
+        initialStar: 3
+        race: 2
+        attackPower: 38
+        attackSpeed: 1.3
+        attackRange: 3.2
+        maxHP: 350
+        moveSpeed: 3
+        rangeType: 1
+        isAreaAttack: 1
+        isBuffSupport: 0
+        level: 1
+        currentExp: 0
+        expToNextLevel: 5
+        spawnPrefab: {fileID: 7009747068067306124, guid: 7f467ed066610b749a72863d7fa215da, type: 3}
+        buttonIcon: {fileID: 5939687862498206448, guid: 7f467ed066610b749a72863d7fa215da, type: 3}
+        cost: 10
+        areaAttackRadius: 1
+        motionPrefab: {fileID: 7009747068067306124, guid: 7f467ed066610b749a72863d7fa215da, type: 3}
+      weight: 1

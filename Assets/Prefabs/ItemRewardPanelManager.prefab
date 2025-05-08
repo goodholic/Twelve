@@ -50,6 +50,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   itemDatabase: {fileID: 11400000, guid: 18587885b937c7b4ea57c70af9d50b15, type: 2}
   itemInventoryManager: {fileID: 0}
+  itemPanel: {fileID: 0}
   itemCardButtons:
   - {fileID: 0}
   - {fileID: 0}
@@ -58,7 +59,7 @@ MonoBehaviour:
   - {fileID: 0}
   - {fileID: 0}
   - {fileID: 0}
-  itemCardNameTexts:
+  itemCardDescTexts:
   - {fileID: 0}
   - {fileID: 0}
   - {fileID: 0}

@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEditor;
 using System;
 
+
 /// <summary>
 /// CharacterDatabaseObject(.asset) 전용 커스텀 에디터.
 /// Inspector에서 CSV로 캐릭터를 추가하거나, 랜덤 생성할 수 있음.
@@ -24,6 +25,15 @@ public class CharacterDatabaseObjectEditor : Editor
 
         // 현재 ScriptableObject
         CharacterDatabaseObject dbObj = (CharacterDatabaseObject)target;
+
+        // ▼▼ [수정추가] 만약 dbObj가 null이면 안전하게 리턴 ▼▼
+        if (dbObj == null)
+        {
+            EditorGUILayout.HelpBox("CharacterDatabaseObject가 null입니다.", MessageType.Warning);
+            return;
+        }
+        // ▲▲ [수정끝] ▲▲
+
         SerializedProperty charactersProp = serializedObject.FindProperty("characters");
 
         // 1) 기본 배열 필드를 Inspector에 표시
@@ -62,6 +72,41 @@ public class CharacterDatabaseObjectEditor : Editor
                 AddRandomCharacters(dbObj, charactersProp, 8);
             }
         }
+
+        // ▼▼ [수정추가] 'Save Database' 버튼 ▼▼
+        EditorGUILayout.Space();
+        EditorGUILayout.LabelField("", GUI.skin.horizontalSlider);
+        EditorGUILayout.Space();
+
+        if (GUILayout.Button("Save Database"))
+        {
+            // 변경사항을 적용하고 ScriptableObject를 저장
+            serializedObject.ApplyModifiedProperties();
+            EditorUtility.SetDirty(dbObj);       // 변경 플래그 지정
+            AssetDatabase.SaveAssets();          // 실제 파일로 저장
+            AssetDatabase.Refresh();
+            Debug.Log("CharacterDatabaseObject 저장 완료!");
+
+            // ============================================
+            //  (추가) "저장 시점으로 다시 되돌리는" 로직
+            // ============================================
+            // 이미 Save된 값을 다시 디스크에서 불러옴으로써,
+            // 설사 지금 Inspector에서 값이 바뀌어 있어도 "저장된 시점"으로 강제로 복원한다.
+            string assetPath = AssetDatabase.GetAssetPath(dbObj);
+            CharacterDatabaseObject reloaded = AssetDatabase.LoadAssetAtPath<CharacterDatabaseObject>(assetPath);
+            if (reloaded != null)
+            {
+                // characters 배열도 디스크 값으로 덮어씀
+                dbObj.characters = reloaded.characters;
+
+                // 새롭게 SerializedObject를 갱신하여 Inspector도 다시 표시
+                EditorUtility.SetDirty(dbObj);
+                AssetDatabase.Refresh();
+                serializedObject.Update();
+                Debug.Log("저장 직후, 디스크상의 데이터로 되돌렸습니다 (Inspector 변경사항 무시).");
+            }
+        }
+        // ▲▲ [수정끝] ▲▲
 
         serializedObject.ApplyModifiedProperties();
     }
@@ -202,7 +247,7 @@ public class CharacterDatabaseObjectEditor : Editor
             // SerializedObject를 통해 private [SerializeField] 필드에 접근
             SerializedObject serializedInvManager = new SerializedObject(invManager);
             SerializedProperty dbObjProp = serializedInvManager.FindProperty("characterDatabaseObject");
-            
+
             if (dbObjProp != null && dbObjProp.objectReferenceValue != null)
             {
                 // InventoryManager에 연결된 ScriptableObject를 복사
@@ -245,7 +290,7 @@ public class CharacterDatabaseObjectEditor : Editor
                     newAsset.characters[i].isBuffSupport = sceneDb.currentRegisteredCharacters[i].isBuffSupport;
                     newAsset.characters[i].cost = sceneDb.currentRegisteredCharacters[i].cost;
                     newAsset.characters[i].level = sceneDb.currentRegisteredCharacters[i].level;
-                    
+
                     // 다른 필드들도 필요에 따라 복사
                     // newAsset.characters[i].otherField = sceneDb.currentRegisteredCharacters[i].otherField;
                 }
@@ -284,7 +329,7 @@ public class CharacterDatabaseObjectEditor : Editor
                     newAsset.characters[i].isBuffSupport = dbObj.characters[i].isBuffSupport;
                     newAsset.characters[i].cost = dbObj.characters[i].cost;
                     newAsset.characters[i].level = dbObj.characters[i].level;
-                    
+
                     // 다른 필드들도 필요에 따라 복사
                     // newAsset.characters[i].otherField = dbObj.characters[i].otherField;
                 }

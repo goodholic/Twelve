@@ -1,26 +1,28 @@
+// Assets\Scripts\Bullet.cs
+
 using UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
 
 /// <summary>
 /// 10종의 탄환 타입 정의
 /// </summary>
 public enum BulletType
 {
-    Normal,            // 1) 일반탄
-    Piercing,          // 2) 관통탄
-    Explosive,         // 3) 폭발탄
-    Slow,              // 4) 감속탄
-    Bleed,             // 5) 출혈탄
-    Chain,             // 6) 연쇄탄
-    Stun,              // 7) 마비탄
-    ArmorPenetration,  // 8) 파괴탄(방어 무시)
-    Split,             // 9) 분열탄
-    Energy             // 10) 에너지탄
+    Normal,
+    Piercing,
+    Explosive,
+    Slow,
+    Bleed,
+    Chain,
+    Stun,
+    ArmorPenetration,
+    Split,
+    Energy
 }
 
 /// <summary>
 /// 타워(또는 유닛)에서 발사되는 탄환.
-/// 10종의 총알 타입에 따라 서로 다른 효과를 적용함.
 /// </summary>
 public class Bullet : MonoBehaviour
 {
@@ -28,67 +30,66 @@ public class Bullet : MonoBehaviour
     public BulletType bulletType = BulletType.Normal;
 
     [Header("공통: 공격력 / 속도 / 최대 생존시간")]
-    public float damage = 10f;         // 기본 공격력
-    public float speed = 5f;           // 탄환 이동 속도
-    public float maxLifeTime = 3f;     // 최대 생존 시간(초) - 지나면 파괴
+    public float damage = 10f;
+    public float speed = 5f;
+    public float maxLifeTime = 3f;
 
     [Header("광역 공격 여부(폭발탄 등)")]
-    public bool isAreaAttack = false;  // 범위 폭발 유무
-    public float areaRadius = 1.5f;    // 광역 반경
+    public bool isAreaAttack = false;
+    public float areaRadius = 1.5f;
 
     [Header("타겟 / 기타")]
-    public Monster target;             // 단일 타겟 (Homing/슬로우탄 등에서 사용)
-    private float aliveTime = 0f;      // 탄환 생존 시간 누적
+    public Monster target;
+    private float aliveTime = 0f;
 
     // -------------------------------------------------------
-    // [탄환별 추가 옵션]
+    // [탄환별 추가 옵션들]
     // -------------------------------------------------------
     [Header("관통탄 옵션")]
-    public int maxPierceCount = 3;   // 최대 관통 가능한 적 수
+    public int maxPierceCount = 3;
 
     [Header("슬로우탄 옵션")]
-    public float slowDuration = 2f;  // 감속 지속시간 (초)
-    public float slowAmount = 0.5f;  // 이동속도 배율(0.5 => 50% 속도로 감소)
+    public float slowDuration = 2f;
+    public float slowAmount = 0.5f;
 
     [Header("출혈탄 옵션(DoT)")]
-    public float bleedDuration = 3f;      // 출혈 지속(초)
-    public float bleedDamagePerSec = 2f;  // 초당 출혈 데미지
+    public float bleedDuration = 3f;
+    public float bleedDamagePerSec = 2f;
 
     [Header("연쇄탄 옵션")]
-    public int chainMaxBounces = 3;       // 최대 튕길 횟수
-    public float chainBounceRange = 2f;   // 인접 몬스터 감지 범위
+    public int chainMaxBounces = 3;
+    public float chainBounceRange = 2f;
 
     [Header("마비탄 옵션")]
-    public float stunDuration = 1f;       // 스턴 지속시간(초)
+    public float stunDuration = 1f;
 
     [Header("파괴탄 옵션(방어 무시)")]
-    public bool ignoreDefense = true;     // 방어력 계산 무시 여부
+    public bool ignoreDefense = true;
 
     [Header("분열탄 옵션")]
-    public int splitCount = 3;               // 몇 개로 분열할지
-    public float splitBulletAngleSpread = 30f;// 분열 후 퍼지는 각도
-    public GameObject subBulletPrefab;       // 분열 후 생성될 탄환 프리팹
+    public int splitCount = 3;
+    public float splitBulletAngleSpread = 30f;
+    public GameObject subBulletPrefab;
 
     [Header("에너지탄 옵션")]
-    public float extraRange = 5f;      // 추가 사거리 등
-    public float energySpeedFactor = 1.5f; // 에너지탄은 속도 빠름(기본 speed에 곱)
+    public float extraRange = 5f;
+    public float energySpeedFactor = 1.5f;
 
     [Header("Impact / 폭발 이펙트 (옵션)")]
-    public GameObject impactEffectPrefab;    // 단일 피격/마지막 충돌 이펙트
-    public GameObject explosionEffectPrefab; // 폭발탄 전용 이펙트 등(광역)
+    public GameObject impactEffectPrefab;
+    public GameObject explosionEffectPrefab;
 
-    // 관통/연쇄 시 중복 타격 방지용
     private int piercedCount = 0;
-    private System.Collections.Generic.List<Monster> chainAttackedMonsters = new System.Collections.Generic.List<Monster>();
+    private List<Monster> chainAttackedMonsters = new List<Monster>();
     private int currentBounceCount = 0;
 
     // VFX 패널 (정적 참조)
     private static RectTransform vfxPanel;
 
-    // === 수정 부분 ===
+    // === [수정 부분] ===
     [Header("Area 구분 (1 or 2)")]
     public int areaIndex = 1;
-    // === 수정 끝 ===
+    // =================
 
     /// <summary>
     /// VFX 이펙트들이 생성될 부모 패널 설정 (정적 메서드)
@@ -102,7 +103,6 @@ public class Bullet : MonoBehaviour
     /// <summary>
     /// 탄환 초기화
     /// </summary>
-    // === 수정 부분: areaIndex 인자 추가 ===
     public void Init(Monster targetMonster, float baseDamage, float baseSpeed,
                      bool areaAtk, float areaAtkRadius, int areaIndex)
     {
@@ -111,21 +111,36 @@ public class Bullet : MonoBehaviour
         this.speed = baseSpeed;
         this.isAreaAttack = areaAtk;
         this.areaRadius = areaAtkRadius;
-        this.areaIndex = areaIndex; // 추가된 부분
+        this.areaIndex = areaIndex;
 
-        // 에너지탄 속도 보정
         if (bulletType == BulletType.Energy)
         {
             this.speed *= energySpeedFactor;
         }
     }
-    // === 수정 끝 ===
 
     private void Start()
     {
         piercedCount = 0;
         currentBounceCount = 0;
         chainAttackedMonsters.Clear();
+
+        // ▼▼ [추가] RectTransform 초기화 (UI 상에서 총알이 안 보이는 현상 방지) ▼▼
+        RectTransform rt = GetComponent<RectTransform>();
+        if (rt != null)
+        {
+            // 캔버스 자식 UI로써 표시될 수 있게 기본 앵커/피봇 설정
+            rt.anchorMin = new Vector2(0.5f, 0.5f);
+            rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.pivot = new Vector2(0.5f, 0.5f);
+
+            // 부모 패널 크기에 맞춰 축소되지 않도록 localScale 보정
+            rt.localScale = Vector3.one;
+
+            // (선택) 가장 위로 올리기
+            rt.SetAsLastSibling();
+        }
+        // ▲▲ [추가 끝] ▲▲
     }
 
     private void Update()
@@ -154,22 +169,25 @@ public class Bullet : MonoBehaviour
             case BulletType.Stun:
             case BulletType.ArmorPenetration:
             case BulletType.Split:
-                if (target != null)
+            {
+                // ▼▼ [수정] 타겟이 없거나 이미 비활성(파괴) 상태라면 소멸 ▼▼
+                if (target == null || !target.gameObject.activeInHierarchy)
                 {
-                    Vector3 dir = (target.transform.position - transform.position).normalized;
-                    transform.position += dir * speed * Time.deltaTime;
-
-                    float dist = Vector2.Distance(transform.position, target.transform.position);
-                    if (dist < 0.2f)
-                    {
-                        OnHitTarget(target);
-                    }
+                    Destroy(gameObject);
+                    break;
                 }
-                else
+                // ▲▲ [수정끝] ▲▲
+
+                Vector3 dir = (target.transform.position - transform.position).normalized;
+                transform.position += dir * speed * Time.deltaTime;
+
+                float dist = Vector2.Distance(transform.position, target.transform.position);
+                if (dist < 0.2f)
                 {
-                    transform.position += transform.right * speed * Time.deltaTime;
+                    OnHitTarget(target);
                 }
                 break;
+            }
 
             case BulletType.Chain:
                 if (target != null)
@@ -193,14 +211,15 @@ public class Bullet : MonoBehaviour
 
     private void OnHitTarget(Monster hitMonster)
     {
-        // === 수정 부분 ===
-        // 만약 areaIndex가 다르면 피격 로직 무시 (즉시 return)
-        if (hitMonster != null && this.areaIndex != hitMonster.areaIndex)
-        {
-            // 충돌 무시
-            return;
-        }
-        // === 수정 끝 ===
+        // ▼▼ [수정] 원래 코드에서 areaIndex 비교로 리턴하던 부분 주석 처리 ▼▼
+        // if (hitMonster != null && this.areaIndex != hitMonster.areaIndex)
+        // {
+        //     // 다른 구역이면 데미지 적용 안 함
+        //     return;
+        // }
+        // ▲▲ [수정끝] ▲▲
+
+        if (hitMonster == null) return;
 
         switch (bulletType)
         {
@@ -310,11 +329,14 @@ public class Bullet : MonoBehaviour
             float dist = Vector2.Distance(center, m.transform.position);
             if (dist <= areaRadius)
             {
-                // === 수정 부분: areaIndex 다르면 무시
-                if (m.areaIndex == this.areaIndex)
-                {
-                    DealDamage(m);
-                }
+                // "같은 구역"이어야만 데미지(원래 코드)
+                // if (m.areaIndex == this.areaIndex)
+                // {
+                //     DealDamage(m);
+                // }
+                // ---------------------------------
+                // [수정] 필요하다면 아래처럼 바꿀 수 있음
+                DealDamage(m);
             }
         }
     }
@@ -335,6 +357,10 @@ public class Bullet : MonoBehaviour
         {
             if (m == null) continue;
             if (chainAttackedMonsters.Contains(m)) continue;
+
+            // 체인탄이던 에너지탄이던, 원래는 'this.areaIndex == m.areaIndex' 조건을 써서 같은 구역만 찾을 수도 있음
+            // 필요에 따라 제거/수정 가능
+            // if (m.areaIndex != this.areaIndex) continue;
 
             float dist = Vector2.Distance(pos, m.transform.position);
             if (dist < range && dist < minDist)
@@ -357,14 +383,13 @@ public class Bullet : MonoBehaviour
             Bullet subB = sub.GetComponent<Bullet>();
             if (subB != null)
             {
-                subB.bulletType = BulletType.Normal;  
+                subB.bulletType = BulletType.Normal;
                 subB.damage = this.damage * 0.6f;
                 subB.speed = this.speed * 0.8f;
                 subB.maxLifeTime = 2f;
 
-                // === 수정 부분: 분열탄도 동일 areaIndex
+                // 동일 areaIndex 유지(원한다면 바꿀 수도 있음)
                 subB.areaIndex = this.areaIndex;
-                // === 수정 끝
 
                 Vector2 dir = Quaternion.Euler(0f, 0f, angle) * Vector2.right;
                 subB.Init(null, subB.damage, subB.speed, false, 0f, subB.areaIndex);
@@ -401,8 +426,6 @@ public class Bullet : MonoBehaviour
             {
                 effect = Instantiate(impactEffectPrefab, pos, Quaternion.identity);
             }
-
-            // === 수정된 부분: 3초 → 1초 후 파괴 ===
             Destroy(effect, 1f);
         }
     }
@@ -430,8 +453,6 @@ public class Bullet : MonoBehaviour
             {
                 effect = Instantiate(explosionEffectPrefab, pos, Quaternion.identity);
             }
-
-            // === 수정된 부분: 3초 → 1초 후 파괴 ===
             Destroy(effect, 1f);
         }
     }

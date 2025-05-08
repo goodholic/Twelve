@@ -1,3 +1,5 @@
+// Assets\Scripts\CharacterSelectUI.cs
+
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -11,8 +13,8 @@ public class CharacterSelectUI : MonoBehaviour
     [System.Serializable]
     public class SelectButton
     {
-        public Button button;       
-        public Image iconImage;     
+        public Button button;
+        public Image iconImage;
         public TextMeshProUGUI costText;
         public int characterIndex;  // 0~8
         public bool isEmpty;
@@ -37,14 +39,18 @@ public class CharacterSelectUI : MonoBehaviour
 
     private List<int> allIndices = new List<int>();
 
+    // =========================================
+    // [추가] 클릭으로 카드 하나가 선택 중이면,
+    //        그 카드가 배치될 때까지 다른 클릭을 무시하기 위한 플래그
+    // =========================================
+    private bool hasPendingCard = false;   // 이미 카드 하나가 선택된 상태인지?
+    private int pendingCardIndex = -1;     // 현재 선택된(아직 배치 안 된) 카드 인덱스
+
     private void Start()
     {
-        // 1) 1~9 캐릭터 (인덱스0..8) 가져오기
-        // deckFromLobby = GameManager.Instance.GetNineCharacters(); // 구 버전 메서드 제거됨
-        
-        // 새로운 방식: GameManager의 currentRegisteredCharacters에서 직접 가져오기
-        if (GameManager.Instance != null && 
-            GameManager.Instance.currentRegisteredCharacters != null && 
+        // 1) 1~9 캐릭터 가져오기
+        if (GameManager.Instance != null &&
+            GameManager.Instance.currentRegisteredCharacters != null &&
             GameManager.Instance.currentRegisteredCharacters.Length >= 9)
         {
             for (int i = 0; i < 9; i++)
@@ -152,10 +158,12 @@ public class CharacterSelectUI : MonoBehaviour
             }
 
             int copyIndex = sb.characterIndex;
+            // ===========================
+            // 클릭 → 배치 대기 상태로 설정
+            // ===========================
             sb.button.onClick.AddListener(() =>
             {
-                placementManager.OnClickSelectUnit(copyIndex);
-                OnUseCard(sb);
+                OnClickCardButton(copyIndex);
             });
         }
         else
@@ -176,7 +184,80 @@ public class CharacterSelectUI : MonoBehaviour
         dragComp.parentSelectUI = this;
     }
 
-    public void OnUseCard(SelectButton usedButton)
+    /// <summary>
+    /// [신규] 카드 버튼 클릭 시 로직
+    /// "이미 선택중인 카드가 있으면 무시 / 없으면 선택 대기"
+    /// </summary>
+    private void OnClickCardButton(int clickedIndex)
+    {
+        if (hasPendingCard)
+        {
+            // 이미 다른 카드를 선택했는데 아직 타일에 배치 안 됨 -> 무시
+            Debug.Log($"[CharacterSelectUI] 이미 {pendingCardIndex}번 카드를 선택 중이므로 클릭 무시");
+            return;
+        }
+
+        // 아직 선택중인 카드가 없으므로, 이번 카드 선택
+        hasPendingCard = true;
+        pendingCardIndex = clickedIndex;
+
+        // PlacementManager에 "이 캐릭터 인덱스 선택" 알림
+        if (placementManager != null)
+        {
+            placementManager.OnClickSelectUnit(clickedIndex);
+        }
+        Debug.Log($"[CharacterSelectUI] 카드({clickedIndex}) 클릭 -> 배치 대기상태");
+    }
+
+    /// <summary>
+    /// (드래그 소환) 드롭에 성공 시 OnDragUseCard(usedIndex) 호출됨
+    /// => 즉시 카드 소모 + 다음 카드 로직
+    /// </summary>
+    public void OnDragUseCard(int usedIndex)
+    {
+        // 드래그는 기존 로직대로 즉시 카드 사용
+        for (int i = 0; i < selectButtons.Length; i++)
+        {
+            if (selectButtons[i].characterIndex == usedIndex)
+            {
+                OnUseCard(selectButtons[i]);
+                break;
+            }
+        }
+    }
+
+    /// <summary>
+    /// [신규] "클릭으로 선택된 카드"가
+    /// 실제로 배치 성공했을 때(PlacementManager) 호출되는 메서드.
+    /// => 여기서 OnUseCard()로직을 통해 카드 소모/교체 처리
+    /// </summary>
+    public void MarkCardAsUsed(int usedIndex)
+    {
+        if (!hasPendingCard || pendingCardIndex != usedIndex)
+        {
+            Debug.LogWarning($"[CharacterSelectUI] MarkCardAsUsed({usedIndex})가 호출됐지만 대기중인 카드와 불일치 -> 무시");
+            return;
+        }
+
+        // 실제로 OnUseCard() 실행
+        for (int i = 0; i < selectButtons.Length; i++)
+        {
+            if (selectButtons[i].characterIndex == usedIndex)
+            {
+                OnUseCard(selectButtons[i]);
+                break;
+            }
+        }
+
+        // 배치 완료 => 선택 해제
+        hasPendingCard = false;
+        pendingCardIndex = -1;
+    }
+
+    /// <summary>
+    /// [기존] 카드 사용(이미 소환됨) → 다음 카드 교체 로직
+    /// </summary>
+    private void OnUseCard(SelectButton usedButton)
     {
         int usedIndex = usedButton.characterIndex;
 
@@ -198,19 +279,8 @@ public class CharacterSelectUI : MonoBehaviour
             reserveIndices.Add(five[i]);
         }
 
+        // 다음 카드 UI 갱신
         UpdateNextUnitUI();
-    }
-
-    public void OnDragUseCard(int usedIndex)
-    {
-        for (int i = 0; i < selectButtons.Length; i++)
-        {
-            if (selectButtons[i].characterIndex == usedIndex)
-            {
-                OnUseCard(selectButtons[i]);
-                break;
-            }
-        }
     }
 
     private void ShuffleList<T>(List<T> list)

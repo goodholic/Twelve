@@ -1,3 +1,5 @@
+// Assets\Scripts\GameSceneManager.cs
+
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -37,9 +39,6 @@ public class GameSceneManager : MonoBehaviour
     private void Start()
     {
         // 1) 1~9 캐릭터
-        // deckFromLobby = GameManager.Instance.GetNineCharacters(); // 구 버전 메서드 제거됨
-        
-        // 새로운 방식: GameManager의 currentRegisteredCharacters에서 직접 가져오기
         if (GameManager.Instance != null && 
             GameManager.Instance.currentRegisteredCharacters != null &&
             GameManager.Instance.currentRegisteredCharacters.Length >= 9)
@@ -88,7 +87,7 @@ public class GameSceneManager : MonoBehaviour
             }
         }
 
-        // 4) Hero(인덱스9) 자동 소환
+        // 4) Hero(인덱스 9) 자동 소환
         if (heroCharacter != null && heroCharacter.spawnPrefab != null)
         {
             GameObject heroObj = Instantiate(heroCharacter.spawnPrefab);
@@ -122,6 +121,14 @@ public class GameSceneManager : MonoBehaviour
             Character heroComp = heroObj.GetComponent<Character>();
             if (heroComp != null)
             {
+                // ▼▼ (추가) 히어로로 강제 지정 + HP바 비활성화 ▼▼
+                heroComp.isHero = true;
+                if (heroComp.hpBarCanvas != null)
+                {
+                    heroComp.hpBarCanvas.gameObject.SetActive(false);
+                }
+                // ▲▲ (추가 끝) ▲▲
+
                 heroComp.attackPower = heroCharacter.attackPower;
                 switch (heroCharacter.rangeType)
                 {

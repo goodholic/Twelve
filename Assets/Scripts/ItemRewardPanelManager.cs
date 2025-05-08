@@ -1,4 +1,4 @@
-// Assets/Scripts/ItemRewardPanelManager.cs
+// Assets\Scripts\ItemRewardPanelManager.cs
 
 using UnityEngine;
 using UnityEngine.UI;
@@ -32,7 +32,6 @@ public class ItemRewardPanelManager : MonoBehaviour
 
     private void Awake()
     {
-        // 초기엔 '보상 패널'을 꺼둠
         if (itemPanel != null)
         {
             itemPanel.SetActive(false);
@@ -57,25 +56,20 @@ public class ItemRewardPanelManager : MonoBehaviour
             Debug.LogWarning("[ItemRewardPanelManager] itemPanel이 null이라 열 수 없음!");
         }
 
-        // 3개 랜덤 아이템 뽑기
         chosenItems = PickRandomThreeItems();
 
-        // 슬롯 UI 적용
         for (int i = 0; i < 3; i++)
         {
             if (chosenItems[i] != null)
             {
-                // 아이콘 표시
                 if (itemCardImages != null && i < itemCardImages.Count && itemCardImages[i] != null)
                 {
                     itemCardImages[i].sprite = chosenItems[i].itemIcon;
                 }
-                // *** 아이템 설명 표시
                 if (itemCardDescTexts != null && i < itemCardDescTexts.Count && itemCardDescTexts[i] != null)
                 {
                     itemCardDescTexts[i].text = chosenItems[i].description;
                 }
-                // 버튼 설정
                 if (itemCardButtons != null && i < itemCardButtons.Count && itemCardButtons[i] != null)
                 {
                     int copyIndex = i;
@@ -86,7 +80,6 @@ public class ItemRewardPanelManager : MonoBehaviour
             }
             else
             {
-                // null 아이템이면, 해당 슬롯을 비워둠(필요하다면 추가 처리 가능)
                 if (itemCardImages != null && i < itemCardImages.Count && itemCardImages[i] != null)
                 {
                     itemCardImages[i].sprite = null;
@@ -104,9 +97,6 @@ public class ItemRewardPanelManager : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// 3개 랜덤 아이템 뽑기
-    /// </summary>
     private ItemData[] PickRandomThreeItems()
     {
         ItemData[] result = new ItemData[3];
@@ -114,7 +104,7 @@ public class ItemRewardPanelManager : MonoBehaviour
         if (itemDatabase == null || itemDatabase.items == null || itemDatabase.items.Length == 0)
         {
             Debug.LogWarning("[ItemRewardPanelManager] 아이템DB가 비어있습니다!");
-            return result; // 모두 null
+            return result;
         }
 
         List<ItemData> pool = new List<ItemData>(itemDatabase.items);
@@ -128,37 +118,26 @@ public class ItemRewardPanelManager : MonoBehaviour
         return result;
     }
 
-    /// <summary>
-    /// 보상 카드 중 하나를 클릭했을 때(획득)
-    /// 선택된 아이템을 인벤토리에 추가 + 아이템 패널 닫음 + 인벤토리 패널 갱신
-    /// </summary>
     private void OnClickSelectItem(int index)
     {
         if (index < 0 || index >= chosenItems.Length) return;
         ItemData selected = chosenItems[index];
         if (selected == null) return;
 
-        // 1) 인벤토리에 추가
         if (itemInventoryManager != null)
         {
             itemInventoryManager.AddItem(selected);
         }
 
-        // 2) 아이템 인벤토리(9칸)도 즉시 갱신
         var itemPanelMgr = FindFirstObjectByType<ItemPanelManager>();
         if (itemPanelMgr != null)
         {
             itemPanelMgr.RefreshItemPanel();
         }
 
-        // 3) "보상 패널" 닫기
         if (itemPanel != null)
         {
             itemPanel.SetActive(false);
-        }
-        else
-        {
-            Debug.LogWarning("[ItemRewardPanelManager] itemPanel이 null이라 닫을 수 없음!");
         }
 
         Debug.Log($"[ItemRewardPanelManager] 아이템 '{selected.itemName}' 획득 후 아이템 패널 닫힘");

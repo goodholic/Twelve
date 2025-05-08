@@ -10,29 +10,18 @@ public class Monster : NetworkBehaviour
     public float health = 50f;
 
     [Header("Waypoint Path (2D)")]
-    [Tooltip("이 몬스터가 처음 이동할 웨이포인트들")]
     public Transform[] pathWaypoints;
 
-    [Header("Team/Ally Settings")]
-    [Tooltip("true이면 아군 몬스터, false이면 적 몬스터")]
-    public bool isAlly = false;
-
-    // 죽을 때 이벤트 (필요시 외부에서 구독)
-    public event Action OnDeath;
-
-    // 성 도달 시 이벤트 (옵션)
-    public event Action<Monster> OnReachedCastle;
-
-    [Header("Castle Attack Damage (적 몬스터용)")]
-    [Tooltip("적 몬스터가 성에 도달했을 때 깎을 체력량")]
+    [Header("Castle Attack Damage")]
     public int damageToCastle = 1;
 
-    // 웨이포인트 이동용
+    public event Action OnDeath;
+    public event Action<Monster> OnReachedCastle;
+
     private int currentWaypointIndex = 0;
     private bool isDead = false;
 
-    // ===================== (상태 효과) =====================
-    [Header("상태 효과")]
+    // 상태 효과 (슬로우/출혈/스턴)
     private float slowDuration = 0f;
     private float slowAmount = 0f;
     private float originalMoveSpeed;
@@ -41,40 +30,13 @@ public class Monster : NetworkBehaviour
     private float stunDuration = 0f;
     private bool isStunned = false;
 
-    // ===================== (체력바) =====================
     [Header("Overhead HP Bar (머리 위 체력바)")]
-    [Tooltip("몬스터 머리 위에 표시될 HP Bar용 Canvas (WorldSpace 또는 기타)")]
     public Canvas hpBarCanvas;
-    [Tooltip("HP Bar Fill 이미지 (체력 비율을 나타낼 Image)")]
     public Image hpFillImage;
-
-    [Header("아군 몬스터 소멸 이펙트 (끝지점 도달 시)")]
-    [Tooltip("아군 몬스터가 끝 지점에서 사라질 때 보여줄 이펙트 프리팹")]
-    public GameObject vanishEffectPrefab;
-
-    [Header("Ally Conversion Effects")]
-    [Tooltip("적 → 아군 전환 시 나타날 이펙트 프리팹 (VFX Panel 자식으로 생성)")]
-    public GameObject allyConversionEffectPrefab;
-
-    [Tooltip("아군이 된 이후 적용할 아웃라인 프리팹 (몬스터의 자식으로 생성)")]
-    public GameObject allyOutlinePrefab;
-
     private float maxHealth;
 
-    // ==================================================
-    // (추가) 상대편 위치에서 부활하기 위한 참조들
-    // ==================================================
-    [Header("[Opponent Side Settings]")]
-    [Tooltip("이 몬스터가 '상대편'에서 다시 부활할 때 사용할 웨이포인트들")]
-    public Transform[] opponentWaypoints;
-
-    [Tooltip("상대편(적) 몬스터를 담을 부모 패널 (우리 편일 때 ourMonsterPanel처럼 사용)")]
-    public Transform opponentMonsterPanel;
-
-    // === 수정 부분 ===
     [Header("Area 구분 (1 or 2)")]
     public int areaIndex = 1;
-    // === 수정 끝 ===
 
     private void Awake()
     {
@@ -83,7 +45,7 @@ public class Monster : NetworkBehaviour
 
         if (hpBarCanvas == null || hpFillImage == null)
         {
-            Debug.LogWarning($"[Monster] HP Bar Canvas 또는 Fill Image가 Inspector에 연결되지 않았습니다. ( {name} )");
+            Debug.LogWarning($"[Monster] HP Bar Canvas 또는 Fill Image 미연결 ( {name} )");
         }
         else
         {
@@ -95,7 +57,6 @@ public class Monster : NetworkBehaviour
     private void Update()
     {
         if (isDead) return;
-
         UpdateStatusEffects();
 
         if (!isStunned)
@@ -106,6 +67,7 @@ public class Monster : NetworkBehaviour
 
     private void LateUpdate()
     {
+        // HP 바 위치 보정(머리 위)
         if (hpBarCanvas != null && hpBarCanvas.transform.parent == null)
         {
             Vector3 offset = new Vector3(0f, 1.2f, 0f);
@@ -155,9 +117,7 @@ public class Monster : NetworkBehaviour
     private void MoveAlongPath2D()
     {
         if (pathWaypoints == null || pathWaypoints.Length == 0 || currentWaypointIndex >= pathWaypoints.Length)
-        {
             return;
-        }
 
         Transform target = pathWaypoints[currentWaypointIndex];
         if (target == null)
@@ -185,50 +145,23 @@ public class Monster : NetworkBehaviour
 
     private void OnReachEndPoint()
     {
+        // 끝 지점 도달 시
         OnReachedCastle?.Invoke(this);
-
-        // (중요) 웨이브 스포너 등에 "사망" 취급
         OnDeath?.Invoke();
 
-        if (isAlly)
+        if (areaIndex == 1)
         {
-            if (vanishEffectPrefab != null)
-            {
-                GameObject effectObj = null;
-                RectTransform vfxPanel = null;
-
-                if (PlacementManager.Instance != null)
-                {
-                    vfxPanel = PlacementManager.Instance.vfxPanel;
-                }
-
-                if (vfxPanel != null)
-                {
-                    effectObj = Instantiate(vanishEffectPrefab, vfxPanel);
-                    RectTransform effectRect = effectObj.GetComponent<RectTransform>();
-
-                    if (effectRect != null)
-                    {
-                        Vector2 localPos = vfxPanel.InverseTransformPoint(transform.position);
-                        effectRect.anchoredPosition = localPos;
-                        effectRect.localRotation = Quaternion.identity;
-                    }
-                    else
-                    {
-                        effectObj.transform.position = transform.position;
-                    }
-                }
-                else
-                {
-                    effectObj = Instantiate(vanishEffectPrefab, transform.position, Quaternion.identity);
-                }
-
-                Destroy(effectObj, 1f);
-            }
-        }
-        else
-        {
+            // 지역1 캐슬
             CastleHealthManager.Instance?.TakeDamage(damageToCastle);
+        }
+        else if (areaIndex == 2)
+        {
+            // 지역2 체력 감소
+            var wave2 = FindFirstObjectByType<WaveSpawnerRegion2>();
+            if (wave2 != null)
+            {
+                wave2.TakeDamageToRegion2(damageToCastle);
+            }
         }
 
         if (Object != null && Object.IsValid)
@@ -270,156 +203,13 @@ public class Monster : NetworkBehaviour
 
         OnDeath?.Invoke();
 
-        if (isAlly)
+        if (Object != null && Object.IsValid)
         {
-            StartCoroutine(RespawnAsEnemyInOpponentMapCoroutine());
+            Runner.Despawn(Object);
         }
         else
         {
-            StartCoroutine(RespawnInOurMonsterCoroutine());
-        }
-    }
-
-    private System.Collections.IEnumerator RespawnAsEnemyInOpponentMapCoroutine()
-    {
-        gameObject.SetActive(false);
-        yield return new WaitForSeconds(1f);
-
-        MoveToOpponentSideAndRevive();
-
-        gameObject.SetActive(true);
-    }
-
-    private void MoveToOpponentSideAndRevive()
-    {
-        Debug.Log($"[Monster] {name} 죽음 -> 이제 상대편으로 부활 (적 몬스터).");
-
-        slowDuration = 0f;
-        slowAmount = 0f;
-        bleedDuration = 0f;
-        bleedDamagePerSec = 0f;
-        stunDuration = 0f;
-        isStunned = false;
-
-        health = maxHealth;
-        UpdateHpBar();
-
-        isDead = false;
-        isAlly = false;
-
-        if (opponentWaypoints != null && opponentWaypoints.Length > 0)
-        {
-            pathWaypoints = opponentWaypoints;
-            transform.position = opponentWaypoints[0].position;
-            currentWaypointIndex = 0;
-        }
-        else
-        {
-            Debug.LogWarning("[Monster] opponentWaypoints가 비어있음 -> 부활 후 위치/경로 설정 불가");
-        }
-
-        moveSpeed = originalMoveSpeed;
-
-        if (opponentMonsterPanel != null)
-        {
-            transform.SetParent(opponentMonsterPanel, false);
-        }
-    }
-
-    private System.Collections.IEnumerator RespawnInOurMonsterCoroutine()
-    {
-        gameObject.SetActive(false);
-        yield return new WaitForSeconds(1f);
-
-        MoveToOurMonsterAndRevive();
-
-        gameObject.SetActive(true);
-    }
-
-    private void MoveToOurMonsterAndRevive()
-    {
-        Debug.Log($"[Monster] {name} 죽음 → 우리 몬스터 쪽으로 부활합니다.");
-
-        slowDuration = 0f;
-        slowAmount = 0f;
-        bleedDuration = 0f;
-        bleedDamagePerSec = 0f;
-        stunDuration = 0f;
-        isStunned = false;
-
-        health = maxHealth;
-        UpdateHpBar();
-
-        isDead = false;
-        isAlly = true;
-
-        WaveSpawner spawner = FindFirstObjectByType<WaveSpawner>();
-        if (spawner != null && spawner.pathWaypoints != null && spawner.pathWaypoints.Length > 0)
-        {
-            pathWaypoints = spawner.pathWaypoints;
-            transform.position = spawner.pathWaypoints[0].position;
-            currentWaypointIndex = 0;
-        }
-        else
-        {
-            Debug.LogWarning("[Monster] 아군용 웨이포인트를 찾지 못했습니다. 이동 경로가 없으면 제자리에 머무릅니다.");
-        }
-
-        moveSpeed = originalMoveSpeed;
-
-        if (PlacementManager.Instance != null && PlacementManager.Instance.ourMonsterPanel != null)
-        {
-            transform.SetParent(PlacementManager.Instance.ourMonsterPanel, false);
-        }
-
-        if (allyConversionEffectPrefab != null)
-        {
-            GameObject effectObj = null;
-            RectTransform vfxPanel = null;
-
-            if (PlacementManager.Instance != null)
-            {
-                vfxPanel = PlacementManager.Instance.vfxPanel;
-            }
-
-            if (vfxPanel != null)
-            {
-                effectObj = Instantiate(allyConversionEffectPrefab, vfxPanel);
-                RectTransform effectRect = effectObj.GetComponent<RectTransform>();
-
-                if (effectRect != null)
-                {
-                    Vector2 localPos = vfxPanel.InverseTransformPoint(transform.position);
-                    effectRect.anchoredPosition = localPos;
-                    effectRect.localRotation = Quaternion.identity;
-                }
-                else
-                {
-                    effectObj.transform.position = transform.position;
-                }
-            }
-            else
-            {
-                effectObj = Instantiate(allyConversionEffectPrefab, transform.position, Quaternion.identity);
-            }
-
-            Destroy(effectObj, 1f);
-        }
-
-        if (allyOutlinePrefab != null)
-        {
-            Transform existingOutline = transform.Find("AllyOutline");
-            if (existingOutline == null)
-            {
-                GameObject outlineObj = Instantiate(allyOutlinePrefab, transform);
-                outlineObj.name = "AllyOutline";
-                outlineObj.transform.localPosition = Vector3.zero;
-                outlineObj.transform.localRotation = Quaternion.identity;
-            }
-            else
-            {
-                existingOutline.gameObject.SetActive(true);
-            }
+            Destroy(gameObject);
         }
     }
 
@@ -430,8 +220,7 @@ public class Monster : NetworkBehaviour
             slowAmount = Mathf.Clamp01(amount);
             slowDuration = duration;
             moveSpeed = originalMoveSpeed * (1f - slowAmount);
-
-            Debug.Log($"[Monster] {gameObject.name}에 슬로우 {slowAmount * 100}% 적용 (지속 {duration}초)");
+            Debug.Log($"[Monster] {gameObject.name} 슬로우 {slowAmount * 100}% 적용 (지속 {duration}초)");
         }
     }
 
@@ -442,8 +231,7 @@ public class Monster : NetworkBehaviour
         {
             bleedDamagePerSec = damagePerSecond;
             bleedDuration = duration;
-
-            Debug.Log($"[Monster] {gameObject.name}에 출혈(초당 {damagePerSecond}), {duration}초");
+            Debug.Log($"[Monster] {gameObject.name} 출혈(초당 {damagePerSecond}), {duration}초");
         }
     }
 
@@ -453,14 +241,13 @@ public class Monster : NetworkBehaviour
         {
             stunDuration = duration;
             isStunned = true;
-            Debug.Log($"[Monster] {gameObject.name}에 스턴 적용 (지속 {duration}초)");
+            Debug.Log($"[Monster] {gameObject.name} 스턴 적용 (지속 {duration}초)");
         }
     }
 
     private void UpdateHpBar()
     {
         if (hpFillImage == null) return;
-
         float ratio = Mathf.Clamp01(health / maxHealth);
         hpFillImage.fillAmount = ratio;
     }

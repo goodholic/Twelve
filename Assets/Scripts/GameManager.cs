@@ -1,12 +1,10 @@
 using UnityEngine;
 using System.Collections.Generic;
 using Fusion;
+// ▼ 아래 2줄은 필요하다면 제거하거나 주석처리 가능합니다.
+// using UnityEngine.SceneManagement; // (씬 전환 미사용 시 주석처리 가능)
+using TMPro;
 
-/// <summary>
-/// 호스트와 클라이언트가 서로 다른 덱(캐릭터 세트)을 사용하도록 수정.
-/// - hostDeck / clientDeck 두 세트를 Inspector에 할당.
-/// - Awake()에서 NetworkRunner 검사하여, host면 hostDeck을, client면 clientDeck을 currentRegisteredCharacters에 복사.
-/// </summary>
 public class GameManager : MonoBehaviour
 {
     private static GameManager instance;
@@ -16,7 +14,7 @@ public class GameManager : MonoBehaviour
         {
             if (instance == null)
             {
-                instance = FindAnyObjectByType<GameManager>();
+                instance = FindFirstObjectByType<GameManager>();
                 if (instance == null)
                 {
                     GameObject go = new GameObject("GameManager");
@@ -44,6 +42,19 @@ public class GameManager : MonoBehaviour
     public CharacterData[] currentRegisteredCharacters = new CharacterData[10];
 
     private NetworkRunner runner;
+
+    // =======================================================================
+    // == 기존에는 resultSceneName 필드 + 씬 이동 로직이 있었으나 제거했습니다. ==
+    // =======================================================================
+    // public string resultSceneName = "ResultScene"; // (사용 안 함)
+
+    [HideInInspector] public bool isGameOver = false;  // 게임이 끝났는지 여부
+    [HideInInspector] public bool isVictory = false;   // true면 승리, false면 패배
+
+    // =================== (추가) 결과 패널/텍스트 연결 ===================
+    [Header("결과 패널(씬 전환 대신 사용)")]
+    public GameObject resultPanel;          // 인스펙터에서 연결 (기본비활성)
+    public TextMeshProUGUI resultPanelText; // 승/패 문구 표시용 TMP
 
     private void Awake()
     {
@@ -114,7 +125,7 @@ public class GameManager : MonoBehaviour
 
     private void Update()
     {
-        // ESC로 종료 테스트
+        // ESC로 종료
         if (Input.GetKeyDown(KeyCode.Escape))
         {
             Application.Quit();
@@ -129,6 +140,37 @@ public class GameManager : MonoBehaviour
         if (waveSpawner != null)
         {
             waveSpawner.StartNextWave();
+        }
+    }
+
+    /// <summary>
+    /// 게임 오버(승/패) 처리.  
+    /// 기존에는 `SceneManager.LoadScene(resultSceneName);`를 호출했으나 제거하고,  
+    /// **같은 씬**에서 `resultPanel.SetActive(true)`로 대체합니다.
+    /// </summary>
+    public void SetGameOver(bool victory)
+    {
+        if (isGameOver) return; // 이미 끝났다면 중복 처리 방지
+        isGameOver = true;
+        isVictory = victory;
+
+        Debug.Log($"[GameManager] GameOver!! isVictory={victory}");
+
+        // === 씬 이동 대신, 결과 패널을 켬 ===
+        if (resultPanel != null)
+        {
+            resultPanel.SetActive(true);
+
+            // 승리냐 패배냐에 따라 텍스트 변경
+            if (resultPanelText != null)
+            {
+                resultPanelText.text = victory ? "승리!" : "패배...";
+            }
+        }
+        // else: 혹시라도 resultPanel이 null이면 메세지만 출력
+        else
+        {
+            Debug.LogWarning("[GameManager] resultPanel이 null -> 결과 UI를 표시할 수 없습니다.");
         }
     }
 }

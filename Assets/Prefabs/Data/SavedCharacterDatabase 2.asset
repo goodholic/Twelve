@@ -1,0 +1,185 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9f2762cef45bf064c9fef051ce08565f, type: 3}
+  m_Name: SavedCharacterDatabase 2
+  m_EditorClassIdentifier: 
+  characters:
+  - characterName: RandomChar_0
+    initialStar: 1
+    attackPower: 9
+    attackSpeed: 1
+    attackRange: 1.5
+    maxHP: 100
+    rangeType: 1
+    isAreaAttack: 0
+    isBuffSupport: 0
+    level: 0
+    currentExp: 0
+    expToNextLevel: 0
+    spawnPrefab: {fileID: 8786608230712049741, guid: 49605d17a370da74c98dd4fedb85994e, type: 3}
+    buttonIcon: {fileID: 5490369301062840869, guid: 49605d17a370da74c98dd4fedb85994e, type: 3}
+    cost: 1
+    areaAttackRadius: 0
+    motionPrefab: {fileID: 8786608230712049741, guid: 49605d17a370da74c98dd4fedb85994e, type: 3}
+  - characterName: RandomChar_1
+    initialStar: 1
+    attackPower: 5
+    attackSpeed: 1
+    attackRange: 1.5
+    maxHP: 100
+    rangeType: 2
+    isAreaAttack: 0
+    isBuffSupport: 0
+    level: 0
+    currentExp: 0
+    expToNextLevel: 0
+    spawnPrefab: {fileID: 1970497639547063621, guid: f15ae567fdadac94284405d92741e4d5, type: 3}
+    buttonIcon: {fileID: 3826763924869295683, guid: f15ae567fdadac94284405d92741e4d5, type: 3}
+    cost: 2
+    areaAttackRadius: 0
+    motionPrefab: {fileID: 1970497639547063621, guid: f15ae567fdadac94284405d92741e4d5, type: 3}
+  - characterName: RandomChar_2
+    initialStar: 1
+    attackPower: 27
+    attackSpeed: 1
+    attackRange: 1.5
+    maxHP: 100
+    rangeType: 0
+    isAreaAttack: 0
+    isBuffSupport: 1
+    level: 0
+    currentExp: 0
+    expToNextLevel: 0
+    spawnPrefab: {fileID: 2511997084044682121, guid: 6dcaad573d5bcac49b111baf9950ec63, type: 3}
+    buttonIcon: {fileID: 4105201130940705118, guid: 6dcaad573d5bcac49b111baf9950ec63, type: 3}
+    cost: 3
+    areaAttackRadius: 0
+    motionPrefab: {fileID: 2511997084044682121, guid: 6dcaad573d5bcac49b111baf9950ec63, type: 3}
+  - characterName: RandomChar_3
+    initialStar: 1
+    attackPower: 10
+    attackSpeed: 1
+    attackRange: 1.5
+    maxHP: 100
+    rangeType: 2
+    isAreaAttack: 1
+    isBuffSupport: 0
+    level: 0
+    currentExp: 0
+    expToNextLevel: 0
+    spawnPrefab: {fileID: 4332806432069123864, guid: 8cce27294d56b9d479370c5f3be7d235, type: 3}
+    buttonIcon: {fileID: 4211932184896465709, guid: 8cce27294d56b9d479370c5f3be7d235, type: 3}
+    cost: 1
+    areaAttackRadius: 0
+    motionPrefab: {fileID: 4332806432069123864, guid: 8cce27294d56b9d479370c5f3be7d235, type: 3}
+  - characterName: RandomChar_4
+    initialStar: 1
+    attackPower: 19
+    attackSpeed: 1
+    attackRange: 1.5
+    maxHP: 100
+    rangeType: 2
+    isAreaAttack: 1
+    isBuffSupport: 1
+    level: 0
+    currentExp: 0
+    expToNextLevel: 0
+    spawnPrefab: {fileID: 9176415509751804172, guid: 6869d4cb534cf7e4e887855468885a13, type: 3}
+    buttonIcon: {fileID: 8519823030489811609, guid: 6869d4cb534cf7e4e887855468885a13, type: 3}
+    cost: 2
+    areaAttackRadius: 0
+    motionPrefab: {fileID: 9176415509751804172, guid: 6869d4cb534cf7e4e887855468885a13, type: 3}
+  - characterName: RandomChar_5
+    initialStar: 1
+    attackPower: 11
+    attackSpeed: 1
+    attackRange: 1.5
+    maxHP: 100
+    rangeType: 2
+    isAreaAttack: 0
+    isBuffSupport: 0
+    level: 0
+    currentExp: 0
+    expToNextLevel: 0
+    spawnPrefab: {fileID: 9146468120310428533, guid: 5e736b9b70e5ec74c9e95c538a8b57dc, type: 3}
+    buttonIcon: {fileID: 6680396247339770550, guid: 5e736b9b70e5ec74c9e95c538a8b57dc, type: 3}
+    cost: 3
+    areaAttackRadius: 0
+    motionPrefab: {fileID: 9146468120310428533, guid: 5e736b9b70e5ec74c9e95c538a8b57dc, type: 3}
+  - characterName: RandomChar_6
+    initialStar: 1
+    attackPower: 28
+    attackSpeed: 1
+    attackRange: 1.5
+    maxHP: 100
+    rangeType: 1
+    isAreaAttack: 1
+    isBuffSupport: 0
+    level: 0
+    currentExp: 0
+    expToNextLevel: 0
+    spawnPrefab: {fileID: 4326882089972318273, guid: 8561be47d89fa1f42bc1ecd66e58fdf6, type: 3}
+    buttonIcon: {fileID: 236177863141098582, guid: 8561be47d89fa1f42bc1ecd66e58fdf6, type: 3}
+    cost: 1
+    areaAttackRadius: 0
+    motionPrefab: {fileID: 4326882089972318273, guid: 8561be47d89fa1f42bc1ecd66e58fdf6, type: 3}
+  - characterName: RandomChar_7
+    initialStar: 1
+    attackPower: 11
+    attackSpeed: 1
+    attackRange: 1.5
+    maxHP: 100
+    rangeType: 2
+    isAreaAttack: 0
+    isBuffSupport: 0
+    level: 0
+    currentExp: 0
+    expToNextLevel: 0
+    spawnPrefab: {fileID: 2768998443333610624, guid: 76f40db2bbc4349499188e4c779c2768, type: 3}
+    buttonIcon: {fileID: 2524350021502841476, guid: 76f40db2bbc4349499188e4c779c2768, type: 3}
+    cost: 2
+    areaAttackRadius: 0
+    motionPrefab: {fileID: 2768998443333610624, guid: 76f40db2bbc4349499188e4c779c2768, type: 3}
+  - characterName: RandomChar_8
+    initialStar: 1
+    attackPower: 11
+    attackSpeed: 1
+    attackRange: 1.5
+    maxHP: 100
+    rangeType: 2
+    isAreaAttack: 0
+    isBuffSupport: 0
+    level: 0
+    currentExp: 0
+    expToNextLevel: 0
+    spawnPrefab: {fileID: 7009747068067306124, guid: 3fa8e210839545c4da0cfc914f7a862c, type: 3}
+    buttonIcon: {fileID: 5939687862498206448, guid: 3fa8e210839545c4da0cfc914f7a862c, type: 3}
+    cost: 3
+    areaAttackRadius: 0
+    motionPrefab: {fileID: 7009747068067306124, guid: 3fa8e210839545c4da0cfc914f7a862c, type: 3}
+  - characterName: RandomChar_9
+    initialStar: 1
+    attackPower: 11
+    attackSpeed: 1
+    attackRange: 1.5
+    maxHP: 100
+    rangeType: 2
+    isAreaAttack: 0
+    isBuffSupport: 0
+    level: 0
+    currentExp: 0
+    expToNextLevel: 0
+    spawnPrefab: {fileID: 5801439680409142473, guid: 50a98071b5fb9b94aa5cbd72ad39fcad, type: 3}
+    buttonIcon: {fileID: 262685849678513024, guid: 50a98071b5fb9b94aa5cbd72ad39fcad, type: 3}
+    cost: 1
+    areaAttackRadius: 0
+    motionPrefab: {fileID: 5801439680409142473, guid: 50a98071b5fb9b94aa5cbd72ad39fcad, type: 3}

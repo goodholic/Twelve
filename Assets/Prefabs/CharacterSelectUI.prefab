@@ -48,22 +48,27 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0f26fd228b595d347be4d7958ec44323, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  characterDatabase: {fileID: 0}
   placementManager: {fileID: 0}
   selectButtons:
   - button: {fileID: 0}
     iconImage: {fileID: 0}
     costText: {fileID: 0}
     characterIndex: 0
+    isEmpty: 0
   - button: {fileID: 0}
     iconImage: {fileID: 0}
     costText: {fileID: 0}
     characterIndex: 1
+    isEmpty: 0
   - button: {fileID: 0}
     iconImage: {fileID: 0}
     costText: {fileID: 0}
     characterIndex: 2
+    isEmpty: 0
   - button: {fileID: 0}
     iconImage: {fileID: 0}
     costText: {fileID: 0}
     characterIndex: 3
+    isEmpty: 0
+  nextUnitImage: {fileID: 0}
+  nextUnitCost: {fileID: 0}

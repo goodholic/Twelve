@@ -5,16 +5,14 @@ using System;
 using UnityEditor;
 #endif
 
-/// <summary>
-/// 2D 타일(칸).
-/// 내부에는 "Walkable"/"Walkable2"/"Placable"/"Picable2"/"Occupied"/"Occupied2" 자식 오브젝트가 붙어,
-/// 어떤 종류(1P/2P 경로, 1P/2P 배치 등)인지 구분.
-/// Button을 통해 OnClickPlacableTile() -> PlacementManager.PlaceCharacterOnTile(this) 호출.
-/// </summary>
 [RequireComponent(typeof(Image), typeof(BoxCollider2D))]
 public class Tile : MonoBehaviour
 {
-    [Header("Tile Color Settings (시각 효과)")]
+    [Header("Region Select")]
+    [Tooltip("지역1인지 지역2인지 여부를 체크할 수 있습니다. true면 지역2, false면 지역1로 간주")]
+    public bool isRegion2 = false;
+
+    [Header("Tile Color Settings")]
     [SerializeField] private Image tileImage;
     [SerializeField] private Color defaultColor = Color.white;
     [SerializeField] private Color highlightColor = Color.yellow;
@@ -24,73 +22,20 @@ public class Tile : MonoBehaviour
     public GameObject walkablePrefab;
     public GameObject walkable2Prefab;
     public GameObject placablePrefab;
-    [Tooltip("picable2 전용 프리팹(원한다면 연결)")]
-    public GameObject picable2Prefab;
-    public GameObject occupiedPrefab;
-    [Tooltip("occupied2 전용 프리팹(원한다면 연결)")]
-    public GameObject occupied2Prefab;
+    public GameObject placable2Prefab;
+    // 원래 occupiedPrefab → placeTilePrefab 으로 변경
+    public GameObject placeTilePrefab;
+    // 원래 occupied2Prefab → placed2Prefab 으로 변경
+    public GameObject placed2Prefab;
 
     [SerializeField] private GameObject currentVisual;
 
     [Header("Optional: Button for OnClick")]
     public Button tileButton;
 
-    // 디버그용
     [HideInInspector] public int row;
     [HideInInspector] public int column;
     [HideInInspector] public int tileIndex;
-
-    // ------------- 상태 체크 함수들 -------------
-    public bool IsPlacable()
-    {
-        // "Placable" 자식 존재 여부
-        return (transform.Find("Placable") != null);
-    }
-
-    public bool IsPicable2()
-    {
-        // "Picable2" 자식 존재 여부
-        return (transform.Find("Picable2") != null);
-    }
-
-    public bool IsOccupied()
-    {
-        // "Occupied" 자식 존재 여부
-        return (transform.Find("Occupied") != null);
-    }
-
-    public bool IsOccupied2()
-    {
-        // "Occupied2" 자식 존재 여부
-        return (transform.Find("Occupied2") != null);
-    }
-
-    public bool IsWalkable()
-    {
-        // "Walkable" 자식 존재 여부
-        return (transform.Find("Walkable") != null);
-    }
-
-    public bool IsWalkable2()
-    {
-        // "Walkable2" 자식 존재 여부
-        return (transform.Find("Walkable2") != null);
-    }
-
-    /// <summary>
-    /// "배치가 가능한가?"를 단순 판별.
-    /// 지금은 Walkable / Walkable2 / Placable / Picable2 / Occupied / Occupied2 중
-    /// 하나라도 있으면 true로 처리 (실제 로직은 자유롭게 커스터마이징).
-    /// </summary>
-    public bool CanPlaceCharacter()
-    {
-        bool hasAnyType =
-            IsWalkable() || IsWalkable2() ||
-            IsPlacable() || IsPicable2() ||
-            IsOccupied() || IsOccupied2();
-
-        return hasAnyType;
-    }
 
     private void Start()
     {
@@ -114,11 +59,94 @@ public class Tile : MonoBehaviour
             tileButton.onClick.AddListener(OnClickPlacableTile);
         }
 
-        // 런타임 시점 비주얼 갱신
         if (Application.isPlaying)
         {
             UpdateTileVisual_Runtime();
         }
+    }
+
+    // ------------------
+    //  Tile 상태 확인
+    // ------------------
+
+    public bool IsPlacable()
+    {
+        return (transform.Find("Placable") != null);
+    }
+
+    public bool IsPlacable2()
+    {
+        for (int i = 0; i < transform.childCount; i++)
+        {
+            string childName = transform.GetChild(i).name.ToLower();
+            if (childName.Contains("placable2"))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // 원래 IsOccupied() → IsPlaceTile()로 변경
+    public bool IsPlaceTile()
+    {
+        for (int i = 0; i < transform.childCount; i++)
+        {
+            string childName = transform.GetChild(i).name.ToLower();
+            // "occupied"가 → "placetile"이 되었고,
+            // "occupied2" → "placed2"가 되었으므로, placetile 체크 시 placed2는 제외
+            if (childName.Contains("placetile") && !childName.Contains("placed2"))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // 원래 IsOccupied2() → IsPlaced2()로 변경
+    public bool IsPlaced2()
+    {
+        for (int i = 0; i < transform.childCount; i++)
+        {
+            string childName = transform.GetChild(i).name.ToLower();
+            if (childName.Contains("placed2"))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public bool IsWalkable()
+    {
+        return (transform.Find("Walkable") != null);
+    }
+
+    public bool IsWalkable2()
+    {
+        for (int i = 0; i < transform.childCount; i++)
+        {
+            string childName = transform.GetChild(i).name.ToLower();
+            if (childName.Contains("walkable2"))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// 이 타일이 캐릭터 배치 가능한지 여부
+    /// </summary>
+    public bool CanPlaceCharacter()
+    {
+        // 기존 (IsOccupied / IsOccupied2) -> (IsPlaceTile / IsPlaced2)
+        bool hasAnyType =
+            IsWalkable() || IsWalkable2() ||
+            IsPlacable() || IsPlacable2() ||
+            IsPlaceTile() || IsPlaced2();
+
+        return hasAnyType;
     }
 
     public void OnClickPlacableTile()
@@ -134,12 +162,16 @@ public class Tile : MonoBehaviour
             }
             else
             {
-                Debug.LogWarning("[Tile] PlacementManager.Instance가 null입니다.");
+                Debug.LogWarning("[Tile] PlacementManager.Instance가 null");
             }
         }
         else
         {
-            Debug.Log($"[Tile] 배치 불가 상태. (IsWalkable={IsWalkable()}, IsWalkable2={IsWalkable2()}, IsPlacable={IsPlacable()}, IsPicable2={IsPicable2()}, IsOccupied={IsOccupied()}, IsOccupied2={IsOccupied2()})");
+            Debug.Log(
+                $"[Tile] 배치 불가 상태. (IsWalkable={IsWalkable()}, IsWalkable2={IsWalkable2()}, " +
+                $"IsPlacable={IsPlacable()}, IsPlacable2={IsPlacable2()}, " +
+                $"IsPlaceTile={IsPlaceTile()}, IsPlaced2={IsPlaced2()})"
+            );
         }
     }
 
@@ -167,7 +199,6 @@ public class Tile : MonoBehaviour
             currentVisual = null;
         }
 
-        // 어떤 프리팹을 붙일지 결정
         GameObject prefabToUse = SelectVisualPrefab();
         if (prefabToUse != null)
         {
@@ -248,28 +279,24 @@ public class Tile : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// 자식오브젝트("Walkable","Walkable2","Placable","Picable2","Occupied","Occupied2") 중
-    /// 무엇이 있느냐에 따라 다른 프리팹(이미지)로 바꾸는 로직 (시각용).
-    /// </summary>
     private GameObject SelectVisualPrefab()
     {
         bool w1 = IsWalkable();
         bool w2 = IsWalkable2();
         bool p1 = IsPlacable();
-        bool p2 = IsPicable2();
-        bool o1 = IsOccupied();
-        bool o2 = IsOccupied2();
+        bool p2 = IsPlacable2();
+        // 원래 o1 = IsOccupied(), o2 = IsOccupied2()
+        bool pTile = IsPlaceTile();
+        bool p2Tile = IsPlaced2();
 
-        // 우선순위 예: Walkable2 > Walkable > Picable2 > Placable > Occupied2 > Occupied
+        // 순서: walkable2 > walkable > placable2 > placable > placed2 > placeTile
         if (w2 && walkable2Prefab != null) return walkable2Prefab;
-        if (w1 && walkablePrefab != null)  return walkablePrefab;
-        if (p2 && picable2Prefab != null)  return picable2Prefab;
-        if (p1 && placablePrefab != null)  return placablePrefab;
-        if (o2 && occupied2Prefab != null) return occupied2Prefab;
-        if (o1 && occupiedPrefab != null)  return occupiedPrefab;
+        if (w1 && walkablePrefab  != null) return walkablePrefab;
+        if (p2 && placable2Prefab != null) return placable2Prefab;
+        if (p1 && placablePrefab  != null) return placablePrefab;
+        if (p2Tile && placed2Prefab != null) return placed2Prefab;
+        if (pTile && placeTilePrefab  != null) return placeTilePrefab;
 
-        // 아무것도 없으면 null
         return null;
     }
 
@@ -285,9 +312,6 @@ public class Tile : MonoBehaviour
 #endif
     }
 
-    /// <summary>
-    /// (마우스오버 등) 임시 하이라이트
-    /// </summary>
     public void HighlightTile()
     {
         if (tileImage != null)

@@ -48,9 +48,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e4fcd078baddbaa4888a05e2b30a43f3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  monsterPrefab: {fileID: 6462095647310617079, guid: 7b4c529772e33a94ba06f7c0713ac1bd, type: 3}
-  pathWaypoints: []
+  monsterPrefab: {fileID: 6657560890044439722, guid: b5939eb57b5d3ff48b4737ae1d059380, type: 3}
+  monsterParent: {fileID: 0}
+  pathWaypoints:
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
   timeBetweenWaves: 5
   monstersPerWave: 5
-  spawnInterval: 1
+  spawnInterval: 0.4
   currentWave: 0
+  itemPanel: {fileID: 0}
+  itemRewardPanel: {fileID: 0}
+  waveCountText: {fileID: 0}

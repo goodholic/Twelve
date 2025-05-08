@@ -48,68 +48,184 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 04811a1acba0066439f060c885effa5f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  characters:
+  currentRegisteredCharacters:
   - characterName: 
-    attackPower: 0
+    initialStar: 1
+    attackPower: 10
+    attackSpeed: 1
+    attackRange: 1.5
+    maxHP: 100
+    moveSpeed: 3
     rangeType: 0
     isAreaAttack: 0
     isBuffSupport: 0
+    level: 1
+    currentExp: 0
+    expToNextLevel: 5
     spawnPrefab: {fileID: 0}
     buttonIcon: {fileID: 0}
-    cost: 0
+    cost: 10
+    areaAttackRadius: 1
+    motionPrefab: {fileID: 0}
   - characterName: 
-    attackPower: 0
+    initialStar: 1
+    attackPower: 10
+    attackSpeed: 1
+    attackRange: 1.5
+    maxHP: 100
+    moveSpeed: 3
     rangeType: 0
     isAreaAttack: 0
     isBuffSupport: 0
+    level: 1
+    currentExp: 0
+    expToNextLevel: 5
     spawnPrefab: {fileID: 0}
     buttonIcon: {fileID: 0}
-    cost: 0
+    cost: 10
+    areaAttackRadius: 1
+    motionPrefab: {fileID: 0}
   - characterName: 
-    attackPower: 0
+    initialStar: 1
+    attackPower: 10
+    attackSpeed: 1
+    attackRange: 1.5
+    maxHP: 100
+    moveSpeed: 3
     rangeType: 0
     isAreaAttack: 0
     isBuffSupport: 0
+    level: 1
+    currentExp: 0
+    expToNextLevel: 5
     spawnPrefab: {fileID: 0}
     buttonIcon: {fileID: 0}
-    cost: 0
+    cost: 10
+    areaAttackRadius: 1
+    motionPrefab: {fileID: 0}
   - characterName: 
-    attackPower: 0
+    initialStar: 1
+    attackPower: 10
+    attackSpeed: 1
+    attackRange: 1.5
+    maxHP: 100
+    moveSpeed: 3
     rangeType: 0
     isAreaAttack: 0
     isBuffSupport: 0
+    level: 1
+    currentExp: 0
+    expToNextLevel: 5
     spawnPrefab: {fileID: 0}
     buttonIcon: {fileID: 0}
-    cost: 0
+    cost: 10
+    areaAttackRadius: 1
+    motionPrefab: {fileID: 0}
   - characterName: 
-    attackPower: 0
+    initialStar: 1
+    attackPower: 10
+    attackSpeed: 1
+    attackRange: 1.5
+    maxHP: 100
+    moveSpeed: 3
     rangeType: 0
     isAreaAttack: 0
     isBuffSupport: 0
+    level: 1
+    currentExp: 0
+    expToNextLevel: 5
     spawnPrefab: {fileID: 0}
     buttonIcon: {fileID: 0}
-    cost: 0
+    cost: 10
+    areaAttackRadius: 1
+    motionPrefab: {fileID: 0}
   - characterName: 
-    attackPower: 0
+    initialStar: 1
+    attackPower: 10
+    attackSpeed: 1
+    attackRange: 1.5
+    maxHP: 100
+    moveSpeed: 3
     rangeType: 0
     isAreaAttack: 0
     isBuffSupport: 0
+    level: 1
+    currentExp: 0
+    expToNextLevel: 5
     spawnPrefab: {fileID: 0}
     buttonIcon: {fileID: 0}
-    cost: 0
+    cost: 10
+    areaAttackRadius: 1
+    motionPrefab: {fileID: 0}
   - characterName: 
-    attackPower: 0
+    initialStar: 1
+    attackPower: 10
+    attackSpeed: 1
+    attackRange: 1.5
+    maxHP: 100
+    moveSpeed: 3
     rangeType: 0
     isAreaAttack: 0
     isBuffSupport: 0
+    level: 1
+    currentExp: 0
+    expToNextLevel: 5
     spawnPrefab: {fileID: 0}
     buttonIcon: {fileID: 0}
-    cost: 0
+    cost: 10
+    areaAttackRadius: 1
+    motionPrefab: {fileID: 0}
   - characterName: 
-    attackPower: 0
+    initialStar: 1
+    attackPower: 10
+    attackSpeed: 1
+    attackRange: 1.5
+    maxHP: 100
+    moveSpeed: 3
     rangeType: 0
     isAreaAttack: 0
     isBuffSupport: 0
+    level: 1
+    currentExp: 0
+    expToNextLevel: 5
     spawnPrefab: {fileID: 0}
     buttonIcon: {fileID: 0}
-    cost: 0
+    cost: 10
+    areaAttackRadius: 1
+    motionPrefab: {fileID: 0}
+  - characterName: 
+    initialStar: 1
+    attackPower: 10
+    attackSpeed: 1
+    attackRange: 1.5
+    maxHP: 100
+    moveSpeed: 3
+    rangeType: 0
+    isAreaAttack: 0
+    isBuffSupport: 0
+    level: 1
+    currentExp: 0
+    expToNextLevel: 5
+    spawnPrefab: {fileID: 0}
+    buttonIcon: {fileID: 0}
+    cost: 10
+    areaAttackRadius: 1
+    motionPrefab: {fileID: 0}
+  - characterName: 
+    initialStar: 1
+    attackPower: 10
+    attackSpeed: 1
+    attackRange: 1.5
+    maxHP: 100
+    moveSpeed: 3
+    rangeType: 0
+    isAreaAttack: 0
+    isBuffSupport: 0
+    level: 1
+    currentExp: 0
+    expToNextLevel: 5
+    spawnPrefab: {fileID: 0}
+    buttonIcon: {fileID: 0}
+    cost: 10
+    areaAttackRadius: 1
+    motionPrefab: {fileID: 0}

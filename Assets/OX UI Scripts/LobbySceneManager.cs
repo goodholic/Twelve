@@ -47,10 +47,18 @@ public class LobbySceneManager : MonoBehaviour
     [SerializeField] private CharacterInventoryManager characterInventoryManager;
 
     // ============================================
-    //  DeckPanelManager 참조 추가
+    //  DeckPanelManager 참조
     // ============================================
     [Header("DeckPanelManager(덱 패널)")]
     [SerializeField] private DeckPanelManager deckPanelManager;
+
+    // ==========================
+    //  (새로 추가) Saved DB
+    // ==========================
+    // (★ 필요없다면 완전히 제거 가능)
+    // [Header("새로 추가: Saved Character DB (ScriptableObject)")]
+    // [Tooltip("로비씬에서 강제 로드했던 DB. (자동 갱신 로직 제거됨)")]
+    // public CharacterDatabaseObject savedCharacterDatabase;
 
     private List<StageInfo> stages = new List<StageInfo>();
     private int currentStageIndex = 0;
@@ -83,7 +91,7 @@ public class LobbySceneManager : MonoBehaviour
         PlayerPrefs.DeleteKey("Gold");
         PlayerPrefs.DeleteKey("Diamond");
 
-        // 4) 만약 인벤토리 매니저가 있으면 캐릭터 데이터까지 완전 초기화
+        // 4) 인벤토리 매니저 초기화(있다면)
         if (characterInventoryManager != null)
         {
             characterInventoryManager.ClearAllData();
@@ -98,11 +106,7 @@ public class LobbySceneManager : MonoBehaviour
         UpdateStageUI();
         UpdateGoldAndDiamondUI();
 
-        Debug.Log("[LobbySceneManager] ResetGameData() 실행 완료 - 스테이지,재화,인벤토리 전부 초기화.");
-
-        // ------------------------------------------------------
-        // (추가) 덱 패널도 새로고침(등록 버튼/슬롯까지 전부)
-        // ------------------------------------------------------
+        // + 덱 패널도 갱신
         DeckPanelManager dpm = FindFirstObjectByType<DeckPanelManager>();
         if (dpm != null)
         {
@@ -119,19 +123,30 @@ public class LobbySceneManager : MonoBehaviour
         if (explainText) explainText.text = "";
     }
 
+    // =========================================================================
+    // (★ 수정) OnEnable()에서 DB를 다시 로드하거나 덮어쓰는 코드 제거
+    // =========================================================================
+    private void OnEnable()
+    {
+        // 기존에는 여기서 ScriptableObject를 강제로 재로드하던 로직이 있었으나, 제거.
+    }
+
     private void Start()
     {
-        // 스테이지 정보 초기화 + 로드
+        // 1) 스테이지 정보 로드
         InitializeStages();
         LoadGame();
+
+        // (★ 수정) savedCharacterDatabase를 강제로 DB에 덮어쓰는 로직 제거
+
         UpdateStageUI();
         UpdateGoldAndDiamondUI();
 
-        // 이미 저장된 캐릭터/덱 상태도 UI에서 바로 보이도록
-        DeckPanelManager dpm = FindFirstObjectByType<DeckPanelManager>();
-        if (dpm != null)
+        // 덱/업그레이드 패널들 UI 갱신
+        DeckPanelManager deckPanel = FindFirstObjectByType<DeckPanelManager>();
+        if (deckPanel != null)
         {
-            dpm.RefreshInventoryUI();
+            deckPanel.RefreshInventoryUI();
         }
         UpgradePanelManager upm = FindFirstObjectByType<UpgradePanelManager>();
         if (upm != null)
@@ -140,12 +155,10 @@ public class LobbySceneManager : MonoBehaviour
             upm.SetUpgradeRegisteredSlotsFromDeck();
         }
 
-        // ================================
-        // "아이템 인벤토리 패널"은 항상 켜두기
-        // ================================
+        // 아이템 인벤토리 패널은 상시 활성
         if (itemInventoryPanel != null)
         {
-            itemInventoryPanel.SetActive(true); // 상시 활성
+            itemInventoryPanel.SetActive(true);
         }
     }
 
@@ -180,8 +193,8 @@ public class LobbySceneManager : MonoBehaviour
         {
             data.stageInfos[i] = new StageInfoData
             {
-                isUnlocked     = stages[i].isUnlocked,
-                winCount       = stages[i].winCount,
+                isUnlocked = stages[i].isUnlocked,
+                winCount = stages[i].winCount,
                 attemptResults = stages[i].attemptResults
             };
         }
@@ -207,8 +220,8 @@ public class LobbySceneManager : MonoBehaviour
             int count = Mathf.Min(data.stageInfos.Length, stages.Count);
             for (int i = 0; i < count; i++)
             {
-                stages[i].isUnlocked     = data.stageInfos[i].isUnlocked;
-                stages[i].winCount       = data.stageInfos[i].winCount;
+                stages[i].isUnlocked = data.stageInfos[i].isUnlocked;
+                stages[i].winCount = data.stageInfos[i].winCount;
                 stages[i].attemptResults = data.stageInfos[i].attemptResults;
             }
         }
@@ -224,7 +237,7 @@ public class LobbySceneManager : MonoBehaviour
 
     private void UpdateGoldAndDiamondUI()
     {
-        if (goldText)    goldText.text    = gold.ToString();
+        if (goldText) goldText.text = gold.ToString();
         if (diamondText) diamondText.text = diamond.ToString();
     }
 
@@ -250,8 +263,8 @@ public class LobbySceneManager : MonoBehaviour
         StageInfo info = stages[currentStageIndex];
         bool locked = !info.isUnlocked;
 
-        if (stageLockIcon)   stageLockIcon.gameObject.SetActive(locked);
-        if (stageThumbnail)  stageThumbnail.gameObject.SetActive(!locked);
+        if (stageLockIcon) stageLockIcon.gameObject.SetActive(locked);
+        if (stageThumbnail) stageThumbnail.gameObject.SetActive(!locked);
 
         if (!locked && stageThumbnail != null)
         {
@@ -297,9 +310,7 @@ public class LobbySceneManager : MonoBehaviour
         DeckPanelManager dpm = FindFirstObjectByType<DeckPanelManager>();
         if (dpm != null)
         {
-            // ================================
-            //   (기존) 9칸 캐릭터 세팅
-            // ================================
+            // 덱(10칸) 확인 (9개 이상 등록돼야 게임씬 진행 가능)
             CharacterData[] deckSet = dpm.registeredCharactersSet2;
             int count = 0;
             foreach (var c in deckSet)
@@ -308,76 +319,51 @@ public class LobbySceneManager : MonoBehaviour
             }
             if (count < 9)
             {
-                Debug.LogWarning($"[LobbySceneManager] 덱에 등록된 캐릭터가 {count}개이므로 게임시작 불가(9개 필요)");
+                Debug.LogWarning($"[LobbySceneManager] 덱에 등록된 캐릭터 {count}개이므로 게임시작 불가(최소 9개 필요)");
                 return;
             }
 
-            // 9칸만 우선 추려서 GameManager에 전달
-            CharacterData[] deck9 = new CharacterData[9];
-            int idx = 0;
-            for (int i = 0; i < deckSet.Length; i++)
-            {
-                if (idx >= 9) break;
-                if (deckSet[i] != null)
-                {
-                    deck9[idx] = deckSet[i];
-                    idx++;
-                }
-            }
-            // GameManager.Instance.SetDeckForGame(deck9) 메서드가 제거됨
-            // 대신 GameManager.currentRegisteredCharacters에 직접 설정
-
-            // ============================================
-            //  덱(10칸)을 GameManager의 currentRegisteredCharacters에 대입
-            // ============================================
-            if (GameManager.Instance != null && 
-                GameManager.Instance.currentRegisteredCharacters != null && 
+            // (게임씬에서 필요하다던 캐릭터 10칸 세팅)
+            if (GameManager.Instance != null &&
+                GameManager.Instance.currentRegisteredCharacters != null &&
                 GameManager.Instance.currentRegisteredCharacters.Length >= 10)
             {
-                // 덱 정보를 GameManager의 currentRegisteredCharacters에 복사
                 for (int i = 0; i < deckSet.Length && i < 10; i++)
                 {
                     GameManager.Instance.currentRegisteredCharacters[i] = deckSet[i];
                 }
-                Debug.Log("[LobbySceneManager] 덱(10개)을 GameManager.currentRegisteredCharacters에 반영 완료");
+                Debug.Log("[LobbySceneManager] 덱(10칸)을 GameManager.currentRegisteredCharacters에 반영");
             }
             else
             {
-                Debug.LogWarning("[LobbySceneManager] GameManager.currentRegisteredCharacters가 없거나 초기화되지 않음");
+                Debug.LogWarning("[LobbySceneManager] GameManager.currentRegisteredCharacters가 유효하지 않음");
+                return;
             }
 
-            // ============================================
-            //  (추가) 덱(10칸)을 CharacterDatabase[0..9]에 대입
-            // ============================================
+            // ▼▼ [수정] DB에 덱을 덮어쓰는 로직을 막기 위해 주석처리 ▼▼
+            /*
             if (characterInventoryManager != null &&
                 characterInventoryManager.characterDatabaseObject != null &&
                 characterInventoryManager.characterDatabaseObject.characters != null &&
                 characterInventoryManager.characterDatabaseObject.characters.Length >= 10)
             {
-                // 10칸 모두 DB에 복사
                 for (int i = 0; i < 10; i++)
                 {
                     characterInventoryManager.characterDatabaseObject.characters[i] = deckSet[i];
                 }
-
-                Debug.Log("[LobbySceneManager] 로비씬 덱(10개)을 CharacterDatabase(0~9)에 반영 완료");
+                Debug.Log("[LobbySceneManager] 로비씬 덱(10개)을 ScriptableObject DB(0~9)에도 덮어씀");
             }
-            else
-            {
-                Debug.LogWarning("[LobbySceneManager] CharacterDatabase에 10개 슬롯이 없거나 InventoryManager가 연결 안 됨");
-            }
+            */
+            // ▲▲ [수정 끝] ▲▲
         }
         else
         {
-            Debug.LogWarning("[LobbySceneManager] DeckPanelManager를 찾지 못함 => 게임 시작 불가");
+            Debug.LogWarning("[LobbySceneManager] DeckPanelManager 미발견 => 게임 시작 불가");
             return;
         }
 
         Debug.Log($"Stage {currentStageIndex + 1} 입장 -> GameScene 이동");
 
-        // -------------------------------------------------
-        // 씬 이동 직전에 아이템 인벤토리 패널 활성화(옵션)
-        // -------------------------------------------------
         if (itemInventoryPanel != null)
         {
             itemInventoryPanel.SetActive(true);
@@ -423,30 +409,28 @@ public class LobbySceneManager : MonoBehaviour
     [SerializeField] private GameObject friendGameObject;
     [SerializeField] private GameObject rankingGameObject;
 
-    // ===========================================
-    //  아이템 패널 (웨이브 보상용) + 아이템 인벤토리 패널
-    // ===========================================
+    // 아이템 패널(보상용) + 아이템 인벤토리 패널
     [Header("아이템 패널(보상용) + 아이템 인벤토리 패널")]
-    public GameObject itemPanel;            // 웨이브 보상용 (기본 false)
-    public GameObject itemInventoryPanel;   // 항상 켜둘 예정
+    public GameObject itemPanel;
+    public GameObject itemInventoryPanel;
 
     private List<GameObject> allPanels = new List<GameObject>();
 
     private void SetupPanels()
     {
         allPanels.Clear();
-        if (profilePanel)   { profilePanel.SetActive(false);   allPanels.Add(profilePanel); }
-        if (optionPanel)    { optionPanel.SetActive(false);    allPanels.Add(optionPanel); }
-        if (shopPanel)      { shopPanel.SetActive(false);      allPanels.Add(shopPanel); }
-        if (drawPanel)      { drawPanel.SetActive(false);      allPanels.Add(drawPanel); }
-        if (clanPanel)      { clanPanel.SetActive(false);      allPanels.Add(clanPanel); }
+        if (profilePanel) { profilePanel.SetActive(false); allPanels.Add(profilePanel); }
+        if (optionPanel) { optionPanel.SetActive(false); allPanels.Add(optionPanel); }
+        if (shopPanel) { shopPanel.SetActive(false); allPanels.Add(shopPanel); }
+        if (drawPanel) { drawPanel.SetActive(false); allPanels.Add(drawPanel); }
+        if (clanPanel) { clanPanel.SetActive(false); allPanels.Add(clanPanel); }
         if (characterPanel) { characterPanel.SetActive(false); allPanels.Add(characterPanel); }
 
-        if (deckObject)    deckObject.SetActive(false);
+        if (deckObject) deckObject.SetActive(false);
         if (upgradeObject) upgradeObject.SetActive(false);
 
-        if (friendGameObject)   friendGameObject.SetActive(false);
-        if (rankingGameObject)  rankingGameObject.SetActive(false);
+        if (friendGameObject) friendGameObject.SetActive(false);
+        if (rankingGameObject) rankingGameObject.SetActive(false);
 
         if (itemPanel)
         {
@@ -468,9 +452,7 @@ public class LobbySceneManager : MonoBehaviour
         }
     }
 
-    // ====================
-    //  캐릭터/프로필 등
-    // ====================
+    // 캐릭터/프로필 등
     public void OnClickOpenCharacterPanel()
     {
         CloseAllPanels();
@@ -487,7 +469,6 @@ public class LobbySceneManager : MonoBehaviour
         }
         if (upgradeObject) upgradeObject.SetActive(false);
 
-        // ★ 업그레이드 모드 끄기
         DeckPanelManager dpm = FindFirstObjectByType<DeckPanelManager>();
         if (dpm != null)
         {
@@ -551,15 +532,12 @@ public class LobbySceneManager : MonoBehaviour
         if (clanPanel) clanPanel.SetActive(false);
     }
 
-    // ====================================================================
-    //  (1) 덱 버튼 -> deckObject On, upgradeObject Off + isUpgradeMode=false
-    // ====================================================================
+    // 덱/업그레이드 패널
     public void OnClickDeckButton()
     {
         if (deckObject) deckObject.SetActive(true);
         if (upgradeObject) upgradeObject.SetActive(false);
 
-        // 업그레이드 모드 해제
         DeckPanelManager dpm = FindFirstObjectByType<DeckPanelManager>();
         if (dpm != null)
         {
@@ -568,15 +546,11 @@ public class LobbySceneManager : MonoBehaviour
         }
     }
 
-    // ====================================================================
-    //  (2) 업그레이드 버튼 -> deckObject Off, upgradeObject On + isUpgradeMode=true
-    // ====================================================================
     public void OnClickUpgradeButton()
     {
         if (deckObject) deckObject.SetActive(false);
         if (upgradeObject) upgradeObject.SetActive(true);
 
-        // 업그레이드 모드 활성
         DeckPanelManager dpm = FindFirstObjectByType<DeckPanelManager>();
         if (dpm != null)
         {
@@ -596,27 +570,24 @@ public class LobbySceneManager : MonoBehaviour
 
     public void OnClickProfileFriend()
     {
-        if (friendGameObject)   friendGameObject.SetActive(true);
-        if (rankingGameObject)  rankingGameObject.SetActive(false);
+        if (friendGameObject) friendGameObject.SetActive(true);
+        if (rankingGameObject) rankingGameObject.SetActive(false);
     }
     public void OnClickProfileRanking()
     {
-        if (friendGameObject)   friendGameObject.SetActive(false);
-        if (rankingGameObject)  rankingGameObject.SetActive(true);
+        if (friendGameObject) friendGameObject.SetActive(false);
+        if (rankingGameObject) rankingGameObject.SetActive(true);
     }
 
     [Header("튜토리얼/스토리 text")]
     [SerializeField] private TextMeshProUGUI explainText;
 
     private readonly string tutorialStr =
-@"1. 5×5 칸 중 원하는 곳을 클릭해 캐릭터를 소환하되, 이미 다른 캐릭터가 있으면 체력을 0으로 만들 수 있을 때만 교체 가능.
-2. 체력이 남아있으면 배치 불가, 둘 다 죽으면 빈 칸이 되고, 내 캐릭터만 살아남으면 배치.
-3. X/O 두 팀 외 다양한 캐릭터 사용 가능. 공격 패턴(대각,직선,특수)은 자유 설정.";
-
+@"1. 5×5 칸 중 원하는 곳을 클릭해 캐릭터를 소환하되...
+(이하 생략)";
     private readonly string storyStr =
-@"1. X/O 두 세력간 전쟁, 5×5 전장에서 병사 배치로 승부.
-2. 병사는 고유 범위/공격력으로 적을 쓰러뜨리거나 자신까지 희생하기도.
-3. 한 줄 완성해 세력 확장. 수많은 전투와 희생은 플레이어의 전략을 시험.";
+@"1. X/O 두 세력간 전쟁...
+(이하 생략)";
 
     public void OnClickTutorialButton()
     {

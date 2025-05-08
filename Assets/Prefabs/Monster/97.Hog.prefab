@@ -520,6 +520,8 @@ GameObject:
   - component: {fileID: 8316402779051580186}
   - component: {fileID: 8316402779051580189}
   - component: {fileID: 6346203346844630154}
+  - component: {fileID: -4507415781803902328}
+  - component: {fileID: -6920317205645044946}
   m_Layer: 0
   m_Name: 97.Hog
   m_TagString: Untagged
@@ -673,6 +675,62 @@ CapsuleCollider2D:
   m_Offset: {x: 0, y: 1.4999999}
   m_Size: {x: 5, y: 4}
   m_Direction: 1
+--- !u!114 &-4507415781803902328
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8316402779051580184}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 34f8b9a1ecb6d4a488409c8421443454, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  moveSpeed: 1.5
+  health: 50
+  pathWaypoints:
+  - {fileID: 7533954594709166238, guid: 2c7af040127463842bb538e73144355c, type: 3}
+  - {fileID: 375125270241151848, guid: 8210aa4d54b99484ab283b8e5a075126, type: 3}
+  - {fileID: 42882207359262647, guid: 7afd324640599d944874bb3817ee81d0, type: 3}
+  - {fileID: 6385198090815582965, guid: 809c2e58c41253d4188a8f22159c1345, type: 3}
+  - {fileID: 6461034117732938839, guid: d988006bd53f4b0468d4fcedc810ac64, type: 3}
+  - {fileID: 8360226188534919249, guid: 975390a5ef2c9ba45a77f5afca985383, type: 3}
+  isAlly: 0
+  damageToCastle: 1
+  hpBarCanvas: {fileID: 8931788622985592741, guid: b5939eb57b5d3ff48b4737ae1d059380, type: 3}
+  hpFillImage: {fileID: 38995151560781449, guid: b5939eb57b5d3ff48b4737ae1d059380, type: 3}
+  vanishEffectPrefab: {fileID: 3413312754866090531, guid: b5939eb57b5d3ff48b4737ae1d059380, type: 3}
+  allyConversionEffectPrefab: {fileID: 0}
+  allyOutlinePrefab: {fileID: 0}
+  opponentWaypoints:
+  - {fileID: 8870864530132773612, guid: 056b317d9e4875f45a50c4cd69148f3b, type: 3}
+  - {fileID: 4135260548019697524, guid: 3dfa4a4749de3374681c0d2b6815dc7e, type: 3}
+  - {fileID: 7052993515450296238, guid: f7691f68b1c1ffe4fb4d79c652d7dd9d, type: 3}
+  - {fileID: 5210701647780469663, guid: 699b367bf23ad6a408eb1c6fad0ab9d9, type: 3}
+  - {fileID: 4818939896627276988, guid: d2e0810630198c148979fa75ad079427, type: 3}
+  - {fileID: 1411693949256981867, guid: 03cdf8ef9ab1edb41ab152615dc955bf, type: 3}
+  opponentMonsterPanel: {fileID: 8356178920433332973, guid: 6333955c4fe3dec41b988a81707b75a8, type: 3}
+  areaIndex: 1
+--- !u!114 &-6920317205645044946
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8316402779051580184}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: -1552182283, guid: e725a070cec140c4caffb81624c8c787, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  SortKey: 631315615
+  ObjectInterest: 1
+  Flags: 1
+  NestedObjects: []
+  NetworkedBehaviours:
+  - {fileID: -4507415781803902328}
+  ForceRemoteRenderTimeframe: 0
 --- !u!1 &8316402779174942823
 GameObject:
   m_ObjectHideFlags: 0

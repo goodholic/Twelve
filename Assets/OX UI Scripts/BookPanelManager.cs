@@ -1,5 +1,3 @@
-// Assets\OX UI Scripts\BookPanelManager.cs
-
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -38,7 +36,7 @@ public class BookPanelManager : MonoBehaviour
     // ----------------------------------------------------
     [Header("슬롯 클릭 시 크게 표시할 '모션 프리팹' + 이름 텍스트")]
     [Tooltip("여기에 모션 프리팹을 인스턴스하여 표시할 부모 Transform(또는 GameObject)을 연결하세요.")]
-    [SerializeField] private Transform motionPrefabParent;    
+    [SerializeField] private Transform motionPrefabParent;
     [SerializeField] private TextMeshProUGUI motionNameText;
 
     // ============================
@@ -48,9 +46,6 @@ public class BookPanelManager : MonoBehaviour
     [SerializeField] private Vector3 motionPrefabPositionOffset = Vector3.zero;
     [SerializeField] private Vector3 motionPrefabScale = Vector3.one;
 
-    /// <summary>
-    /// 작은 슬롯 정보를 저장하기 위한 구조체
-    /// </summary>
     private class BookSlot
     {
         public GameObject root;
@@ -63,9 +58,6 @@ public class BookPanelManager : MonoBehaviour
 
     private List<BookSlot> bookSlotInfos = new List<BookSlot>();
 
-    /// <summary>
-    /// 현재 인스턴스된 '모션 프리팹' 참조(기존 것 있으면 지우고 새로 인스턴스)
-    /// </summary>
     private GameObject currentMotionInstance = null;
 
     private void OnEnable()
@@ -74,9 +66,6 @@ public class BookPanelManager : MonoBehaviour
         RefreshPortraitPanel();
     }
 
-    // =========================================================
-    // (1) 작은 슬롯(bookSlots) 갱신
-    // =========================================================
     public void RefreshBookPanel()
     {
         if (!CheckCommonReferences()) return;
@@ -136,17 +125,14 @@ public class BookPanelManager : MonoBehaviour
                 slot.isActual = false;
             }
 
-            // 보유 여부
             bool isOwned = false;
             if (slot.isActual && slot.charData != null)
             {
                 isOwned = CheckIfOwned(ownedList, slot.charData.characterName);
             }
 
-            // UI 반영
             UpdateBookSlotVisual(slot, isOwned);
 
-            // 버튼 클릭 연결
             if (slot.button != null)
             {
                 var copySlot = slot;
@@ -159,7 +145,6 @@ public class BookPanelManager : MonoBehaviour
     {
         if (slot == null || slot.root == null) return;
 
-        // ??? 처리
         if (!slot.isActual || slot.charData == null)
         {
             if (slot.iconImage)
@@ -174,7 +159,6 @@ public class BookPanelManager : MonoBehaviour
             return;
         }
 
-        // 실제 캐릭터
         CharacterData cData = slot.charData;
         if (slot.iconImage)
         {
@@ -188,49 +172,40 @@ public class BookPanelManager : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// 슬롯 클릭 -> '모션 프리팹'을 표시 + 이름 텍스트
-    /// (여기서 모션 프리팹의 위치/크기를 원하는대로 조정 가능)
-    /// </summary>
     private void OnClickBookSlot(BookSlot slot)
     {
-        // ??? 슬롯이면 무시
         if (slot == null || !slot.isActual || slot.charData == null)
             return;
 
         Debug.Log($"[BookPanelManager] 작은 슬롯 클릭: {slot.charData.characterName}");
 
-        // 1) 기존에 표시 중인 프리팹이 있다면 파괴
         if (currentMotionInstance != null)
         {
             Destroy(currentMotionInstance);
             currentMotionInstance = null;
         }
 
-        // 2) 새로 표시할 모션 프리팹 가져오기
         GameObject motionPrefab = slot.charData.motionPrefab;
         if (motionPrefab != null && motionPrefabParent != null)
         {
             currentMotionInstance = Instantiate(motionPrefab, motionPrefabParent);
 
-            // --------------------------
-            // 위치/회전/크기 조정
-            // --------------------------
             currentMotionInstance.transform.localPosition = motionPrefabPositionOffset;
             currentMotionInstance.transform.localRotation = Quaternion.identity;
             currentMotionInstance.transform.localScale    = motionPrefabScale;
         }
 
-        // 3) 캐릭터 이름 표시
-        if (motionNameText != null)
+        // ▼▼ [수정] motionNameText가 null이면 그냥 경고 후 리턴 ▼▼
+        if (motionNameText == null)
         {
-            motionNameText.text = slot.charData.characterName;
+            Debug.LogWarning("[BookPanelManager] motionNameText가 null이라 이름 표시 불가.");
+            return;
         }
+        // ▲▲ [수정끝] ▲▲
+
+        motionNameText.text = slot.charData.characterName;
     }
 
-    // =========================================================
-    // (2) 초상화 이미지(portraitImages) 갱신
-    // =========================================================
     public void RefreshPortraitPanel()
     {
         if (!CheckCommonReferences()) return;
@@ -240,7 +215,6 @@ public class BookPanelManager : MonoBehaviour
             return;
         }
 
-        // DB + 보유목록
         CharacterData[] dbChars = characterDatabaseObject.characters;
         List<CharacterData> ownedList = characterInventory.GetAllCharactersWithDuplicates();
         int dbCount = (dbChars != null) ? dbChars.Length : 0;
@@ -258,7 +232,6 @@ public class BookPanelManager : MonoBehaviour
                 continue;
             }
 
-            // 실제 캐릭터
             CharacterData cData = dbChars[i];
             bool isOwned = CheckIfOwned(ownedList, cData.characterName);
 
