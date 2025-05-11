@@ -1,3 +1,5 @@
+// Assets\Scripts\WaveSpawnerRegion2.cs
+
 using System.Collections;
 using UnityEngine;
 using TMPro;
@@ -17,9 +19,9 @@ public class WaveSpawnerRegion2 : MonoBehaviour
     [Header("위쪽(상단) 지역 웨이포인트들(Region2)")]
     public Transform[] topWaypointsForAI;
 
-    [Header("텔레포트 스폰 위치(지역1)")]
-    [Tooltip("AI가 소환한 지역2 유닛이, 이동 후 지역1로 넘어갈 때 도착하는 위치")]
-    public Transform region1TeleportSpawn;
+    // ▼▼ [삭제] 텔레포트 스폰 위치(지역1) 관련 필드 제거
+    // [Header("텔레포트 스폰 위치(지역1)")]
+    // public Transform region1TeleportSpawn;
 
     [Header("웨이브 설정 (Region2)")]
     public float timeBetweenWaves2 = 5f;
@@ -43,7 +45,6 @@ public class WaveSpawnerRegion2 : MonoBehaviour
 
     private void Start()
     {
-        // 첫 웨이브 시작 지연
         StartCoroutine(DelayFirstWaveRoutine2(firstWaveDelay2));
         UpdateRegion2LifeText();
     }
@@ -69,7 +70,6 @@ public class WaveSpawnerRegion2 : MonoBehaviour
         {
             StartNextWave2();
 
-            // 스폰이 진행 중이면 대기
             while (isSpawning2)
             {
                 yield return null;
@@ -138,16 +138,12 @@ public class WaveSpawnerRegion2 : MonoBehaviour
             enemyComp.pathWaypoints = topWaypointsForAI;
             enemyComp.areaIndex = 2;
 
-            Character charComp = enemyObj.GetComponent<Character>();
-            if (charComp != null)
-            {
-                // [수정] AI 몬스터 -> isCharAttack=false, isHero=false
-                charComp.isHero = false;
-                charComp.isCharAttack = false;
-
-                // 텔레포트 -> region1TeleportSpawn
-                charComp.region1TeleportSpawn = region1TeleportSpawn;
-            }
+            // ▼▼ [삭제] 텔레포트 코드 제거
+            // Character charComp = enemyObj.GetComponent<Character>();
+            // if (charComp != null)
+            // {
+            //     charComp.region1TeleportSpawn = region1TeleportSpawn;
+            // }
 
             enemyComp.OnDeath += HandleEnemyMonsterDeath;
         }

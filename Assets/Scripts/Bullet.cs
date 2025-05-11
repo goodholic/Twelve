@@ -39,8 +39,11 @@ public class Bullet : MonoBehaviour
     public float areaRadius = 1.5f;
 
     [Header("타겟 / 기타")]
-    public Monster target;
+    public GameObject target;        // 몬스터나 캐릭터 모두 사용 가능하도록 GameObject로 변경
     private float aliveTime = 0f;
+    
+    // 모든 대상에 대해 동일한 처리를 위한 참조
+    private IDamageable damageableTarget;  // 인터페이스 사용
 
     // -------------------------------------------------------
     // [탄환별 추가 옵션들]
@@ -73,7 +76,7 @@ public class Bullet : MonoBehaviour
 
     [Header("에너지탄 옵션")]
     public float extraRange = 5f;
-    public float energySpeedFactor = 1.5f;
+    public float energySpeedFactor = 1.5f; // <-- 기존 필드 유지
 
     [Header("Impact / 폭발 이펙트 (옵션)")]
     public GameObject impactEffectPrefab;
@@ -101,22 +104,54 @@ public class Bullet : MonoBehaviour
     }
 
     /// <summary>
-    /// 탄환 초기화
+    /// 탄환 초기화 (몬스터/캐릭터 모두 가능)
+    /// 
+    /// [수정사항] 
+    /// 모든 타겟 유형에 동일한 설정 적용, 속도 포함
+    /// </summary>
+    public void Init(IDamageable targetObject, float baseDamage, float baseSpeed,
+                     bool areaAtk, float areaAtkRadius, int areaIndex)
+    {
+        if (targetObject != null)
+        {
+            if (targetObject is Monster targetMonster)
+            {
+                this.target = targetMonster.gameObject;
+                this.damageableTarget = targetMonster;
+            }
+            else if (targetObject is Character targetChar)
+            {
+                this.target = targetChar.gameObject;
+                this.damageableTarget = targetChar;
+            }
+            
+            // 모든 타겟 유형에 대해 동일한 설정 적용
+            this.damage = baseDamage;
+            this.speed = baseSpeed;
+            this.isAreaAttack = areaAtk;
+            this.areaRadius = areaAtkRadius;
+            this.areaIndex = areaIndex;
+
+            // 총알 타입별 추가 설정은 사용하지 않음 - 모든 타겟에 동일한 설정 적용
+        }
+    }
+
+    /// <summary>
+    /// 몬스터를 타겟으로 하는 탄환 초기화 (이전 버전과의 호환성 유지)
     /// </summary>
     public void Init(Monster targetMonster, float baseDamage, float baseSpeed,
                      bool areaAtk, float areaAtkRadius, int areaIndex)
     {
-        this.target = targetMonster;
-        this.damage = baseDamage;
-        this.speed = baseSpeed;
-        this.isAreaAttack = areaAtk;
-        this.areaRadius = areaAtkRadius;
-        this.areaIndex = areaIndex;
+        Init((IDamageable)targetMonster, baseDamage, baseSpeed, areaAtk, areaAtkRadius, areaIndex);
+    }
 
-        if (bulletType == BulletType.Energy)
-        {
-            this.speed *= energySpeedFactor;
-        }
+    /// <summary>
+    /// 캐릭터를 타겟으로 하는 탄환 초기화 (이전 버전과의 호환성 유지)
+    /// </summary>
+    public void InitForCharacter(Character targetChar, float baseDamage, float baseSpeed,
+                                bool areaAtk, float areaAtkRadius, int areaIndex)
+    {
+        Init((IDamageable)targetChar, baseDamage, baseSpeed, areaAtk, areaAtkRadius, areaIndex);
     }
 
     private void Start()
@@ -155,9 +190,16 @@ public class Bullet : MonoBehaviour
 
         MoveBullet();
     }
-
+    
     private void MoveBullet()
     {
+        if (target == null || !target.gameObject.activeInHierarchy)
+        {
+            Destroy(gameObject);
+            return;
+        }
+
+        // 모든 타겟에 대해 동일한 이동 로직 사용
         switch (bulletType)
         {
             case BulletType.Energy:
@@ -170,69 +212,54 @@ public class Bullet : MonoBehaviour
             case BulletType.ArmorPenetration:
             case BulletType.Split:
             {
-                // ▼▼ [수정] 타겟이 없거나 이미 비활성(파괴) 상태라면 소멸 ▼▼
-                if (target == null || !target.gameObject.activeInHierarchy)
-                {
-                    Destroy(gameObject);
-                    break;
-                }
-                // ▲▲ [수정끝] ▲▲
-
                 Vector3 dir = (target.transform.position - transform.position).normalized;
                 transform.position += dir * speed * Time.deltaTime;
 
                 float dist = Vector2.Distance(transform.position, target.transform.position);
                 if (dist < 0.2f)
                 {
-                    OnHitTarget(target);
+                    OnHitTarget();
                 }
                 break;
             }
 
             case BulletType.Chain:
-                if (target != null)
-                {
-                    Vector3 dirC = (target.transform.position - transform.position).normalized;
-                    transform.position += dirC * speed * Time.deltaTime;
+                Vector3 dirC = (target.transform.position - transform.position).normalized;
+                transform.position += dirC * speed * Time.deltaTime;
 
-                    float distC = Vector2.Distance(transform.position, target.transform.position);
-                    if (distC < 0.2f)
-                    {
-                        OnHitTarget(target);
-                    }
-                }
-                else
+                float distC = Vector2.Distance(transform.position, target.transform.position);
+                if (distC < 0.2f)
                 {
-                    Destroy(gameObject);
+                    OnHitTarget();
                 }
                 break;
         }
     }
 
-    private void OnHitTarget(Monster hitMonster)
+    // 모든 타입의 타겟에 대해 통합된 히트 처리
+    private void OnHitTarget()
     {
-        // ▼▼ [수정] 원래 코드에서 areaIndex 비교로 리턴하던 부분 주석 처리 ▼▼
-        // if (hitMonster != null && this.areaIndex != hitMonster.areaIndex)
-        // {
-        //     // 다른 구역이면 데미지 적용 안 함
-        //     return;
-        // }
-        // ▲▲ [수정끝] ▲▲
-
-        if (hitMonster == null) return;
+        if (target == null) return;
+        
+        // 타겟이 제거되었거나 비활성화된 경우
+        if (!target.activeInHierarchy)
+        {
+            Destroy(gameObject);
+            return;
+        }
 
         switch (bulletType)
         {
             case BulletType.Normal:
-                DealDamage(hitMonster);
-                SpawnImpactEffect(hitMonster.transform.position);
+                ApplyDamageToTarget(damage);
+                SpawnImpactEffect(target.transform.position);
                 Destroy(gameObject);
                 break;
 
             case BulletType.Piercing:
-                DealDamage(hitMonster);
+                ApplyDamageToTarget(damage);
                 piercedCount++;
-                SpawnImpactEffect(hitMonster.transform.position);
+                SpawnImpactEffect(target.transform.position);
 
                 if (piercedCount >= maxPierceCount)
                 {
@@ -241,33 +268,44 @@ public class Bullet : MonoBehaviour
                 break;
 
             case BulletType.Explosive:
+                ApplyDamageToTarget(damage);
                 if (isAreaAttack)
                 {
-                    ApplyAreaDamage(hitMonster.transform.position);
+                    // 통합된 광역 데미지 적용
+                    ApplyUnifiedAreaDamage(target.transform.position);
                 }
-                SpawnExplosionEffect(hitMonster.transform.position);
+                SpawnExplosionEffect(target.transform.position);
                 Destroy(gameObject);
                 break;
 
             case BulletType.Slow:
-                DealDamage(hitMonster, 0.7f);
-                hitMonster.ApplySlow(slowAmount, slowDuration);
-                SpawnImpactEffect(hitMonster.transform.position);
+                ApplyDamageToTarget(damage * 0.7f);
+                // 모든 타겟에 슬로우 효과 적용 시도 (몬스터만 실제로 적용됨)
+                if (damageableTarget is Monster monsterSlow)
+                {
+                    monsterSlow.ApplySlow(slowAmount, slowDuration);
+                }
+                // 캐릭터에게는 단순 데미지
+                SpawnImpactEffect(target.transform.position);
                 Destroy(gameObject);
                 break;
 
             case BulletType.Bleed:
-                DealDamage(hitMonster);
-                hitMonster.ApplyBleed(bleedDamagePerSec, bleedDuration);
-                SpawnImpactEffect(hitMonster.transform.position);
+                ApplyDamageToTarget(damage);
+                // 모든 타겟에 출혈 효과 적용 시도 (몬스터만 실제로 적용됨)
+                if (damageableTarget is Monster monsterBleed)
+                {
+                    monsterBleed.ApplyBleed(bleedDamagePerSec, bleedDuration);
+                }
+                // 캐릭터에게는 단순 데미지
+                SpawnImpactEffect(target.transform.position);
                 Destroy(gameObject);
                 break;
 
             case BulletType.Chain:
-                DealDamage(hitMonster);
-                chainAttackedMonsters.Add(hitMonster);
+                ApplyDamageToTarget(damage);
                 currentBounceCount++;
-                SpawnImpactEffect(hitMonster.transform.position);
+                SpawnImpactEffect(target.transform.position);
 
                 if (currentBounceCount >= chainMaxBounces)
                 {
@@ -275,101 +313,156 @@ public class Bullet : MonoBehaviour
                 }
                 else
                 {
-                    Monster newTarget = FindNearestMonster(hitMonster.transform.position, chainBounceRange);
-                    if (newTarget == null)
-                    {
-                        Destroy(gameObject);
-                    }
-                    else
-                    {
-                        target = newTarget;
-                    }
+                    // 통합된 다음 타겟 찾기 (몬스터/캐릭터 모두 가능)
+                    FindNextUnifiedTarget(target.transform.position);
                 }
                 break;
 
             case BulletType.Stun:
-                DealDamage(hitMonster, 0.8f);
-                hitMonster.ApplyStun(stunDuration);
-                SpawnImpactEffect(hitMonster.transform.position);
+                ApplyDamageToTarget(damage * 0.8f);
+                // 모든 타겟에 스턴 효과 적용 시도 (몬스터만 실제로 적용됨)
+                if (damageableTarget is Monster monsterStun)
+                {
+                    monsterStun.ApplyStun(stunDuration);
+                }
+                // 캐릭터에게는 단순 데미지
+                SpawnImpactEffect(target.transform.position);
                 Destroy(gameObject);
                 break;
 
             case BulletType.ArmorPenetration:
-                DealDamage(hitMonster, 1.0f, ignoreDefense);
-                SpawnImpactEffect(hitMonster.transform.position);
+                // 모든 타겟에 방어력 무시 데미지 적용 (몬스터/캐릭터 동일)
+                ApplyDamageToTarget(damage);
+                SpawnImpactEffect(target.transform.position);
                 Destroy(gameObject);
                 break;
 
             case BulletType.Split:
-                DealDamage(hitMonster);
+                ApplyDamageToTarget(damage);
+                // 몬스터/캐릭터 모두에게 동일하게 분열 효과 적용
                 if (subBulletPrefab != null && splitCount > 0)
                 {
-                    DoSplit(hitMonster.transform.position);
+                    DoSplit(target.transform.position);
                 }
-                SpawnImpactEffect(hitMonster.transform.position);
+                SpawnImpactEffect(target.transform.position);
                 Destroy(gameObject);
                 break;
 
             case BulletType.Energy:
-                DealDamage(hitMonster, 0.8f);
-                SpawnImpactEffect(hitMonster.transform.position);
+                // 모든 타겟에 동일한 데미지 적용 (몬스터/캐릭터 동일)
+                ApplyDamageToTarget(damage * 0.8f);
+                SpawnImpactEffect(target.transform.position);
                 Destroy(gameObject);
                 break;
         }
     }
+    
+    // 타겟 유형에 맞게 데미지 적용 (몬스터/캐릭터 동일한 방식으로)
+    private void ApplyDamageToTarget(float damageAmount)
+    {
+        // IDamageable 인터페이스를 통해 동일하게 데미지 적용
+        if (damageableTarget != null)
+        {
+            damageableTarget.TakeDamage(damageAmount);
+        }
+    }
 
-    private void ApplyAreaDamage(Vector3 center)
+    // 통합된 광역 데미지 적용 (몬스터와 캐릭터 모두)
+    private void ApplyUnifiedAreaDamage(Vector3 center)
     {
         if (areaRadius <= 0f) return;
 
+        // 몬스터 광역 데미지
         Monster[] allMonsters = Object.FindObjectsByType<Monster>(FindObjectsSortMode.None);
         foreach (var m in allMonsters)
         {
             if (m == null) continue;
+            if (m.gameObject == target) continue; // 이미 때린 대상은 제외
+            
             float dist = Vector2.Distance(center, m.transform.position);
             if (dist <= areaRadius)
             {
-                // "같은 구역"이어야만 데미지(원래 코드)
-                // if (m.areaIndex == this.areaIndex)
-                // {
-                //     DealDamage(m);
-                // }
-                // ---------------------------------
-                // [수정] 필요하다면 아래처럼 바꿀 수 있음
-                DealDamage(m);
+                // 모든 몬스터에게 동일한 데미지 적용
+                m.TakeDamage(damage);
+            }
+        }
+        
+        // 캐릭터 광역 데미지
+        Character[] allCharacters = Object.FindObjectsByType<Character>(FindObjectsSortMode.None);
+        foreach (var c in allCharacters)
+        {
+            if (c == null) continue;
+            if (c.gameObject == target) continue; // 이미 때린 대상은 제외
+            if (c.isHero) continue; // 히어로는 광역 공격에서 제외
+            
+            float dist = Vector2.Distance(center, c.transform.position);
+            if (dist <= areaRadius)
+            {
+                // 다른 지역의 캐릭터에게만 데미지 (몬스터와 동일한 양의 데미지)
+                if (c.areaIndex != this.areaIndex)
+                {
+                    c.TakeDamage(damage);
+                }
             }
         }
     }
 
-    private void DealDamage(Monster m, float damageMultiplier = 1f, bool ignoreDef = false)
+    // 통합된 다음 타겟 찾기 (몬스터/캐릭터 모두 가능)
+    private void FindNextUnifiedTarget(Vector3 position)
     {
-        float finalDamage = damage * damageMultiplier;
-        m.TakeDamage(finalDamage, gameObject);
-    }
-
-    private Monster FindNearestMonster(Vector3 pos, float range)
-    {
-        Monster[] all = Object.FindObjectsByType<Monster>(FindObjectsSortMode.None);
-        Monster nearest = null;
+        // 가장 가까운 대상 찾기(몬스터/캐릭터)
+        GameObject bestTarget = null;
+        IDamageable bestDamageable = null;
         float minDist = float.MaxValue;
-
-        foreach (var m in all)
+        
+        // 1. 몬스터 찾기
+        Monster[] monsters = Object.FindObjectsByType<Monster>(FindObjectsSortMode.None);
+        foreach (var m in monsters)
         {
             if (m == null) continue;
-            if (chainAttackedMonsters.Contains(m)) continue;
-
-            // 체인탄이던 에너지탄이던, 원래는 'this.areaIndex == m.areaIndex' 조건을 써서 같은 구역만 찾을 수도 있음
-            // 필요에 따라 제거/수정 가능
-            // if (m.areaIndex != this.areaIndex) continue;
-
-            float dist = Vector2.Distance(pos, m.transform.position);
-            if (dist < range && dist < minDist)
+            if (m.gameObject == target) continue; // 이미 때린 대상은 제외
+            
+            float dist = Vector2.Distance(position, m.transform.position);
+            if (dist < chainBounceRange && dist < minDist)
             {
                 minDist = dist;
-                nearest = m;
+                bestTarget = m.gameObject;
+                bestDamageable = m;
             }
         }
-        return nearest;
+        
+        // 2. 캐릭터 찾기
+        Character[] characters = Object.FindObjectsByType<Character>(FindObjectsSortMode.None);
+        foreach (var c in characters)
+        {
+            if (c == null) continue;
+            if (c.gameObject == target) continue; // 이미 때린 대상은 제외
+            if (c.isHero) continue; // 히어로는 타겟으로 잡지 않음
+            
+            // 다른 지역의 캐릭터만 찾기
+            if (c.areaIndex != this.areaIndex)
+            {
+                float dist = Vector2.Distance(position, c.transform.position);
+                if (dist < chainBounceRange && dist < minDist)
+                {
+                    minDist = dist;
+                    bestTarget = c.gameObject;
+                    bestDamageable = c;
+                }
+            }
+        }
+        
+        if (bestTarget != null && bestDamageable != null)
+        {
+            // 새 타겟 설정
+            target = bestTarget;
+            damageableTarget = bestDamageable;
+        }
+        else
+        {
+            // 타겟을 찾지 못했으면 총알 제거
+            Destroy(gameObject);
+        }
     }
 
     private void DoSplit(Vector3 splitCenter)
@@ -388,12 +481,15 @@ public class Bullet : MonoBehaviour
                 subB.speed = this.speed * 0.8f;
                 subB.maxLifeTime = 2f;
 
-                // 동일 areaIndex 유지(원한다면 바꿀 수도 있음)
+                // 동일 areaIndex 유지
                 subB.areaIndex = this.areaIndex;
+                
+                // 추가 속성 설정
+                subB.isAreaAttack = false;
+                subB.areaRadius = 0f;
 
                 Vector2 dir = Quaternion.Euler(0f, 0f, angle) * Vector2.right;
-                subB.Init(null, subB.damage, subB.speed, false, 0f, subB.areaIndex);
-
+                
                 Rigidbody2D rb = sub.GetComponent<Rigidbody2D>();
                 if (rb != null)
                 {

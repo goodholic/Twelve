@@ -3,7 +3,7 @@ using UnityEngine;
 using Fusion;
 using UnityEngine.UI;
 
-public class Monster : NetworkBehaviour
+public class Monster : NetworkBehaviour, IDamageable
 {
     [Header("Monster Stats")]
     public float moveSpeed = 3f;

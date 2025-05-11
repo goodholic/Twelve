@@ -8,6 +8,8 @@ TagManager:
   - Bullet
   - ImpactVFX
   - EnemyMonster
+  - Opponent Player
+  - Character
   layers:
   - Default
   - TransparentFX

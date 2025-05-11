@@ -1,3 +1,5 @@
+// Assets\Scripts\WaveSpawner.cs
+
 using System.Collections;
 using UnityEngine;
 using TMPro;
@@ -9,9 +11,9 @@ public class WaveSpawner : MonoBehaviour
     public Transform monsterParent;
     public Transform[] pathWaypoints;
 
-    [Header("텔레포트 스폰 위치(지역2)")]
-    [Tooltip("플레이어 측 지역1에서 소환된 유닛이 지역2로 이동할 때 도착하는 스폰 위치")]
-    public Transform region2TeleportSpawn;
+    // ▼▼ [삭제] 텔레포트 스폰 위치(지역2) 관련 필드/코드 제거
+    // [Header("텔레포트 스폰 위치(지역2)")]
+    // public Transform region2TeleportSpawn;
 
     [Header("웨이브/몬스터 설정")]
     public float timeBetweenWaves = 5f;
@@ -137,15 +139,12 @@ public class WaveSpawner : MonoBehaviour
             mComp.areaIndex = 1;
             mComp.pathWaypoints = pathWaypoints;
 
-            // [수정] 만약 Monster 프리팹에 Character 컴포넌트도 있다면 isCharAttack=false / isHero=false 세팅
-            Character charComp = mObj.GetComponent<Character>();
-            if (charComp != null)
-            {
-                charComp.isHero = false;
-                charComp.isCharAttack = false; // 몬스터는 isCharAttack 꺼짐
-                // 텔레포트 스폰 위치 연결
-                charComp.region2TeleportSpawn = region2TeleportSpawn;
-            }
+            // ▼▼ [삭제] 텔레포트 관련 설정 제거
+            // Character charComp = mObj.GetComponent<Character>();
+            // if (charComp != null)
+            // {
+            //     charComp.region2TeleportSpawn = region2TeleportSpawn;
+            // }
 
             mComp.OnDeath += HandleMonsterDeath;
         }

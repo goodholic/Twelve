@@ -15,10 +15,12 @@ MonoBehaviour:
   characters:
   - characterName: RandomChar_0
     initialStar: 1
+    race: 0
     attackPower: 9
     attackSpeed: 1
     attackRange: 1.5
     maxHP: 100
+    moveSpeed: 1
     rangeType: 1
     isAreaAttack: 0
     isBuffSupport: 0
@@ -32,10 +34,12 @@ MonoBehaviour:
     motionPrefab: {fileID: 8786608230712049741, guid: 49605d17a370da74c98dd4fedb85994e, type: 3}
   - characterName: RandomChar_1
     initialStar: 1
+    race: 0
     attackPower: 5
     attackSpeed: 1
     attackRange: 1.5
     maxHP: 100
+    moveSpeed: 1
     rangeType: 2
     isAreaAttack: 0
     isBuffSupport: 0
@@ -49,10 +53,12 @@ MonoBehaviour:
     motionPrefab: {fileID: 1970497639547063621, guid: f15ae567fdadac94284405d92741e4d5, type: 3}
   - characterName: RandomChar_2
     initialStar: 1
+    race: 0
     attackPower: 27
     attackSpeed: 1
     attackRange: 1.5
     maxHP: 100
+    moveSpeed: 3
     rangeType: 0
     isAreaAttack: 0
     isBuffSupport: 1
@@ -66,10 +72,12 @@ MonoBehaviour:
     motionPrefab: {fileID: 2511997084044682121, guid: 6dcaad573d5bcac49b111baf9950ec63, type: 3}
   - characterName: RandomChar_3
     initialStar: 1
+    race: 0
     attackPower: 10
     attackSpeed: 1
     attackRange: 1.5
     maxHP: 100
+    moveSpeed: 3
     rangeType: 2
     isAreaAttack: 1
     isBuffSupport: 0
@@ -83,10 +91,12 @@ MonoBehaviour:
     motionPrefab: {fileID: 4332806432069123864, guid: 8cce27294d56b9d479370c5f3be7d235, type: 3}
   - characterName: RandomChar_4
     initialStar: 1
+    race: 0
     attackPower: 19
     attackSpeed: 1
     attackRange: 1.5
     maxHP: 100
+    moveSpeed: 3
     rangeType: 2
     isAreaAttack: 1
     isBuffSupport: 1
@@ -100,10 +110,12 @@ MonoBehaviour:
     motionPrefab: {fileID: 9176415509751804172, guid: 6869d4cb534cf7e4e887855468885a13, type: 3}
   - characterName: RandomChar_5
     initialStar: 1
+    race: 0
     attackPower: 11
     attackSpeed: 1
     attackRange: 1.5
     maxHP: 100
+    moveSpeed: 3
     rangeType: 2
     isAreaAttack: 0
     isBuffSupport: 0
@@ -117,10 +129,12 @@ MonoBehaviour:
     motionPrefab: {fileID: 9146468120310428533, guid: 5e736b9b70e5ec74c9e95c538a8b57dc, type: 3}
   - characterName: RandomChar_6
     initialStar: 1
+    race: 0
     attackPower: 28
     attackSpeed: 1
     attackRange: 1.5
     maxHP: 100
+    moveSpeed: 3
     rangeType: 1
     isAreaAttack: 1
     isBuffSupport: 0
@@ -134,10 +148,12 @@ MonoBehaviour:
     motionPrefab: {fileID: 4326882089972318273, guid: 8561be47d89fa1f42bc1ecd66e58fdf6, type: 3}
   - characterName: RandomChar_7
     initialStar: 1
+    race: 0
     attackPower: 11
     attackSpeed: 1
     attackRange: 1.5
     maxHP: 100
+    moveSpeed: 3
     rangeType: 2
     isAreaAttack: 0
     isBuffSupport: 0
@@ -151,10 +167,12 @@ MonoBehaviour:
     motionPrefab: {fileID: 2768998443333610624, guid: 76f40db2bbc4349499188e4c779c2768, type: 3}
   - characterName: RandomChar_8
     initialStar: 1
+    race: 0
     attackPower: 11
     attackSpeed: 1
     attackRange: 1.5
     maxHP: 100
+    moveSpeed: 3
     rangeType: 2
     isAreaAttack: 0
     isBuffSupport: 0
@@ -168,10 +186,12 @@ MonoBehaviour:
     motionPrefab: {fileID: 7009747068067306124, guid: 3fa8e210839545c4da0cfc914f7a862c, type: 3}
   - characterName: RandomChar_9
     initialStar: 1
+    race: 0
     attackPower: 11
     attackSpeed: 1
     attackRange: 1.5
     maxHP: 100
+    moveSpeed: 3
     rangeType: 2
     isAreaAttack: 0
     isBuffSupport: 0

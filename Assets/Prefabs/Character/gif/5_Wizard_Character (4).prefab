@@ -270,6 +270,7 @@ GameObject:
   - component: {fileID: 8293950167138075370}
   - component: {fileID: -2227661921399277953}
   - component: {fileID: -1280375214095741299}
+  - component: {fileID: -4951894638923552255}
   m_Layer: 5
   m_Name: 5_Wizard_Character (4)
   m_TagString: Player
@@ -367,7 +368,7 @@ MonoBehaviour:
   attackSpeed: 1.1
   attackRange: 2.5
   currentHP: 100
-  moveSpeed: 1.5
+  moveSpeed: 1
   currentTile: {fileID: 0}
   currentTarget: {fileID: 0}
   isAreaAttack: 0
@@ -382,10 +383,6 @@ MonoBehaviour:
   - {fileID: 8360226188534919249, guid: 975390a5ef2c9ba45a77f5afca985383, type: 3}
   currentWaypointIndex: -1
   maxWaypointIndex: 6
-  enemyMonsterPrefab:
-    RawGuidValue: b5939eb57b5d3ff48b4737ae1d059380
-  region2TeleportSpawn: {fileID: 8870864530132773612, guid: 056b317d9e4875f45a50c4cd69148f3b, type: 3}
-  region1TeleportSpawn: {fileID: 7533954594709166238, guid: 2c7af040127463842bb538e73144355c, type: 3}
   rangeIndicatorPrefab: {fileID: 3037178901491863121, guid: 70e5c5e981d70c247a317a909d42c752, type: 3}
   showRangeIndicator: 0
   bulletPrefab: {fileID: 4981713407830389979, guid: fd278dad8fe460b49982870a2bba35db, type: 3}
@@ -404,7 +401,13 @@ MonoBehaviour:
   rangeType: 0
   attackInfoText: {fileID: 0}
   attackInfoOffset: {x: 1, y: 0, z: 0}
-  isMonster: 0
+  isCharAttack: 0
+  playerTag: Player
+  opponentPlayerTag: Opponent Player
+  characterTag: Character
+  endTileRect: {fileID: 4614398458146241476, guid: 02fa27106db89b544bba34f1b127942e, type: 3}
+  targetJumpPosition: {fileID: 4614398458146241476, guid: 02fa27106db89b544bba34f1b127942e, type: 3}
+  startJumpPosition: {fileID: 7728088104138265406, guid: dd3720c0124e04b4d83c775b74fdac3c, type: 3}
 --- !u!114 &4078812631583206235
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -519,3 +522,21 @@ BoxCollider2D:
   m_AutoTiling: 0
   m_Size: {x: 1, y: 1}
   m_EdgeRadius: 0
+--- !u!114 &-4951894638923552255
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9176415509751804172}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7c5af6b3773a79842b2fff2128399fce, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  jumpArcHeight: 80
+  jumpDuration: 0.8
+  startTileRect: {fileID: 7728088104138265406, guid: dd3720c0124e04b4d83c775b74fdac3c, type: 3}
+  endTileRect: {fileID: 4614398458146241476, guid: 02fa27106db89b544bba34f1b127942e, type: 3}
+  autoJumpOnStart: 0
+  isJumping: 0

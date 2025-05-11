@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using Fusion;
 using System.Collections.Generic;
+using UnityEngine.UI;
 
 public class PlacementManager : MonoBehaviour
 {
@@ -120,6 +121,11 @@ public class PlacementManager : MonoBehaviour
 
     private void Start()
     {
+        // UI 패널 디버그 로그 추가
+        Debug.Log($"[PlacementManager] UI 패널 상태: opponentCharacterPanel={opponentCharacterPanel != null}, " +
+                 $"opponentOurMonsterPanel={opponentOurMonsterPanel != null}, " +
+                 $"opponentBulletPanel={opponentBulletPanel != null}");
+        
         // Fusion NetworkRunner가 있으면 Host/Client 체크
         var runner = FindFirstObjectByType<NetworkRunner>();
         if (runner != null)
@@ -517,6 +523,7 @@ public class PlacementManager : MonoBehaviour
                 return;
             }
             data = enemyDatabase.characters[summonIndex];
+            Debug.Log($"[PlacementManager] enemyDatabase에서 데이터 가져옴: {data.characterName}, spawnPrefab={data.spawnPrefab != null}");
         }
         else
         {
@@ -529,7 +536,7 @@ public class PlacementManager : MonoBehaviour
             }
             if (summonIndex < 0 || summonIndex >= characterDatabase.currentRegisteredCharacters.Length)
             {
-                Debug.LogWarning($"[PlacementManager] 잘못된 소환 인덱스({summonIndex}) => 실패");
+                Debug.LogWarning($"[PlacementManager] 잘못된 소환 인덱스({summonIndex}) => 소환 불가");
                 return;
             }
             data = characterDatabase.currentRegisteredCharacters[summonIndex];
@@ -602,6 +609,11 @@ public class PlacementManager : MonoBehaviour
             return;
         }
 
+        // 소환 직전 추가 디버그
+        Debug.Log($"[PlacementManager] 소환 직전 확인: 타일타입=[IsWalkable={tile.IsWalkable()}, IsWalkable2={tile.IsWalkable2()}, " +
+                 $"IsPlacable={tile.IsPlacable()}, IsPlacable2={tile.IsPlacable2()}, " +
+                 $"IsPlaceTile={tile.IsPlaceTile()}, IsPlaced2={tile.IsPlaced2()}]");
+
         // (A) 이동형 (walkable/walkable2)
         if (tile.IsWalkable())
         {
@@ -612,7 +624,7 @@ public class PlacementManager : MonoBehaviour
                 Character cc = prefabToSpawn.GetComponent<Character>();
                 if (cc == null)
                 {
-                    Debug.LogError($"[PlacementManager] '{prefabToSpawn.name}' 프리팃 Character 없음 => 실패");
+                    Debug.LogError($"[PlacementManager] '{prefabToSpawn.name}' 프리팹에 Character 없음 => 실패");
                     return;
                 }
 
@@ -663,7 +675,7 @@ public class PlacementManager : MonoBehaviour
         }
         else if (tile.IsWalkable2())
         {
-            // === [수정] Summon 시에도 Walkable2 => opponentOurMonsterPanel로 소환 ===
+            // === Summon 시에도 Walkable2 => opponentOurMonsterPanel로 소환 ===
             WaveSpawnerRegion2 spawner2 = FindFirstObjectByType<WaveSpawnerRegion2>();
             if (spawner2 != null && spawner2.topWaypointsForAI.Length > 0 && opponentOurMonsterPanel != null)
             {
@@ -671,15 +683,19 @@ public class PlacementManager : MonoBehaviour
                 Character cc = prefabToSpawn.GetComponent<Character>();
                 if (cc == null)
                 {
-                    Debug.LogError($"[PlacementManager] '{prefabToSpawn.name}' 프리팃 Character 없음 => 실패");
+                    Debug.LogError($"[PlacementManager] '{prefabToSpawn.name}' 프리팹에 Character 없음 => 실패");
                     return;
                 }
 
+                Debug.Log($"[PlacementManager] Walkable2 소환 시도: prefab={prefabToSpawn.name}, topWaypoints={spawner2.topWaypointsForAI.Length}, opponentOurMonsterPanel={opponentOurMonsterPanel.name}");
+                
                 Vector3 spawnPos = spawner2.topWaypointsForAI[0].position;
-                // 변경된 부분: ourMonsterPanel -> opponentOurMonsterPanel
                 GameObject allyObj = Instantiate(prefabToSpawn, opponentOurMonsterPanel);
                 if (allyObj != null)
                 {
+                    // 게임 오브젝트가 활성화되어 있는지 확인하고 강제로 활성화
+                    allyObj.SetActive(true);
+                    
                     RectTransform allyRect = allyObj.GetComponent<RectTransform>();
                     if (allyRect != null)
                     {
@@ -687,12 +703,32 @@ public class PlacementManager : MonoBehaviour
                         allyRect.SetParent(opponentOurMonsterPanel, false);
                         allyRect.localRotation = Quaternion.identity;
                         allyRect.anchoredPosition = localPos;
+                        
+                        // UI 요소의 가시성 설정 강화
+                        CanvasGroup canvasGroup = allyObj.GetComponent<CanvasGroup>();
+                        if (canvasGroup != null)
+                        {
+                            canvasGroup.alpha = 1f;
+                            canvasGroup.blocksRaycasts = true;
+                            canvasGroup.interactable = true;
+                        }
+                        
+                        // 이미지 컴포넌트가 있다면 색상 alpha 값 확인
+                        Image[] images = allyObj.GetComponentsInChildren<Image>();
+                        foreach (Image img in images)
+                        {
+                            Color c = img.color;
+                            img.color = new Color(c.r, c.g, c.b, 1f);
+                        }
+                        
+                        Debug.Log($"[PlacementManager] Walkable2 UI 위치 설정: localPos={localPos}, parent={opponentOurMonsterPanel.name}, scale={allyRect.localScale}");
                     }
                     else
                     {
                         allyObj.transform.SetParent(null);
                         allyObj.transform.position = spawnPos;
                         allyObj.transform.localRotation = Quaternion.identity;
+                        Debug.Log($"[PlacementManager] Walkable2 월드 위치 설정: position={spawnPos}");
                     }
 
                     Character allyCharacter = allyObj.GetComponent<Character>();
@@ -713,12 +749,19 @@ public class PlacementManager : MonoBehaviour
                     allyCharacter.ApplyStarVisual();
                     allyCharacter.moveSpeed = data.moveSpeed;
 
-                    Debug.Log($"[PlacementManager] 드래그로 [{data.characterName}] (지역2) 몬스터 소환 (cost={data.cost})");
+                    Debug.Log($"[PlacementManager] 드래그로 [{data.characterName}] (지역2) 몬스터 소환 완료 (cost={data.cost})");
+                }
+                else
+                {
+                    Debug.LogError("[PlacementManager] Walkable2 => 캐릭터 생성 실패: Instantiate 결과가 null");
                 }
             }
             else
             {
-                Debug.LogWarning("[PlacementManager] Walkable2 => 소환 실패: WaveSpawnerRegion2/opponentOurMonsterPanel 미설정");
+                Debug.LogWarning("[PlacementManager] Walkable2 => 소환 실패: " + 
+                                (spawner2 == null ? "WaveSpawnerRegion2 없음" : 
+                                 spawner2.topWaypointsForAI.Length == 0 ? "topWaypointsForAI 없음" : 
+                                 opponentOurMonsterPanel == null ? "opponentOurMonsterPanel 없음" : "알 수 없는 오류"));
             }
         }
         // (B) placable/placable2
@@ -852,14 +895,14 @@ public class PlacementManager : MonoBehaviour
     {
         if (movingChar == null || newTile == null) return;
 
-        // 기존 타일 Occupied(PlaceTile) 해제
+        // (1) 기존 타일 Occupied(PlaceTile) 해제
         Tile oldTile = movingChar.currentTile;
         if (oldTile != null)
         {
             RemovePlaceTileChild(oldTile);
         }
 
-        // 1) 새 타일에 이미 다른 캐릭터가 있는지 먼저 확인
+        // 새로운 타일에 이미 캐릭터가 있는지 검사
         bool occupantExists = CheckAnyCharacterHasCurrentTile(newTile);
 
         if (occupantExists)
@@ -881,9 +924,9 @@ public class PlacementManager : MonoBehaviour
         else
         {
             // -------------------------------------------
-            // (b) 캐릭터가 없음 => "이동"
+            // (b) 캐릭터가 없음 => "이동 or 소환"
             // -------------------------------------------
-            // 먼저 "배치 가능"인지 확인
+            // 배치 가능 여부
             if (!newTile.CanPlaceCharacter())
             {
                 // 불가능이면 revert
@@ -896,21 +939,24 @@ public class PlacementManager : MonoBehaviour
                 return;
             }
 
-            // walkable이면 웨이포인트 이동식, placable이면 건물형 등 기존로직
+            // [수정] walkable/ walkable2 로 드롭하면 "waypoint[0]에서 새로 생성" 로직 적용
+            //        placable 등은 기존처럼 그냥 타일에 두는 식
+            // -------------------------------------------
             if (newTile.IsWalkable())
             {
+                // area1 웨이브처럼 waypoint[0]에서 다시 시작
                 WaveSpawner spawner = FindFirstObjectByType<WaveSpawner>();
                 if (spawner != null && spawner.pathWaypoints != null && spawner.pathWaypoints.Length > 0 && ourMonsterPanel != null)
                 {
                     Vector3 spawnPos = spawner.pathWaypoints[0].position;
-                    RectTransform moveRect = movingChar.GetComponent<RectTransform>();
 
-                    if (moveRect != null && ourMonsterPanel != null)
+                    RectTransform charRect = movingChar.GetComponent<RectTransform>();
+                    if (charRect != null)
                     {
                         Vector2 localPos = ourMonsterPanel.InverseTransformPoint(spawnPos);
-                        moveRect.SetParent(ourMonsterPanel, false);
-                        moveRect.anchoredPosition = localPos;
-                        moveRect.localRotation = Quaternion.identity;
+                        charRect.SetParent(ourMonsterPanel, false);
+                        charRect.anchoredPosition = localPos;
+                        charRect.localRotation = Quaternion.identity;
                     }
                     else
                     {
@@ -919,60 +965,88 @@ public class PlacementManager : MonoBehaviour
                         movingChar.transform.localRotation = Quaternion.identity;
                     }
 
-                    movingChar.currentTile = null;
+                    // 웨이포인트 이동값 재설정
+                    movingChar.currentTile = null; // 건물형X
                     movingChar.currentWaypointIndex = 0;
                     movingChar.maxWaypointIndex = 6;
                     movingChar.areaIndex = 1;
+                    movingChar.pathWaypoints = spawner.pathWaypoints;
                     movingChar.isCharAttack = !movingChar.isHero;
+
+                    Debug.Log($"[PlacementManager] 드래그로 (placable→walkable) 이동 => waypoint[0]에서 시작");
+                }
+                else
+                {
+                    // spawner가 없으면 되돌림
+                    Debug.LogWarning("[PlacementManager] OnDrop => WaveSpawner 불가 => revert");
+                    if (oldTile != null)
+                    {
+                        MoveCharacterToTile(movingChar, oldTile);
+                        CreatePlaceTileChild(oldTile);
+                    }
+                    return;
                 }
             }
             else if (newTile.IsWalkable2())
             {
+                // area2 웨이브처럼 waypoint[0]에서 다시 시작
                 WaveSpawnerRegion2 spawner2 = FindFirstObjectByType<WaveSpawnerRegion2>();
-                if (spawner2 != null && spawner2.topWaypointsForAI != null && spawner2.topWaypointsForAI.Length > 0 && ourMonsterPanel != null)
+                if (spawner2 != null && spawner2.topWaypointsForAI != null && spawner2.topWaypointsForAI.Length > 0 && opponentOurMonsterPanel != null)
                 {
-                    Vector3 spawnPos = spawner2.topWaypointsForAI[0].position;
-                    RectTransform moveRect = movingChar.GetComponent<RectTransform>();
+                    Vector3 spawnPos2 = spawner2.topWaypointsForAI[0].position;
 
-                    if (moveRect != null && ourMonsterPanel != null)
+                    RectTransform charRect = movingChar.GetComponent<RectTransform>();
+                    if (charRect != null)
                     {
-                        Vector2 localPos = ourMonsterPanel.InverseTransformPoint(spawnPos);
-                        moveRect.SetParent(ourMonsterPanel, false);
-                        moveRect.localRotation = Quaternion.identity;
-                        moveRect.anchoredPosition = localPos;
+                        Vector2 localPos = opponentOurMonsterPanel.InverseTransformPoint(spawnPos2);
+                        charRect.SetParent(opponentOurMonsterPanel, false);
+                        charRect.anchoredPosition = localPos;
+                        charRect.localRotation = Quaternion.identity;
                     }
                     else
                     {
                         movingChar.transform.SetParent(null);
-                        movingChar.transform.position = spawnPos;
+                        movingChar.transform.position = spawnPos2;
                         movingChar.transform.localRotation = Quaternion.identity;
                     }
 
+                    // 웨이포인트 이동값 재설정
                     movingChar.currentTile = null;
                     movingChar.currentWaypointIndex = 0;
                     movingChar.maxWaypointIndex = 6;
                     movingChar.areaIndex = 2;
+                    movingChar.pathWaypoints = spawner2.topWaypointsForAI;
                     movingChar.isCharAttack = !movingChar.isHero;
+
+                    Debug.Log($"[PlacementManager] 드래그로 (placable→walkable2) 이동 => waypoint[0]에서 시작");
+                }
+                else
+                {
+                    Debug.LogWarning("[PlacementManager] OnDrop => WaveSpawnerRegion2 불가 => revert");
+                    if (oldTile != null)
+                    {
+                        MoveCharacterToTile(movingChar, oldTile);
+                        CreatePlaceTileChild(oldTile);
+                    }
+                    return;
                 }
             }
             else
             {
-                // 건물형
+                // 건물형 이동
                 MoveCharacterToTile(movingChar, newTile);
                 movingChar.currentWaypointIndex = -1;
                 movingChar.maxWaypointIndex = 6;
                 movingChar.isCharAttack = false;
+                // ↑ 기존 로직
             }
 
             // 새 타일 Occupy
             CreatePlaceTileChild(newTile);
-            Debug.Log("[PlacementManager] 캐릭터가 새 타일로 이동 완료");
+            Debug.Log("[PlacementManager] 캐릭터가 새 타일로 이동(또는 웨이포인트 모드) 완료");
         }
     }
 
-    /// <summary>
-    /// 현재 씬 상에 다른 캐릭터 중 newTile == currentTile인 애가 있는지 확인
-    /// </summary>
     private bool CheckAnyCharacterHasCurrentTile(Tile tile)
     {
         Character[] allChars = FindObjectsByType<Character>(FindObjectsSortMode.None);
@@ -986,60 +1060,6 @@ public class PlacementManager : MonoBehaviour
         return false;
     }
 
-    /// <summary>
-    /// 캐릭터를 특정 타일(또는 부모 패널)로 '건물형' 이동
-    /// (walkable 이동은 위에서 별도 처리)
-    /// </summary>
-    private void MoveCharacterToTile(Character character, Tile tile)
-    {
-        if (tile == null) return;
-
-        bool isArea2 = tile.IsWalkable2() || tile.IsPlacable2() || tile.IsPlaced2();
-
-        RectTransform charRect = character.GetComponent<RectTransform>();
-        if (charRect != null)
-        {
-            RectTransform targetParent;
-            if ((tile.IsWalkable() || tile.IsWalkable2()) && ourMonsterPanel != null)
-            {
-                targetParent = ourMonsterPanel;
-            }
-            else
-            {
-                targetParent = isArea2
-                    ? (opponentCharacterPanel != null ? opponentCharacterPanel : characterPanel)
-                    : characterPanel;
-            }
-
-            RectTransform tileRect = tile.GetComponent<RectTransform>();
-            if (tileRect != null)
-            {
-                Vector2 localPos = targetParent.InverseTransformPoint(tileRect.transform.position);
-                charRect.SetParent(targetParent, false);
-                charRect.anchoredPosition = localPos;
-                charRect.localRotation = Quaternion.identity;
-            }
-            else
-            {
-                character.transform.SetParent(targetParent, false);
-                character.transform.position = tile.transform.position;
-                character.transform.localRotation = Quaternion.identity;
-            }
-        }
-        else
-        {
-            character.transform.position = tile.transform.position;
-            character.transform.localRotation = Quaternion.identity;
-        }
-
-        character.currentTile = tile;
-        character.areaIndex = isArea2 ? 2 : 1;
-    }
-
-    /// <summary>
-    /// 2성 + 2성 => 2성 풀 재탄생, 3성 + 3성 => 3성 풀 재탄생
-    /// 1성 + 1성 => (기존대로) 2성으로 승급
-    /// </summary>
     private bool TryMergeCharacter(Character movingChar, Tile newTile)
     {
         Debug.Log($"[PlacementManager] TryMergeCharacter: movingChar={movingChar.characterName}, star={movingChar.star}, tile={newTile.name}");
@@ -1057,7 +1077,7 @@ public class PlacementManager : MonoBehaviour
                     switch (otherChar.star)
                     {
                         case CharacterStar.OneStar:
-                            // 1성 + 1성 => 2성으로 승급(기존 로직)
+                            // 1성 + 1성 => 2성으로 승급
                             otherChar.star = CharacterStar.TwoStar;
                             RandomizeAppearanceByStarAndRace(otherChar, CharacterStar.TwoStar);
                             UpgradeStats(otherChar);
@@ -1066,8 +1086,8 @@ public class PlacementManager : MonoBehaviour
                             return true;
 
                         case CharacterStar.TwoStar:
-                            // 2성 + 2성 => 여전히 2성, 다만 2성 풀 중 임의 캐릭터로 재탄생
-                            otherChar.star = CharacterStar.TwoStar; // 그대로 2성
+                            // 2성 + 2성 => (2성 풀) 무작위 재탄생
+                            otherChar.star = CharacterStar.TwoStar;
                             RandomizeAppearanceByStarAndRace(otherChar, CharacterStar.TwoStar);
                             UpgradeStats(otherChar);
                             Destroy(movingChar.gameObject);
@@ -1075,8 +1095,8 @@ public class PlacementManager : MonoBehaviour
                             return true;
 
                         case CharacterStar.ThreeStar:
-                            // 3성 + 3성 => 여전히 3성, 다만 3성 풀에서 임의 캐릭터
-                            otherChar.star = CharacterStar.ThreeStar; // 그대로 3성
+                            // 3성 + 3성 => (3성 풀) 무작위 재탄생
+                            otherChar.star = CharacterStar.ThreeStar;
                             RandomizeAppearanceByStarAndRace(otherChar, CharacterStar.ThreeStar);
                             UpgradeStats(otherChar);
                             Destroy(movingChar.gameObject);
@@ -1098,10 +1118,6 @@ public class PlacementManager : MonoBehaviour
         return false;
     }
 
-    /// <summary>
-    /// (2성/3성 합성 시) 지역에 따라 starMergeDatabase / starMergeDatabaseRegion2 중 하나를 사용해
-    /// 무작위로 외형(CharacterData)만 교체. (없으면 fallback 로직)
-    /// </summary>
     private void RandomizeAppearanceByStarAndRace(Character ch, CharacterStar newStar)
     {
         StarMergeDatabaseObject targetDB;
@@ -1218,7 +1234,6 @@ public class PlacementManager : MonoBehaviour
 
     private void UpgradeStats(Character ch)
     {
-        // 기존값 역산
         float baseAtk = ch.attackPower / 1.6f;
         float baseRange = ch.attackRange / 1.2f;
         float baseSpeed = ch.attackSpeed / 1.2f;
@@ -1242,6 +1257,52 @@ public class PlacementManager : MonoBehaviour
                 break;
         }
         ch.ApplyStarVisual();
+    }
+
+    private void MoveCharacterToTile(Character character, Tile tile)
+    {
+        if (tile == null) return;
+
+        bool isArea2 = tile.IsWalkable2() || tile.IsPlacable2() || tile.IsPlaced2();
+
+        RectTransform charRect = character.GetComponent<RectTransform>();
+        if (charRect != null)
+        {
+            RectTransform targetParent;
+            if ((tile.IsWalkable() || tile.IsWalkable2()) && ourMonsterPanel != null)
+            {
+                targetParent = ourMonsterPanel;
+            }
+            else
+            {
+                targetParent = isArea2
+                    ? (opponentCharacterPanel != null ? opponentCharacterPanel : characterPanel)
+                    : characterPanel;
+            }
+
+            RectTransform tileRect = tile.GetComponent<RectTransform>();
+            if (tileRect != null)
+            {
+                Vector2 localPos = targetParent.InverseTransformPoint(tileRect.transform.position);
+                charRect.SetParent(targetParent, false);
+                charRect.anchoredPosition = localPos;
+                charRect.localRotation = Quaternion.identity;
+            }
+            else
+            {
+                character.transform.SetParent(targetParent, false);
+                character.transform.position = tile.transform.position;
+                character.transform.localRotation = Quaternion.identity;
+            }
+        }
+        else
+        {
+            character.transform.position = tile.transform.position;
+            character.transform.localRotation = Quaternion.identity;
+        }
+
+        character.currentTile = tile;
+        character.areaIndex = isArea2 ? 2 : 1;
     }
 
     private void CreatePlaceTileChild(Tile tile)

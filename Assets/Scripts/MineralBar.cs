@@ -20,7 +20,8 @@ public class MineralBar : MonoBehaviour
 
     private void Start()
     {
-        currentSegments = Mathf.Clamp(initialSegments, 0, maxSegments);
+        // 시작부터 미네랄 바를 완전히 비움 (0으로 시작)
+        currentSegments = 0;
         UpdateBarVisual();
 
         if (autoStartFilling)

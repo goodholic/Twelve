@@ -1,3 +1,5 @@
+// Assets\Scripts\CharacterJumpController.cs
+
 using System.Collections;
 using System;
 using UnityEngine;
@@ -13,6 +15,13 @@ using UnityEngine.UI;
 ///
 /// - 일반적인 2D UI 좌표(anchoredPosition)에서 포물선 형태 이동을 구현.
 /// - Arc 곡률, 이동 시간(duration) 등을 파라미터로 조절 가능.
+///
+/// ---
+/// *** 주의 ***
+/// StartTile Rect, EndTile Rect 등이 'Canvas'의 자식 RectTransform이라면,
+/// 좌표 변환 시 Canvas 내부의 로컬 좌표를 사용해야 합니다.
+/// 즉, A/B 타일(=StartTileRect, EndTileRect)은 모두 Canvas 아래에 있는지 확인하세요.
+/// ---
 /// </summary>
 public class CharacterJumpController : MonoBehaviour
 {
@@ -24,10 +33,10 @@ public class CharacterJumpController : MonoBehaviour
     public float jumpDuration = 0.8f;
 
     [Header("테스트용 (자동점프)")]
-    [Tooltip("시작 Tile의 RectTransform (테스트용)")]
+    [Tooltip("시작 Tile의 RectTransform (테스트용). Canvas의 자식에 배치되어 있어야 함.")]
     public RectTransform startTileRect;
 
-    [Tooltip("도착 Tile의 RectTransform (테스트용)")]
+    [Tooltip("도착 Tile의 RectTransform (테스트용). Canvas의 자식에 배치되어 있어야 함.")]
     public RectTransform endTileRect;
 
     [Tooltip("씬 시작 시 즉시 점프를 테스트하려면 true")]
@@ -36,7 +45,6 @@ public class CharacterJumpController : MonoBehaviour
     // 이동 대상 캐릭터의 RectTransform
     private RectTransform charRect;
 
-    // ====================== [추가된 필드/이벤트] ======================
     /// <summary>
     /// 점프가 진행 중인지 여부
     /// </summary>
@@ -46,7 +54,6 @@ public class CharacterJumpController : MonoBehaviour
     /// 점프 애니메이션 완료 시 호출될 콜백
     /// </summary>
     public Action onJumpComplete;
-    // ===============================================================
 
     private void Awake()
     {
@@ -75,8 +82,8 @@ public class CharacterJumpController : MonoBehaviour
     /// 실제 점프 코루틴을 실행하는 메서드.
     /// 예: JumpToTile(A타일, B타일)
     /// </summary>
-    /// <param name="fromTile">시작 타일(RectTransform)</param>
-    /// <param name="toTile">목표 타일(RectTransform)</param>
+    /// <param name="fromTile">시작 타일(RectTransform, 반드시 Canvas의 자식)</param>
+    /// <param name="toTile">목표 타일(RectTransform, 반드시 Canvas의 자식)</param>
     public void JumpToTile(RectTransform fromTile, RectTransform toTile)
     {
         if (charRect == null) return;
@@ -93,7 +100,7 @@ public class CharacterJumpController : MonoBehaviour
         // 우선 캐릭터를 fromTile 위치로 이동
         charRect.anchoredPosition = fromPos;
 
-        // === [추가] 점프 중 상태 세팅 ===
+        // 점프 중 상태 세팅
         isJumping = true;
 
         // 점프 코루틴 실행
@@ -110,9 +117,8 @@ public class CharacterJumpController : MonoBehaviour
     public void JumpToPosition(Vector2 startPos, Vector2 endPos, float arcHeight, float duration)
     {
         if (charRect == null) return;
-        // === [추가] 점프 중 상태 세팅 ===
-        isJumping = true;
 
+        isJumping = true;
         StartCoroutine(JumpCoroutine(startPos, endPos, arcHeight, duration));
     }
 
@@ -132,7 +138,7 @@ public class CharacterJumpController : MonoBehaviour
             float xPos = Mathf.Lerp(start.x, end.x, t);
 
             // 세로(포물선) 보간:
-            float heightCurve = 4f * arc * t * (1f - t); 
+            float heightCurve = 4f * arc * t * (1f - t);
             float yPos = Mathf.Lerp(start.y, end.y, t) + heightCurve;
 
             // 실제 UI 위치 반영
@@ -150,7 +156,7 @@ public class CharacterJumpController : MonoBehaviour
             charRect.anchoredPosition = end;
         }
 
-        // === [추가] 점프 완료 처리 ===
+        // === 점프 완료 처리 ===
         isJumping = false;
         onJumpComplete?.Invoke();
     }

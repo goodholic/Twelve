@@ -14,7 +14,6 @@ GameObject:
   - component: {fileID: 3955584002631397038}
   - component: {fileID: 7385725289367250654}
   - component: {fileID: 7445769332850509592}
-  - component: {fileID: 5249541629320800554}
   m_Layer: 5
   m_Name: Tile Prefab (5)
   m_TagString: Untagged
@@ -209,25 +208,3 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 0
         m_CallState: 2
---- !u!114 &5249541629320800554
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 9173002575500303321}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f749c7e48f0b069419ab38f0c9234706, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  teleportDestination: {fileID: 8870864530132773612, guid: 056b317d9e4875f45a50c4cd69148f3b, type: 3}
-  teleportTag: Player
-  teleportCooldown: 0
-  matchDestinationRotation: 0
-  effectBeforeTeleport: {fileID: 0}
-  effectAfterTeleport: {fileID: 0}
-  teleportSound: {fileID: 0}
-  audioSource: {fileID: 0}
-  ourMonsterPanel: {fileID: 4516779461574692905, guid: 6d82a503d1aca774aa5357ebe68cbf7d, type: 3}
-  opponentOurMonsterPanel: {fileID: 1118317560282870683, guid: 28a5cbdfa467e7b448953d8302740402, type: 3}

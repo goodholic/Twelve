@@ -17,7 +17,10 @@ public class Region2AIManager : MonoBehaviour
     public CharacterDatabaseObject opponentCharacterDatabase;
 
     [Header("캐릭터 자동 소환 간격(초)")]
-    public float spawnInterval = 3f;
+    public float spawnInterval = 1f;
+
+    [Header("소환 실패 시 재시도 대기 시간")]
+    public float retryInterval = 0.3f;
 
     [Header("지역2 타일들 (Walkable2)")]
     public List<Tile> walkable2Tiles = new List<Tile>();
@@ -37,6 +40,24 @@ public class Region2AIManager : MonoBehaviour
         {
             PlacementManager.Instance.enemyDatabase = opponentCharacterDatabase;
             Debug.Log("[Region2AIManager] PlacementManager.enemyDatabase에 opponentCharacterDatabase를 연결했습니다.");
+            
+            // UI 패널 상태 확인
+            RectTransform opponentCharPanel = PlacementManager.Instance.opponentCharacterPanel;
+            RectTransform opponentBulletPanel = PlacementManager.Instance.opponentBulletPanel;
+            RectTransform opponentMonsterPanel = PlacementManager.Instance.opponentOurMonsterPanel;
+            
+            Debug.Log($"[Region2AIManager] UI 패널 상태: opponentCharPanel={opponentCharPanel != null}, " +
+                    $"opponentBulletPanel={opponentBulletPanel != null}, opponentMonsterPanel={opponentMonsterPanel != null}");
+            
+            // 씬의 모든 Canvas 확인
+            Canvas[] allCanvases = GameObject.FindObjectsByType<Canvas>(FindObjectsSortMode.None);
+            Debug.Log($"[Region2AIManager] 씬에 존재하는 Canvas 개수: {allCanvases.Length}");
+            for (int i = 0; i < allCanvases.Length; i++)
+            {
+                Canvas c = allCanvases[i];
+                Debug.Log($"[Region2AIManager] Canvas[{i}]: {c.name}, RenderMode={c.renderMode}, " +
+                        $"OverrideSorting={c.overrideSorting}, SortingOrder={c.sortingOrder}");
+            }
         }
 
         // (B) 지역2 히어로(인덱스=9) 즉시 생성 시도
@@ -130,6 +151,10 @@ public class Region2AIManager : MonoBehaviour
     private IEnumerator AIRoutine()
     {
         isRunning = true;
+        
+        // 게임 시작 직후 약간의 지연 (1초)만 주고 바로 소환 시작
+        yield return new WaitForSeconds(1f);
+        
         while (isRunning)
         {
             CharacterData chosen = SelectRandomUnit();
@@ -138,7 +163,14 @@ public class Region2AIManager : MonoBehaviour
                 Tile targetTile = PickRandomRegion2Tile();
                 if (targetTile != null)
                 {
-                    SummonCharacterInRegion2(chosen, targetTile);
+                    bool summonSuccess = SummonCharacterInRegion2(chosen, targetTile);
+                    
+                    // 미네랄이 부족하여 소환이 실패했다면 더 짧은 시간 후에 재시도
+                    if (!summonSuccess)
+                    {
+                        yield return new WaitForSeconds(retryInterval);
+                        continue; // 다음 루프 반복으로 바로 이동
+                    }
                 }
             }
             yield return new WaitForSeconds(spawnInterval);
@@ -162,18 +194,38 @@ public class Region2AIManager : MonoBehaviour
             CharacterData c = opponentCharacterDatabase.characters[i];
             if (c != null)
             {
-                validList.Add(c);
+                // 프리팹 유효성 검사 추가
+                if (c.spawnPrefab != null)
+                {
+                    // Character 컴포넌트 확인
+                    Character charComp = c.spawnPrefab.GetComponent<Character>();
+                    if (charComp != null)
+                    {
+                        validList.Add(c);
+                    }
+                    else
+                    {
+                        Debug.LogWarning($"[Region2AIManager] 캐릭터({c.characterName})의 spawnPrefab에 Character 컴포넌트가 없음 => 소환 목록에서 제외");
+                    }
+                }
+                else
+                {
+                    Debug.LogWarning($"[Region2AIManager] 캐릭터({c.characterName})의 spawnPrefab이 null => 소환 목록에서 제외");
+                }
             }
         }
 
         if (validList.Count == 0)
         {
-            Debug.Log("[Region2AIManager] 소환 가능 캐릭터(0..8)가 모두 null => 더 이상 소환할 유닛 없음");
+            Debug.Log("[Region2AIManager] 소환 가능 캐릭터(0..8)가 모두 null/invalid => 더 이상 소환할 유닛 없음");
             return null;
         }
 
         int randIdx = Random.Range(0, validList.Count);
-        return validList[randIdx];
+        CharacterData selected = validList[randIdx];
+        Debug.Log($"[Region2AIManager] 선택된 랜덤 캐릭터: {selected.characterName}, spawnPrefab={selected.spawnPrefab.name}, " + 
+                 $"cost={selected.cost}, attackPower={selected.attackPower}");
+        return selected;
     }
 
     /// <summary>
@@ -186,65 +238,127 @@ public class Region2AIManager : MonoBehaviour
 
         if (!hasWalkable2 && !hasPlacable2)
         {
+            Debug.LogError("[Region2AIManager] 소환 가능한 타일이 없습니다. walkable2Tiles와 placable2Tiles를 Inspector에서 설정해주세요.");
             return null;
         }
 
-        if (hasWalkable2 && hasPlacable2)
+        // 타일 선택 - 랜덤 선택 전에 유효성 확인
+        Tile selectedTile = null;
+        
+        // 최대 5번 시도
+        for (int attempt = 0; attempt < 5; attempt++)
         {
-            if (Random.value < 0.5f)
-                return walkable2Tiles[Random.Range(0, walkable2Tiles.Count)];
+            if (hasWalkable2 && hasPlacable2)
+            {
+                if (Random.value < 0.5f)
+                    selectedTile = walkable2Tiles[Random.Range(0, walkable2Tiles.Count)];
+                else
+                    selectedTile = placable2Tiles[Random.Range(0, placable2Tiles.Count)];
+            }
+            else if (hasWalkable2)
+            {
+                selectedTile = walkable2Tiles[Random.Range(0, walkable2Tiles.Count)];
+            }
             else
-                return placable2Tiles[Random.Range(0, placable2Tiles.Count)];
+            {
+                selectedTile = placable2Tiles[Random.Range(0, placable2Tiles.Count)];
+            }
+            
+            // 선택된 타일이 유효한지 확인
+            if (selectedTile != null && selectedTile.CanPlaceCharacter())
+            {
+                // 타일이 이미 다른 캐릭터에 의해 점유되었는지 확인
+                bool isOccupied = IsOccupiedByCharacter(selectedTile);
+                if (!isOccupied)
+                {
+                    Debug.Log($"[Region2AIManager] 유효한 타일 찾음: {selectedTile.name} (시도 {attempt+1}/5)");
+                    return selectedTile;
+                }
+            }
         }
-        else if (hasWalkable2)
+        
+        // 모든 시도 후에도 적합한 타일을 찾지 못했으면 첫 번째 타일 반환
+        if (hasWalkable2)
         {
-            return walkable2Tiles[Random.Range(0, walkable2Tiles.Count)];
+            Debug.LogWarning("[Region2AIManager] 적합한 타일을 찾지 못해 첫 번째 walkable2 타일 사용");
+            return walkable2Tiles[0];
         }
         else
         {
-            return placable2Tiles[Random.Range(0, placable2Tiles.Count)];
+            Debug.LogWarning("[Region2AIManager] 적합한 타일을 찾지 못해 첫 번째 placable2 타일 사용");
+            return placable2Tiles[0];
         }
+    }
+    
+    /// <summary>
+    /// 타일이 이미 다른 캐릭터에 의해 점유되었는지 확인
+    /// </summary>
+    private bool IsOccupiedByCharacter(Tile tile)
+    {
+        if (tile == null) return false;
+        
+        Character[] allCharacters = GameObject.FindObjectsByType<Character>(FindObjectsSortMode.None);
+        foreach (Character c in allCharacters)
+        {
+            if (c != null && c.currentTile == tile)
+            {
+                return true;
+            }
+        }
+        return false;
     }
 
     /// <summary>
     /// chosen == AI가 골라낸 CharacterData
     /// => DB의 characters[] 중에서 인덱스 찾기 → PlacementManager 소환
     /// </summary>
-    private void SummonCharacterInRegion2(CharacterData chosen, Tile tile)
+    private bool SummonCharacterInRegion2(CharacterData chosen, Tile tile)
     {
         Debug.Log($"[Region2AIManager] SummonCharacterInRegion2() => chosen={chosen?.characterName}, tile={tile?.name}");
 
         if (chosen == null)
         {
             Debug.LogWarning("[Region2AIManager] 소환할 캐릭터가 null");
-            return;
+            return false;
         }
         if (tile == null)
         {
             Debug.LogWarning("[Region2AIManager] 소환할 타일이 null");
-            return;
+            return false;
         }
 
-        if (PlacementManager.Instance != null && PlacementManager.Instance.region2MineralBar != null)
+        // 추가 디버그 정보
+        Debug.Log($"[Region2AIManager] 캐릭터 상세정보: spawnPrefab={(chosen.spawnPrefab != null ? "존재함" : "null")}, " +
+                 $"attackPower={chosen.attackPower}, attackRange={chosen.attackRange}, cost={chosen.cost}");
+
+        // PlacementManager 유효성 검증
+        if (PlacementManager.Instance == null)
+        {
+            Debug.LogError("[Region2AIManager] PlacementManager.Instance가 null입니다.");
+            return false;
+        }
+        
+        // 미네랄 소비 체크
+        if (PlacementManager.Instance.region2MineralBar != null)
         {
             bool canSpend = PlacementManager.Instance.region2MineralBar.TrySpend(chosen.cost);
             if (!canSpend)
             {
                 Debug.LogWarning($"[Region2AIManager] 미네랄 부족 => {chosen.characterName} 소환 불가");
-                return;
+                return false;
             }
         }
         else
         {
             Debug.LogWarning("[Region2AIManager] region2MineralBar가 존재하지 않습니다");
-            return;
+            return false;
         }
 
         int foundIndex = System.Array.IndexOf(opponentCharacterDatabase.characters, chosen);
         if (foundIndex < 0)
         {
             Debug.LogWarning($"[Region2AIManager] DB에서 {chosen.characterName} 인덱스를 찾지 못함 => 소환 실패");
-            return;
+            return false;
         }
 
         // 타일 위 다른 캐릭터(occupant) 있는지 검사 -> 합성
@@ -275,11 +389,45 @@ public class Region2AIManager : MonoBehaviour
             {
                 Debug.Log($"[Region2AIManager] 타일({tile.name})에 다른 캐릭터가 있어 소환/합성 불가 => {occupantChar.characterName} (star={occupantChar.star})");
             }
-            return;
+            return true;
         }
 
-        // 비었으면 정상 소환
-        PlacementManager.Instance.SummonCharacterOnTile(foundIndex, tile, forceEnemyArea2: true);
-        Debug.Log($"[Region2AIManager] <color=magenta>AI 소환</color> => {chosen.characterName}, tile={tile.name}, cost={chosen.cost}");
+        // 비었으면 정상 소환 시도
+        try
+        {
+            if (tile.CanPlaceCharacter())
+            {
+                // AI는 지역2에만 소환 가능
+                if (tile.IsWalkable2() || tile.IsPlacable2() || tile.IsPlaced2())
+                {
+                    // UI 패널 검증
+                    bool hasOpponentCharPanel = PlacementManager.Instance.opponentCharacterPanel != null;
+                    bool hasOpponentBulletPanel = PlacementManager.Instance.opponentBulletPanel != null;
+                    bool hasOpponentMonsterPanel = PlacementManager.Instance.opponentOurMonsterPanel != null;
+                    Debug.Log($"[Region2AIManager] 소환 전 UI 패널 상태: opponentCharacterPanel={hasOpponentCharPanel}, " +
+                             $"opponentBulletPanel={hasOpponentBulletPanel}, opponentOurMonsterPanel={hasOpponentMonsterPanel}");
+                    
+                    // 실제 소환 시도
+                    PlacementManager.Instance.SummonCharacterOnTile(foundIndex, tile, forceEnemyArea2: true);
+                    Debug.Log($"[Region2AIManager] <color=magenta>AI 소환 성공</color> => {chosen.characterName}, tile={tile.name}, cost={chosen.cost}");
+                    return true;
+                }
+                else
+                {
+                    Debug.LogError($"[Region2AIManager] 타일({tile.name})은 지역2 타일이 아닙니다! IsWalkable2={tile.IsWalkable2()}, IsPlacable2={tile.IsPlacable2()}, IsPlaced2={tile.IsPlaced2()}");
+                    return false;
+                }
+            }
+            else
+            {
+                Debug.LogWarning($"[Region2AIManager] 타일({tile.name})에 캐릭터를 배치할 수 없습니다. CanPlaceCharacter() = false");
+                return false;
+            }
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError($"[Region2AIManager] 캐릭터 소환 중 오류 발생: {ex.Message}\n{ex.StackTrace}");
+            return false;
+        }
     }
 }
