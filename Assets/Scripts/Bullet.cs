@@ -40,7 +40,7 @@ public class Bullet : MonoBehaviour
 
     [Header("타겟 / 기타")]
     public GameObject target;        // 몬스터나 캐릭터 모두 사용 가능하도록 GameObject로 변경
-    private float aliveTime = 0f;
+    private float aliveTime = 0f; // 이게 뭐지???
     
     // 모든 대상에 대해 동일한 처리를 위한 참조
     private IDamageable damageableTarget;  // 인터페이스 사용
@@ -158,7 +158,7 @@ public class Bullet : MonoBehaviour
     {
         piercedCount = 0;
         currentBounceCount = 0;
-        chainAttackedMonsters.Clear();
+        chainAttackedMonsters.Clear(); // 이전에 기록된 연쇄 공격 대상 목록도 완전히 비워서 깨끗한 상태에서 로직을 시작하기 위해서입니다.
 
         // ▼▼ [추가] RectTransform 초기화 (UI 상에서 총알이 안 보이는 현상 방지) ▼▼
         RectTransform rt = GetComponent<RectTransform>();
@@ -168,11 +168,14 @@ public class Bullet : MonoBehaviour
             rt.anchorMin = new Vector2(0.5f, 0.5f);
             rt.anchorMax = new Vector2(0.5f, 0.5f);
             rt.pivot = new Vector2(0.5f, 0.5f);
+            // 결과적으로 이 UI는 “부모 캔버스의 중앙”에 놓이고, 너비·높이를 바꿀 때도 중심을 기준으로 동작합니다.
+
 
             // 부모 패널 크기에 맞춰 축소되지 않도록 localScale 보정
             rt.localScale = Vector3.one;
 
-            // (선택) 가장 위로 올리기
+            // (선택) 가장 위로 올리기 // 같은 부모 아래 있는 UI 요소들 중에서 이 오브젝트를 맨 뒤(가장 위에 렌더링) 로 이동시킵니다. 
+            // 즉, 다른 UI 위에 가려질 일이 없도록 “포그라운드”로 배치하는 기능이에요.
             rt.SetAsLastSibling();
         }
         // ▲▲ [추가 끝] ▲▲
@@ -218,7 +221,7 @@ public class Bullet : MonoBehaviour
                 float dist = Vector2.Distance(transform.position, target.transform.position);
                 if (dist < 0.2f)
                 {
-                    OnHitTarget();
+                    OnHitTarget(); // “이 오브젝트가 목표(target)에 충분히 가까워졌을 때” 실제로 히트 처리를 한 번만 실행해 주기 위해 넣는 수동 충돌 검사 역할
                 }
                 break;
             }
@@ -413,7 +416,9 @@ public class Bullet : MonoBehaviour
         // 가장 가까운 대상 찾기(몬스터/캐릭터)
         GameObject bestTarget = null;
         IDamageable bestDamageable = null;
-        float minDist = float.MaxValue;
+        float minDist = float.MaxValue; // float.MaxValue 는 “가능한 가장 큰 실수 값” 으로,
+        // 첫 번째 비교 시 어떤 실제 거리값도 이 값보다 작기 때문에
+        // 무조건 최초 후보가 이 minDist 를 갱신 하게 만듭니다.
         
         // 1. 몬스터 찾기
         Monster[] monsters = Object.FindObjectsByType<Monster>(FindObjectsSortMode.None);
