@@ -2,96 +2,117 @@ using System.Collections;
 using UnityEngine;
 
 /// <summary>
-/// 단순 2D 바(구버전 Image Fill이 없다고 가정) 예시
+/// 미네랄 바 컨트롤러: 0부터 시작해서 1초에 1씩 자동으로 채워지는 미네랄 시스템
 /// </summary>
 public class MineralBar : MonoBehaviour
 {
-    [Header("Bar Foreground RectTransform")]
-    public RectTransform barForeground;
+    [Header("미네랄 바 설정")]
+    public RectTransform fillBar;            // 채워지는 바 이미지의 RectTransform
+    public int maxMinerals = 10;             // 최대 미네랄 수
+    public float fillDelay = 1.0f;           // 1 미네랄 채워지는데 걸리는 시간(초)
+    public float barMaxWidth = 1080f;        // 바의 최대 너비
 
-    [Header("Mineral Bar Settings")]
-    public int maxSegments = 10;
-    public int fillPerSecond = 1;
-    public float maxBarWidth = 200f;
-    public int initialSegments = 0;
-    public bool autoStartFilling = true;
-
-    private int currentSegments = 0;
+    private int currentMinerals = 0;         // 현재 미네랄 수
+    private Coroutine fillCoroutine;         // 미네랄 채우기 코루틴 참조
 
     private void Start()
     {
-        // 시작부터 미네랄 바를 완전히 비움 (0으로 시작)
-        currentSegments = 0;
-        UpdateBarVisual();
-
-        if (autoStartFilling)
-        {
-            StartCoroutine(FillMineralBarCoroutine());
-        }
+        // 미네랄 바를 0으로 초기화
+        currentMinerals = 0;
+        UpdateVisual();
+        
+        // 자동 채우기 시작
+        StartFilling();
     }
 
     /// <summary>
-    /// [수정] 바가 가득 차 있어도 계속 루프를 돌며,
-    /// 소모 후 다시 currentSegments < maxSegments이면 재충전되도록 변경.
+    /// 미네랄 바를 자동으로 채우는 코루틴
     /// </summary>
-    private IEnumerator FillMineralBarCoroutine()
+    private IEnumerator FillMineralRoutine()
     {
-        // 무한루프로 전환
         while (true)
         {
-            // 현재 바가 maxSegments 미만이면 충전
-            if (currentSegments < maxSegments)
+            // 최대치에 도달하지 않았다면 미네랄 증가
+            if (currentMinerals < maxMinerals)
             {
-                currentSegments += fillPerSecond;
-                if (currentSegments > maxSegments)
-                {
-                    currentSegments = maxSegments;
-                }
-                UpdateBarVisual();
+                yield return new WaitForSeconds(fillDelay);
+                currentMinerals++;
+                UpdateVisual();
             }
-
-            yield return new WaitForSeconds(1f);
+            else
+            {
+                // 최대치에 도달하면 대기
+                yield return null;
+            }
         }
-    }
-
-    private void UpdateBarVisual()
-    {
-        float fillRatio = (float)currentSegments / maxSegments;
-
-        if (barForeground != null)
-        {
-            Vector2 size = barForeground.sizeDelta;
-            size.x = maxBarWidth * fillRatio;
-            barForeground.sizeDelta = size;
-        }
-    }
-
-    public void StartFilling()
-    {
-        StopAllCoroutines();
-        StartCoroutine(FillMineralBarCoroutine());
-    }
-
-    public void ResetBar()
-    {
-        StopAllCoroutines();
-        currentSegments = 0;
-        UpdateBarVisual();
     }
 
     /// <summary>
-    /// 지정된 비용만큼 미네랄을 소모합니다. 충분한 미네랄이 있는 경우만 소모하고 true를 반환합니다.
+    /// 미네랄 바 시각적 업데이트
     /// </summary>
-    /// <param name="cost">소모할 미네랄 비용</param>
-    /// <returns>성공적으로 소모했으면 true, 미네랄이 부족하면 false</returns>
+    private void UpdateVisual()
+    {
+        if (fillBar != null)
+        {
+            // 현재 미네랄에 비례하여 바 너비 계산
+            float fillRatio = (float)currentMinerals / maxMinerals;
+            Vector2 size = fillBar.sizeDelta;
+            size.x = barMaxWidth * fillRatio;
+            fillBar.sizeDelta = size;
+        }
+    }
+
+    /// <summary>
+    /// 미네랄 자동 채우기 시작
+    /// </summary>
+    public void StartFilling()
+    {
+        if (fillCoroutine != null)
+        {
+            StopCoroutine(fillCoroutine);
+        }
+        
+        fillCoroutine = StartCoroutine(FillMineralRoutine());
+    }
+
+    /// <summary>
+    /// 미네랄을 소비합니다
+    /// </summary>
+    /// <param name="cost">소비할 미네랄 양</param>
+    /// <returns>소비 성공 여부</returns>
     public bool TrySpend(int cost)
     {
-        if (currentSegments >= cost)
+        // 충분한 미네랄이 있는지 확인
+        if (currentMinerals >= cost)
         {
-            currentSegments -= cost;
-            UpdateBarVisual();
+            // 미네랄 차감
+            currentMinerals -= cost;
+            // 시각적 업데이트
+            UpdateVisual();
             return true;
         }
+        
+        // 미네랄 부족
         return false;
+    }
+
+    /// <summary>
+    /// 현재 미네랄 수 반환
+    /// </summary>
+    public int GetCurrentMinerals()
+    {
+        return currentMinerals;
+    }
+
+    /// <summary>
+    /// 게임 오브젝트가 비활성화될 때 코루틴 정리
+    /// </summary>
+    private void OnDisable()
+    {
+        if (fillCoroutine != null)
+        {
+            StopCoroutine(fillCoroutine);
+            fillCoroutine = null;
+        }
     }
 }

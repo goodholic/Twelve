@@ -338,22 +338,6 @@ public class Region2AIManager : MonoBehaviour
             return false;
         }
         
-        // 미네랄 소비 체크
-        if (PlacementManager.Instance.region2MineralBar != null)
-        {
-            bool canSpend = PlacementManager.Instance.region2MineralBar.TrySpend(chosen.cost);
-            if (!canSpend)
-            {
-                Debug.LogWarning($"[Region2AIManager] 미네랄 부족 => {chosen.characterName} 소환 불가");
-                return false;
-            }
-        }
-        else
-        {
-            Debug.LogWarning("[Region2AIManager] region2MineralBar가 존재하지 않습니다");
-            return false;
-        }
-
         int foundIndex = System.Array.IndexOf(opponentCharacterDatabase.characters, chosen);
         if (foundIndex < 0)
         {
@@ -380,6 +364,22 @@ public class Region2AIManager : MonoBehaviour
                 && (int)occupantChar.star < 3
                 && (int)occupantChar.star == (int)chosen.initialStar)
             {
+                // 합성 가능한 경우에만 미네랄 소모
+                if (PlacementManager.Instance.region2MineralBar != null)
+                {
+                    bool canSpend = PlacementManager.Instance.region2MineralBar.TrySpend(chosen.cost);
+                    if (!canSpend)
+                    {
+                        Debug.LogWarning($"[Region2AIManager] 미네랄 부족 => {chosen.characterName} 소환/합성 불가");
+                        return false;
+                    }
+                }
+                else
+                {
+                    Debug.LogWarning("[Region2AIManager] region2MineralBar가 존재하지 않습니다");
+                    return false;
+                }
+                
                 occupantChar.star++;
                 occupantChar.currentHP = chosen.maxHP;
                 occupantChar.ApplyStarVisual();
@@ -406,6 +406,22 @@ public class Region2AIManager : MonoBehaviour
                     bool hasOpponentMonsterPanel = PlacementManager.Instance.opponentOurMonsterPanel != null;
                     Debug.Log($"[Region2AIManager] 소환 전 UI 패널 상태: opponentCharacterPanel={hasOpponentCharPanel}, " +
                              $"opponentBulletPanel={hasOpponentBulletPanel}, opponentOurMonsterPanel={hasOpponentMonsterPanel}");
+                    
+                    // 여기서 미네랄 소비 (소환 직전)
+                    if (PlacementManager.Instance.region2MineralBar != null)
+                    {
+                        bool canSpend = PlacementManager.Instance.region2MineralBar.TrySpend(chosen.cost);
+                        if (!canSpend)
+                        {
+                            Debug.LogWarning($"[Region2AIManager] 미네랄 부족 => {chosen.characterName} 소환 불가");
+                            return false;
+                        }
+                    }
+                    else
+                    {
+                        Debug.LogWarning("[Region2AIManager] region2MineralBar가 존재하지 않습니다");
+                        return false;
+                    }
                     
                     // 실제 소환 시도
                     PlacementManager.Instance.SummonCharacterOnTile(foundIndex, tile, forceEnemyArea2: true);
