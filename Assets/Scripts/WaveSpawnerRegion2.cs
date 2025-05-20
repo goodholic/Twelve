@@ -35,9 +35,7 @@ public class WaveSpawnerRegion2 : MonoBehaviour
     // ===============================
     // [수정추가] 챕터별 몬스터 교체 로직
     // ===============================
-    [Header("[수정추가] 지역2용 챕터 몬스터 교체 옵션")]
-    [Tooltip("true면 2챕터일 때 5마리 중 3번째는 '3챕터 몬스터'로 소환")]
-    public bool useChapterMonsterLogic = false;
+    [Header("[수정추가] 지역2용 챕터 몬스터 교체 옵션")]    [Tooltip("true면 2챕터일 때 5마리 중 3번째는 '3챕터 몬스터'로 소환")]    public bool useChapterMonsterLogic = true;
 
     [Tooltip("현재 챕터(2라면 5마리 중 3번째는 3챕터 몬스터)")]
     public int currentChapter = 2;

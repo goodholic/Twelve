@@ -87,6 +87,14 @@ public class PlacementManager : MonoBehaviour
     public StarMergeDatabaseObject starMergeDatabaseRegion2;
     // =============================================================================
 
+    // ======================== [추가한 필드 1] ========================
+    [Header("[추가] 아이템 인벤토리 매니저 참조 (캐릭터 제거 시 아이템 지급)")]
+    public ItemInventoryManager itemInventoryManager;
+
+    // ======================== [추가한 필드 2] ========================
+    [Header("[추가] 캐릭터 제거 모드 (true면 타일 클릭 시 캐릭터 제거)")]
+    public bool removeMode = false;
+
     private void Awake()
     {
         if (Instance != null && Instance != this)
@@ -121,29 +129,14 @@ public class PlacementManager : MonoBehaviour
 
     private void Start()
     {
-        // UI 패널 디버그 로그 추가
+        // UI 패널 디버그 로그
         Debug.Log($"[PlacementManager] UI 패널 상태: opponentCharacterPanel={opponentCharacterPanel != null}, " +
                  $"opponentOurMonsterPanel={opponentOurMonsterPanel != null}, " +
                  $"opponentBulletPanel={opponentBulletPanel != null}");
-        
+
         // 로그인 패널이 비활성화된 상태이므로 항상 호스트로 설정
         isHost = true;
         Debug.Log("[PlacementManager] 로그인 패널 비활성화 상태: 호스트 모드로 플레이합니다.");
-        
-        /* 기존 NetworkRunner 검색 로직 주석 처리
-        var runner = FindFirstObjectByType<NetworkRunner>();
-        if (runner != null)
-        {
-            if (runner.GameMode == GameMode.Host)
-            {
-                isHost = true;
-            }
-            else if (runner.GameMode == GameMode.Client)
-            {
-                isHost = false;
-            }
-        }
-        */
     }
 
     private void Update()
@@ -164,12 +157,82 @@ public class PlacementManager : MonoBehaviour
         Debug.Log($"[PlacementManager] 선택된 유닛 인덱스: {currentCharacterIndex}");
     }
 
+    // =========================== [추가한 메서드] ===========================
+    /// <summary>
+    /// "캐릭터 제거 모드"를 토글하는 메서드
+    /// UI의 "Remove" 버튼 등에 연결해 사용 가능.
+    /// </summary>
+    public void ToggleRemoveMode()
+    {
+        removeMode = !removeMode;
+        Debug.Log($"[PlacementManager] removeMode = {removeMode}");
+        
+        // 제거 모드를 켰을 때만 랜덤 캐릭터 제거 시도
+        if (removeMode)
+        {
+            RemoveRandomCharacter();
+        }
+    }
+    
+    /// <summary>
+    /// 랜덤으로 placed 타일이나 placable 타일에 있는 캐릭터 중 하나를 선택하여 제거한다.
+    /// </summary>
+    private void RemoveRandomCharacter()
+    {
+        // 1. 모든 캐릭터와 그 타일을 찾기
+        List<Character> placedCharacters = new List<Character>();
+        Character[] allCharacters = FindObjectsByType<Character>(FindObjectsSortMode.None);
+        
+        // placed 타일이나 placable 타일에 있는 캐릭터만 선택
+        foreach (var character in allCharacters)
+        {
+            if (character != null && character.currentTile != null)
+            {
+                Tile tile = character.currentTile;
+                if (tile.IsPlaceTile() || tile.IsPlaced2() || tile.IsPlacable() || tile.IsPlacable2())
+                {
+                    placedCharacters.Add(character);
+                }
+            }
+        }
+        
+        // 제거할 캐릭터가 없는 경우
+        if (placedCharacters.Count == 0)
+        {
+            Debug.Log("[PlacementManager] 제거할 캐릭터가 없습니다.");
+            return;
+        }
+        
+        // 2. 랜덤으로 하나 선택
+        int randomIndex = Random.Range(0, placedCharacters.Count);
+        Character targetCharacter = placedCharacters[randomIndex];
+        Tile targetTile = targetCharacter.currentTile;
+        
+        if (targetTile == null)
+        {
+            Debug.LogWarning("[PlacementManager] 선택된 캐릭터의 타일이 null입니다.");
+            return;
+        }
+        
+        // 3. 선택된 캐릭터 정보 출력
+        Debug.Log($"[PlacementManager] 랜덤 제거 대상: {targetCharacter.characterName} (별:{targetCharacter.star}, 타일:{targetTile.name})");
+        
+        // 4. 캐릭터 제거
+        RemoveCharacterOnTile(targetTile);
+        
+        // 5. 제거 모드 즉시 해제
+        removeMode = false;
+    }
+    // =====================================================================
+
     // ---------------------------------------------------------------------------
     // (A) "클릭 방식" 배치 (tile.OnClickPlacableTile() 등에서 호출)
     // ---------------------------------------------------------------------------
     public void PlaceCharacterOnTile(Tile tile)
     {
-        // 1) DB 검사
+        // removeMode가 true면 제거 로직을 "타일" 측에서 처리하므로,
+        // 여기선 배치 로직만 그대로 유지
+
         if (characterDatabase == null
             || characterDatabase.currentRegisteredCharacters == null
             || characterDatabase.currentRegisteredCharacters.Length == 0)
@@ -178,7 +241,6 @@ public class PlacementManager : MonoBehaviour
             return;
         }
 
-        // 2) 인덱스 검사
         if (currentCharacterIndex < 0
             || currentCharacterIndex >= characterDatabase.currentRegisteredCharacters.Length)
         {
@@ -198,7 +260,6 @@ public class PlacementManager : MonoBehaviour
             return;
         }
 
-        // 지역1/지역2 + 호스트/클라이언트 구분
         bool isArea2 = (tile.IsWalkable2() || tile.IsPlacable2() || tile.IsPlaced2());
         if (isArea2 && isHost)
         {
@@ -245,20 +306,14 @@ public class PlacementManager : MonoBehaviour
             }
         }
 
-        // 타일 상태 체크
         if (!tile.CanPlaceCharacter())
         {
             Debug.LogWarning($"[PlacementManager] {tile.name} => 배치 불가능한 상태");
             return;
         }
 
-        // =================================
-        //  walkable → 이동형(웨이브)
-        //  placable → 건물형
-        // =================================
         if (tile.IsWalkable())
         {
-            // (area1) 이동형(몬스터)
             WaveSpawner spawner = FindFirstObjectByType<WaveSpawner>();
             if (spawner != null && spawner.pathWaypoints != null && spawner.pathWaypoints.Length > 0 && ourMonsterPanel != null)
             {
@@ -266,7 +321,6 @@ public class PlacementManager : MonoBehaviour
                 GameObject allyObj = Instantiate(data.spawnPrefab, ourMonsterPanel);
                 if (allyObj != null)
                 {
-                    // 위치
                     RectTransform allyRect = allyObj.GetComponent<RectTransform>();
                     if (allyRect != null)
                     {
@@ -280,7 +334,6 @@ public class PlacementManager : MonoBehaviour
                         allyObj.transform.localRotation = Quaternion.identity;
                     }
 
-                    // 캐릭터 설정
                     Character allyCharacter = allyObj.GetComponent<Character>();
                     allyCharacter.currentTile = null;
                     allyCharacter.isHero = (currentCharacterIndex == 9);
@@ -301,7 +354,6 @@ public class PlacementManager : MonoBehaviour
 
                     Debug.Log($"[PlacementManager] [{data.characterName}] (area1) 몬스터 소환 (cost={data.cost})");
 
-                    // (선택) 캐릭터SelectUI
                     var selectUI = FindFirstObjectByType<CharacterSelectUI>();
                     if (selectUI != null)
                     {
@@ -318,7 +370,6 @@ public class PlacementManager : MonoBehaviour
         }
         else if (tile.IsWalkable2())
         {
-            // (area2) 이동형(몬스터)
             WaveSpawnerRegion2 spawner2 = FindFirstObjectByType<WaveSpawnerRegion2>();
             if (spawner2 != null && spawner2.topWaypointsForAI != null && spawner2.topWaypointsForAI.Length > 0 && opponentOurMonsterPanel != null)
             {
@@ -326,7 +377,6 @@ public class PlacementManager : MonoBehaviour
                 GameObject allyObj = Instantiate(data.spawnPrefab, opponentOurMonsterPanel);
                 if (allyObj != null)
                 {
-                    // 위치
                     RectTransform allyRect = allyObj.GetComponent<RectTransform>();
                     if (allyRect != null)
                     {
@@ -340,7 +390,6 @@ public class PlacementManager : MonoBehaviour
                         allyObj.transform.localRotation = Quaternion.identity;
                     }
 
-                    // 캐릭터 설정
                     Character allyCharacter = allyObj.GetComponent<Character>();
                     allyCharacter.currentTile = null;
                     allyCharacter.isHero = (currentCharacterIndex == 9);
@@ -361,7 +410,6 @@ public class PlacementManager : MonoBehaviour
 
                     Debug.Log($"[PlacementManager] [{data.characterName}] (지역2) 몬스터 소환 (cost={data.cost})");
 
-                    // (선택) 캐릭터SelectUI
                     var selectUI = FindFirstObjectByType<CharacterSelectUI>();
                     if (selectUI != null)
                     {
@@ -378,7 +426,6 @@ public class PlacementManager : MonoBehaviour
         }
         else if (tile.IsPlacable() || tile.IsPlacable2())
         {
-            // 건물형 배치
             RectTransform targetParent = tile.IsPlacable2() && (opponentCharacterPanel != null)
                 ? opponentCharacterPanel
                 : characterPanel;
@@ -405,7 +452,6 @@ public class PlacementManager : MonoBehaviour
                 {
                     characterComp.currentTile = tile;
                     characterComp.isHero = (currentCharacterIndex == 9);
-                    // 건물형 => isCharAttack=false
                     characterComp.isCharAttack = false;
 
                     characterComp.currentWaypointIndex = -1;
@@ -481,6 +527,8 @@ public class PlacementManager : MonoBehaviour
                     characterComp.star = data.initialStar;
                     characterComp.ApplyStarVisual();
 
+                    characterComp.areaIndex = tile.IsPlaced2() ? 2 : 1;
+
                     if (tile.IsPlaced2() && opponentBulletPanel != null)
                     {
                         characterComp.opponentBulletPanel = opponentBulletPanel;
@@ -489,7 +537,6 @@ public class PlacementManager : MonoBehaviour
                     {
                         characterComp.SetBulletPanel(bulletPanel);
                     }
-                    characterComp.areaIndex = tile.IsPlaced2() ? 2 : 1;
                 }
 
                 CreatePlaceTileChild(tile);
@@ -513,137 +560,119 @@ public class PlacementManager : MonoBehaviour
     // ---------------------------------------------------------------------------
     // (B) "드래그 방식" 배치 (DraggableSummonButtonUI → tile 드롭 시)
     // ---------------------------------------------------------------------------
-    public void SummonCharacterOnTile(int summonIndex, Tile tile, bool forceEnemyArea2 = false)
+    public bool SummonCharacterOnTile(int summonIndex, Tile tile, bool forceEnemyArea2 = false)
     {
         Debug.Log($"[PlacementManager] SummonCharacterOnTile: 인덱스={summonIndex}, tile={tile.name}, forceEnemyArea2={forceEnemyArea2}");
 
-        // 1) 어떤 DB에서 불러올지 분기
-        CharacterData data;
-        if (forceEnemyArea2 && enemyDatabase != null && enemyDatabase.characters != null)
-        {
-            // enemyDatabase 참조
-            if (summonIndex < 0 || summonIndex >= enemyDatabase.characters.Length)
-            {
-                Debug.LogWarning($"[PlacementManager] 잘못된 소환 인덱스({summonIndex}) => 실패");
-                return;
-            }
-            data = enemyDatabase.characters[summonIndex];
-            Debug.Log($"[PlacementManager] enemyDatabase에서 데이터 가져옴: {data.characterName}, spawnPrefab={data.spawnPrefab != null}");
-        }
-        else
-        {
-            // 기본 아군 DB
-            if (characterDatabase == null || characterDatabase.currentRegisteredCharacters == null
-                || characterDatabase.currentRegisteredCharacters.Length == 0)
-            {
-                Debug.LogWarning("[PlacementManager] characterDatabase가 비어있음 => 소환 불가");
-                return;
-            }
-            if (summonIndex < 0 || summonIndex >= characterDatabase.currentRegisteredCharacters.Length)
-            {
-                Debug.LogWarning($"[PlacementManager] 잘못된 소환 인덱스({summonIndex}) => 소환 불가");
-                return;
-            }
-            data = characterDatabase.currentRegisteredCharacters[summonIndex];
-        }
-
-        if (data == null || data.spawnPrefab == null)
-        {
-            Debug.LogWarning($"[PlacementManager] [{summonIndex}]번 캐릭터 spawnPrefab이 null => 소환 불가");
-            return;
-        }
-        if (tile == null)
-        {
-            Debug.LogWarning("[PlacementManager] tile이 null => 소환 불가");
-            return;
-        }
-
-        // == 지역2 소환 조건 ==
-        bool tileIsArea2 = tile.IsWalkable2() || tile.IsPlacable2() || tile.IsPlaced2();
-        if (!forceEnemyArea2)
-        {
-            if (tileIsArea2 && isHost)
-            {
-                Debug.LogWarning("[PlacementManager] 지역2에는 호스트 배치 불가");
-                return;
-            }
-            if (!tileIsArea2 && !isHost)
-            {
-                Debug.LogWarning("[PlacementManager] 지역1에는 클라이언트/AI 배치 불가");
-                return;
-            }
-        }
-
-        // 미네랄 체크 및 차감
-        MineralBar targetMineralBar = (forceEnemyArea2 || tileIsArea2) ? region2MineralBar : region1MineralBar;
-        bool mineralsSpent = false;
-        
-        if (targetMineralBar != null)
-        {
-            mineralsSpent = targetMineralBar.TrySpend(data.cost);
-            if (!mineralsSpent)
-            {
-                Debug.Log($"[PlacementManager] ({(tileIsArea2 ? "지역2" : "지역1")}) 미네랄 부족!(cost={data.cost})");
-                return;
-            }
-        }
-        else
-        {
-            Debug.LogWarning($"[PlacementManager] {(tileIsArea2 ? "region2MineralBar" : "region1MineralBar")}가 null => 소환 불가");
-            return;
-        }
+        bool success = false;
 
         try
         {
-            // 타일 배치 가능 체크
+            CharacterData data;
+            if (forceEnemyArea2 && enemyDatabase != null && enemyDatabase.characters != null)
+            {
+                if (summonIndex < 0 || summonIndex >= enemyDatabase.characters.Length)
+                {
+                    Debug.LogWarning($"[PlacementManager] 잘못된 소환 인덱스({summonIndex}) => 실패");
+                    return false;
+                }
+                data = enemyDatabase.characters[summonIndex];
+                Debug.Log($"[PlacementManager] enemyDatabase에서 데이터 가져옴: {data.characterName}, spawnPrefab={(data.spawnPrefab != null)}");
+            }
+            else
+            {
+                if (characterDatabase == null || characterDatabase.currentRegisteredCharacters == null
+                    || characterDatabase.currentRegisteredCharacters.Length == 0)
+                {
+                    Debug.LogWarning("[PlacementManager] characterDatabase가 비어있음 => 소환 불가");
+                    return false;
+                }
+                if (summonIndex < 0 || summonIndex >= characterDatabase.currentRegisteredCharacters.Length)
+                {
+                    Debug.LogWarning($"[PlacementManager] 잘못된 소환 인덱스({summonIndex}) => 소환 불가");
+                    return false;
+                }
+                data = characterDatabase.currentRegisteredCharacters[summonIndex];
+            }
+
+            if (data == null || data.spawnPrefab == null)
+            {
+                Debug.LogWarning($"[PlacementManager] [{summonIndex}]번 캐릭터 spawnPrefab이 null => 소환 불가");
+                return false;
+            }
+            if (tile == null)
+            {
+                Debug.LogWarning("[PlacementManager] tile이 null => 소환 불가");
+                return false;
+            }
+
+            bool tileIsArea2 = tile.IsWalkable2() || tile.IsPlacable2() || tile.IsPlaced2();
+            if (!forceEnemyArea2)
+            {
+                if (tileIsArea2 && isHost)
+                {
+                    Debug.LogWarning("[PlacementManager] 지역2에는 호스트 배치 불가");
+                    return false;
+                }
+                if (!tileIsArea2 && !isHost)
+                {
+                    Debug.LogWarning("[PlacementManager] 지역1에는 클라이언트/AI 배치 불가");
+                    return false;
+                }
+            }
+
+            MineralBar targetMineralBar = (forceEnemyArea2 || tileIsArea2) ? region2MineralBar : region1MineralBar;
+            bool mineralsSpent = false;
+
+            if (targetMineralBar != null)
+            {
+                mineralsSpent = targetMineralBar.TrySpend(data.cost);
+                if (!mineralsSpent)
+                {
+                    Debug.Log($"[PlacementManager] ({(tileIsArea2 ? "지역2" : "지역1")}) 미네랄 부족!(cost={data.cost})");
+                    return false;
+                }
+            }
+            else
+            {
+                Debug.LogWarning($"[PlacementManager] {(tileIsArea2 ? "region2MineralBar" : "region1MineralBar")}가 null => 소환 불가");
+                return false;
+            }
+
             if (!tile.CanPlaceCharacter())
             {
-                // 미네랄을 이미 소모했지만 소환이 불가능한 경우 미네랄 환불
                 if (mineralsSpent && targetMineralBar != null)
                 {
                     targetMineralBar.RefundMinerals(data.cost);
                     Debug.Log($"[PlacementManager] 소환 불가로 {(tileIsArea2 ? "지역2" : "지역1")} 미네랄 {data.cost} 환불");
                 }
-                
                 Debug.LogWarning($"[PlacementManager] {tile.name} => 배치 불가(조건 불충족)");
-                return;
+                return false;
             }
 
-            // 소환 직전 추가 디버그
-            Debug.Log($"[PlacementManager] 소환 직전 확인: 타일타입=[IsWalkable={tile.IsWalkable()}, IsWalkable2={tile.IsWalkable2()}, " +
-                    $"IsPlacable={tile.IsPlacable()}, IsPlacable2={tile.IsPlacable2()}, " +
-                    $"IsPlaceTile={tile.IsPlaceTile()}, IsPlaced2={tile.IsPlaced2()}]");
-
-            // (A) 이동형 (walkable/walkable2)
             if (tile.IsWalkable())
             {
                 WaveSpawner spawner = FindFirstObjectByType<WaveSpawner>();
                 if (spawner == null || spawner.pathWaypoints.Length == 0 || ourMonsterPanel == null)
                 {
-                    // 소환 실패 시 미네랄 환불
                     if (mineralsSpent && targetMineralBar != null)
                     {
                         targetMineralBar.RefundMinerals(data.cost);
-                        Debug.Log($"[PlacementManager] Walkable 소환 불가로 {(tileIsArea2 ? "지역2" : "지역1")} 미네랄 {data.cost} 환불");
                     }
-                    
-                    Debug.LogWarning("[PlacementManager] Walkable => 소환 실패: WaveSpawner/ourMonsterPanel 미설정");
-                    return;
+                    Debug.LogWarning("[PlacementManager] Walkable => 소환 실패");
+                    return false;
                 }
 
                 GameObject prefabToSpawn = data.spawnPrefab;
                 Character cc = prefabToSpawn.GetComponent<Character>();
                 if (cc == null)
                 {
-                    // 소환 실패 시 미네랄 환불
                     if (mineralsSpent && targetMineralBar != null)
                     {
                         targetMineralBar.RefundMinerals(data.cost);
-                        Debug.Log($"[PlacementManager] 캐릭터 컴포넌트 없음으로 {(tileIsArea2 ? "지역2" : "지역1")} 미네랄 {data.cost} 환불");
                     }
-                    
                     Debug.LogError($"[PlacementManager] '{prefabToSpawn.name}' 프리팹에 Character 없음 => 실패");
-                    return;
+                    return false;
                 }
 
                 Vector3 spawnPos = spawner.pathWaypoints[0].position;
@@ -684,85 +713,61 @@ public class PlacementManager : MonoBehaviour
                     allyChar.moveSpeed = data.moveSpeed;
 
                     Debug.Log($"[PlacementManager] 드래그로 [{data.characterName}] (area1) 몬스터 소환 (cost={data.cost})");
+                    success = true;
+                }
+                else
+                {
+                    if (mineralsSpent && targetMineralBar != null)
+                    {
+                        targetMineralBar.RefundMinerals(data.cost);
+                    }
+                    Debug.LogError("[PlacementManager] Walkable => Instantiate 실패");
+                    return false;
                 }
             }
             else if (tile.IsWalkable2())
             {
-                // === Summon 시에도 Walkable2 => opponentOurMonsterPanel로 소환 ===
                 WaveSpawnerRegion2 spawner2 = FindFirstObjectByType<WaveSpawnerRegion2>();
                 if (spawner2 == null || spawner2.topWaypointsForAI.Length == 0 || opponentOurMonsterPanel == null)
                 {
-                    // 소환 실패 시 미네랄 환불
                     if (mineralsSpent && targetMineralBar != null)
                     {
                         targetMineralBar.RefundMinerals(data.cost);
-                        Debug.Log($"[PlacementManager] Walkable2 소환 실패로 {(tileIsArea2 ? "지역2" : "지역1")} 미네랄 {data.cost} 환불");
                     }
-                    
-                    Debug.LogWarning("[PlacementManager] Walkable2 => 소환 실패: " + 
-                                    (spawner2 == null ? "WaveSpawnerRegion2 없음" : 
-                                    spawner2.topWaypointsForAI.Length == 0 ? "topWaypointsForAI 없음" : 
-                                    opponentOurMonsterPanel == null ? "opponentOurMonsterPanel 없음" : "알 수 없는 오류"));
-                    return;
+                    Debug.LogWarning("[PlacementManager] Walkable2 => 소환 실패");
+                    return false;
                 }
 
                 GameObject prefabToSpawn = data.spawnPrefab;
                 Character cc = prefabToSpawn.GetComponent<Character>();
                 if (cc == null)
                 {
-                    // 소환 실패 시 미네랄 환불
                     if (mineralsSpent && targetMineralBar != null)
                     {
                         targetMineralBar.RefundMinerals(data.cost);
-                        Debug.Log($"[PlacementManager] 캐릭터 컴포넌트 없음으로 {(tileIsArea2 ? "지역2" : "지역1")} 미네랄 {data.cost} 환불");
                     }
-                    
                     Debug.LogError($"[PlacementManager] '{prefabToSpawn.name}' 프리팹에 Character 없음 => 실패");
-                    return;
+                    return false;
                 }
 
-                Debug.Log($"[PlacementManager] Walkable2 소환 시도: prefab={prefabToSpawn.name}, topWaypoints={spawner2.topWaypointsForAI.Length}, opponentOurMonsterPanel={opponentOurMonsterPanel.name}");
-                
-                Vector3 spawnPos = spawner2.topWaypointsForAI[0].position;
+                Vector3 spawnPos2 = spawner2.topWaypointsForAI[0].position;
                 GameObject allyObj = Instantiate(prefabToSpawn, opponentOurMonsterPanel);
                 if (allyObj != null)
                 {
-                    // 게임 오브젝트가 활성화되어 있는지 확인하고 강제로 활성화
                     allyObj.SetActive(true);
-                    
                     RectTransform allyRect = allyObj.GetComponent<RectTransform>();
                     if (allyRect != null)
                     {
-                        Vector2 localPos = opponentOurMonsterPanel.InverseTransformPoint(spawnPos);
+                        Vector2 localPos = opponentOurMonsterPanel.InverseTransformPoint(spawnPos2);
                         allyRect.SetParent(opponentOurMonsterPanel, false);
                         allyRect.localRotation = Quaternion.identity;
                         allyRect.anchoredPosition = localPos;
-                        
-                        // UI 요소의 가시성 설정 강화
-                        CanvasGroup canvasGroup = allyObj.GetComponent<CanvasGroup>();
-                        if (canvasGroup != null)
-                        {
-                            canvasGroup.alpha = 1f;
-                            canvasGroup.blocksRaycasts = true;
-                            canvasGroup.interactable = true;
-                        }
-                        
-                        // 이미지 컴포넌트가 있다면 색상 alpha 값 확인
-                        Image[] images = allyObj.GetComponentsInChildren<Image>();
-                        foreach (Image img in images)
-                        {
-                            Color c = img.color;
-                            img.color = new Color(c.r, c.g, c.b, 1f);
-                        }
-                        
-                        Debug.Log($"[PlacementManager] Walkable2 UI 위치 설정: localPos={localPos}, parent={opponentOurMonsterPanel.name}, scale={allyRect.localScale}");
                     }
                     else
                     {
                         allyObj.transform.SetParent(null);
-                        allyObj.transform.position = spawnPos;
+                        allyObj.transform.position = spawnPos2;
                         allyObj.transform.localRotation = Quaternion.identity;
-                        Debug.Log($"[PlacementManager] Walkable2 월드 위치 설정: position={spawnPos}");
                     }
 
                     Character allyCharacter = allyObj.GetComponent<Character>();
@@ -784,13 +789,18 @@ public class PlacementManager : MonoBehaviour
                     allyCharacter.moveSpeed = data.moveSpeed;
 
                     Debug.Log($"[PlacementManager] 드래그로 [{data.characterName}] (지역2) 몬스터 소환 완료 (cost={data.cost})");
+                    success = true;
                 }
                 else
                 {
-                    Debug.LogError("[PlacementManager] Walkable2 => 캐릭터 생성 실패: Instantiate 결과가 null");
+                    if (mineralsSpent && targetMineralBar != null)
+                    {
+                        targetMineralBar.RefundMinerals(data.cost);
+                    }
+                    Debug.LogError("[PlacementManager] Walkable2 => Instantiate 실패");
+                    return false;
                 }
             }
-            // (B) placable/placable2
             else if (tile.IsPlacable() || tile.IsPlacable2())
             {
                 bool isArea2Tile = tile.IsPlacable2();
@@ -820,7 +830,6 @@ public class PlacementManager : MonoBehaviour
                     {
                         cComp.currentTile = tile;
                         cComp.isHero = (summonIndex == 9);
-                        // 건물형 => isCharAttack=false
                         cComp.isCharAttack = false;
 
                         cComp.currentWaypointIndex = -1;
@@ -847,9 +856,18 @@ public class PlacementManager : MonoBehaviour
 
                     CreatePlaceTileChild(tile);
                     Debug.Log($"[PlacementManager] [{data.characterName}] 드래그 배치(Placable/Placable2)");
+                    success = true;
+                }
+                else
+                {
+                    if (mineralsSpent && targetMineralBar != null)
+                    {
+                        targetMineralBar.RefundMinerals(data.cost);
+                    }
+                    Debug.LogError("[PlacementManager] placable => Instantiate 실패");
+                    return false;
                 }
             }
-            // [추가] PlaceTile/Placed2
             else if (tile.IsPlaceTile() || tile.IsPlaced2())
             {
                 bool isArea2Tile = tile.IsPlaced2();
@@ -880,8 +898,6 @@ public class PlacementManager : MonoBehaviour
                     {
                         cComp.currentTile = tile;
                         cComp.isHero = (summonIndex == 9);
-
-                        // 건물형 => isCharAttack=false
                         cComp.isCharAttack = false;
 
                         cComp.currentWaypointIndex = -1;
@@ -908,23 +924,35 @@ public class PlacementManager : MonoBehaviour
 
                     CreatePlaceTileChild(tile);
                     Debug.Log($"[PlacementManager] [{data.characterName}] 드래그 배치(PlaceTile/Placed2)");
+                    success = true;
+                }
+                else
+                {
+                    if (mineralsSpent && targetMineralBar != null)
+                    {
+                        targetMineralBar.RefundMinerals(data.cost);
+                    }
+                    Debug.LogError("[PlacementManager] PlaceTile/Placed2 => Instantiate 실패");
+                    return false;
                 }
             }
             else
             {
+                if (mineralsSpent && targetMineralBar != null)
+                {
+                    targetMineralBar.RefundMinerals(data.cost);
+                    Debug.Log($"[PlacementManager] {tile.name} 상태를 처리할 수 없음 => 미네랄 {data.cost} 환불");
+                }
                 Debug.LogWarning($"[PlacementManager] {tile.name} 상태를 처리할 수 없습니다 (드래그 소환).");
+                return false;
             }
+
+            return success;
         }
         catch (System.Exception ex)
         {
-            // 예외 발생 시 미네랄 환불
-            if (mineralsSpent && targetMineralBar != null)
-            {
-                targetMineralBar.RefundMinerals(data.cost);
-                Debug.Log($"[PlacementManager] 예외 발생으로 {(tileIsArea2 ? "지역2" : "지역1")} 미네랄 {data.cost} 환불. 오류: {ex.Message}");
-            }
-            
             Debug.LogError($"[PlacementManager] 소환 중 오류 발생: {ex.Message}\n{ex.StackTrace}");
+            return false;
         }
     }
 
@@ -935,25 +963,19 @@ public class PlacementManager : MonoBehaviour
     {
         if (movingChar == null || newTile == null) return;
 
-        // (1) 기존 타일 Occupied(PlaceTile) 해제
         Tile oldTile = movingChar.currentTile;
         if (oldTile != null)
         {
             RemovePlaceTileChild(oldTile);
         }
 
-        // 새로운 타일에 이미 캐릭터가 있는지 검사
         bool occupantExists = CheckAnyCharacterHasCurrentTile(newTile);
 
         if (occupantExists)
         {
-            // -------------------------------------------
-            // (a) 타일에 이미 캐릭터 => "합성" 시도
-            // -------------------------------------------
             bool success = TryMergeCharacter(movingChar, newTile);
             if (!success)
             {
-                // 합성 실패 => 원래 위치로 복귀
                 if (oldTile != null)
                 {
                     MoveCharacterToTile(movingChar, oldTile);
@@ -963,14 +985,8 @@ public class PlacementManager : MonoBehaviour
         }
         else
         {
-            // -------------------------------------------
-            // (b) 캐릭터가 없음 => "이동 or 소환"
-            // -------------------------------------------
-            // 배치 가능 여부
             if (!newTile.CanPlaceCharacter())
             {
-                // 불가능이면 revert
-                Debug.LogWarning($"[PlacementManager] {newTile.name}는 배치 불가 -> 이동 취소");
                 if (oldTile != null)
                 {
                     MoveCharacterToTile(movingChar, oldTile);
@@ -979,12 +995,8 @@ public class PlacementManager : MonoBehaviour
                 return;
             }
 
-            // [수정] walkable/ walkable2 로 드롭하면 "waypoint[0]에서 새로 생성" 로직 적용
-            //        placable 등은 기존처럼 그냥 타일에 두는 식
-            // -------------------------------------------
             if (newTile.IsWalkable())
             {
-                // area1 웨이브처럼 waypoint[0]에서 다시 시작
                 WaveSpawner spawner = FindFirstObjectByType<WaveSpawner>();
                 if (spawner != null && spawner.pathWaypoints != null && spawner.pathWaypoints.Length > 0 && ourMonsterPanel != null)
                 {
@@ -1005,8 +1017,7 @@ public class PlacementManager : MonoBehaviour
                         movingChar.transform.localRotation = Quaternion.identity;
                     }
 
-                    // 웨이포인트 이동값 재설정
-                    movingChar.currentTile = null; // 건물형X
+                    movingChar.currentTile = null;
                     movingChar.currentWaypointIndex = 0;
                     movingChar.maxWaypointIndex = 6;
                     movingChar.areaIndex = 1;
@@ -1017,8 +1028,6 @@ public class PlacementManager : MonoBehaviour
                 }
                 else
                 {
-                    // spawner가 없으면 되돌림
-                    Debug.LogWarning("[PlacementManager] OnDrop => WaveSpawner 불가 => revert");
                     if (oldTile != null)
                     {
                         MoveCharacterToTile(movingChar, oldTile);
@@ -1029,7 +1038,6 @@ public class PlacementManager : MonoBehaviour
             }
             else if (newTile.IsWalkable2())
             {
-                // area2 웨이브처럼 waypoint[0]에서 다시 시작
                 WaveSpawnerRegion2 spawner2 = FindFirstObjectByType<WaveSpawnerRegion2>();
                 if (spawner2 != null && spawner2.topWaypointsForAI != null && spawner2.topWaypointsForAI.Length > 0 && opponentOurMonsterPanel != null)
                 {
@@ -1040,8 +1048,8 @@ public class PlacementManager : MonoBehaviour
                     {
                         Vector2 localPos = opponentOurMonsterPanel.InverseTransformPoint(spawnPos2);
                         charRect.SetParent(opponentOurMonsterPanel, false);
-                        charRect.anchoredPosition = localPos;
                         charRect.localRotation = Quaternion.identity;
+                        charRect.anchoredPosition = localPos;
                     }
                     else
                     {
@@ -1050,7 +1058,6 @@ public class PlacementManager : MonoBehaviour
                         movingChar.transform.localRotation = Quaternion.identity;
                     }
 
-                    // 웨이포인트 이동값 재설정
                     movingChar.currentTile = null;
                     movingChar.currentWaypointIndex = 0;
                     movingChar.maxWaypointIndex = 6;
@@ -1062,7 +1069,6 @@ public class PlacementManager : MonoBehaviour
                 }
                 else
                 {
-                    Debug.LogWarning("[PlacementManager] OnDrop => WaveSpawnerRegion2 불가 => revert");
                     if (oldTile != null)
                     {
                         MoveCharacterToTile(movingChar, oldTile);
@@ -1073,15 +1079,12 @@ public class PlacementManager : MonoBehaviour
             }
             else
             {
-                // 건물형 이동
                 MoveCharacterToTile(movingChar, newTile);
                 movingChar.currentWaypointIndex = -1;
                 movingChar.maxWaypointIndex = 6;
                 movingChar.isCharAttack = false;
-                // ↑ 기존 로직
             }
 
-            // 새 타일 Occupy
             CreatePlaceTileChild(newTile);
             Debug.Log("[PlacementManager] 캐릭터가 새 타일로 이동(또는 웨이포인트 모드) 완료");
         }
@@ -1111,13 +1114,11 @@ public class PlacementManager : MonoBehaviour
 
             if (otherChar.currentTile == newTile)
             {
-                // 별+이름이 같아야 합성
                 if (otherChar.star == movingChar.star && otherChar.characterName == movingChar.characterName)
                 {
                     switch (otherChar.star)
                     {
                         case CharacterStar.OneStar:
-                            // 1성 + 1성 => 2성으로 승급
                             otherChar.star = CharacterStar.TwoStar;
                             RandomizeAppearanceByStarAndRace(otherChar, CharacterStar.TwoStar);
                             UpgradeStats(otherChar);
@@ -1126,7 +1127,6 @@ public class PlacementManager : MonoBehaviour
                             return true;
 
                         case CharacterStar.TwoStar:
-                            // 2성 + 2성 => (2성 풀) 무작위 재탄생
                             otherChar.star = CharacterStar.TwoStar;
                             RandomizeAppearanceByStarAndRace(otherChar, CharacterStar.TwoStar);
                             UpgradeStats(otherChar);
@@ -1135,7 +1135,6 @@ public class PlacementManager : MonoBehaviour
                             return true;
 
                         case CharacterStar.ThreeStar:
-                            // 3성 + 3성 => (3성 풀) 무작위 재탄생
                             otherChar.star = CharacterStar.ThreeStar;
                             RandomizeAppearanceByStarAndRace(otherChar, CharacterStar.ThreeStar);
                             UpgradeStats(otherChar);
@@ -1201,7 +1200,6 @@ public class PlacementManager : MonoBehaviour
             }
         }
 
-        // fallback
         if (characterDatabase == null || characterDatabase.currentRegisteredCharacters == null)
         {
             Debug.LogWarning("[PlacementManager] characterDatabase가 없어 임의 외형 변경 불가(fallback도 실패)");
@@ -1404,4 +1402,135 @@ public class PlacementManager : MonoBehaviour
         }
         return -1;
     }
+
+    // =========================== [새로 추가한 메서드] ===========================
+    /// <summary>
+    /// 특정 타일에 있는 캐릭터를 제거(파괴)한다.
+    /// 1) 별에 따른 아이템 획득 확률 (1성=10%, 2성=50%, 3성=90%)
+    /// 2) 별에 따른 미네랄 환급 (cost/2 * {1성=0.9, 2성=0.5, 3성=0.1})
+    /// 3) 실제 오브젝트 Destroy + 타일 자식 제거
+    /// </summary>
+    public void RemoveCharacterOnTile(Tile tile)
+    {
+        if (tile == null) return;
+
+        // 1) 타일에 배치된 캐릭터 찾기
+        Character occupant = null;
+        Character[] allChars = FindObjectsByType<Character>(FindObjectsSortMode.None);
+        foreach (var c in allChars)
+        {
+            if (c != null && c.currentTile == tile)
+            {
+                occupant = c;
+                break;
+            }
+        }
+
+        if (occupant == null)
+        {
+            Debug.LogWarning($"[PlacementManager] {tile.name}에 캐릭터가 없어서 제거 불가");
+            return;
+        }
+
+        // 캐릭터의 코스트 찾기
+        int cost = 10; // 기본 코스트 값
+        
+        // 데이터베이스에서 해당 캐릭터 찾기
+        if (characterDatabase != null && characterDatabase.currentRegisteredCharacters != null)
+        {
+            for (int i = 0; i < characterDatabase.currentRegisteredCharacters.Length; i++)
+            {
+                CharacterData data = characterDatabase.currentRegisteredCharacters[i];
+                if (data != null && data.characterName == occupant.characterName)
+                {
+                    cost = data.cost;
+                    Debug.Log($"[PlacementManager] '{occupant.characterName}'의 코스트 정보 찾음: {cost}");
+                    break;
+                }
+            }
+        }
+        
+        // 지역2 캐릭터라면 enemyDatabase에서도 찾아보기
+        if (occupant.areaIndex == 2 && enemyDatabase != null && enemyDatabase.characters != null)
+        {
+            for (int i = 0; i < enemyDatabase.characters.Length; i++)
+            {
+                CharacterData data = enemyDatabase.characters[i];
+                if (data != null && data.characterName == occupant.characterName)
+                {
+                    cost = data.cost;
+                    Debug.Log($"[PlacementManager] '{occupant.characterName}'의 코스트 정보 찾음 (enemyDB): {cost}");
+                    break;
+                }
+            }
+        }
+
+        // 2) 별에 따른 아이템 획득 시도
+        float itemChance = 0f;
+        switch (occupant.star)
+        {
+            case CharacterStar.OneStar:
+                itemChance = 0.10f; // 10%
+                break;
+            case CharacterStar.TwoStar:
+                itemChance = 0.50f; // 50%
+                break;
+            case CharacterStar.ThreeStar:
+                itemChance = 0.90f; // 90%
+                break;
+        }
+
+        bool itemSuccess = (Random.value < itemChance);
+        if (itemSuccess && itemInventoryManager != null && itemInventoryManager.GetOwnedItems().Count < 9)
+        {
+            // 아이템 인벤토리 매니저가 있으나, 현재 확인된 유효한 메서드가 없으므로 로그만 출력
+            // 실제 구현 시 아이템 추가 로직 필요
+            Debug.Log($"[PlacementManager] 별={occupant.star} 캐릭터 제거 -> 아이템 획득! (확률: {itemChance*100}%)");
+            Debug.LogWarning("[PlacementManager] 아이템 인벤토리 매니저에 적절한 랜덤 아이템 추가 메서드 구현 필요");
+        }
+        else
+        {
+            Debug.Log($"[PlacementManager] 별={occupant.star} 캐릭터 제거 -> 아이템 획득 실패 (확률: {itemChance*100}%)");
+        }
+
+        // 3) 미네랄 환급
+        float ratio = 0f;
+        switch (occupant.star)
+        {
+            case CharacterStar.OneStar:
+                ratio = 0.9f; // 90%
+                break;
+            case CharacterStar.TwoStar:
+                ratio = 0.5f; // 50%
+                break;
+            case CharacterStar.ThreeStar:
+                ratio = 0.1f; // 10%
+                break;
+        }
+        
+        int halfCost = cost / 2;
+        float refundFloat = halfCost * ratio;
+        int finalRefund = Mathf.FloorToInt(refundFloat);
+
+        if (occupant.areaIndex == 1 && region1MineralBar != null)
+        {
+            region1MineralBar.RefundMinerals(finalRefund);
+            Debug.Log($"[PlacementManager] area1 캐릭터 제거 => 미네랄 {finalRefund} 환급 (코스트 {cost}/2 * {ratio*100}%)");
+        }
+        else if (occupant.areaIndex == 2 && region2MineralBar != null)
+        {
+            region2MineralBar.RefundMinerals(finalRefund);
+            Debug.Log($"[PlacementManager] area2 캐릭터 제거 => 미네랄 {finalRefund} 환급 (코스트 {cost}/2 * {ratio*100}%)");
+        }
+
+        // 4) 캐릭터 오브젝트 Destroy
+        occupant.currentTile = null;
+        Destroy(occupant.gameObject);
+
+        // 5) 타일에서 "PlaceTile"/"Placed2" 자식 제거
+        RemovePlaceTileChild(tile);
+
+        Debug.Log($"[PlacementManager] {tile.name} 타일의 캐릭터 제거 완료 (Star={occupant.star})");
+    }
+    // =====================================================================
 }

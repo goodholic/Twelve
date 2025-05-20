@@ -637,7 +637,7 @@ GameObject:
   - component: {fileID: -6894745263433517251}
   m_Layer: 0
   m_Name: 87.WolfMounfed
-  m_TagString: Untagged
+  m_TagString: Monster
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0

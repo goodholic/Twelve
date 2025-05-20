@@ -34,7 +34,7 @@ public class WaveSpawner : MonoBehaviour
     // =============================
     [Header("[수정추가] 챕터별 몬스터 교체 옵션")]
     [Tooltip("true면 1챕터~2챕터, 2챕터~3챕터... 등으로 넘어갈 때 5마리 웨이브 중 3번째만 '다음 챕터 몬스터'를 소환")]
-    public bool useChapterMonsterLogic = false;
+    public bool useChapterMonsterLogic = true;
 
     [Tooltip("현재 챕터 (1이면 1챕터, 2면 2챕터 등)")]
     public int currentChapter = 1;

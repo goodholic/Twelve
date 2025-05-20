@@ -83,7 +83,7 @@ GameObject:
   - component: {fileID: 5545474526159932836}
   m_Layer: 0
   m_Name: 69.MimicChest
-  m_TagString: Untagged
+  m_TagString: Monster
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0

@@ -1,9 +1,7 @@
-// Assets\Scripts\CharacterSelectUI.cs
-
 using UnityEngine;
 using UnityEngine.UI;
-using TMPro;
 using System.Collections.Generic;
+using TMPro;
 
 public class CharacterSelectUI : MonoBehaviour
 {
@@ -48,7 +46,7 @@ public class CharacterSelectUI : MonoBehaviour
 
     private void Start()
     {
-        // 1) 1~9 캐릭터 가져오기
+        // 1) 1~9 캐릭터
         if (GameManager.Instance != null &&
             GameManager.Instance.currentRegisteredCharacters != null &&
             GameManager.Instance.currentRegisteredCharacters.Length >= 9)
@@ -192,12 +190,10 @@ public class CharacterSelectUI : MonoBehaviour
     {
         if (hasPendingCard)
         {
-            // 이미 다른 카드를 선택했는데 아직 타일에 배치 안 됨 -> 무시
             Debug.Log($"[CharacterSelectUI] 이미 {pendingCardIndex}번 카드를 선택 중이므로 클릭 무시");
             return;
         }
 
-        // 아직 선택중인 카드가 없으므로, 이번 카드 선택
         hasPendingCard = true;
         pendingCardIndex = clickedIndex;
 
@@ -210,12 +206,10 @@ public class CharacterSelectUI : MonoBehaviour
     }
 
     /// <summary>
-    /// (드래그 소환) 드롭에 성공 시 OnDragUseCard(usedIndex) 호출됨
-    /// => 즉시 카드 소모 + 다음 카드 로직
+    /// (드래그 소환) 드롭 성공 시 OnDragUseCard(usedIndex) 호출
     /// </summary>
     public void OnDragUseCard(int usedIndex)
     {
-        // 드래그는 기존 로직대로 즉시 카드 사용
         for (int i = 0; i < selectButtons.Length; i++)
         {
             if (selectButtons[i].characterIndex == usedIndex)
@@ -227,9 +221,7 @@ public class CharacterSelectUI : MonoBehaviour
     }
 
     /// <summary>
-    /// [신규] "클릭으로 선택된 카드"가
-    /// 실제로 배치 성공했을 때(PlacementManager) 호출되는 메서드.
-    /// => 여기서 OnUseCard()로직을 통해 카드 소모/교체 처리
+    /// [신규] "클릭으로 선택된 카드"가 실제로 배치 성공했을 때(PlacementManager) 호출되는 메서드.
     /// </summary>
     public void MarkCardAsUsed(int usedIndex)
     {
@@ -249,13 +241,12 @@ public class CharacterSelectUI : MonoBehaviour
             }
         }
 
-        // 배치 완료 => 선택 해제
         hasPendingCard = false;
         pendingCardIndex = -1;
     }
 
     /// <summary>
-    /// [기존] 카드 사용(이미 소환됨) → 다음 카드 교체 로직
+    /// 카드 사용(이미 소환됨) → 다음 카드 교체 로직
     /// </summary>
     private void OnUseCard(SelectButton usedButton)
     {
@@ -291,6 +282,76 @@ public class CharacterSelectUI : MonoBehaviour
             T tmp = list[i];
             list[i] = list[r];
             list[r] = tmp;
+        }
+    }
+
+    // =======================================================================
+    // (기존) 코드들은 생략 없이 그대로...
+    // =======================================================================
+
+    /// <summary>
+    /// 원본 코드의 끝부분: 드래그 소환 후 남아있던 메서드들...
+    /// </summary>
+
+    // =======================================================================
+    // == (추가) 4장 카드를 "원버튼"으로 자동 사용 + 랜덤 타일 배치 ==
+    // =======================================================================
+    public void OnClickUse4CardsAtRandom()
+    {
+        // 1) placable 또는 placeTile 중에서 "지역1(=isRegion2 == false)" 만 모아둠
+        Tile[] allTiles = FindObjectsByType<Tile>(FindObjectsSortMode.None);
+        List<Tile> validTiles = new List<Tile>();
+        foreach (Tile t in allTiles)
+        {
+            if (t != null && !t.isRegion2)
+            {
+                // "지역1"이고, placable 또는 placeTile이면
+                if ((t.IsPlacable() || t.IsPlaceTile()))
+                {
+                    validTiles.Add(t);
+                }
+            }
+        }
+
+        if (validTiles.Count == 0)
+        {
+            Debug.LogWarning("[CharacterSelectUI] 지역1에 배치할 수 있는 placable/placeTile이 없습니다!");
+            return;
+        }
+
+        Debug.Log($"[CharacterSelectUI] OnClickUse4CardsAtRandom() -> 지역1의 배치가능 타일 {validTiles.Count}개 중 랜덤으로 4장 소환 시도.");
+
+        // 2) hand 4장에 대해 차례로 시도
+        for (int i = 0; i < 4; i++)
+        {
+            SelectButton sb = selectButtons[i];
+            if (sb == null || sb.isEmpty)
+            {
+                Debug.Log($"[CharacterSelectUI] {i}번째 selectButton이 비어있음 -> 스킵");
+                continue;
+            }
+
+            // 랜덤 타일
+            Tile randomTile = validTiles[Random.Range(0, validTiles.Count)];
+
+            if (placementManager == null)
+            {
+                Debug.LogWarning("[CharacterSelectUI] placementManager가 null -> 소환 불가");
+                return;
+            }
+
+            // 3) 실제 배치 시도 => 소환 성공하면 OnUseCard(...)로 카드 소모
+            bool success = placementManager.SummonCharacterOnTile(sb.characterIndex, randomTile, false);
+            if (success)
+            {
+                // 소환에 성공했으므로 카드 사용 처리
+                OnUseCard(sb);
+            }
+            else
+            {
+                Debug.Log($"[CharacterSelectUI] 카드({sb.characterIndex}) 소환 실패 -> 남은 카드들은 중단");
+                break;
+            }
         }
     }
 }

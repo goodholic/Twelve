@@ -374,7 +374,7 @@ GameObject:
   - component: {fileID: -8876210235450223839}
   m_Layer: 0
   m_Name: 7.BullyRooster
-  m_TagString: Untagged
+  m_TagString: Monster
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0

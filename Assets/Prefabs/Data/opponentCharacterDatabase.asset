@@ -91,7 +91,7 @@ MonoBehaviour:
     motionPrefab: {fileID: 4332806432069123864, guid: 8b3d5c75ca23c894b9b13a743f31b7b6, type: 3}
   - characterName: RandomChar_4
     initialStar: 1
-    race: 0
+    race: 1
     attackPower: 19
     attackSpeed: 1
     attackRange: 1.5
@@ -110,7 +110,7 @@ MonoBehaviour:
     motionPrefab: {fileID: 9176415509751804172, guid: 65a6d16e5e54e8d4995277cc94a2a1df, type: 3}
   - characterName: RandomChar_5
     initialStar: 1
-    race: 0
+    race: 1
     attackPower: 11
     attackSpeed: 1
     attackRange: 1.5
@@ -129,7 +129,7 @@ MonoBehaviour:
     motionPrefab: {fileID: 9146468120310428533, guid: a5224d535ec9bfe4aafd23d543b95c97, type: 3}
   - characterName: RandomChar_6
     initialStar: 1
-    race: 0
+    race: 1
     attackPower: 28
     attackSpeed: 1
     attackRange: 1.5
@@ -148,7 +148,7 @@ MonoBehaviour:
     motionPrefab: {fileID: 4326882089972318273, guid: 4cf56eb4e4777b14bb78a6c1a0b9cbc6, type: 3}
   - characterName: RandomChar_7
     initialStar: 1
-    race: 0
+    race: 2
     attackPower: 11
     attackSpeed: 1
     attackRange: 1.5
@@ -167,7 +167,7 @@ MonoBehaviour:
     motionPrefab: {fileID: 2768998443333610624, guid: c5c0387d8fc5af444ae0c1baedb7498c, type: 3}
   - characterName: RandomChar_8
     initialStar: 1
-    race: 0
+    race: 2
     attackPower: 11
     attackSpeed: 1
     attackRange: 1.5
@@ -186,7 +186,7 @@ MonoBehaviour:
     motionPrefab: {fileID: 7009747068067306124, guid: d714ed95a8cb9414aad038c722984057, type: 3}
   - characterName: RandomChar_9
     initialStar: 1
-    race: 0
+    race: 2
     attackPower: 11
     attackSpeed: 1
     attackRange: 1.5

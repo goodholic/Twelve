@@ -1,3 +1,7 @@
+///////////////////////////////
+// Assets\Scripts\Character.cs
+///////////////////////////////
+
 using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
@@ -511,7 +515,7 @@ public class Character : NetworkBehaviour, IDamageable
             else
             {
                 endPos = transform.position;
-                Debug.LogWarning("[Character] 유효하지 않은 웨이포인트 인덱스로 인해 현재 위치를 사용합니다.");
+                Debug.LogWarning("현재 웨이포인트 인덱스가 유효하지 않아 기본 위치로...");
             }
         }
 
@@ -558,7 +562,6 @@ public class Character : NetworkBehaviour, IDamageable
         }
 
         // 넘어간 캐릭터는 'Character' 태그로 변경
-        // (상대편 캐릭터들이 공격할 수 있도록)
         gameObject.tag = characterTag;
 
         Debug.Log($"[Character] {characterName}(areaIndex={areaIndex})가 점프 후 태그 변경: {gameObject.tag}, 타겟 태그: {chaseTag}");
@@ -587,7 +590,6 @@ public class Character : NetworkBehaviour, IDamageable
             // 히어로 캐릭터는 몬스터만 공격
             if (isHero)
             {
-                // 히어로는 특별한 몬스터 탐색 메소드 사용
                 currentTarget = FindHeroTargetInRange();
                 if (currentTarget != null)
                 {
@@ -618,7 +620,6 @@ public class Character : NetworkBehaviour, IDamageable
                 }
                 else
                 {
-                    // 점프해온 상대 캐릭터가 없으면 몬스터 공격
                     currentTarget = FindMonsterTargetInRange();
                     if (currentTarget != null)
                     {
@@ -634,13 +635,11 @@ public class Character : NetworkBehaviour, IDamageable
                 // 히어로는 추가 데미지
                 if (isHero)
                 {
-                    // 히어로의 기본 공격력을 임시로 증가
                     float originalDamage = attackPower;
                     attackPower *= 1.5f;
                     
                     AttackTarget(targetToDamage);
                     
-                    // 공격력 복원
                     attackPower = originalDamage;
                 }
                 else
@@ -694,7 +693,6 @@ public class Character : NetworkBehaviour, IDamageable
             if (c == this) continue;
             if (c == null || !c.gameObject.activeInHierarchy) continue;
             
-            // 히어로는 타겟으로 잡지 않음
             if (c.isHero) continue;
 
             if (c.areaIndex != this.areaIndex)
@@ -705,13 +703,11 @@ public class Character : NetworkBehaviour, IDamageable
                 
                 if (dist < effectiveRange && dist < nearestDist)
                 {
-                    // 내가 점프한 캐릭터라면 상대 지역 캐릭터 공격
                     if (this.hasCrossedRegion && tag == characterTag)
                     {
                         nearestDist = dist;
                         nearest = c;
                     }
-                    // 상대 지역 캐릭터가 점프한 캐릭터를 공격
                     else if (c.hasCrossedRegion && c.tag == characterTag)
                     {
                         nearestDist = dist;
@@ -928,10 +924,8 @@ public class Character : NetworkBehaviour, IDamageable
                         bulletComp.areaRadius = areaAttackRadius;
                     }
                     
-                    // 모든 총알의 속도를 설정
                     bulletComp.speed = bulletSpeed;
                     
-                    // 타겟 위치에 따라 방향별 스프라이트 설정
                     bool isTargetAbove = targetPosition.y > transform.position.y;
                     bulletComp.bulletUpDirectionSprite = bulletUpDirectionSprite;
                     bulletComp.bulletDownDirectionSprite = bulletDownDirectionSprite;
@@ -1209,7 +1203,7 @@ public class Character : NetworkBehaviour, IDamageable
 
     /// <summary>
     /// 점프해온 상대 지역 캐릭터를 찾는 메서드
-    /// 일반 배치된 캐릭터가 점프해온 적 캐릭터를 찾을 때 사용합니다.
+    /// 일반 배치된 캐릭터가 점프해온 적 캐릭터를 공격할 때 사용합니다.
     /// </summary>
     private Character FindJumpedOpponentCharacterInRange()
     {
@@ -1281,7 +1275,13 @@ public class Character : NetworkBehaviour, IDamageable
             velocity = (currentTarget.transform.position - transform.position);
         }
 
-        bool isMovingUp = (velocity.y >= 0f); // y>=0면 위, 아니면 아래
+        // =============================
+        // ** 수정된 부분 **
+        // 속도가 0일 때는 기본적으로 "아래(앞)" 스프라이트를 쓰도록
+        // isMovingUp = (velocity.y > 0f)
+        // =============================
+        bool isMovingUp = (velocity.y > 0f);  // 기존: (velocity.y >= 0f);
+
         Sprite spriteToUse = isMovingUp ? characterUpDirectionSprite : characterDownDirectionSprite;
 
         // 스프라이트 적용

@@ -311,7 +311,7 @@ GameObject:
   - component: {fileID: 7641624655160589502}
   m_Layer: 0
   m_Name: 38.PossessedWarg
-  m_TagString: Untagged
+  m_TagString: Monster
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0

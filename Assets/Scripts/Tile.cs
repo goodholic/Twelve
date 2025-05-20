@@ -23,10 +23,8 @@ public class Tile : MonoBehaviour
     public GameObject walkable2Prefab;
     public GameObject placablePrefab;
     public GameObject placable2Prefab;
-    // 원래 occupiedPrefab → placeTilePrefab 으로 변경
-    public GameObject placeTilePrefab;
-    // 원래 occupied2Prefab → placed2Prefab 으로 변경
-    public GameObject placed2Prefab;
+    public GameObject placeTilePrefab; // 원래 occupiedPrefab → placeTilePrefab
+    public GameObject placed2Prefab;   // 원래 occupied2Prefab → placed2Prefab
 
     [SerializeField] private GameObject currentVisual;
 
@@ -65,10 +63,6 @@ public class Tile : MonoBehaviour
         }
     }
 
-    // ------------------
-    //  Tile 상태 확인
-    // ------------------
-
     public bool IsPlacable()
     {
         return (transform.Find("Placable") != null);
@@ -87,14 +81,11 @@ public class Tile : MonoBehaviour
         return false;
     }
 
-    // 원래 IsOccupied() → IsPlaceTile()로 변경
     public bool IsPlaceTile()
     {
         for (int i = 0; i < transform.childCount; i++)
         {
             string childName = transform.GetChild(i).name.ToLower();
-            // "occupied"가 → "placetile"이 되었고,
-            // "occupied2" → "placed2"가 되었으므로, placetile 체크 시 placed2는 제외
             if (childName.Contains("placetile") && !childName.Contains("placed2"))
             {
                 return true;
@@ -103,7 +94,6 @@ public class Tile : MonoBehaviour
         return false;
     }
 
-    // 원래 IsOccupied2() → IsPlaced2()로 변경
     public bool IsPlaced2()
     {
         for (int i = 0; i < transform.childCount; i++)
@@ -140,7 +130,6 @@ public class Tile : MonoBehaviour
     /// </summary>
     public bool CanPlaceCharacter()
     {
-        // 기존 (IsOccupied / IsOccupied2) -> (IsPlaceTile / IsPlaced2)
         bool hasAnyType =
             IsWalkable() || IsWalkable2() ||
             IsPlacable() || IsPlacable2() ||
@@ -153,6 +142,16 @@ public class Tile : MonoBehaviour
     {
         Debug.Log($"[Tile] 클릭됨: {name} (Index={tileIndex}, row={row}, col={column})");
 
+        // ================== [수정한 부분] ==================
+        // removeMode가 true라면, PlacementManager.Instance.RemoveCharacterOnTile(this) 호출
+        if (PlacementManager.Instance != null && PlacementManager.Instance.removeMode)
+        {
+            PlacementManager.Instance.RemoveCharacterOnTile(this);
+            return; // 클릭 이벤트는 여기서 종료
+        }
+        // ==================================================
+
+        // 기존 로직: 캐릭터 배치
         if (CanPlaceCharacter())
         {
             var mgr = PlacementManager.Instance;
@@ -285,11 +284,9 @@ public class Tile : MonoBehaviour
         bool w2 = IsWalkable2();
         bool p1 = IsPlacable();
         bool p2 = IsPlacable2();
-        // 원래 o1 = IsOccupied(), o2 = IsOccupied2()
         bool pTile = IsPlaceTile();
         bool p2Tile = IsPlaced2();
 
-        // 순서: walkable2 > walkable > placable2 > placable > placed2 > placeTile
         if (w2 && walkable2Prefab != null) return walkable2Prefab;
         if (w1 && walkablePrefab  != null) return walkablePrefab;
         if (p2 && placable2Prefab != null) return placable2Prefab;

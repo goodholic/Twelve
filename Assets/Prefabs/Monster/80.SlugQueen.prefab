@@ -259,7 +259,7 @@ GameObject:
   - component: {fileID: 8246150517335154168}
   m_Layer: 0
   m_Name: 80.SlugQueen
-  m_TagString: Untagged
+  m_TagString: Monster
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0

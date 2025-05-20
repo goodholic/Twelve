@@ -637,7 +637,7 @@ GameObject:
   - component: {fileID: 6078058311145830581}
   m_Layer: 0
   m_Name: 36.Nightmare
-  m_TagString: Untagged
+  m_TagString: Monster
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0

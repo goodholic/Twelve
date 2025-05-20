@@ -4,6 +4,13 @@ using System.Collections.Generic;
 using TMPro;
 using System.Collections;
 
+/// <summary>
+/// 등록된 캐릭터(10칸)에 대해 '업그레이드' 기능을 담당하는 패널 매니저.
+/// 기존엔 업그레이드 재료(feedCharacter)를 직접 선택했지만,
+/// 이제는 "클릭만 하면 → 같은 종족 + 같은 성급 캐릭터를 인벤토리에서 자동 소모 + 골드 차감 + 경험치+1%".
+/// 100% 차면 레벨업(최대 30).
+/// (업그레이드 후 캐릭터의 경험치와 스탯을 3초간 표시)
+/// </summary>
 public class UpgradePanelManager : MonoBehaviour
 {
     [Header("CharacterInventoryManager")]
@@ -15,35 +22,31 @@ public class UpgradePanelManager : MonoBehaviour
     [Header("ShopManager (골드 소모)")]
     [SerializeField] private ShopManager shopManager;
 
-    [Header("업그레이드 비용")]
-    [SerializeField] private int upgradeCost = 10;  // 10골드
+    [Header("업그레이드 비용 (고정 10골드)")]
+    [SerializeField] private int upgradeCost = 10;
 
-    // ===========================================
-    //  (1) 업그레이드 패널(10칸)에서
-    //      "빈칸 전용" 스프라이트
-    // ===========================================
+    // ==========================
+    //  (A) 등록 상태(10칸)
+    // ==========================
     [Header("빈 슬롯용 스프라이트(업그레이드 10칸)")]
     [SerializeField] private Sprite emptyUpgradeSlotSprite;
 
-    // ===========================================
-    //  "등록 상태 (set2만)" 10칸
-    // ===========================================
     [Header("업그레이드 등록 상태 이미지(10칸) - set2")]
-    [SerializeField] private List<Image> upgradeRegisteredSlotImages; // 등록된 캐릭터 이미지 (10칸)
+    [SerializeField] private List<Image> upgradeRegisteredSlotImages;
 
     [Header("업그레이드 슬롯(10칸) 레벨 텍스트")]
     [SerializeField] private List<TextMeshProUGUI> upgradeRegisteredSlotLevelTexts;
 
-    // ===========================================
-    //  업그레이드 결과 표시 UI
-    // ===========================================
-    [Header("업그레이드 결과 패널")]
+    // ==========================
+    // (B) 결과/스탯 표시
+    // ==========================
+    [Header("업그레이드 결과 패널 (3초간 보여주기)")]
     [SerializeField] private GameObject upgradeResultPanel;
 
-    [Header("업그레이드 결과 텍스트")]
+    [Header("업그레이드 결과 텍스트 (경험치/스탯 등 표시)")]
     [SerializeField] private TextMeshProUGUI upgradeResultText;
 
-    [Header("스탯 증가 표시 UI")]
+    [Header("스탯 증가 표시용 패널 (옵션)")]
     [SerializeField] private GameObject statBarsPanel;
     [SerializeField] private RectTransform attackPowerBar;
     [SerializeField] private RectTransform attackSpeedBar;
@@ -51,38 +54,29 @@ public class UpgradePanelManager : MonoBehaviour
     [SerializeField] private RectTransform moveSpeedBar;
     [SerializeField] private RectTransform attackRangeBar;
 
-    // -----------------------------------------------------------
-    //  deckPanelManager.registeredCharactersSet2와 공유할 배열
-    // -----------------------------------------------------------
+    // =====================================================
+    //  deckPanelManager.registeredCharactersSet2 와 동기화
+    // =====================================================
     private CharacterData[] registeredSet2_Up = new CharacterData[10];
 
-    // ===========================================
-    //  업그레이드 버튼 (10개)
-    // ===========================================
+    // ==========================
+    // (C) 업그레이드 버튼 (10개)
+    // ==========================
     [Header("캐릭터 업그레이드 버튼 (총 10개)")]
     [SerializeField] private List<Button> upgradeButtons;
 
-    // ===========================================
-    // "재료(feed)"로 사용될 인벤토리 캐릭터
-    // ===========================================
-    private CharacterData feedCharacter = null;
-    private int feedSlotIndex = -1;
-
     private void Awake()
     {
-        // ShopManager가 없으면 찾기
         if (shopManager == null)
         {
             shopManager = FindFirstObjectByType<ShopManager>();
         }
 
-        // 업그레이드 결과 패널 초기화
         if (upgradeResultPanel != null)
         {
             upgradeResultPanel.SetActive(false);
         }
 
-        // 스탯 바 패널 초기화
         if (statBarsPanel != null)
         {
             statBarsPanel.SetActive(false);
@@ -91,32 +85,28 @@ public class UpgradePanelManager : MonoBehaviour
 
     private void OnEnable()
     {
-        // 업그레이드 패널 활성화 시 -> 덱 패널매니저 업그레이드모드=true
-        if (deckPanelManager != null)
-        {
-            deckPanelManager.isUpgradeMode = true;
-        }
-
         // 덱 패널에서 등록 상태 복사
         SetUpgradeRegisteredSlotsFromDeck();
-
         // 업그레이드 버튼 초기화
         SetupUpgradeButtons();
     }
 
+    /// <summary>
+    /// 외부에서 "업그레이드 패널" 새로고침
+    /// </summary>
     public void RefreshDisplay()
     {
         SetUpgradeRegisteredSlotsFromDeck();
     }
 
     /// <summary>
-    /// 덱 패널에 등록된 10칸 정보 -> 업그레이드 패널에도 반영
+    /// 덱 패널에 등록된 10칸 정보를 가져와서 upgradeRegisteredSlotImages 등에 반영
     /// </summary>
     public void SetUpgradeRegisteredSlotsFromDeck()
     {
         if (deckPanelManager == null)
         {
-            Debug.LogWarning("[UpgradePanelManager] deckPanelManager가 null임");
+            Debug.LogWarning("[UpgradePanelManager] deckPanelManager가 null");
             return;
         }
 
@@ -126,7 +116,6 @@ public class UpgradePanelManager : MonoBehaviour
             registeredSet2_Up[i] = deckSet2[i];
         }
 
-        // 시각적 갱신
         for (int i = 0; i < 10; i++)
         {
             UpdateUpgradeRegisteredImage(i);
@@ -146,41 +135,31 @@ public class UpgradePanelManager : MonoBehaviour
         CharacterData cData = registeredSet2_Up[i];
         if (cData == null)
         {
-            // 빈 슬롯 -> emptyUpgradeSlotSprite
             if (slotImg)
             {
-                slotImg.gameObject.SetActive(true);
                 slotImg.sprite = emptyUpgradeSlotSprite;
             }
             if (lvlText)
             {
-                lvlText.gameObject.SetActive(false);
+                lvlText.text = "";
             }
-
-            // 해당 업그레이드 버튼 비활성화
             if (upgradeButtons != null && i < upgradeButtons.Count)
             {
-                upgradeButtons[i].interactable = false;  // 빈칸이면 버튼 불가
+                upgradeButtons[i].interactable = false;  // 빈칸이면 버튼 비활성
             }
         }
         else
         {
             // 캐릭터 있음
-            if (slotImg)
+            if (slotImg && cData.buttonIcon != null)
             {
-                slotImg.gameObject.SetActive(true);
-                if (cData.buttonIcon != null)
-                    slotImg.sprite = cData.buttonIcon.sprite;
-                else
-                    slotImg.sprite = emptyUpgradeSlotSprite;
+                slotImg.sprite = cData.buttonIcon.sprite;
             }
             if (lvlText)
             {
-                lvlText.gameObject.SetActive(true);
                 lvlText.text = $"Lv.{cData.level}";
             }
-
-            // 업그레이드 버튼 활성화
+            // 버튼 활성
             if (upgradeButtons != null && i < upgradeButtons.Count)
             {
                 upgradeButtons[i].interactable = true;
@@ -188,211 +167,192 @@ public class UpgradePanelManager : MonoBehaviour
         }
     }
 
-    private void SetupUpgradeButtons()
+    /// <summary>
+    /// 업그레이드 버튼(10개)에 리스너 연결
+    /// </summary>
+    public void SetupUpgradeButtons()
     {
         if (upgradeButtons == null || upgradeButtons.Count < 10)
         {
-            Debug.LogWarning("[UpgradePanelManager] upgradeButtons(10개) 부족");
+            Debug.LogWarning("[UpgradePanelManager] upgradeButtons가 10개 미만!");
             return;
         }
 
         for (int i = 0; i < upgradeButtons.Count; i++)
         {
-            int idx = i;
-            upgradeButtons[i].onClick.RemoveAllListeners();
-            upgradeButtons[i].onClick.AddListener(() => OnClickUpgradeButton(idx));
+            Button btn = upgradeButtons[i];
+            if (btn != null)
+            {
+                btn.onClick.RemoveAllListeners();
+                int copyIndex = i;
+                btn.onClick.AddListener(() => OnClickUpgradeButton(copyIndex));
+            }
         }
     }
 
     /// <summary>
-    /// 인벤토리 200칸 중 어떤 것을 "재료"로 지정 (isUpgradeMode가 true일 때 DeckPanelManager에서 호출)
+    /// (1) 클릭된 캐릭터 = registeredSet2_Up[index]
+    /// (2) 인벤토리에서 "같은 종족 + 같은 성급" 캐릭터 1명 찾아 제거
+    /// (3) 10골드 소모
+    /// (4) 경험치+1%, 100% 되면 레벨업(최대30)
+    /// (5) 3초간 스탯/경험치 표시
     /// </summary>
-    /// 이제는 인벤토리에만 있어도 허용하도록 수정함.
-    /// </summary>
-    public void SetFeedFromInventory(int slotIndex, CharacterData feedData)
+    private void OnClickUpgradeButton(int slotIndex)
     {
-        if (feedData == null)
+        if (slotIndex < 0 || slotIndex >= 10)
         {
-            Debug.LogWarning("[UpgradePanel] 재료가 null => 지정 취소");
-            feedCharacter = null;
-            feedSlotIndex = -1;
+            Debug.LogWarning($"[UpgradePanel] 잘못된 업그레이드 슬롯 인덱스: {slotIndex}");
             return;
         }
 
-        // =========================
-        // [수정] "덱에 있지 않으면 return" 로직 삭제
-        // =========================
-        // 예전 코드:
-        //   int foundDeckIndex = ~~~
-        //   if (foundDeckIndex == -1) { Debug.LogWarning(...); return; }
-        // → 제거
-
-        // 이제는 인벤토리에만 있어도 재료 사용 OK
-        feedCharacter = feedData;
-        feedSlotIndex = slotIndex;
-
-        Debug.Log($"[UpgradePanel] 재료로 선택됨: {feedData.characterName}, 인벤토리슬롯={slotIndex}");
-    }
-
-    /// <summary>
-    /// i번 업그레이드 버튼 클릭 -> registeredSet2_Up[i] 캐릭터(=목표)를 업그레이드 시도
-    /// </summary>
-    private void OnClickUpgradeButton(int index)
-    {
-        if (index < 0 || index >= 10)
-        {
-            Debug.LogWarning($"[UpgradePanel] 잘못된 인덱스: {index}");
-            return;
-        }
-
-        // 업그레이드 대상
-        CharacterData targetChar = registeredSet2_Up[index];
+        CharacterData targetChar = registeredSet2_Up[slotIndex];
         if (targetChar == null)
         {
-            Debug.LogWarning($"[UpgradePanel] {index}번 슬롯에 캐릭터가 없어서 업그레이드 불가");
+            Debug.LogWarning($"[UpgradePanel] {slotIndex}번 슬롯에 캐릭터가 없어 업그레이드 불가");
             return;
         }
 
-        // 골드 소모 확인
+        // 골드 소모 (10골드)
         if (shopManager == null)
         {
-            Debug.LogWarning("[UpgradePanel] ShopManager가 없어 골드 확인 불가");
+            Debug.LogWarning("[UpgradePanel] shopManager가 없어 업그레이드 불가");
             return;
         }
-
-        // 골드 차감 시도
+        // 골드 차감
         if (!shopManager.TrySpendGold(upgradeCost))
         {
-            // 골드 부족 메시지는 ShopManager에서 표시됨
+            // 골드 부족
             return;
         }
 
-        // (1) 재료 캐릭터 존재 여부 - 재료가 있으면 소모, 없으면 골드만 소모하고 넘어감
-        if (feedCharacter != null)
+        // 인벤토리에서 "같은 종족 + 같은 성급" 캐릭터 찾기
+        if (characterInventory == null)
         {
-            // (2) feedSlotIndex 유효성 검사
-            if (feedSlotIndex >= 0 
-                && feedSlotIndex < characterInventory.sharedSlotData200.Length
-                && characterInventory.sharedSlotData200[feedSlotIndex] != null)
+            Debug.LogWarning("[UpgradePanel] characterInventory가 null이라 업그레이드 불가");
+            return;
+        }
+
+        List<CharacterData> ownedList = characterInventory.GetOwnedCharacters();
+        CharacterData match = null;
+        for (int i = 0; i < ownedList.Count; i++)
+        {
+            CharacterData cd = ownedList[i];
+            if (cd != null && cd.race == targetChar.race && cd.level == targetChar.level)
             {
-                // 피드 캐릭터의 레벨과 경험치 추출
-                int feedLevel = feedCharacter.level;
-                int feedExp = feedCharacter.currentExp;
-                
-                // 레벨과 경험치에 따른 보너스 경험치 계산
-                int bonusExp = (feedLevel - 1) + feedExp;
-                
-                // 슬롯에서 제거
-                characterInventory.sharedSlotData200[feedSlotIndex] = null;
-                characterInventory.RemoveFromInventory(feedCharacter); // 인벤토리 List에서도 제거
-
-                // (4) 대상 Exp에 보너스 경험치 추가
-                targetChar.currentExp += 1 + bonusExp;
-                targetChar.CheckLevelUp();
-
-                Debug.Log($"[UpgradePanel] [{targetChar.characterName}] 업그레이드 (재료={feedCharacter.characterName}, 레벨={feedLevel}, 경험치={feedExp}, 보너스={bonusExp})");
-
-                // 업그레이드 후 재료 해제
-                feedCharacter = null;
-                feedSlotIndex = -1;
-
-                // 인벤토리 다시 표시(20칸)
-                if (deckPanelManager != null)
+                // 동일 종족 + 동일 레벨 => 여기서 '성급'은 level 아닌 star일 수도 있지만,
+                // 만약 star 정보를 사용하려면 cd.initialStar == targetChar.initialStar 로 체크
+                if (cd.initialStar == targetChar.initialStar)
                 {
-                    deckPanelManager.RefreshInventoryUI();
+                    match = cd;
+                    break;
                 }
             }
         }
 
-        // 스탯 업그레이드 실행 (골드만 소모해도 스탯은 업그레이드됨)
-        string upgradeResult = targetChar.UpgradeStats();
-        Debug.Log($"[UpgradePanel] 골드 {upgradeCost}개 소모하여 {targetChar.characterName} 스탯 1% 강화됨");
-
-        // 업그레이드 결과 표시
-        ShowUpgradeResult(targetChar, upgradeResult);
-
-        // 슬롯 UI 갱신
-        UpdateUpgradeRegisteredImage(index);
-
-        // 저장
-        if (characterInventory != null)
+        if (match == null)
         {
-            characterInventory.SaveCharacters();
-        }
-    }
-
-    /// <summary>
-    /// 업그레이드 결과를 UI에 표시하고 3초 후 자동으로 숨깁니다.
-    /// </summary>
-    private void ShowUpgradeResult(CharacterData character, string resultText)
-    {
-        // 결과 패널이 없으면 표시 안함
-        if (upgradeResultPanel == null || upgradeResultText == null)
-        {
+            Debug.LogWarning($"[UpgradePanel] 같은 종족+성급 캐릭터가 인벤토리에 없어 업그레이드 불가 => 골드 {upgradeCost}는 이미 소모됨...");
             return;
         }
 
-        // 결과 텍스트 설정 및 패널 활성화
+        // 매치된 캐릭터 제거
+        characterInventory.RemoveFromInventory(match);
+
+        // 1% 경험치 증가
+        targetChar.currentExp += 1;
+
+        // 100% 누적되면 레벨업 (최대 30레벨)
+        if (targetChar.currentExp >= 100)
+        {
+            targetChar.level++;
+            if (targetChar.level > 30)
+            {
+                targetChar.level = 30;
+            }
+            else
+            {
+                // 레벨업하면 currentExp는 0으로
+                targetChar.currentExp = 0;
+            }
+        }
+
+        // 스탯/경험치 표시 (3초)
+        string resultMsg = MakeUpgradeResultMessage(targetChar);
+        ShowUpgradeResult(targetChar, resultMsg);
+
+        // 슬롯 UI 갱신
+        UpdateUpgradeRegisteredImage(slotIndex);
+
+        // 저장
+        characterInventory.SaveCharacters();
+    }
+
+    /// <summary>
+    /// 업그레이드 결과 메시지(캐릭터 레벨, 현재Exp 등)
+    /// </summary>
+    private string MakeUpgradeResultMessage(CharacterData targetChar)
+    {
+        return $"{targetChar.characterName} 업그레이드!\n" +
+               $"Lv.{targetChar.level} (Exp {targetChar.currentExp}%)\n\n" +
+               $"공격력: {targetChar.attackPower}\n" +
+               $"사거리: {targetChar.attackRange}\n" +
+               $"공격속도: {targetChar.attackSpeed}\n" +
+               $"체력: {targetChar.maxHP}";
+    }
+
+    /// <summary>
+    /// 3초간 업그레이드 결과 패널을 띄우고 스탯 바 표시
+    /// </summary>
+    private void ShowUpgradeResult(CharacterData character, string resultText)
+    {
+        if (upgradeResultPanel == null || upgradeResultText == null)
+        {
+            Debug.LogWarning("[UpgradePanelManager] 업그레이드 결과 패널이 null이어서 표시 불가.");
+            return;
+        }
+
         upgradeResultText.text = resultText;
         upgradeResultPanel.SetActive(true);
 
-        // 스탯 바 표시
+        // 스탯 바 업데이트
         UpdateStatBars(character);
 
-        // 3초 후 자동으로 숨기기
+        // 3초 후 자동 숨김
         StartCoroutine(HideUpgradeResultAfterDelay(3.0f));
     }
 
     /// <summary>
-    /// 스탯 증가를 시각적으로 보여주는 바를 업데이트합니다.
+    /// 캐릭터 스탯 바를 업데이트
     /// </summary>
     private void UpdateStatBars(CharacterData character)
     {
-        if (statBarsPanel == null)
-        {
-            return;
-        }
+        if (statBarsPanel == null) return;
 
         statBarsPanel.SetActive(true);
 
-        // 각 스탯 바 크기를 상대적으로 설정
-        // 예: 공격력이 10이면 너비 100, 20이면 너비 200 등
         if (attackPowerBar != null)
-        {
             attackPowerBar.sizeDelta = new Vector2(character.attackPower * 10f, attackPowerBar.sizeDelta.y);
-        }
-        
+
         if (attackSpeedBar != null)
-        {
             attackSpeedBar.sizeDelta = new Vector2(character.attackSpeed * 50f, attackSpeedBar.sizeDelta.y);
-        }
-        
+
         if (hpBar != null)
-        {
             hpBar.sizeDelta = new Vector2(character.maxHP / 2f, hpBar.sizeDelta.y);
-        }
-        
+
         if (moveSpeedBar != null)
-        {
             moveSpeedBar.sizeDelta = new Vector2(character.moveSpeed * 30f, moveSpeedBar.sizeDelta.y);
-        }
-        
+
         if (attackRangeBar != null)
-        {
             attackRangeBar.sizeDelta = new Vector2(character.attackRange * 30f, attackRangeBar.sizeDelta.y);
-        }
     }
 
-    /// <summary>
-    /// 지정된 시간 후에 업그레이드 결과 패널을 숨깁니다.
-    /// </summary>
     private IEnumerator HideUpgradeResultAfterDelay(float delay)
     {
         yield return new WaitForSeconds(delay);
-        
+
         if (upgradeResultPanel != null)
             upgradeResultPanel.SetActive(false);
-            
+
         if (statBarsPanel != null)
             statBarsPanel.SetActive(false);
     }

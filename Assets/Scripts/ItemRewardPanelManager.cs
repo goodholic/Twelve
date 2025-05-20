@@ -1,5 +1,3 @@
-// Assets\Scripts\ItemRewardPanelManager.cs
-
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -47,6 +45,25 @@ public class ItemRewardPanelManager : MonoBehaviour
     /// </summary>
     public void ShowRewardPanel()
     {
+        // ---------------------- [수정 1] ----------------------
+        // 인벤토리 현재 아이템 개수가 5개 이상이면 보상 획득 불가 처리
+        if (itemInventoryManager != null)
+        {
+            var currentCount = itemInventoryManager.GetOwnedItems().Count;
+            if (currentCount >= 5)
+            {
+                Debug.LogWarning("[ItemRewardPanelManager] 이미 아이템이 5개 있으므로 더이상 아이템을 받을 수 없습니다!");
+                // 패널 자체를 열지 않고 종료
+                return;
+            }
+        }
+        else
+        {
+            Debug.LogError("[ItemRewardPanelManager] itemInventoryManager가 null입니다.");
+            return;
+        }
+        // -----------------------------------------------------
+
         if (itemPanel != null)
         {
             itemPanel.SetActive(true);
@@ -124,17 +141,36 @@ public class ItemRewardPanelManager : MonoBehaviour
         ItemData selected = chosenItems[index];
         if (selected == null) return;
 
+        // ---------------------- [수정 2] ----------------------
+        // 인벤토리에 아이템이 이미 5개면 선택 불가
+        if (itemInventoryManager != null)
+        {
+            var currentCount = itemInventoryManager.GetOwnedItems().Count;
+            if (currentCount >= 5)
+            {
+                Debug.LogWarning("[ItemRewardPanelManager] 인벤토리에 이미 아이템이 5개여서 더이상 선택이 불가합니다!");
+                // 선택 패널 닫기만 하고 종료
+                if (itemPanel != null)
+                {
+                    itemPanel.SetActive(false);
+                }
+                return;
+            }
+        }
+        else
+        {
+            Debug.LogError("[ItemRewardPanelManager] itemInventoryManager가 null입니다. 아이템을 추가할 수 없습니다.");
+            return;
+        }
+        // -----------------------------------------------------
+
+        // 인벤토리에 추가
         if (itemInventoryManager != null)
         {
             itemInventoryManager.AddItem(selected);
         }
 
-        var itemPanelMgr = FindFirstObjectByType<ItemPanelManager>();
-        if (itemPanelMgr != null)
-        {
-            itemPanelMgr.RefreshItemPanel();
-        }
-
+        // 아이템 패널 닫기 (한 번 고르면 다시 비활성)
         if (itemPanel != null)
         {
             itemPanel.SetActive(false);

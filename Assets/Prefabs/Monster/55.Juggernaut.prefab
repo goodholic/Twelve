@@ -550,7 +550,7 @@ GameObject:
   - component: {fileID: 8500544566415466021}
   m_Layer: 0
   m_Name: 55.Juggernaut
-  m_TagString: Untagged
+  m_TagString: Monster
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
