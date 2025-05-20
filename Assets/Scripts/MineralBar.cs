@@ -97,6 +97,19 @@ public class MineralBar : MonoBehaviour
     }
 
     /// <summary>
+    /// 소비한 미네랄을 환불합니다. (소환 실패 시 사용)
+    /// </summary>
+    /// <param name="amount">환불할 미네랄 양</param>
+    public void RefundMinerals(int amount)
+    {
+        // 최대치 초과하지 않도록 제한
+        currentMinerals = Mathf.Min(currentMinerals + amount, maxMinerals);
+        // 시각적 업데이트
+        UpdateVisual();
+        Debug.Log($"[MineralBar] {amount} 미네랄 환불됨. 현재: {currentMinerals}/{maxMinerals}");
+    }
+
+    /// <summary>
     /// 현재 미네랄 수 반환
     /// </summary>
     public int GetCurrentMinerals()

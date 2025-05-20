@@ -15,6 +15,12 @@ public class Monster : NetworkBehaviour, IDamageable
     [Header("Castle Attack Damage")]
     public int damageToCastle = 1;
 
+    [Header("챕터 설정")]
+    [Tooltip("몬스터의 현재 챕터 (기본값: 1)")]
+    public int currentChapter = 1;
+    [Tooltip("챕터당 스탯 증가 비율 (1.1 = 10% 증가)")]
+    public float chapterStatMultiplier = 1.1f;
+
     public event Action OnDeath;
     public event Action<Monster> OnReachedCastle;
 
@@ -40,6 +46,12 @@ public class Monster : NetworkBehaviour, IDamageable
 
     private void Awake()
     {
+        // 챕터에 따른 스탯 증가 적용
+        if (currentChapter > 1)
+        {
+            ApplyChapterStatBonus();
+        }
+
         originalMoveSpeed = moveSpeed;
         maxHealth = health;
 
@@ -52,6 +64,29 @@ public class Monster : NetworkBehaviour, IDamageable
             hpBarCanvas.gameObject.SetActive(true);
             UpdateHpBar();
         }
+    }
+
+    /// <summary>
+    /// 챕터에 따라 몬스터 스탯을 강화합니다 (1.1배씩 증가)
+    /// </summary>
+    private void ApplyChapterStatBonus()
+    {
+        // 1챕터 이상일 때만 계산
+        if (currentChapter <= 1) return;
+
+        // 몇 번 강화할지 계산 (2챕터=1번, 3챕터=2번, ...)
+        int upgradeCount = currentChapter - 1;
+        
+        // 각 스탯에 대해 (upgradeCount)번 곱하기
+        float multiplier = Mathf.Pow(chapterStatMultiplier, upgradeCount);
+        
+        // 스탯 적용
+        health *= multiplier;
+        moveSpeed *= multiplier;
+        damageToCastle = Mathf.RoundToInt(damageToCastle * multiplier);
+        
+        Debug.Log($"[Monster] 챕터 {currentChapter}에 따른 스탯 증가: 배율 {multiplier:F2}배 " +
+                 $"(체력: {health:F1}, 이동속도: {moveSpeed:F2}, 성 공격력: {damageToCastle})");
     }
 
     private void Update()

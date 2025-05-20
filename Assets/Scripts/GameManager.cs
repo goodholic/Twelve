@@ -156,6 +156,21 @@ public class GameManager : MonoBehaviour
 
         Debug.Log($"[GameManager] GameOver!! isVictory={victory}");
 
+        // 승리 시 100골드 지급
+        if (victory)
+        {
+            // ShopManager를 통해 골드 지급
+            if (ShopManager.Instance != null)
+            {
+                ShopManager.Instance.AddGold(100);
+                Debug.Log("[GameManager] 승리 보상으로 100골드가 지급되었습니다.");
+            }
+            else
+            {
+                Debug.LogWarning("[GameManager] ShopManager.Instance가 null - 골드를 지급할 수 없습니다.");
+            }
+        }
+
         // === 씬 이동 대신, 결과 패널을 켬 ===
         if (resultPanel != null)
         {

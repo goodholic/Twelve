@@ -94,6 +94,39 @@ public class CharacterData
             Debug.Log($"[CharacterData] {characterName} 레벨업! => Lv.{level}, 남은Exp={currentExp}");
         }
     }
+
+    /// <summary>
+    /// 캐릭터 스탯을 1% 업그레이드합니다.
+    /// 공격력, 공격속도, 체력 등 모든 스탯이 증가합니다.
+    /// </summary>
+    /// <returns>증가된 스탯 정보 문자열</returns>
+    public string UpgradeStats()
+    {
+        // 업그레이드 전 스탯 저장
+        float oldAttackPower = attackPower;
+        float oldAttackSpeed = attackSpeed;
+        float oldMaxHP = maxHP;
+        float oldMoveSpeed = moveSpeed;
+        float oldAttackRange = attackRange;
+
+        // 각 스탯을 1%씩 증가
+        attackPower *= 1.01f;  // 1% 증가
+        attackSpeed *= 1.01f;  // 1% 증가
+        maxHP *= 1.01f;        // 1% 증가
+        moveSpeed *= 1.01f;    // 1% 증가
+        attackRange *= 1.01f;  // 1% 증가
+
+        // 업그레이드 결과 메시지 생성
+        string upgradeResult = $"{characterName} 스탯 업그레이드:\n" +
+            $"공격력: {oldAttackPower:F1} → {attackPower:F1} (+{attackPower - oldAttackPower:F1})\n" +
+            $"공격속도: {oldAttackSpeed:F2} → {attackSpeed:F2} (+{attackSpeed - oldAttackSpeed:F2})\n" +
+            $"체력: {oldMaxHP:F1} → {maxHP:F1} (+{maxHP - oldMaxHP:F1})\n" +
+            $"이동속도: {oldMoveSpeed:F2} → {moveSpeed:F2} (+{moveSpeed - oldMoveSpeed:F2})\n" +
+            $"공격범위: {oldAttackRange:F2} → {attackRange:F2} (+{attackRange - oldAttackRange:F2})";
+
+        Debug.Log($"[CharacterData] {upgradeResult}");
+        return upgradeResult;
+    }
 }
 
 

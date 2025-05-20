@@ -378,7 +378,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &2374989008031308591
 Transform:
   m_ObjectHideFlags: 0
@@ -389,7 +389,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 0.5, y: 0.5, z: 1}
+  m_LocalScale: {x: 45, y: 45, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 2027871452395046274}
@@ -547,6 +547,8 @@ MonoBehaviour:
   - {fileID: 4818939896627276988, guid: d2e0810630198c148979fa75ad079427, type: 3}
   - {fileID: 1411693949256981867, guid: 03cdf8ef9ab1edb41ab152615dc955bf, type: 3}
   damageToCastle: 1
+  currentChapter: 1
+  chapterStatMultiplier: 1.1
   hpBarCanvas: {fileID: 1791476550057396527, guid: 639b613038e53cc4ca6bec5f67536cd0, type: 3}
   hpFillImage: {fileID: 6612212183521764326, guid: b65a9aba6ea1ed6449652f933334de81, type: 3}
   areaIndex: 2

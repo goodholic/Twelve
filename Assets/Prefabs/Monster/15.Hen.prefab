@@ -389,7 +389,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 0.5, y: 0.5, z: 1}
+  m_LocalScale: {x: 45, y: 45, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 2027871452395046274}
@@ -547,6 +547,8 @@ MonoBehaviour:
   - {fileID: 6461034117732938839, guid: d988006bd53f4b0468d4fcedc810ac64, type: 3}
   - {fileID: 8360226188534919249, guid: 975390a5ef2c9ba45a77f5afca985383, type: 3}
   damageToCastle: 1
+  currentChapter: 1
+  chapterStatMultiplier: 1.1
   hpBarCanvas: {fileID: 8931788622985592741, guid: b5939eb57b5d3ff48b4737ae1d059380, type: 3}
   hpFillImage: {fileID: 38995151560781449, guid: b5939eb57b5d3ff48b4737ae1d059380, type: 3}
   areaIndex: 1

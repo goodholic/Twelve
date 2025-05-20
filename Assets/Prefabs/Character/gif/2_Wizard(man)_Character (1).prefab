@@ -118,6 +118,7 @@ MonoBehaviour:
   moveSpeed: 1
   currentTile: {fileID: 0}
   currentTarget: {fileID: 0}
+  currentCharTarget: {fileID: 0}
   isAreaAttack: 1
   areaAttackRadius: 1.5
   isHero: 0
@@ -134,6 +135,8 @@ MonoBehaviour:
   showRangeIndicator: 0
   bulletPrefab: {fileID: 8845817633173902957, guid: 3f66d6bb5c94c954e9e997e0b8a75c68, type: 3}
   bulletSpeed: 5
+  bulletUpDirectionSprite: {fileID: 1646411811428528796, guid: 5c89bb58fa96c834dbd03af70450e4fd, type: 3}
+  bulletDownDirectionSprite: {fileID: 6183727792556708218, guid: 2f5064f13b5853645ba3ae9dcd360dba, type: 3}
   opponentBulletPanel: {fileID: 8293515601833126614, guid: 442d773c6cac9b34e88e19f932f717e8, type: 3}
   twoStarOutlineColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
   twoStarOutlineWidth: 10
@@ -155,6 +158,8 @@ MonoBehaviour:
   endTileRect: {fileID: 4614398458146241476, guid: 02fa27106db89b544bba34f1b127942e, type: 3}
   targetJumpPosition: {fileID: 4614398458146241476, guid: 02fa27106db89b544bba34f1b127942e, type: 3}
   startJumpPosition: {fileID: 7728088104138265406, guid: dd3720c0124e04b4d83c775b74fdac3c, type: 3}
+  characterUpDirectionSprite: {fileID: 1646411811428528796, guid: 5c89bb58fa96c834dbd03af70450e4fd, type: 3}
+  characterDownDirectionSprite: {fileID: 6183727792556708218, guid: 2f5064f13b5853645ba3ae9dcd360dba, type: 3}
 --- !u!114 &5272046658125502278
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -168,6 +173,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   parentPanel: {fileID: 3504338384272343577, guid: 9a44fedc711c03541adc233db7cd34dd, type: 3}
+  dragScale: 1.1
+  dragYOffset: 30
+  validDropColor: {r: 0.5, g: 1, b: 0.5, a: 1}
+  invalidDropColor: {r: 1, g: 0.5, b: 0.5, a: 1}
 --- !u!58 &-3937458683028160175
 CircleCollider2D:
   m_ObjectHideFlags: 0

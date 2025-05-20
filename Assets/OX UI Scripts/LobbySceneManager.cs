@@ -37,7 +37,7 @@ public class LobbySceneManager : MonoBehaviour
     [SerializeField] private int totalStages = 100;
 
     [Header("스테이지별 이미지(인덱스 순)")]
-    [SerializeField] private Sprite[] stageSprites;
+    [SerializeField] private GameObject[] stageSprites;
 
     // ============================================
     //  (추가) CharacterInventoryManager 참조
@@ -263,15 +263,36 @@ public class LobbySceneManager : MonoBehaviour
         StageInfo info = stages[currentStageIndex];
         bool locked = !info.isUnlocked;
 
+        // 잠금 아이콘은 잠금 상태에 따라 표시
         if (stageLockIcon) stageLockIcon.gameObject.SetActive(locked);
+        
+        // 썸네일 이미지는 항상 표시 (기본 상태)
         if (stageThumbnail) stageThumbnail.gameObject.SetActive(!locked);
 
-        if (!locked && stageThumbnail != null)
+        // 모든 스테이지 프리팹 비활성화
+        if (stageSprites != null)
         {
-            if (stageSprites != null && currentStageIndex < stageSprites.Length)
-                stageThumbnail.sprite = stageSprites[currentStageIndex];
+            for (int i = 0; i < stageSprites.Length; i++)
+            {
+                if (stageSprites[i] != null)
+                {
+                    stageSprites[i].SetActive(false);
+                }
+            }
+        }
+
+        // 스테이지가 잠금 해제 상태일 때만 해당 스테이지 게임 오브젝트 활성화
+        if (!locked && stageSprites != null)
+        {
+            // 현재 스테이지에 맞는 프리팹 활성화
+            if (currentStageIndex < stageSprites.Length && stageSprites[currentStageIndex] != null)
+            {
+                stageSprites[currentStageIndex].SetActive(true);
+            }
             else
-                stageThumbnail.sprite = null;
+            {
+                Debug.LogWarning($"[LobbySceneManager] 스테이지 {currentStageIndex+1}의 프리팹이 없거나 인덱스가 범위를 벗어났습니다.");
+            }
         }
 
         for (int i = 0; i < 5; i++)

@@ -1,4 +1,6 @@
+///////////////////////////////
 // Assets\Scripts\Bullet.cs
+///////////////////////////////
 
 using UnityEngine;
 using System.Collections;
@@ -31,7 +33,7 @@ public class Bullet : MonoBehaviour
 
     [Header("공통: 공격력 / 속도 / 최대 생존시간")]
     public float damage = 10f;
-    public float speed = 5f;
+    public float speed = 3f;
     public float maxLifeTime = 3f;
 
     [Header("광역 공격 여부(폭발탄 등)")]
@@ -40,10 +42,8 @@ public class Bullet : MonoBehaviour
 
     [Header("타겟 / 기타")]
     public GameObject target;        // 몬스터나 캐릭터 모두 사용 가능하도록 GameObject로 변경
-    private float aliveTime = 0f; // 이게 뭐지???
-    
-    // 모든 대상에 대해 동일한 처리를 위한 참조
-    private IDamageable damageableTarget;  // 인터페이스 사용
+    private float aliveTime = 0f;    // 사용 중인 시간 체크
+    private IDamageable damageableTarget;  // 인터페이스 사용 (Monster/Character 등)
 
     // -------------------------------------------------------
     // [탄환별 추가 옵션들]
@@ -76,11 +76,31 @@ public class Bullet : MonoBehaviour
 
     [Header("에너지탄 옵션")]
     public float extraRange = 5f;
-    public float energySpeedFactor = 1.5f; // <-- 기존 필드 유지
+    public float energySpeedFactor = 1.2f;
 
     [Header("Impact / 폭발 이펙트 (옵션)")]
     public GameObject impactEffectPrefab;
     public GameObject explosionEffectPrefab;
+
+    // 포물선 이동을 위한 변수들
+    [Header("포물선 설정")]
+    public float arcHeight = 0.5f;  // 포물선의 최대 높이 (값이 클수록 더 높게 날아감)
+    private Vector3 startPosition;   // 총알 시작 위치
+    private float totalDistance;     // 총알이 날아갈 총 거리
+    private float currentDistance;   // 현재까지 날아간 거리
+    private float speedMultiplier = 0.7f;  // 전체적인 속도 감소 인자 (조정용)
+
+    // ================================
+    // [수정] 아래 두 스프라이트는
+    // "소환된 캐릭터가 (위/아래로) 표시될 때" 쓰이는 것이며,
+    // 실제 '탄환' 그래픽으로 사용되지 않음!
+    // ================================
+    [Header("소환된 캐릭터가 위/아래로 공격할 때 보여줄 스프라이트 (총알 스프라이트 X)")]
+    public Sprite bulletUpDirectionSprite;    // (기존) 위쪽 방향 탄환 스프라이트 -> 지금은 "소환된 캐릭터(위로 쏠 때)"
+    public Sprite bulletDownDirectionSprite;  // (기존) 아래쪽 방향 탄환 스프라이트 -> 지금은 "소환된 캐릭터(아래로 쏠 때)"
+
+    private SpriteRenderer spriteRenderer;
+    private UnityEngine.UI.Image uiImage;
 
     private int piercedCount = 0;
     private List<Monster> chainAttackedMonsters = new List<Monster>();
@@ -104,10 +124,7 @@ public class Bullet : MonoBehaviour
     }
 
     /// <summary>
-    /// 탄환 초기화 (몬스터/캐릭터 모두 가능)
-    /// 
-    /// [수정사항] 
-    /// 모든 타겟 유형에 동일한 설정 적용, 속도 포함
+    /// 탄환 초기화 (몬스터/캐릭터 등 IDamageable 대상)
     /// </summary>
     public void Init(IDamageable targetObject, float baseDamage, float baseSpeed,
                      bool areaAtk, float areaAtkRadius, int areaIndex)
@@ -124,20 +141,25 @@ public class Bullet : MonoBehaviour
                 this.target = targetChar.gameObject;
                 this.damageableTarget = targetChar;
             }
-            
-            // 모든 타겟 유형에 대해 동일한 설정 적용
+
             this.damage = baseDamage;
             this.speed = baseSpeed;
             this.isAreaAttack = areaAtk;
             this.areaRadius = areaAtkRadius;
             this.areaIndex = areaIndex;
 
-            // 총알 타입별 추가 설정은 사용하지 않음 - 모든 타겟에 동일한 설정 적용
+            // 포물선 이동 초기화
+            this.startPosition = transform.position;
+            if (target != null)
+            {
+                this.totalDistance = Vector2.Distance(startPosition, target.transform.position);
+            }
+            this.currentDistance = 0f;
         }
     }
 
     /// <summary>
-    /// 몬스터를 타겟으로 하는 탄환 초기화 (이전 버전과의 호환성 유지)
+    /// 몬스터를 타겟으로 하는 탄환 초기화 (이전 호환)
     /// </summary>
     public void Init(Monster targetMonster, float baseDamage, float baseSpeed,
                      bool areaAtk, float areaAtkRadius, int areaIndex)
@@ -146,7 +168,7 @@ public class Bullet : MonoBehaviour
     }
 
     /// <summary>
-    /// 캐릭터를 타겟으로 하는 탄환 초기화 (이전 버전과의 호환성 유지)
+    /// 캐릭터를 타겟으로 하는 탄환 초기화 (이전 호환)
     /// </summary>
     public void InitForCharacter(Character targetChar, float baseDamage, float baseSpeed,
                                 bool areaAtk, float areaAtkRadius, int areaIndex)
@@ -158,27 +180,30 @@ public class Bullet : MonoBehaviour
     {
         piercedCount = 0;
         currentBounceCount = 0;
-        chainAttackedMonsters.Clear(); // 이전에 기록된 연쇄 공격 대상 목록도 완전히 비워서 깨끗한 상태에서 로직을 시작하기 위해서입니다.
+        chainAttackedMonsters.Clear();
 
-        // ▼▼ [추가] RectTransform 초기화 (UI 상에서 총알이 안 보이는 현상 방지) ▼▼
+        // 포물선 이동 초기화
+        startPosition = transform.position;
+        if (target != null)
+        {
+            totalDistance = Vector2.Distance(startPosition, target.transform.position);
+        }
+        currentDistance = 0f;
+
+        // 스프라이트 렌더러 or UI 이미지
+        spriteRenderer = GetComponent<SpriteRenderer>();
+        uiImage = GetComponent<UnityEngine.UI.Image>();
+
+        // (RectTransform 초기화 - UI 상에서 총알 안 보이는 문제 방지)
         RectTransform rt = GetComponent<RectTransform>();
         if (rt != null)
         {
-            // 캔버스 자식 UI로써 표시될 수 있게 기본 앵커/피봇 설정
             rt.anchorMin = new Vector2(0.5f, 0.5f);
             rt.anchorMax = new Vector2(0.5f, 0.5f);
             rt.pivot = new Vector2(0.5f, 0.5f);
-            // 결과적으로 이 UI는 “부모 캔버스의 중앙”에 놓이고, 너비·높이를 바꿀 때도 중심을 기준으로 동작합니다.
-
-
-            // 부모 패널 크기에 맞춰 축소되지 않도록 localScale 보정
             rt.localScale = Vector3.one;
-
-            // (선택) 가장 위로 올리기 // 같은 부모 아래 있는 UI 요소들 중에서 이 오브젝트를 맨 뒤(가장 위에 렌더링) 로 이동시킵니다. 
-            // 즉, 다른 UI 위에 가려질 일이 없도록 “포그라운드”로 배치하는 기능이에요.
             rt.SetAsLastSibling();
         }
-        // ▲▲ [추가 끝] ▲▲
     }
 
     private void Update()
@@ -193,7 +218,7 @@ public class Bullet : MonoBehaviour
 
         MoveBullet();
     }
-    
+
     private void MoveBullet()
     {
         if (target == null || !target.gameObject.activeInHierarchy)
@@ -202,7 +227,6 @@ public class Bullet : MonoBehaviour
             return;
         }
 
-        // 모든 타겟에 대해 동일한 이동 로직 사용
         switch (bulletType)
         {
             case BulletType.Energy:
@@ -216,35 +240,50 @@ public class Bullet : MonoBehaviour
             case BulletType.Split:
             {
                 Vector3 dir = (target.transform.position - transform.position).normalized;
-                transform.position += dir * speed * Time.deltaTime;
+                float moveDistance = speed * speedMultiplier * Time.deltaTime;
+
+                currentDistance += moveDistance;
+                float progressRatio = Mathf.Clamp01(currentDistance / totalDistance);
+
+                Vector3 newPosition = Vector3.Lerp(startPosition, target.transform.position, progressRatio);
+                float arcHeightAtPoint = arcHeight * Mathf.Sin(progressRatio * Mathf.PI);
+                newPosition.y += arcHeightAtPoint;
+                transform.position = newPosition;
 
                 float dist = Vector2.Distance(transform.position, target.transform.position);
-                if (dist < 0.2f)
+                if (dist < 0.2f || progressRatio >= 0.98f)
                 {
-                    OnHitTarget(); // “이 오브젝트가 목표(target)에 충분히 가까워졌을 때” 실제로 히트 처리를 한 번만 실행해 주기 위해 넣는 수동 충돌 검사 역할
+                    OnHitTarget();
                 }
                 break;
             }
 
             case BulletType.Chain:
+            {
                 Vector3 dirC = (target.transform.position - transform.position).normalized;
-                transform.position += dirC * speed * Time.deltaTime;
+                float moveDistanceC = speed * speedMultiplier * Time.deltaTime;
+
+                currentDistance += moveDistanceC;
+                float progressRatioC = Mathf.Clamp01(currentDistance / totalDistance);
+
+                Vector3 newPositionC = Vector3.Lerp(startPosition, target.transform.position, progressRatioC);
+                float arcHeightAtPointC = arcHeight * Mathf.Sin(progressRatioC * Mathf.PI);
+                newPositionC.y += arcHeightAtPointC;
+                transform.position = newPositionC;
 
                 float distC = Vector2.Distance(transform.position, target.transform.position);
-                if (distC < 0.2f)
+                if (distC < 0.2f || progressRatioC >= 0.98f)
                 {
                     OnHitTarget();
                 }
                 break;
+            }
         }
     }
 
-    // 모든 타입의 타겟에 대해 통합된 히트 처리
     private void OnHitTarget()
     {
         if (target == null) return;
-        
-        // 타겟이 제거되었거나 비활성화된 경우
         if (!target.activeInHierarchy)
         {
             Destroy(gameObject);
@@ -274,7 +313,6 @@ public class Bullet : MonoBehaviour
                 ApplyDamageToTarget(damage);
                 if (isAreaAttack)
                 {
-                    // 통합된 광역 데미지 적용
                     ApplyUnifiedAreaDamage(target.transform.position);
                 }
                 SpawnExplosionEffect(target.transform.position);
@@ -283,24 +321,20 @@ public class Bullet : MonoBehaviour
 
             case BulletType.Slow:
                 ApplyDamageToTarget(damage * 0.7f);
-                // 모든 타겟에 슬로우 효과 적용 시도 (몬스터만 실제로 적용됨)
                 if (damageableTarget is Monster monsterSlow)
                 {
                     monsterSlow.ApplySlow(slowAmount, slowDuration);
                 }
-                // 캐릭터에게는 단순 데미지
                 SpawnImpactEffect(target.transform.position);
                 Destroy(gameObject);
                 break;
 
             case BulletType.Bleed:
                 ApplyDamageToTarget(damage);
-                // 모든 타겟에 출혈 효과 적용 시도 (몬스터만 실제로 적용됨)
                 if (damageableTarget is Monster monsterBleed)
                 {
                     monsterBleed.ApplyBleed(bleedDamagePerSec, bleedDuration);
                 }
-                // 캐릭터에게는 단순 데미지
                 SpawnImpactEffect(target.transform.position);
                 Destroy(gameObject);
                 break;
@@ -316,25 +350,21 @@ public class Bullet : MonoBehaviour
                 }
                 else
                 {
-                    // 통합된 다음 타겟 찾기 (몬스터/캐릭터 모두 가능)
                     FindNextUnifiedTarget(target.transform.position);
                 }
                 break;
 
             case BulletType.Stun:
                 ApplyDamageToTarget(damage * 0.8f);
-                // 모든 타겟에 스턴 효과 적용 시도 (몬스터만 실제로 적용됨)
                 if (damageableTarget is Monster monsterStun)
                 {
                     monsterStun.ApplyStun(stunDuration);
                 }
-                // 캐릭터에게는 단순 데미지
                 SpawnImpactEffect(target.transform.position);
                 Destroy(gameObject);
                 break;
 
             case BulletType.ArmorPenetration:
-                // 모든 타겟에 방어력 무시 데미지 적용 (몬스터/캐릭터 동일)
                 ApplyDamageToTarget(damage);
                 SpawnImpactEffect(target.transform.position);
                 Destroy(gameObject);
@@ -342,7 +372,6 @@ public class Bullet : MonoBehaviour
 
             case BulletType.Split:
                 ApplyDamageToTarget(damage);
-                // 몬스터/캐릭터 모두에게 동일하게 분열 효과 적용
                 if (subBulletPrefab != null && splitCount > 0)
                 {
                     DoSplit(target.transform.position);
@@ -352,25 +381,21 @@ public class Bullet : MonoBehaviour
                 break;
 
             case BulletType.Energy:
-                // 모든 타겟에 동일한 데미지 적용 (몬스터/캐릭터 동일)
                 ApplyDamageToTarget(damage * 0.8f);
                 SpawnImpactEffect(target.transform.position);
                 Destroy(gameObject);
                 break;
         }
     }
-    
-    // 타겟 유형에 맞게 데미지 적용 (몬스터/캐릭터 동일한 방식으로)
-    private void ApplyDamageToTarget(float damageAmount)
+
+    private void ApplyDamageToTarget(float dmg)
     {
-        // IDamageable 인터페이스를 통해 동일하게 데미지 적용
         if (damageableTarget != null)
         {
-            damageableTarget.TakeDamage(damageAmount);
+            damageableTarget.TakeDamage(dmg);
         }
     }
 
-    // 통합된 광역 데미지 적용 (몬스터와 캐릭터 모두)
     private void ApplyUnifiedAreaDamage(Vector3 center)
     {
         if (areaRadius <= 0f) return;
@@ -380,28 +405,25 @@ public class Bullet : MonoBehaviour
         foreach (var m in allMonsters)
         {
             if (m == null) continue;
-            if (m.gameObject == target) continue; // 이미 때린 대상은 제외
-            
+            if (m.gameObject == target) continue;
             float dist = Vector2.Distance(center, m.transform.position);
             if (dist <= areaRadius)
             {
-                // 모든 몬스터에게 동일한 데미지 적용
                 m.TakeDamage(damage);
             }
         }
-        
+
         // 캐릭터 광역 데미지
         Character[] allCharacters = Object.FindObjectsByType<Character>(FindObjectsSortMode.None);
         foreach (var c in allCharacters)
         {
             if (c == null) continue;
-            if (c.gameObject == target) continue; // 이미 때린 대상은 제외
-            if (c.isHero) continue; // 히어로는 광역 공격에서 제외
-            
+            if (c.gameObject == target) continue;
+            if (c.isHero) continue;
+
             float dist = Vector2.Distance(center, c.transform.position);
             if (dist <= areaRadius)
             {
-                // 다른 지역의 캐릭터에게만 데미지 (몬스터와 동일한 양의 데미지)
                 if (c.areaIndex != this.areaIndex)
                 {
                     c.TakeDamage(damage);
@@ -410,23 +432,18 @@ public class Bullet : MonoBehaviour
         }
     }
 
-    // 통합된 다음 타겟 찾기 (몬스터/캐릭터 모두 가능)
     private void FindNextUnifiedTarget(Vector3 position)
     {
-        // 가장 가까운 대상 찾기(몬스터/캐릭터)
         GameObject bestTarget = null;
         IDamageable bestDamageable = null;
-        float minDist = float.MaxValue; // float.MaxValue 는 “가능한 가장 큰 실수 값” 으로,
-        // 첫 번째 비교 시 어떤 실제 거리값도 이 값보다 작기 때문에
-        // 무조건 최초 후보가 이 minDist 를 갱신 하게 만듭니다.
-        
-        // 1. 몬스터 찾기
+        float minDist = float.MaxValue;
+
         Monster[] monsters = Object.FindObjectsByType<Monster>(FindObjectsSortMode.None);
         foreach (var m in monsters)
         {
             if (m == null) continue;
-            if (m.gameObject == target) continue; // 이미 때린 대상은 제외
-            
+            if (m.gameObject == target) continue;
+
             float dist = Vector2.Distance(position, m.transform.position);
             if (dist < chainBounceRange && dist < minDist)
             {
@@ -435,16 +452,14 @@ public class Bullet : MonoBehaviour
                 bestDamageable = m;
             }
         }
-        
-        // 2. 캐릭터 찾기
+
         Character[] characters = Object.FindObjectsByType<Character>(FindObjectsSortMode.None);
         foreach (var c in characters)
         {
             if (c == null) continue;
-            if (c.gameObject == target) continue; // 이미 때린 대상은 제외
-            if (c.isHero) continue; // 히어로는 타겟으로 잡지 않음
-            
-            // 다른 지역의 캐릭터만 찾기
+            if (c.gameObject == target) continue;
+            if (c.isHero) continue;
+
             if (c.areaIndex != this.areaIndex)
             {
                 float dist = Vector2.Distance(position, c.transform.position);
@@ -456,16 +471,14 @@ public class Bullet : MonoBehaviour
                 }
             }
         }
-        
+
         if (bestTarget != null && bestDamageable != null)
         {
-            // 새 타겟 설정
             target = bestTarget;
             damageableTarget = bestDamageable;
         }
         else
         {
-            // 타겟을 찾지 못했으면 총알 제거
             Destroy(gameObject);
         }
     }
@@ -483,22 +496,19 @@ public class Bullet : MonoBehaviour
             {
                 subB.bulletType = BulletType.Normal;
                 subB.damage = this.damage * 0.6f;
-                subB.speed = this.speed * 0.8f;
+                subB.speed = this.speed * 0.6f;
                 subB.maxLifeTime = 2f;
-
-                // 동일 areaIndex 유지
+                subB.speedMultiplier = this.speedMultiplier;
                 subB.areaIndex = this.areaIndex;
-                
-                // 추가 속성 설정
+
                 subB.isAreaAttack = false;
                 subB.areaRadius = 0f;
 
                 Vector2 dir = Quaternion.Euler(0f, 0f, angle) * Vector2.right;
-                
                 Rigidbody2D rb = sub.GetComponent<Rigidbody2D>();
                 if (rb != null)
                 {
-                    rb.linearVelocity = dir * subB.speed;
+                    rb.linearVelocity = dir * subB.speed * subB.speedMultiplier;
                 }
             }
         }

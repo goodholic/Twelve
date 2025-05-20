@@ -90,6 +90,11 @@ public class Character : NetworkBehaviour, IDamageable
     public GameObject bulletPrefab;
     public float bulletSpeed = 5f;
 
+    // 방향에 따른 총알 스프라이트
+    [Header("방향별 총알 스프라이트")]
+    public Sprite bulletUpDirectionSprite;   // 위쪽으로 발사할 때 사용할 스프라이트
+    public Sprite bulletDownDirectionSprite; // 아래쪽으로 발사할 때 사용할 스프라이트
+
     // (기존) 탄환 들어갈 패널
     private RectTransform bulletPanel;
 
@@ -193,6 +198,13 @@ public class Character : NetworkBehaviour, IDamageable
 
     [Header("점프 시작 위치 (Canvas의 자식 오브젝트)")]
     [SerializeField] private Transform startJumpPosition;
+
+    // ================================
+    // [수정] (아래) 위/아래 방향 캐릭터 스프라이트 추가
+    // ================================
+    [Header("소환된 캐릭터가 위/아래로 이동/공격할 때 보여줄 스프라이트(추가)")]
+    public Sprite characterUpDirectionSprite;    // [추가] 위쪽 방향 캐릭터 스프라이트
+    public Sprite characterDownDirectionSprite;  // [추가] 아래쪽 방향 캐릭터 스프라이트
 
     private void Awake()
     {
@@ -336,12 +348,17 @@ public class Character : NetworkBehaviour, IDamageable
                 // 타겟이 있으면 해당 타겟을 향해 이동
                 MoveTowardsTarget(currentCharTarget.transform.position);
             }
+
+            // [추가] 캐릭터 스프라이트 Up/Down 갱신
+            UpdateCharacterDirectionSprite(); // [수정추가]
             return;
         }
 
         // 일반 이동 로직 (기존 코드)
         if (currentWaypointIndex == -1)
         {
+            // [추가] 캐릭터 스프라이트 Up/Down 갱신
+            UpdateCharacterDirectionSprite(); // [수정추가]
             return;
         }
 
@@ -349,6 +366,9 @@ public class Character : NetworkBehaviour, IDamageable
         {
             MoveAlongWaypoints();
         }
+
+        // [추가] 캐릭터 스프라이트 Up/Down 갱신
+        UpdateCharacterDirectionSprite(); // [수정추가]
     }
 
     private void MoveAlongWaypoints()
@@ -589,7 +609,6 @@ public class Character : NetworkBehaviour, IDamageable
             else
             {
                 // 수정: 일반 캐릭터는 우선 점프해온 상대 캐릭터를 찾고, 없으면 몬스터 공격
-                // 상대 지역에서 점프해온 캐릭터 찾기
                 currentCharTarget = FindJumpedOpponentCharacterInRange();
                 
                 if (currentCharTarget != null)
@@ -632,37 +651,6 @@ public class Character : NetworkBehaviour, IDamageable
         }
     }
 
-    /// <summary>
-    /// 점프 후 chaseTag로 적(몬스터)을 찾는다. 
-    /// 예: chaseTag="Opponent Player" or "Player"
-    /// </summary>
-    private Monster FindCrossedTargetInRange(string tagToChase)
-    {
-        GameObject[] foundObjs = GameObject.FindGameObjectsWithTag(tagToChase);
-
-        Monster nearest = null;
-        float nearestDist = Mathf.Infinity;
-
-        foreach (GameObject mo in foundObjs)
-        {
-            if (mo == null) continue;
-            Monster m = mo.GetComponent<Monster>();
-            if (m == null) continue;
-
-            // 다른 지역이어야 함
-            if (m.areaIndex != this.areaIndex)
-            {
-                float dist = Vector2.Distance(transform.position, m.transform.position);
-                if (dist < attackRange && dist < nearestDist)
-                {
-                    nearestDist = dist;
-                    nearest = m;
-                }
-            }
-        }
-        return nearest;
-    }
-
     private Monster FindMonsterTargetInRange()
     {
         // areaIndex=1 → "Monster" 태그
@@ -695,12 +683,6 @@ public class Character : NetworkBehaviour, IDamageable
         return nearest;
     }
 
-    /// <summary>
-    /// 상대 지역 "캐릭터"(=gameObject.tag로 구분) 찾는 로직
-    /// 1. 점프한 캐릭터(tag="Character") → 상대 지역 캐릭터 공격
-    /// 2. 상대 지역 캐릭터 → 점프한 캐릭터 공격
-    /// 3. Player와 Opponent Player 태그 캐릭터끼리는 서로 싸우지 않음
-    /// </summary>
     private Character FindOpponentCharacterInRange()
     {
         Character[] allChars = FindObjectsByType<Character>(FindObjectsSortMode.None);
@@ -715,34 +697,26 @@ public class Character : NetworkBehaviour, IDamageable
             // 히어로는 타겟으로 잡지 않음
             if (c.isHero) continue;
 
-            // 기본 조건: 다른 지역의 캐릭터만 타겟텍
             if (c.areaIndex != this.areaIndex)
             {
                 float dist = Vector2.Distance(transform.position, c.transform.position);
                 
-                // 모든 캐릭터는 동일한 공격 범위 (점프해도 동일)
                 float effectiveRange = attackRange;
                 
                 if (dist < effectiveRange && dist < nearestDist)
                 {
-                    // 케이스 1: 내가 점프한 캐릭터인 경우, 상대 지역의 모든 캐릭터를 공격
+                    // 내가 점프한 캐릭터라면 상대 지역 캐릭터 공격
                     if (this.hasCrossedRegion && tag == characterTag)
                     {
                         nearestDist = dist;
                         nearest = c;
-                        Debug.Log($"[Character] 점프한 캐릭터 {characterName}(areaIndex={areaIndex}, tag={tag})가 " +
-                                $"상대 지역 캐릭터 {c.characterName}(areaIndex={c.areaIndex}, tag={c.tag})를 공격 대상으로 선택");
                     }
-                    // 케이스 2: 상대 지역 캐릭터가 점프한 캐릭터를 공격
+                    // 상대 지역 캐릭터가 점프한 캐릭터를 공격
                     else if (c.hasCrossedRegion && c.tag == characterTag)
                     {
                         nearestDist = dist;
                         nearest = c;
-                        Debug.Log($"[Character] 상대 지역 캐릭터 {characterName}(areaIndex={areaIndex}, tag={tag})가 " +
-                                $"점프한 캐릭터 {c.characterName}(areaIndex={c.areaIndex}, tag={c.tag})를 공격 대상으로 선택");
                     }
-                    // 케이스 3: Player와 Opponent Player 태그 캐릭터끼리는 서로 싸우지 않음
-                    // (Player와 Opponent Player 태그 조건 제거)
                 }
             }
         }
@@ -759,7 +733,6 @@ public class Character : NetworkBehaviour, IDamageable
     // 히어로 캐릭터를 위한 몬스터 탐색 메소드 - 더 넓은 범위 적용
     private Monster FindHeroTargetInRange()
     {
-        // 히어로는 일반 캐릭터보다 넓은 공격 범위를 가짐
         float heroAttackRange = attackRange * 1.5f;
         
         string targetTag = (areaIndex == 1) ? "Monster" : "EnemyMonster";
@@ -774,7 +747,6 @@ public class Character : NetworkBehaviour, IDamageable
             Monster m = mo.GetComponent<Monster>();
             if (m == null) continue;
 
-            // 히어로는 화면 외부 몬스터도 공격 가능 (화면 제한 체크 없음)
             float dist = Vector2.Distance(transform.position, m.transform.position);
             if (dist < heroAttackRange && dist < nearestDist)
             {
@@ -791,22 +763,16 @@ public class Character : NetworkBehaviour, IDamageable
         return nearest;
     }
 
-    // 점프 후 새로운 상대 캐릭터 찾기
     private void FindNewOpponentAfterCrossing()
     {
         Character[] allChars = FindObjectsByType<Character>(FindObjectsSortMode.None);
         Character newTarget = null;
-        float closestDist = 100f; // 최대 탐색 거리
+        float closestDist = 100f;
 
         foreach (Character c in allChars)
         {
             if (c == this || c == null || !c.gameObject.activeInHierarchy) continue;
-            
-            // 히어로는 타겟으로 잡지 않음
             if (c.isHero) continue;
-            
-            // 지역 1에서 점프한 캐릭터는 지역 2의 캐릭터를 찾음
-            // 지역 2에서 점프한 캐릭터는 지역 1의 캐릭터를 찾음
             if (c.areaIndex != this.areaIndex)
             {
                 float dist = Vector2.Distance(transform.position, c.transform.position);
@@ -826,126 +792,23 @@ public class Character : NetworkBehaviour, IDamageable
         }
     }
 
-    // 지정된 위치로 이동 (히어로와 비슷한 이동 로직)
     private void MoveTowardsTarget(Vector3 targetPosition)
     {
-        // 일정 거리 이내면 이동 멈춤 (공격 범위)
         float distToTarget = Vector2.Distance(transform.position, targetPosition);
-        
-        // 히어로무브 스크립트와 동일한 로직 적용
-        float stopDistance = attackRange * 0.7f; // 공격 범위의 70%에서 정지
+        float stopDistance = attackRange * 0.7f;
         
         if (distToTarget <= stopDistance)
         {
-            // 이미 충분히 가까워서 이동할 필요 없음
             return;
         }
         
-        // 점프해온 캐릭터의 이동 속도를 극도로 빠르게 설정
-        float superFastSpeed = 15.0f; // 매우 빠른 이동 속도 (기존 10.0f에서 15.0f로 증가)
+        float superFastSpeed = 15.0f;
         
-        // 타겟을 향해 매우 빠르게 이동
         Vector3 direction = (targetPosition - transform.position).normalized;
         transform.position += direction * superFastSpeed * Time.deltaTime;
     }
 
-    // 통합된 공격 패널 선택 로직을 포함하는 추가 메서드
-    private RectTransform SelectBulletPanel(int targetAreaIndex)
-    {
-        RectTransform parentPanel = null;
-        
-        // 지역 2 캐릭터이거나 다른 지역 타겟 공격시 항상 opponentBulletPanel 사용
-        if (areaIndex == 2 || targetAreaIndex != this.areaIndex)
-        {
-            if (opponentBulletPanel != null)
-            {
-                parentPanel = opponentBulletPanel;
-                Debug.Log($"[Character] {characterName}의 총알이 opponentBulletPanel에 생성됨");
-            }
-            else
-            {
-                Debug.LogWarning($"[Character] {characterName}에게 opponentBulletPanel이 설정되지 않음");
-                
-                // 대체 패널로 bulletPanel 시도
-                parentPanel = bulletPanel;
-                
-                // 패널을 찾을 수 없는 경우 Canvas에서 찾기 시도
-                if (parentPanel == null)
-                {
-                    Canvas canvas = FindFirstObjectByType<Canvas>();
-                    if (canvas != null)
-                    {
-                        GameObject bulletPanelObj = new GameObject("EmergencyBulletPanel");
-                        parentPanel = bulletPanelObj.AddComponent<RectTransform>();
-                        bulletPanelObj.transform.SetParent(canvas.transform, false);
-                        bulletPanel = parentPanel; // 찾은 패널 저장
-                        Debug.LogWarning($"[Character] 비상용 총알 패널을 생성했습니다.");
-                    }
-                }
-            }
-        }
-        // 그 외에는 기본 패널 사용
-        else
-        {
-            parentPanel = bulletPanel;
-            
-            // 기본 패널도 없는 경우 찾기 시도
-            if (parentPanel == null)
-            {
-                Canvas canvas = FindFirstObjectByType<Canvas>();
-                if (canvas != null)
-                {
-                    GameObject bulletPanelObj = new GameObject("EmergencyBulletPanel");
-                    parentPanel = bulletPanelObj.AddComponent<RectTransform>();
-                    bulletPanelObj.transform.SetParent(canvas.transform, false);
-                    bulletPanel = parentPanel; // 찾은 패널 저장
-                    Debug.LogWarning($"[Character] 비상용 총알 패널을 생성했습니다.");
-                }
-            }
-        }
-        
-        // 유효성 검사
-        if (parentPanel == null || !parentPanel.gameObject.scene.IsValid())
-        {
-            Debug.LogWarning($"[Character] 유효한 총알 패널이 없음, 대체 패널 생성 시도");
-            
-            // 마지막 시도: 활성화된 캔버스 찾기
-            Canvas[] canvases = FindObjectsByType<Canvas>(FindObjectsSortMode.None);
-            foreach (Canvas canvas in canvases)
-            {
-                if (canvas.isActiveAndEnabled)
-                {
-                    GameObject bulletPanelObj = new GameObject("EmergencyBulletPanel");
-                    parentPanel = bulletPanelObj.AddComponent<RectTransform>();
-                    bulletPanelObj.transform.SetParent(canvas.transform, false);
-                    bulletPanel = parentPanel; // 찾은 패널 저장
-                    Debug.LogWarning($"[Character] 비상용 총알 패널을 {canvas.name}에 생성했습니다.");
-                    break;
-                }
-            }
-        }
-        
-        return parentPanel;
-    }
-
-    // 통합된 총알 프리팹 선택 메서드
-    private GameObject GetBulletPrefab()
-    {
-        // 캐릭터에서 사용할 표준 총알 프리팹을 여기서 명시적으로 지정합니다.
-        // (모든 캐릭터가 인스펙터에서 다른 프리팹을 사용하더라도 이 코드에서 통일)
-        
-        if (bulletPrefab != null)
-        {
-            return bulletPrefab;
-        }
-        else
-        {
-            Debug.LogError($"[Character] {characterName}에 bulletPrefab이 설정되지 않음!");
-            return null;
-        }
-    }
-
-    // 통합된 공격 메소드 - IDamageable 인터페이스를 구현한 모든 대상을 공격할 수 있음
+    // 통합된 공격 메소드
     private void AttackTarget(IDamageable target)
     {
         if (target == null) return;
@@ -980,7 +843,6 @@ public class Character : NetworkBehaviour, IDamageable
             return;
         }
 
-        // 총알 프리팹 가져오기
         GameObject bulletPrefabToUse = GetBulletPrefab();
         if (bulletPrefabToUse != null)
         {
@@ -988,7 +850,6 @@ public class Character : NetworkBehaviour, IDamageable
             {
                 GameObject bulletObj = Instantiate(bulletPrefabToUse);
 
-                // 통합된 패널 선택 로직 사용
                 RectTransform parentPanel = SelectBulletPanel(targetAreaIndex);
 
                 if (parentPanel != null && parentPanel.gameObject.scene.IsValid())
@@ -999,11 +860,9 @@ public class Character : NetworkBehaviour, IDamageable
                 else
                 {
                     Debug.LogWarning($"[Character] 총알을 생성할 패널이 없음, 대체 로직 사용");
-                    // 패널이 없으면 월드에 생성
                     bulletObj.transform.position = transform.position;
                     bulletObj.transform.localRotation = Quaternion.identity;
                     
-                    // 직접 데미지 적용 후 총알 제거
                     target.TakeDamage(attackPower);
                     Destroy(bulletObj);
                     return;
@@ -1025,54 +884,45 @@ public class Character : NetworkBehaviour, IDamageable
                 Bullet bulletComp = bulletObj.GetComponent<Bullet>();
                 if (bulletComp != null)
                 {
-                    // 타겟 타입에 따라 총알 속도 조정
-                    float bulletSpeed = 10.0f; // 기본 총알 속도
+                    float bulletSpeed = 10.0f;
                     
-                    // 모든 지역(지역1과 지역2 모두)의 배치된 캐릭터가 점프해온 캐릭터를 공격할 때 총알 속도 증가
                     if (isCharacterTarget && ((Character)target).hasCrossedRegion)
                     {
-                        // 점프해온 캐릭터를 공격할 때 극도로 빠른 총알
-                        bulletSpeed = 80.0f; // 매우 매우 빠른 총알 속도
+                        bulletSpeed = 80.0f;
                         Debug.Log($"[Character] {characterName}이(가) 점프해온 캐릭터를 향해 초고속 총알 발사! (속도: {bulletSpeed})");
                     }
                     else if (isCharacterTarget)
                     {
-                        // 일반 캐릭터 공격용 빠른 총알
                         bulletSpeed = 15.0f;
                         Debug.Log($"[Character] {characterName}이(가) 상대 캐릭터를 향해 빠른 총알 발사! (속도: {bulletSpeed})");
                     }
                     
-                    // 모든 타입의 타겟에 대해 동일한 총알 설정 사용
-                    // 단, 히어로만 특별 총알 유지
                     if (isHero)
                     {
-                        // 히어로는 기본적으로 광역 공격을 가짐
                         bulletComp.isAreaAttack = true;
                         bulletComp.areaRadius = 2.0f;
                         
-                        // 히어로 레벨이나 특성에 따라 다른 총알 타입도 설정 가능
                         if (star == CharacterStar.OneStar)
                         {
-                            bulletComp.bulletType = BulletType.Normal; // 기본 공격
+                            bulletComp.bulletType = BulletType.Normal;
                         }
                         else if (star == CharacterStar.TwoStar)
                         {
-                            bulletComp.bulletType = BulletType.Explosive; // 폭발 공격
-                            bulletComp.speed = bulletSpeed * 1.2f; // 히어로는 약간 더 빠름
+                            bulletComp.bulletType = BulletType.Explosive;
+                            bulletComp.speed = bulletSpeed * 1.2f;
                         }
                         else if (star == CharacterStar.ThreeStar)
                         {
-                            bulletComp.bulletType = BulletType.Chain; // 체인 공격
-                            bulletComp.chainMaxBounces = 3; // 3번 튕김
-                            bulletComp.chainBounceRange = 3.0f; // 넓은 튕김 범위
-                            bulletComp.speed = bulletSpeed * 1.2f; // 히어로는 약간 더 빠름
+                            bulletComp.bulletType = BulletType.Chain;
+                            bulletComp.chainMaxBounces = 3;
+                            bulletComp.chainBounceRange = 3.0f;
+                            bulletComp.speed = bulletSpeed * 1.2f;
                         }
                         
                         Debug.Log($"[Character] 히어로 {characterName}이(가) 특수 총알을 발사! (타입: {bulletComp.bulletType})");
                     }
                     else
                     {
-                        // 일반 캐릭터는 항상 기본 설정 사용 (몬스터/캐릭터 타겟 동일)
                         bulletComp.bulletType = BulletType.Normal;
                         bulletComp.isAreaAttack = isAreaAttack;
                         bulletComp.areaRadius = areaAttackRadius;
@@ -1081,16 +931,18 @@ public class Character : NetworkBehaviour, IDamageable
                     // 모든 총알의 속도를 설정
                     bulletComp.speed = bulletSpeed;
                     
-                    // 총알의 대상을 설정 - 한 번에 하나의 타겟만 공격
+                    // 타겟 위치에 따라 방향별 스프라이트 설정
+                    bool isTargetAbove = targetPosition.y > transform.position.y;
+                    bulletComp.bulletUpDirectionSprite = bulletUpDirectionSprite;
+                    bulletComp.bulletDownDirectionSprite = bulletDownDirectionSprite;
+                    
                     bulletComp.target = targetGameObject;
                     
-                    // 초기화 시 속도 값으로 bulletSpeed 사용
                     bulletComp.Init(target, attackPower, bulletSpeed, bulletComp.isAreaAttack, bulletComp.areaRadius, this.areaIndex);
                     Debug.Log($"[Character] {characterName}의 총알이 {targetName}을(를) 향해 발사됨! (속도: {bulletSpeed})");
                 }
                 else
                 {
-                    // Bullet 컴포넌트가 없으면 직접 데미지 적용
                     target.TakeDamage(attackPower);
                     Destroy(bulletObj);
                 }
@@ -1098,24 +950,103 @@ public class Character : NetworkBehaviour, IDamageable
             catch (System.Exception e)
             {
                 Debug.LogError($"[Character] 총알 생성 중 오류 발생: {e.Message}");
-                // 오류 발생 시 직접 데미지 적용
                 target.TakeDamage(attackPower);
             }
         }
         else
         {
-            // 모든 타겟 타입에 대해 동일한 로직 적용
             target.TakeDamage(attackPower);
             Debug.Log($"[Character] {characterName}이(가) {targetName}에게 직접 {attackPower} 데미지!");
         }
     }
 
+    private RectTransform SelectBulletPanel(int targetAreaIndex)
+    {
+        RectTransform parentPanel = null;
+        
+        if (areaIndex == 2 || targetAreaIndex != this.areaIndex)
+        {
+            if (opponentBulletPanel != null)
+            {
+                parentPanel = opponentBulletPanel;
+                Debug.Log($"[Character] {characterName}의 총알이 opponentBulletPanel에 생성됨");
+            }
+            else
+            {
+                Debug.LogWarning($"[Character] {characterName}에게 opponentBulletPanel이 설정되지 않음");
+                parentPanel = bulletPanel;
+                
+                if (parentPanel == null)
+                {
+                    Canvas canvas = FindFirstObjectByType<Canvas>();
+                    if (canvas != null)
+                    {
+                        GameObject bulletPanelObj = new GameObject("EmergencyBulletPanel");
+                        parentPanel = bulletPanelObj.AddComponent<RectTransform>();
+                        bulletPanelObj.transform.SetParent(canvas.transform, false);
+                        bulletPanel = parentPanel;
+                        Debug.LogWarning($"[Character] 비상용 총알 패널을 생성했습니다.");
+                    }
+                }
+            }
+        }
+        else
+        {
+            parentPanel = bulletPanel;
+            
+            if (parentPanel == null)
+            {
+                Canvas canvas = FindFirstObjectByType<Canvas>();
+                if (canvas != null)
+                {
+                    GameObject bulletPanelObj = new GameObject("EmergencyBulletPanel");
+                    parentPanel = bulletPanelObj.AddComponent<RectTransform>();
+                    bulletPanelObj.transform.SetParent(canvas.transform, false);
+                    bulletPanel = parentPanel;
+                    Debug.LogWarning($"[Character] 비상용 총알 패널을 생성했습니다.");
+                }
+            }
+        }
+        
+        if (parentPanel == null || !parentPanel.gameObject.scene.IsValid())
+        {
+            Debug.LogWarning($"[Character] 유효한 총알 패널이 없음, 대체 패널 생성 시도");
+            
+            Canvas[] canvases = FindObjectsByType<Canvas>(FindObjectsSortMode.None);
+            foreach (Canvas canvas in canvases)
+            {
+                if (canvas.isActiveAndEnabled)
+                {
+                    GameObject bulletPanelObj = new GameObject("EmergencyBulletPanel");
+                    parentPanel = bulletPanelObj.AddComponent<RectTransform>();
+                    bulletPanelObj.transform.SetParent(canvas.transform, false);
+                    bulletPanel = parentPanel;
+                    Debug.LogWarning($"[Character] 비상용 총알 패널을 {canvas.name}에 생성했습니다.");
+                    break;
+                }
+            }
+        }
+        
+        return parentPanel;
+    }
+
+    private GameObject GetBulletPrefab()
+    {
+        if (bulletPrefab != null)
+        {
+            return bulletPrefab;
+        }
+        else
+        {
+            Debug.LogError($"[Character] {characterName}에 bulletPrefab이 설정되지 않음!");
+            return null;
+        }
+    }
+
     private void DoAreaDamage(Vector3 centerPos)
     {
-        // 몬스터와 캐릭터 모두에게 광역 데미지 적용
         float damageRadius = areaAttackRadius;
 
-        // 몬스터에 대한 광역 데미지
         GameObject[] monsterObjs = GameObject.FindGameObjectsWithTag("Monster");
         foreach (GameObject mo in monsterObjs)
         {
@@ -1132,13 +1063,10 @@ public class Character : NetworkBehaviour, IDamageable
             }
         }
 
-        // 점프한 캐릭터에 대한 광역 데미지
         Character[] allChars = FindObjectsByType<Character>(FindObjectsSortMode.None);
         foreach (Character c in allChars)
         {
             if (c == this || c == null) continue;
-            
-            // 히어로는 광역 데미지에서 제외
             if (c.isHero) continue;
             
             if (c.areaIndex != this.areaIndex && c.hasCrossedRegion)
@@ -1259,6 +1187,27 @@ public class Character : NetworkBehaviour, IDamageable
     }
 
     /// <summary>
+    /// HP 바를 머리 위에 표시하기 위한 LateUpdate 메서드
+    /// </summary>
+    private void LateUpdate()
+    {
+        // HP 바 위치 보정(머리 위에 표시)
+        if (hpBarCanvas != null)
+        {
+            if (!isHero)
+            {
+                hpBarCanvas.gameObject.SetActive(true);
+                
+                if (hpBarCanvas.transform.parent == null)
+                {
+                    Vector3 offset = new Vector3(0f, 1.2f, 0f);
+                    hpBarCanvas.transform.position = transform.position + offset;
+                }
+            }
+        }
+    }
+
+    /// <summary>
     /// 점프해온 상대 지역 캐릭터를 찾는 메서드
     /// 일반 배치된 캐릭터가 점프해온 적 캐릭터를 찾을 때 사용합니다.
     /// </summary>
@@ -1272,22 +1221,14 @@ public class Character : NetworkBehaviour, IDamageable
         {
             if (c == this) continue;
             if (c == null || !c.gameObject.activeInHierarchy) continue;
-            
-            // 히어로는 타겟으로 잡지 않음
             if (c.isHero) continue;
-
-            // 상대 지역에서 점프해온 캐릭터만 찾기
             if (c.areaIndex != this.areaIndex && c.hasCrossedRegion && c.tag == characterTag)
             {
                 float dist = Vector2.Distance(transform.position, c.transform.position);
-                
-                // 공격 범위 내에 있는지 확인
                 if (dist < attackRange && dist < nearestDist)
                 {
                     nearestDist = dist;
                     nearest = c;
-                    Debug.Log($"[Character] {characterName}(areaIndex={areaIndex})가 " +
-                            $"점프해온 상대 캐릭터 {c.characterName}(areaIndex={c.areaIndex})를 공격 대상으로 선택");
                 }
             }
         }
@@ -1299,5 +1240,58 @@ public class Character : NetworkBehaviour, IDamageable
         }
         
         return nearest;
+    }
+
+    // =========================
+    // [추가] 캐릭터가 위/아래 방향으로 이동(또는 타겟 추적)할 때
+    //       스프라이트를 바꾸기 위한 메서드
+    // =========================
+    private void UpdateCharacterDirectionSprite() // [추가]
+    {
+        if (characterUpDirectionSprite == null || characterDownDirectionSprite == null)
+        {
+            // 만약 위/아래 스프라이트가 설정 안 됐다면 수행 X
+            return;
+        }
+        if (spriteRenderer == null && uiImage == null)
+        {
+            // 스프라이트 렌더러 / UI 이미지 둘 다 없으면 수행 X
+            return;
+        }
+
+        // 현재 이동(또는 타겟) 방향 계산
+        Vector2 velocity = Vector2.zero;
+
+        // 웨이포인트 기반 이동 중이면
+        if (pathWaypoints != null && currentWaypointIndex >= 0 && currentWaypointIndex < pathWaypoints.Length)
+        {
+            Transform target = pathWaypoints[currentWaypointIndex];
+            if (target != null)
+            {
+                velocity = (target.position - transform.position);
+            }
+        }
+        // 아니면 근접 캐릭터 타겟(점프한 상대 등)
+        else if (currentCharTarget != null)
+        {
+            velocity = (currentCharTarget.transform.position - transform.position);
+        }
+        else if (currentTarget != null)
+        {
+            velocity = (currentTarget.transform.position - transform.position);
+        }
+
+        bool isMovingUp = (velocity.y >= 0f); // y>=0면 위, 아니면 아래
+        Sprite spriteToUse = isMovingUp ? characterUpDirectionSprite : characterDownDirectionSprite;
+
+        // 스프라이트 적용
+        if (spriteRenderer != null)
+        {
+            spriteRenderer.sprite = spriteToUse;
+        }
+        else if (uiImage != null)
+        {
+            uiImage.sprite = spriteToUse;
+        }
     }
 }

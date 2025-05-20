@@ -430,6 +430,8 @@ MonoBehaviour:
   - {fileID: 6461034117732938839, guid: d988006bd53f4b0468d4fcedc810ac64, type: 3}
   - {fileID: 8360226188534919249, guid: 975390a5ef2c9ba45a77f5afca985383, type: 3}
   damageToCastle: 1
+  currentChapter: 1
+  chapterStatMultiplier: 1.1
   hpBarCanvas: {fileID: 8931788622985592741}
   hpFillImage: {fileID: 38995151560781449}
   areaIndex: 1

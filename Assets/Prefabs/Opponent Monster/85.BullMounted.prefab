@@ -641,7 +641,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &117150395161187362
 Transform:
   m_ObjectHideFlags: 0
@@ -652,7 +652,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 4, y: 0, z: 0}
-  m_LocalScale: {x: 0.5, y: 0.5, z: 1}
+  m_LocalScale: {x: 45, y: 45, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 117150393779553010}
@@ -810,21 +810,11 @@ MonoBehaviour:
   - {fileID: 5210701647780469663, guid: 699b367bf23ad6a408eb1c6fad0ab9d9, type: 3}
   - {fileID: 4818939896627276988, guid: d2e0810630198c148979fa75ad079427, type: 3}
   - {fileID: 1411693949256981867, guid: 03cdf8ef9ab1edb41ab152615dc955bf, type: 3}
-  isAlly: 0
   damageToCastle: 1
+  currentChapter: 1
+  chapterStatMultiplier: 1.1
   hpBarCanvas: {fileID: 1791476550057396527, guid: 639b613038e53cc4ca6bec5f67536cd0, type: 3}
   hpFillImage: {fileID: 6612212183521764326, guid: b65a9aba6ea1ed6449652f933334de81, type: 3}
-  vanishEffectPrefab: {fileID: 0}
-  allyConversionEffectPrefab: {fileID: 0}
-  allyOutlinePrefab: {fileID: 0}
-  opponentWaypoints:
-  - {fileID: 7533954594709166238, guid: 2c7af040127463842bb538e73144355c, type: 3}
-  - {fileID: 375125270241151848, guid: 8210aa4d54b99484ab283b8e5a075126, type: 3}
-  - {fileID: 42882207359262647, guid: 7afd324640599d944874bb3817ee81d0, type: 3}
-  - {fileID: 6385198090815582965, guid: 809c2e58c41253d4188a8f22159c1345, type: 3}
-  - {fileID: 6461034117732938839, guid: d988006bd53f4b0468d4fcedc810ac64, type: 3}
-  - {fileID: 8360226188534919249, guid: 975390a5ef2c9ba45a77f5afca985383, type: 3}
-  opponentMonsterPanel: {fileID: 8356178920433332973, guid: 6333955c4fe3dec41b988a81707b75a8, type: 3}
   areaIndex: 2
 --- !u!114 &5362170490873171942
 MonoBehaviour:
