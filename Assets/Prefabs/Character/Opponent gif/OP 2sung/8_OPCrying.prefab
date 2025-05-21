@@ -250,7 +250,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 1348306859981558961, guid: 35354b4d0ce09744dacb92441991355d, type: 3}
+  m_Sprite: {fileID: 246676574735871045, guid: 25f7cc58d691fa84cab01398a60d4ed0, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -299,6 +299,8 @@ MonoBehaviour:
   showRangeIndicator: 0
   bulletPrefab: {fileID: 5776322284297556845, guid: f4fc8c0549ee45246aec1ce0867a64c1, type: 3}
   bulletSpeed: 5
+  bulletUpDirectionSprite: {fileID: 0}
+  bulletDownDirectionSprite: {fileID: 0}
   opponentBulletPanel: {fileID: 8293515601833126614, guid: 442d773c6cac9b34e88e19f932f717e8, type: 3}
   twoStarOutlineColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
   twoStarOutlineWidth: 10
@@ -320,6 +322,8 @@ MonoBehaviour:
   endTileRect: {fileID: 7728088104138265406, guid: dd3720c0124e04b4d83c775b74fdac3c, type: 3}
   targetJumpPosition: {fileID: 7728088104138265406, guid: dd3720c0124e04b4d83c775b74fdac3c, type: 3}
   startJumpPosition: {fileID: 4614398458146241476, guid: 02fa27106db89b544bba34f1b127942e, type: 3}
+  characterUpDirectionSprite: {fileID: 4428725426096773840, guid: 1a1e5d96e8321d84a9454f68e49b3e44, type: 3}
+  characterDownDirectionSprite: {fileID: 246676574735871045, guid: 25f7cc58d691fa84cab01398a60d4ed0, type: 3}
 --- !u!114 &7552802495602455483
 MonoBehaviour:
   m_ObjectHideFlags: 0

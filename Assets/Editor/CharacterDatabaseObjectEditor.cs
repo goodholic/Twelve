@@ -21,94 +21,139 @@ public class CharacterDatabaseObjectEditor : Editor
 
     public override void OnInspectorGUI()
     {
-        serializedObject.Update();
-
-        // 현재 ScriptableObject
-        CharacterDatabaseObject dbObj = (CharacterDatabaseObject)target;
-
-        // ▼▼ [수정추가] 만약 dbObj가 null이면 안전하게 리턴 ▼▼
-        if (dbObj == null)
+        // 이미 제거되었거나 disposing된 오브젝트 체크
+        if (serializedObject == null || serializedObject.targetObject == null)
         {
-            EditorGUILayout.HelpBox("CharacterDatabaseObject가 null입니다.", MessageType.Warning);
+            EditorGUILayout.HelpBox("SerializedObject가 유효하지 않습니다.", MessageType.Error);
             return;
         }
-        // ▲▲ [수정끝] ▲▲
 
-        SerializedProperty charactersProp = serializedObject.FindProperty("characters");
-
-        // 1) 기본 배열 필드를 Inspector에 표시
-        EditorGUILayout.PropertyField(charactersProp, new GUIContent("Characters"), includeChildren: true);
-
-        EditorGUILayout.Space();
-        EditorGUILayout.LabelField("", GUI.skin.horizontalSlider);
-        EditorGUILayout.Space();
-
-        // 2) CSV 패널 (다수 추가/랜덤 생성)
-        showCsvPanel = EditorGUILayout.Foldout(showCsvPanel, "Add Bulk Characters (CSV) / Random Add");
-        if (showCsvPanel)
+        try
         {
-            EditorGUILayout.LabelField("CSV 형태로 캐릭터 정보를 여러 줄에 걸쳐 입력", EditorStyles.boldLabel);
-            EditorGUILayout.HelpBox(
-                "형식: 이름, 공격력(float), RangeType(문자열), 광역여부(true/false), 버프여부(true/false), 코스트(int)\n" +
-                "줄바꿈으로 여러 캐릭터를 구분.\n" +
-                "RangeType은 Melee / Ranged / LongRange.\n" +
-                "예)\nKnight, 15, Melee, false, false, 10\nArcher, 10, Ranged, false, false, 12\nWizard, 8, LongRange, true, false, 20",
-                MessageType.Info);
+            serializedObject.Update();
 
-            // CSV 입력 텍스트
-            csvInput = EditorGUILayout.TextArea(csvInput, GUILayout.MinHeight(80));
+            // 현재 ScriptableObject
+            CharacterDatabaseObject dbObj = (CharacterDatabaseObject)target;
 
-            // CSV로 추가 버튼
-            if (GUILayout.Button("Add Characters from CSV"))
+            // ▼▼ [수정추가] 만약 dbObj가 null이면 안전하게 리턴 ▼▼
+            if (dbObj == null)
             {
-                AddCharactersFromCsv(dbObj, charactersProp, csvInput);
+                EditorGUILayout.HelpBox("CharacterDatabaseObject가 null입니다.", MessageType.Warning);
+                return;
             }
+            // ▲▲ [수정끝] ▲▲
+
+            SerializedProperty charactersProp = serializedObject.FindProperty("characters");
+            if (charactersProp == null)
+            {
+                EditorGUILayout.HelpBox("characters 속성을 찾을 수 없습니다.", MessageType.Warning);
+                return;
+            }
+
+            // 1) 기본 배열 필드를 Inspector에 표시
+            EditorGUILayout.PropertyField(charactersProp, new GUIContent("Characters"), includeChildren: true);
 
             EditorGUILayout.Space();
+            EditorGUILayout.LabelField("", GUI.skin.horizontalSlider);
+            EditorGUILayout.Space();
 
-            // 랜덤 8개 추가 버튼
-            if (GUILayout.Button("Add 8 Random Characters"))
+            // 2) CSV 패널 (다수 추가/랜덤 생성)
+            showCsvPanel = EditorGUILayout.Foldout(showCsvPanel, "Add Bulk Characters (CSV) / Random Add");
+            if (showCsvPanel)
             {
-                AddRandomCharacters(dbObj, charactersProp, 8);
+                EditorGUILayout.LabelField("CSV 형태로 캐릭터 정보를 여러 줄에 걸쳐 입력", EditorStyles.boldLabel);
+                EditorGUILayout.HelpBox(
+                    "형식: 이름, 공격력(float), RangeType(문자열), 광역여부(true/false), 버프여부(true/false), 코스트(int)\n" +
+                    "줄바꿈으로 여러 캐릭터를 구분.\n" +
+                    "RangeType은 Melee / Ranged / LongRange.\n" +
+                    "예)\nKnight, 15, Melee, false, false, 10\nArcher, 10, Ranged, false, false, 12\nWizard, 8, LongRange, true, false, 20",
+                    MessageType.Info);
+
+                // CSV 입력 텍스트
+                csvInput = EditorGUILayout.TextArea(csvInput, GUILayout.MinHeight(80));
+
+                // CSV로 추가 버튼
+                if (GUILayout.Button("Add Characters from CSV"))
+                {
+                    AddCharactersFromCsv(dbObj, charactersProp, csvInput);
+                }
+
+                EditorGUILayout.Space();
+
+                // 랜덤 8개 추가 버튼
+                if (GUILayout.Button("Add 8 Random Characters"))
+                {
+                    AddRandomCharacters(dbObj, charactersProp, 8);
+                }
             }
-        }
 
-        // ▼▼ [수정추가] 'Save Database' 버튼 ▼▼
-        EditorGUILayout.Space();
-        EditorGUILayout.LabelField("", GUI.skin.horizontalSlider);
-        EditorGUILayout.Space();
+            // ▼▼ [수정추가] 'Save Database' 버튼 ▼▼
+            EditorGUILayout.Space();
+            EditorGUILayout.LabelField("", GUI.skin.horizontalSlider);
+            EditorGUILayout.Space();
 
-        if (GUILayout.Button("Save Database"))
-        {
-            // 변경사항을 적용하고 ScriptableObject를 저장
+            if (GUILayout.Button("Save Database"))
+            {
+                try
+                {
+                    // 변경사항을 적용하고 ScriptableObject를 저장
+                    serializedObject.ApplyModifiedProperties();
+                    
+                    // 유효한 에셋인지 확인
+                    string assetPath = AssetDatabase.GetAssetPath(dbObj);
+                    if (string.IsNullOrEmpty(assetPath))
+                    {
+                        Debug.LogError("에셋 경로를 찾을 수 없습니다. 저장할 수 없습니다.");
+                        return;
+                    }
+
+                    EditorUtility.SetDirty(dbObj);       // 변경 플래그 지정
+                    AssetDatabase.SaveAssets();          // 실제 파일로 저장
+                    AssetDatabase.Refresh();
+                    Debug.Log("CharacterDatabaseObject 저장 완료!");
+
+                    // ============================================
+                    //  (추가) "저장 시점으로 다시 되돌리는" 로직
+                    // ============================================
+                    // 이미 Save된 값을 다시 디스크에서 불러옴으로써,
+                    // 설사 지금 Inspector에서 값이 바뀌어 있어도 "저장된 시점"으로 강제로 복원한다.
+                    CharacterDatabaseObject reloaded = AssetDatabase.LoadAssetAtPath<CharacterDatabaseObject>(assetPath);
+                    if (reloaded != null)
+                    {
+                        // characters 배열도 디스크 값으로 덮어씀
+                        if (reloaded.characters != null)
+                        {
+                            dbObj.characters = reloaded.characters;
+
+                            // 새롭게 SerializedObject를 갱신하여 Inspector도 다시 표시
+                            EditorUtility.SetDirty(dbObj);
+                            AssetDatabase.Refresh();
+                            serializedObject.Update();
+                            Debug.Log("저장 직후, 디스크상의 데이터로 되돌렸습니다 (Inspector 변경사항 무시).");
+                        }
+                        else
+                        {
+                            Debug.LogWarning("다시 로드된 에셋에 characters 배열이 없습니다.");
+                        }
+                    }
+                    else
+                    {
+                        Debug.LogWarning("에셋을 다시 로드할 수 없습니다: " + assetPath);
+                    }
+                }
+                catch (System.Exception e)
+                {
+                    Debug.LogError($"데이터베이스 저장 중 오류 발생: {e.Message}\n{e.StackTrace}");
+                }
+            }
+            // ▲▲ [수정끝] ▲▲
+
             serializedObject.ApplyModifiedProperties();
-            EditorUtility.SetDirty(dbObj);       // 변경 플래그 지정
-            AssetDatabase.SaveAssets();          // 실제 파일로 저장
-            AssetDatabase.Refresh();
-            Debug.Log("CharacterDatabaseObject 저장 완료!");
-
-            // ============================================
-            //  (추가) "저장 시점으로 다시 되돌리는" 로직
-            // ============================================
-            // 이미 Save된 값을 다시 디스크에서 불러옴으로써,
-            // 설사 지금 Inspector에서 값이 바뀌어 있어도 "저장된 시점"으로 강제로 복원한다.
-            string assetPath = AssetDatabase.GetAssetPath(dbObj);
-            CharacterDatabaseObject reloaded = AssetDatabase.LoadAssetAtPath<CharacterDatabaseObject>(assetPath);
-            if (reloaded != null)
-            {
-                // characters 배열도 디스크 값으로 덮어씀
-                dbObj.characters = reloaded.characters;
-
-                // 새롭게 SerializedObject를 갱신하여 Inspector도 다시 표시
-                EditorUtility.SetDirty(dbObj);
-                AssetDatabase.Refresh();
-                serializedObject.Update();
-                Debug.Log("저장 직후, 디스크상의 데이터로 되돌렸습니다 (Inspector 변경사항 무시).");
-            }
         }
-        // ▲▲ [수정끝] ▲▲
-
-        serializedObject.ApplyModifiedProperties();
+        catch (System.Exception e)
+        {
+            Debug.LogError($"CharacterDatabaseObjectEditor에서 오류 발생: {e.Message}\n{e.StackTrace}");
+        }
     }
 
     /// <summary>

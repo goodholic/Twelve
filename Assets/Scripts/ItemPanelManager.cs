@@ -8,7 +8,7 @@ public class ItemPanelManager : MonoBehaviour
     [Header("ItemInventoryManager")]
     [SerializeField] private ItemInventoryManager itemInventoryManager;
 
-    [Header("아이템 슬롯(버튼) UI들 (총 9개)")]
+    [Header("아이템 슬롯(버튼) UI들 (총 5개)")]
     [SerializeField] private List<Button> itemSlotButtons;
     [SerializeField] private List<Image> itemSlotImages;
     [SerializeField] private List<TextMeshProUGUI> itemSlotNameTexts;
@@ -23,7 +23,7 @@ public class ItemPanelManager : MonoBehaviour
     private List<ItemData> itemList = new List<ItemData>();
 
     /// <summary>
-    /// 아이템 인벤토리 패널(9칸)을 새로고침
+    /// 아이템 인벤토리 패널(5칸)을 새로고침
     /// </summary>
     public void RefreshItemPanel()
     {
@@ -72,7 +72,7 @@ public class ItemPanelManager : MonoBehaviour
                 DraggableItemUI dragItem = itemSlotButtons[i].GetComponent<DraggableItemUI>();
                 if (dragItem != null)
                 {
-                    dragItem.currentItem = currentItem;         // 여기서 아이템 설정
+                    dragItem.currentItem = currentItem; // 여기서 아이템 설정
                     dragItem.parentPanel = dragParentPanel;
                 }
 

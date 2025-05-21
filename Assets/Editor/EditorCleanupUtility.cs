@@ -51,15 +51,42 @@ public static class EditorCleanupUtility
             try
             {
                 if (obj == null) continue;
-
+                
+                // 프리팹 인스턴스인 경우 체크
+                bool isPrefabInstance = PrefabUtility.IsPartOfPrefabInstance(obj);
+                
                 // (A) DontSaveInEditor / HideAndDontSave 플래그 제거
                 if ((obj.hideFlags & HideFlags.DontSaveInEditor) != 0 ||
                     (obj.hideFlags & HideFlags.HideAndDontSave) != 0)
                 {
-                    obj.hideFlags &= ~HideFlags.DontSaveInEditor;
-                    obj.hideFlags &= ~HideFlags.HideAndDontSave;
-                    fixedCount++;
-                    Debug.Log($"Fixed hideFlags on GameObject: {obj.name}", obj);
+                    // 안전 장치: PrefabInstance 또는 중요 런타임 객체인 경우 수정하지 않음
+                    if (isPrefabInstance || obj.transform.root.gameObject.name.StartsWith("Unity") || 
+                        obj.name.Contains("DONT_MODIFY"))
+                    {
+                        Debug.LogWarning($"스킵: '{obj.name}'은 프리팹 인스턴스이거나 중요 시스템 객체입니다. hideFlags 수정 무시.", obj);
+                        continue;
+                    }
+                    
+                    // 기존 플래그 백업
+                    HideFlags originalFlags = obj.hideFlags;
+                    
+                    try
+                    {
+                        // 새로운 플래그 적용 (안전하게)
+                        HideFlags newFlags = originalFlags;
+                        newFlags &= ~HideFlags.DontSaveInEditor;
+                        newFlags &= ~HideFlags.HideAndDontSave;
+                        
+                        obj.hideFlags = newFlags;
+                        fixedCount++;
+                        Debug.Log($"Fixed hideFlags on GameObject: {obj.name}", obj);
+                    }
+                    catch (System.Exception flagEx)
+                    {
+                        Debug.LogError($"hideFlags 수정 중 오류: {obj.name}: {flagEx.Message}", obj);
+                        // 오류 발생 시 원래 플래그로 복원 시도
+                        try { obj.hideFlags = originalFlags; } catch { }
+                    }
                 }
 
                 // (B) 모든 컴포넌트에 대해서도 HideFlags 제거
@@ -74,17 +101,40 @@ public static class EditorCleanupUtility
                         continue;
                     }
 
+                    // 컴포넌트에 대한 추가 검사 - 내장 컴포넌트 수정 방지
+                    if (comp.GetType().Namespace != null && comp.GetType().Namespace.StartsWith("UnityEngine"))
+                    {
+                        // 내장 컴포넌트는 건드리지 않음
+                        continue;
+                    }
+
                     // hideFlags 제거
                     if ((comp.hideFlags & HideFlags.DontSaveInEditor) != 0 ||
                         (comp.hideFlags & HideFlags.HideAndDontSave) != 0)
                     {
-                        comp.hideFlags &= ~HideFlags.DontSaveInEditor;
-                        comp.hideFlags &= ~HideFlags.HideAndDontSave;
-                        fixedCount++;
-                        Debug.Log($"Fixed hideFlags on component: {comp.GetType().Name} in {obj.name}", obj);
+                        // 기존 플래그 백업
+                        HideFlags originalFlags = comp.hideFlags;
+                        
+                        try
+                        {
+                            // 새로운 플래그 적용 (안전하게)
+                            HideFlags newFlags = originalFlags;
+                            newFlags &= ~HideFlags.DontSaveInEditor;
+                            newFlags &= ~HideFlags.HideAndDontSave;
+                            
+                            comp.hideFlags = newFlags;
+                            fixedCount++;
+                            Debug.Log($"Fixed hideFlags on component: {comp.GetType().Name} in {obj.name}", obj);
+                        }
+                        catch (System.Exception flagEx)
+                        {
+                            Debug.LogError($"컴포넌트 hideFlags 수정 중 오류: {obj.name}.{comp.GetType().Name}: {flagEx.Message}", obj);
+                            // 오류 발생 시 원래 플래그로 복원 시도
+                            try { comp.hideFlags = originalFlags; } catch { }
+                        }
                     }
 
-                    // (C) 컴포넌트 내부 “Missing Reference” 검사
+                    // (C) 컴포넌트 내부 "Missing Reference" 검사
                     //     - SerializedObject를 순회하며, ObjectReference 필드 값이
                     //       완전히 null(=0)인데 실제로는 인스턴스ID가 남았는지 등 확인 가능
                     CheckMissingReferences(obj, comp);

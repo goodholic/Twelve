@@ -270,6 +270,7 @@ GameObject:
   - component: {fileID: -8365422101254230093}
   - component: {fileID: -7019266211563208807}
   - component: {fileID: -8356570305348307490}
+  - component: {fileID: 7230848620178454589}
   m_Layer: 5
   m_Name: 1_OPSword
   m_TagString: Opponent Player
@@ -325,7 +326,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 2491191834211593570, guid: 9463a49443bc9c346be2eec3b71fe0d1, type: 3}
+  m_Sprite: {fileID: 6143742918652218589, guid: a6bdb716ee0b8a04faa721c41dc4fda2, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -374,6 +375,8 @@ MonoBehaviour:
   showRangeIndicator: 0
   bulletPrefab: {fileID: 5991931865243391143, guid: a1bd1ec283839614dbba6e13f48da508, type: 3}
   bulletSpeed: 5
+  bulletUpDirectionSprite: {fileID: 0}
+  bulletDownDirectionSprite: {fileID: 0}
   opponentBulletPanel: {fileID: 8293515601833126614, guid: 442d773c6cac9b34e88e19f932f717e8, type: 3}
   twoStarOutlineColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
   twoStarOutlineWidth: 10
@@ -395,6 +398,8 @@ MonoBehaviour:
   endTileRect: {fileID: 7728088104138265406, guid: dd3720c0124e04b4d83c775b74fdac3c, type: 3}
   targetJumpPosition: {fileID: 7728088104138265406, guid: dd3720c0124e04b4d83c775b74fdac3c, type: 3}
   startJumpPosition: {fileID: 4614398458146241476, guid: 02fa27106db89b544bba34f1b127942e, type: 3}
+  characterUpDirectionSprite: {fileID: -497731589844814219, guid: fbffe75c0902997458a8443ea565a711, type: 3}
+  characterDownDirectionSprite: {fileID: 6143742918652218589, guid: a6bdb716ee0b8a04faa721c41dc4fda2, type: 3}
 --- !u!114 &4980099198440753793
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -531,3 +536,17 @@ MonoBehaviour:
   endTileRect: {fileID: 7728088104138265406, guid: dd3720c0124e04b4d83c775b74fdac3c, type: 3}
   autoJumpOnStart: 0
   isJumping: 0
+--- !u!114 &7230848620178454589
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8786608230712049741}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 1541381998, guid: e725a070cec140c4caffb81624c8c787, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  Guid:
+    RawGuidValue: a1016faa07aa47244953e1c670a2c22d

@@ -270,6 +270,7 @@ GameObject:
   - component: {fileID: -8365422101254230093}
   - component: {fileID: -7019266211563208807}
   - component: {fileID: 9036772077347061312}
+  - component: {fileID: 7230848620178454589}
   m_Layer: 5
   m_Name: 1_dark angel
   m_TagString: Player
@@ -357,6 +358,7 @@ MonoBehaviour:
   moveSpeed: 0.3
   currentTile: {fileID: 0}
   currentTarget: {fileID: 0}
+  currentCharTarget: {fileID: 0}
   isAreaAttack: 0
   areaAttackRadius: 1
   isHero: 0
@@ -373,6 +375,8 @@ MonoBehaviour:
   showRangeIndicator: 0
   bulletPrefab: {fileID: 5991931865243391143, guid: a1bd1ec283839614dbba6e13f48da508, type: 3}
   bulletSpeed: 5
+  bulletUpDirectionSprite: {fileID: 0}
+  bulletDownDirectionSprite: {fileID: 0}
   opponentBulletPanel: {fileID: 8293515601833126614, guid: 442d773c6cac9b34e88e19f932f717e8, type: 3}
   twoStarOutlineColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
   twoStarOutlineWidth: 10
@@ -388,9 +392,14 @@ MonoBehaviour:
   attackInfoText: {fileID: 0}
   attackInfoOffset: {x: 1, y: 0, z: 0}
   isCharAttack: 0
+  playerTag: Player
+  opponentPlayerTag: Opponent Player
+  characterTag: Character
   endTileRect: {fileID: 4614398458146241476, guid: 02fa27106db89b544bba34f1b127942e, type: 3}
   targetJumpPosition: {fileID: 4614398458146241476, guid: 02fa27106db89b544bba34f1b127942e, type: 3}
   startJumpPosition: {fileID: 7728088104138265406, guid: dd3720c0124e04b4d83c775b74fdac3c, type: 3}
+  characterUpDirectionSprite: {fileID: -968922515120573812, guid: 0b4846771be47324982c9e2318b4273a, type: 3}
+  characterDownDirectionSprite: {fileID: 2458693057111435731, guid: b96a374b8455a37409e37870940cf662, type: 3}
 --- !u!114 &4980099198440753793
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -404,6 +413,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   parentPanel: {fileID: 3504338384272343577, guid: 9a44fedc711c03541adc233db7cd34dd, type: 3}
+  dragScale: 1.1
+  dragYOffset: 30
+  validDropColor: {r: 0.5, g: 1, b: 0.5, a: 1}
+  invalidDropColor: {r: 1, g: 0.5, b: 0.5, a: 1}
 --- !u!58 &-168794444562179896
 CircleCollider2D:
   m_ObjectHideFlags: 0
@@ -523,3 +536,17 @@ MonoBehaviour:
   endTileRect: {fileID: 4614398458146241476, guid: 02fa27106db89b544bba34f1b127942e, type: 3}
   autoJumpOnStart: 0
   isJumping: 0
+--- !u!114 &7230848620178454589
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8786608230712049741}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 1541381998, guid: e725a070cec140c4caffb81624c8c787, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  Guid:
+    RawGuidValue: 606093507ff9d31458529588cec0aa45

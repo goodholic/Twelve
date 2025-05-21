@@ -452,35 +452,6 @@ public class DeckPanelManager : MonoBehaviour
         return null;
     }
     
-    // [추가] 캐릭터 이름으로 종족 정보 가져오기
-    private CharacterRace GetRaceFromDatabase(string characterName)
-    {
-        // 데이터베이스에서 캐릭터 찾기
-        CharacterData character = FindCharacterInDatabase(characterName);
-        
-        // 찾았으면 종족 반환
-        if (character != null)
-        {
-            return character.race;
-        }
-        
-        // 못 찾았을 경우 기본값 반환 또는 로그 출력
-        Debug.LogWarning($"[DeckPanelManager] 데이터베이스에서 '{characterName}'의 종족 정보를 찾을 수 없습니다.");
-        return CharacterRace.Human; // 기본값으로 Human 반환
-    }
-    
-    // 종족별 캐릭터 목록 로깅용 헬퍼 메서드
-    private void LogCharacterList(string raceType, List<CharacterData> characters) {
-        Debug.Log($"[DeckPanelManager] {raceType} 캐릭터 목록 ({characters.Count}개):");
-        for (int i = 0; i < characters.Count; i++) {
-            // [추가] DB에서 캐릭터 정보 조회
-            CharacterData originalData = FindCharacterInDatabase(characters[i].characterName);
-            string dbInfo = originalData != null ? $", 공격력:{originalData.attackPower}" : ", DB정보 없음";
-            
-            Debug.Log($"  - {i+1}. {characters[i].characterName} (Lv.{characters[i].level}{dbInfo})");
-        }
-    }
-
     // 등록된 캐릭터들을 CharacterInventoryManager의 덱으로 이동
     private void MoveRegisteredCharactersToDeck()
     {
@@ -780,31 +751,6 @@ public class DeckPanelManager : MonoBehaviour
              || race == CharacterRace.Elf);
     }
 
-    // [추가] 캐릭터 이름으로 종족이 규칙에 맞는지 확인 (휴먼/오크/엘프만 가능)
-    private bool IsAllowedRaceByName(string characterName)
-    {
-        // 데이터베이스에서 종족 정보 가져오기
-        CharacterRace race = GetRaceFromDatabase(characterName);
-        
-        // 허용된 종족인지 확인
-        return IsAllowedRace(race);
-    }
-    
-    // [추가] 캐릭터 데이터로 종족이 규칙에 맞는지 확인 (휴먼/오크/엘프만 가능)
-    private bool IsAllowedRaceByData(CharacterData character)
-    {
-        if (character == null) return false;
-        
-        // 데이터베이스에서 원본 데이터 먼저 확인
-        CharacterData originalData = FindCharacterInDatabase(character.characterName);
-        
-        // 원본 데이터가 있으면 그 종족 정보 사용, 없으면 캐릭터 자체 정보 사용
-        CharacterRace race = (originalData != null) ? originalData.race : character.race;
-        
-        // 허용된 종족인지 확인
-        return IsAllowedRace(race);
-    }
-
     private IEnumerator ShowRaceRuleWarning(string message)
     {
         if (raceRuleWarningText != null)
@@ -885,6 +831,15 @@ public class DeckPanelManager : MonoBehaviour
         
         // 인벤토리 UI 갱신
         RefreshInventoryUI();
+        
+        // ▼▼ [수정추가] 업그레이드 패널도 자동 갱신 ▼▼
+        UpgradePanelManager upm = FindFirstObjectByType<UpgradePanelManager>();
+        if (upm != null)
+        {
+            upm.SetUpgradeRegisteredSlotsFromDeck();
+            upm.RefreshDisplay();
+        }
+        // ▲▲ [수정끝] ▲▲
         
         Debug.Log("[DeckPanelManager] UI 갱신 완료");
         Debug.Log("[DeckPanelManager] '종족 규칙대로 자동등록' 버튼 처리 완료");

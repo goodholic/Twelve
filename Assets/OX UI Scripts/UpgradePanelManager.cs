@@ -7,7 +7,7 @@ using System.Collections;
 /// <summary>
 /// 등록된 캐릭터(10칸)에 대해 '업그레이드' 기능을 담당하는 패널 매니저.
 /// 기존엔 업그레이드 재료(feedCharacter)를 직접 선택했지만,
-/// 이제는 "클릭만 하면 → 같은 종족 + 같은 성급 캐릭터를 인벤토리에서 자동 소모 + 골드 차감 + 경험치+1%".
+/// 이제는 "클릭만 하면 → 같은 종족 + 같은 성급 캐릭터를 인벤토리에서 자동 소모 + 골드 차감 + 경험치+1%". 
 /// 100% 차면 레벨업(최대 30).
 /// (업그레이드 후 캐릭터의 경험치와 스탯을 3초간 표시)
 /// </summary>
@@ -37,6 +37,14 @@ public class UpgradePanelManager : MonoBehaviour
     [Header("업그레이드 슬롯(10칸) 레벨 텍스트")]
     [SerializeField] private List<TextMeshProUGUI> upgradeRegisteredSlotLevelTexts;
 
+    // ▼▼ [수정 전] private CharacterData[] registeredSet2_Up = new CharacterData[10];
+    // ===========================================
+    // 기본 코드. 여기서는 바로 초기화했지만, 아래에서 덱과 동일 배열을 참조하도록 변경할 예정.
+    // ===========================================
+    [Header("▼▼ [중요] 덱 참조 ▼▼")]
+    // (기존에 있던 필드 유지하되, 실질적으로는 덱 배열을 참조하게 변경)
+    private CharacterData[] registeredSet2_Up = new CharacterData[10];
+
     // ==========================
     // (B) 결과/스탯 표시
     // ==========================
@@ -54,14 +62,9 @@ public class UpgradePanelManager : MonoBehaviour
     [SerializeField] private RectTransform moveSpeedBar;
     [SerializeField] private RectTransform attackRangeBar;
 
-    // =====================================================
-    //  deckPanelManager.registeredCharactersSet2 와 동기화
-    // =====================================================
-    private CharacterData[] registeredSet2_Up = new CharacterData[10];
-
-    // ==========================
+    // ===========================================
     // (C) 업그레이드 버튼 (10개)
-    // ==========================
+    // ===========================================
     [Header("캐릭터 업그레이드 버튼 (총 10개)")]
     [SerializeField] private List<Button> upgradeButtons;
 
@@ -110,12 +113,19 @@ public class UpgradePanelManager : MonoBehaviour
             return;
         }
 
-        var deckSet2 = deckPanelManager.registeredCharactersSet2; // 10칸
-        for (int i = 0; i < 10; i++)
+        // -------------------------------------------------------------------
+        // ▼▼ [수정] 덱 배열(registeredCharactersSet2)을 그대로 참조하도록 변경 ▼▼
+        // -------------------------------------------------------------------
+        registeredSet2_Up = deckPanelManager.registeredCharactersSet2;  // 덱 배열 "그대로" 참조
+        // ▲▲ [수정끝] ▲▲
+
+        if (registeredSet2_Up == null || registeredSet2_Up.Length < 10)
         {
-            registeredSet2_Up[i] = deckSet2[i];
+            Debug.LogWarning("[UpgradePanelManager] registeredSet2_Up가 올바르지 않음");
+            return;
         }
 
+        // 슬롯 시각 갱신
         for (int i = 0; i < 10; i++)
         {
             UpdateUpgradeRegisteredImage(i);
@@ -124,8 +134,8 @@ public class UpgradePanelManager : MonoBehaviour
 
     private void UpdateUpgradeRegisteredImage(int i)
     {
-        if (upgradeRegisteredSlotImages == null) return;
-        if (i < 0 || i >= upgradeRegisteredSlotImages.Count) return;
+        if (upgradeRegisteredSlotImages == null || i < 0 || i >= upgradeRegisteredSlotImages.Count)
+            return;
 
         Image slotImg = upgradeRegisteredSlotImages[i];
         TextMeshProUGUI lvlText = (upgradeRegisteredSlotLevelTexts != null && i < upgradeRegisteredSlotLevelTexts.Count)
@@ -139,14 +149,7 @@ public class UpgradePanelManager : MonoBehaviour
             {
                 slotImg.sprite = emptyUpgradeSlotSprite;
             }
-            if (lvlText)
-            {
-                lvlText.text = "";
-            }
-            if (upgradeButtons != null && i < upgradeButtons.Count)
-            {
-                upgradeButtons[i].interactable = false;  // 빈칸이면 버튼 비활성
-            }
+            if (lvlText != null) lvlText.text = "";
         }
         else
         {
@@ -155,14 +158,9 @@ public class UpgradePanelManager : MonoBehaviour
             {
                 slotImg.sprite = cData.buttonIcon.sprite;
             }
-            if (lvlText)
+            if (lvlText != null)
             {
                 lvlText.text = $"Lv.{cData.level}";
-            }
-            // 버튼 활성
-            if (upgradeButtons != null && i < upgradeButtons.Count)
-            {
-                upgradeButtons[i].interactable = true;
             }
         }
     }
@@ -205,6 +203,7 @@ public class UpgradePanelManager : MonoBehaviour
             return;
         }
 
+        // 캐릭터 데이터 확인
         CharacterData targetChar = registeredSet2_Up[slotIndex];
         if (targetChar == null)
         {
