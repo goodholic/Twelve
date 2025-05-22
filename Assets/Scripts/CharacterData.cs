@@ -74,6 +74,16 @@ public class CharacterData
     [Tooltip("캐릭터 소환 비용 (UI 표시용)")]
     public int cost = 10;
 
+    // =============================
+    // [추가] 캐릭터 앞/뒤 스프라이트
+    // =============================
+    [Header("캐릭터 방향 스프라이트")]
+    [Tooltip("캐릭터가 위쪽을 향할 때 표시할 스프라이트")]
+    public Sprite frontSprite;
+
+    [Tooltip("캐릭터가 아래쪽을 향할 때 표시할 스프라이트")]
+    public Sprite backSprite;
+
     [Header("Area Attack Settings (광역공격 범위)")]
     public float areaAttackRadius = 1f;
 
