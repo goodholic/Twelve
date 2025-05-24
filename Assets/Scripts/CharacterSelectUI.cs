@@ -1,8 +1,14 @@
+// Assets\OX UI Scripts\CharacterSelectUI.cs
+
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
-using System.Collections.Generic;
 using TMPro;
 
+/// <summary>
+/// 캐릭터 선택 UI. 1~9 캐릭터 (또는 덱)에서 4장(Hand) + Next 1장 + Reserve 4장 로직을 다룸.
+/// OnClickUse4CardsAtRandom()에서 '지역1'에 placable/placeTile이 꽉 찼을 경우 walkable에 배치하도록 수정함.
+/// </summary>
 public class CharacterSelectUI : MonoBehaviour
 {
     [Header("Placement Manager 참조")]
@@ -44,6 +50,13 @@ public class CharacterSelectUI : MonoBehaviour
     private bool hasPendingCard = false;   // 이미 카드 하나가 선택된 상태인지?
     private int pendingCardIndex = -1;     // 현재 선택된(아직 배치 안 된) 카드 인덱스
 
+    // =======================================================================
+    // (1) 인벤토리 표시 => CharacterInventoryManager의 sharedSlotData200 활용
+    // =====================================================================
+
+    [Header("CharacterInventoryManager (인벤토리)")]
+    [SerializeField] private CharacterInventoryManager characterInventory;
+
     private void Start()
     {
         // 1) 1~9 캐릭터
@@ -62,6 +75,39 @@ public class CharacterSelectUI : MonoBehaviour
             Debug.LogError("[CharacterSelectUI] 1~9 캐릭터를 가져오지 못했습니다!");
             return;
         }
+
+        // ▼▼ [수정추가] CharacterInventoryManager 자동 찾기 ▼▼
+        if (characterInventory == null)
+        {
+            characterInventory = FindFirstObjectByType<CharacterInventoryManager>();
+            if (characterInventory != null)
+            {
+                Debug.Log("[CharacterSelectUI] CharacterInventoryManager를 자동으로 찾았습니다.");
+            }
+            else
+            {
+                Debug.LogWarning("[CharacterSelectUI] CharacterInventoryManager를 찾을 수 없습니다. Inspector에서 수동으로 연결하거나 씬에 추가해주세요.");
+            }
+        }
+
+        // ▼▼ [수정추가] PlacementManager 자동 찾기 ▼▼
+        if (placementManager == null)
+        {
+            placementManager = PlacementManager.Instance;
+            if (placementManager == null)
+            {
+                placementManager = FindFirstObjectByType<PlacementManager>();
+            }
+            if (placementManager != null)
+            {
+                Debug.Log("[CharacterSelectUI] PlacementManager를 자동으로 찾았습니다.");
+            }
+            else
+            {
+                Debug.LogWarning("[CharacterSelectUI] PlacementManager를 찾을 수 없습니다. Inspector에서 수동으로 연결하거나 씬에 추가해주세요.");
+            }
+        }
+        // ▲▲ [수정추가 끝] ▲▲
 
         // 2) 인덱스(0..8) 셔플
         allIndices.Clear();
@@ -188,10 +234,10 @@ public class CharacterSelectUI : MonoBehaviour
     /// </summary>
     private void OnClickCardButton(int clickedIndex)
     {
-        if (hasPendingCard)
+        // ▼▼ [수정] 이미 선택된 카드와 같은 카드를 클릭하면 유지, 다른 카드면 변경 ▼▼
+        if (hasPendingCard && pendingCardIndex != clickedIndex)
         {
-            Debug.Log($"[CharacterSelectUI] 이미 {pendingCardIndex}번 카드를 선택 중이므로 클릭 무시");
-            return;
+            Debug.Log($"[CharacterSelectUI] 기존 선택({pendingCardIndex}) -> 새로운 선택({clickedIndex})으로 변경");
         }
 
         hasPendingCard = true;
@@ -241,8 +287,10 @@ public class CharacterSelectUI : MonoBehaviour
             }
         }
 
-        hasPendingCard = false;
-        pendingCardIndex = -1;
+        // ▼▼ [수정] 카드 사용 후에도 선택 상태 유지 (연속 배치 가능) ▼▼
+        // hasPendingCard = false;
+        // pendingCardIndex = -1;
+        Debug.Log($"[CharacterSelectUI] 카드({usedIndex}) 사용됨. 선택 상태는 유지됩니다.");
     }
 
     /// <summary>
@@ -285,27 +333,44 @@ public class CharacterSelectUI : MonoBehaviour
         }
     }
 
-    // =======================================================================
-    // (기존) 코드들은 생략 없이 그대로...
-    // =======================================================================
+    public void RefreshInventoryUI()
+    {
+        if (characterInventory == null)
+        {
+            // 자동으로 CharacterInventoryManager 찾기 시도
+            characterInventory = FindFirstObjectByType<CharacterInventoryManager>();
+            
+            if (characterInventory == null)
+            {
+                Debug.LogWarning("[CharacterSelectUI] CharacterInventoryManager를 찾을 수 없습니다!");
+                return;
+            }
+            else
+            {
+                Debug.Log("[CharacterSelectUI] CharacterInventoryManager를 자동으로 찾았습니다.");
+            }
+        }
+
+        // 현재는 구현 생략 (DeckPanelManager 등에서 구현)
+        // 필요 시 DeckPanelManager 같은 곳에서 sharedSlotData200을 갱신하여 사용
+    }
 
     /// <summary>
-    /// 원본 코드의 끝부분: 드래그 소환 후 남아있던 메서드들...
+    /// (요청) placable/placeTile이 전부 찼을 경우 => walkable로 소환
+    /// 4장의 카드(Hand)에 대해 지역1의 placable/placeTile을 찾아 랜덤으로 소환.
+    /// 만약 placable/placeTile이 전혀 없으면, walkable로 소환하도록 수정.
     /// </summary>
-
-    // =======================================================================
-    // == (추가) 4장 카드를 "원버튼"으로 자동 사용 + 랜덤 타일 배치 ==
-    // =======================================================================
     public void OnClickUse4CardsAtRandom()
     {
-        // 1) placable 또는 placeTile 중에서 "지역1(=isRegion2 == false)" 만 모아둠
-        Tile[] allTiles = FindObjectsByType<Tile>(FindObjectsSortMode.None);
+        // 지역1의 모든 Tile 스캔
+        Tile[] allTiles = Object.FindObjectsByType<Tile>(FindObjectsSortMode.None);
         List<Tile> validTiles = new List<Tile>();
+
+        // placable / placeTile 중 isRegion2 == false (지역1)
         foreach (Tile t in allTiles)
         {
             if (t != null && !t.isRegion2)
             {
-                // "지역1"이고, placable 또는 placeTile이면
                 if ((t.IsPlacable() || t.IsPlaceTile()))
                 {
                     validTiles.Add(t);
@@ -313,15 +378,28 @@ public class CharacterSelectUI : MonoBehaviour
             }
         }
 
+        // [MODIFIED for #2] => 만약 placable/placeTile이 하나도 없으면 walkable로 대체
         if (validTiles.Count == 0)
         {
-            Debug.LogWarning("[CharacterSelectUI] 지역1에 배치할 수 있는 placable/placeTile이 없습니다!");
-            return;
+            Debug.LogWarning("[CharacterSelectUI] 지역1에 배치할 수 있는 placable/placeTile이 없습니다! => walkable로 대체");
+            List<Tile> walkableTiles = new List<Tile>();
+            foreach (Tile t in allTiles)
+            {
+                if (t != null && !t.isRegion2 && t.IsWalkable())
+                {
+                    walkableTiles.Add(t);
+                }
+            }
+            if (walkableTiles.Count == 0)
+            {
+                Debug.LogWarning("[CharacterSelectUI] 지역1에 배치할 수 있는 walkable도 없습니다! -> 소환 포기");
+                return;
+            }
+            validTiles = walkableTiles;
         }
 
         Debug.Log($"[CharacterSelectUI] OnClickUse4CardsAtRandom() -> 지역1의 배치가능 타일 {validTiles.Count}개 중 랜덤으로 4장 소환 시도.");
 
-        // 2) hand 4장에 대해 차례로 시도
         for (int i = 0; i < 4; i++)
         {
             SelectButton sb = selectButtons[i];
@@ -331,7 +409,7 @@ public class CharacterSelectUI : MonoBehaviour
                 continue;
             }
 
-            // 랜덤 타일
+            // 타일 무작위 선택
             Tile randomTile = validTiles[Random.Range(0, validTiles.Count)];
 
             if (placementManager == null)
@@ -340,11 +418,11 @@ public class CharacterSelectUI : MonoBehaviour
                 return;
             }
 
-            // 3) 실제 배치 시도 => 소환 성공하면 OnUseCard(...)로 카드 소모
+            // 소환 시도
             bool success = placementManager.SummonCharacterOnTile(sb.characterIndex, randomTile, false);
             if (success)
             {
-                // 소환에 성공했으므로 카드 사용 처리
+                // 성공하면 카드 사용 처리
                 OnUseCard(sb);
             }
             else
@@ -353,5 +431,14 @@ public class CharacterSelectUI : MonoBehaviour
                 break;
             }
         }
+    }
+
+    /// <summary>
+    /// 테스트 용: 특정 캐릭터를 덱에 직접 추가
+    /// </summary>
+    public void AddCharacterToDeck(int index, CharacterData data)
+    {
+        if (index < 0 || index >= 9) return;
+        deckFromLobby[index] = data;
     }
 }

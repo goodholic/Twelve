@@ -19,9 +19,6 @@ public class ItemRewardPanelManager : MonoBehaviour
     [SerializeField] private List<Button> itemCardButtons;      // 3개 버튼
     [SerializeField] private List<Image> itemCardImages;        // 3개 이미지
 
-    // -----------------------------------------------------------------------------------
-    //  기존에는 itemCardNameTexts(이름)를 표시했으나, 요구사항 변경으로 description 표시
-    // -----------------------------------------------------------------------------------
     [Header("아이템 설명 텍스트들(3개)")]
     [SerializeField] private List<TextMeshProUGUI> itemCardDescTexts; // 3개 description
 
@@ -45,28 +42,6 @@ public class ItemRewardPanelManager : MonoBehaviour
     /// </summary>
     public void ShowRewardPanel()
     {
-        // ---------------------------------------------------------------------------------
-        // [기존 로직] 인벤토리에 5개 이상 있으면 패널 안 열고 종료
-        // 아래 로직을 주석 처리 → 패널은 항상 열리게 함
-        // (아이템이 5개 가득차도, UI는 보여주되 새 아이템은 자동 버려지도록 변경)
-        // ---------------------------------------------------------------------------------
-        /*
-        if (itemInventoryManager != null)
-        {
-            var currentCount = itemInventoryManager.GetOwnedItems().Count;
-            if (currentCount >= 5)
-            {
-                Debug.LogWarning("[ItemRewardPanelManager] 이미 아이템이 5개 있으므로 더이상 아이템을 받을 수 없습니다!");
-                return;
-            }
-        }
-        else
-        {
-            Debug.LogError("[ItemRewardPanelManager] itemInventoryManager가 null입니다.");
-            return;
-        }
-        */
-
         if (itemPanel != null)
         {
             itemPanel.SetActive(true);
@@ -144,35 +119,18 @@ public class ItemRewardPanelManager : MonoBehaviour
         ItemData selected = chosenItems[index];
         if (selected == null) return;
 
-        // ---------------------------------------------------------------------------------
-        // [기존 로직] 인벤토리에 5개 이상이면 선택 불가
-        // 아래 로직을 주석 처리 → 선택은 가능하되, ItemInventoryManager가 버릴지 여부를 판단
-        // ---------------------------------------------------------------------------------
-        /*
-        if (itemInventoryManager != null)
-        {
-            var currentCount = itemInventoryManager.GetOwnedItems().Count;
-            if (currentCount >= 5)
-            {
-                Debug.LogWarning("[ItemRewardPanelManager] 인벤토리에 이미 아이템이 5개여서 더이상 선택이 불가합니다!");
-                if (itemPanel != null)
-                {
-                    itemPanel.SetActive(false);
-                }
-                return;
-            }
-        }
-        else
-        {
-            Debug.LogError("[ItemRewardPanelManager] itemInventoryManager가 null입니다. 아이템을 추가할 수 없습니다.");
-            return;
-        }
-        */
-
-        // 인벤토리에 추가 → 내부에서 5개 초과 시 자동 버림
+        // 인벤토리에 추가
         if (itemInventoryManager != null)
         {
             itemInventoryManager.AddItem(selected);
+
+            // ▼▼ [수정] 아이템 추가 후, 즉시 인벤토리 패널도 새로고침 ▼▼
+            ItemPanelManager itemPanelMgr = FindFirstObjectByType<ItemPanelManager>();
+            if (itemPanelMgr != null)
+            {
+                itemPanelMgr.RefreshItemPanel();
+            }
+            // ▲▲ [수정끝] ▲▲
         }
         else
         {

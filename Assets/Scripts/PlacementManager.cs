@@ -146,6 +146,14 @@ public class PlacementManager : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.Alpha2)) currentCharacterIndex = 1;
         if (Input.GetKeyDown(KeyCode.Alpha3)) currentCharacterIndex = 2;
         if (Input.GetKeyDown(KeyCode.Alpha4)) currentCharacterIndex = 3;
+        
+        // ▼▼ [수정] 더 빠른 주기로 타일 참조 정리 (1초마다) ▼▼
+        if (Time.time - lastCleanupTime > 1.0f) // 5초에서 1초로 변경
+        {
+            CleanupDestroyedCharacterReferences();
+            UpdatePlacedTileStates(); // placed tile 상태 업데이트 추가
+            lastCleanupTime = Time.time;
+        }
     }
 
     /// <summary>
@@ -156,82 +164,98 @@ public class PlacementManager : MonoBehaviour
         currentCharacterIndex = index;
         Debug.Log($"[PlacementManager] 선택된 유닛 인덱스: {currentCharacterIndex}");
     }
-
-    // =========================== [추가한 메서드] ===========================
+    
     /// <summary>
-    /// "캐릭터 제거 모드"를 토글하는 메서드
-    /// UI의 "Remove" 버튼 등에 연결해 사용 가능.
+    /// 현재 선택된 캐릭터 인덱스 반환
+    /// </summary>
+    public int GetCurrentCharacterIndex()
+    {
+        return currentCharacterIndex;
+    }
+    
+    /// <summary>
+    /// 캐릭터 선택 해제
+    /// </summary>
+    public void ClearCharacterSelection()
+    {
+        currentCharacterIndex = -1;
+        Debug.Log("[PlacementManager] 캐릭터 선택 해제됨");
+    }
+
+    /// <summary>
+    /// "캐릭터 제거 모드"를 토글하는 메서드 (UI 버튼 등에 연결)
     /// </summary>
     public void ToggleRemoveMode()
     {
         removeMode = !removeMode;
         Debug.Log($"[PlacementManager] removeMode = {removeMode}");
-        
-        // 제거 모드를 켰을 때만 랜덤 캐릭터 제거 시도
+
+        // (테스트) 제거 모드를 켰을 때, 임의의 캐릭터를 즉시 제거 시도할 수도 있음
+        // 이 부분은 필요하다면 실제 사용시 주석 처리
         if (removeMode)
         {
             RemoveRandomCharacter();
         }
     }
-    
+
     /// <summary>
-    /// 랜덤으로 placed 타일이나 placable 타일에 있는 캐릭터 중 하나를 선택하여 제거한다.
+    /// 랜덤으로 placed/placable 타일 위 캐릭터를 찾아 제거
     /// </summary>
     private void RemoveRandomCharacter()
     {
-        // 1. 모든 캐릭터와 그 타일을 찾기
+        // 1) 모든 캐릭터 + 타일 중에서 '배치된' 캐릭터만 찾기
         List<Character> placedCharacters = new List<Character>();
         Character[] allCharacters = FindObjectsByType<Character>(FindObjectsSortMode.None);
-        
-        // placed 타일이나 placable 타일에 있는 캐릭터만 선택
-        foreach (var character in allCharacters)
+
+        foreach (var c in allCharacters)
         {
-            if (character != null && character.currentTile != null)
+            if (c != null && c.currentTile != null)
             {
-                Tile tile = character.currentTile;
-                if (tile.IsPlaceTile() || tile.IsPlaced2() || tile.IsPlacable() || tile.IsPlacable2())
+                Tile t = c.currentTile;
+                if (t.IsPlaceTile() || t.IsPlaced2() || t.IsPlacable() || t.IsPlacable2())
                 {
-                    placedCharacters.Add(character);
+                    placedCharacters.Add(c);
                 }
             }
         }
-        
+
         // 제거할 캐릭터가 없는 경우
         if (placedCharacters.Count == 0)
         {
             Debug.Log("[PlacementManager] 제거할 캐릭터가 없습니다.");
             return;
         }
-        
-        // 2. 랜덤으로 하나 선택
+
+        // 2) 랜덤 선택
         int randomIndex = Random.Range(0, placedCharacters.Count);
         Character targetCharacter = placedCharacters[randomIndex];
         Tile targetTile = targetCharacter.currentTile;
-        
+
         if (targetTile == null)
         {
             Debug.LogWarning("[PlacementManager] 선택된 캐릭터의 타일이 null입니다.");
             return;
         }
-        
-        // 3. 선택된 캐릭터 정보 출력
+
         Debug.Log($"[PlacementManager] 랜덤 제거 대상: {targetCharacter.characterName} (별:{targetCharacter.star}, 타일:{targetTile.name})");
-        
-        // 4. 캐릭터 제거
+
+        // 3) 캐릭터 제거
         RemoveCharacterOnTile(targetTile);
-        
-        // 5. 제거 모드 즉시 해제
+
+        // 4) 제거 모드 즉시 해제
         removeMode = false;
     }
-    // =====================================================================
 
     // ---------------------------------------------------------------------------
     // (A) "클릭 방식" 배치 (tile.OnClickPlacableTile() 등에서 호출)
     // ---------------------------------------------------------------------------
     public void PlaceCharacterOnTile(Tile tile)
     {
+        // ▼▼ [추가] 디버그 로그 강화 ▼▼
+        Debug.Log($"[PlacementManager] PlaceCharacterOnTile 호출 - tile: {tile.name}, currentCharacterIndex: {currentCharacterIndex}, removeMode: {removeMode}");
+        
         // removeMode가 true면 제거 로직을 "타일" 측에서 처리하므로,
-        // 여기선 배치 로직만 그대로 유지
+        // 여기서는 배치 로직만 그대로 유지
 
         if (characterDatabase == null
             || characterDatabase.currentRegisteredCharacters == null
@@ -244,7 +268,7 @@ public class PlacementManager : MonoBehaviour
         if (currentCharacterIndex < 0
             || currentCharacterIndex >= characterDatabase.currentRegisteredCharacters.Length)
         {
-            Debug.LogWarning($"[PlacementManager] 잘못된 인덱스({currentCharacterIndex}) => 배치 불가");
+            Debug.LogWarning($"[PlacementManager] 잘못된 인덱스({currentCharacterIndex}) => 배치 불가. 캐릭터를 먼저 선택하세요!");
             return;
         }
 
@@ -259,16 +283,51 @@ public class PlacementManager : MonoBehaviour
             Debug.LogWarning("[PlacementManager] tile이 null => 배치 불가");
             return;
         }
-
-        // === [수정 추가] 한 타일에는 한 캐릭터만 있어야 하므로, 이미 다른 캐릭터가 있는지 확인 ===
-        if (CheckAnyCharacterHasCurrentTile(tile))
-        {
-            Debug.LogWarning($"[PlacementManager] {tile.name} 타일은 이미 캐릭터가 점유 중입니다. 배치 불가!");
-            return;
-        }
+        
         // ================================================================================
 
         bool isArea2 = (tile.IsWalkable2() || tile.IsPlacable2() || tile.IsPlaced2());
+        
+        // ▼▼ [추가] 미네랄 상태 확인 로그 ▼▼
+        MineralBar targetMineralBar = isArea2 ? region2MineralBar : region1MineralBar;
+        if (targetMineralBar != null)
+        {
+            Debug.Log($"[PlacementManager] 미네랄 체크 - 현재: {targetMineralBar.GetCurrentMinerals()}, 필요: {data.cost}, 충분: {targetMineralBar.GetCurrentMinerals() >= data.cost}");
+        }
+        
+        // === [수정 추가] 한 타일에는 한 캐릭터만 있어야 하므로, 이미 다른 캐릭터가 있는지 확인 ===
+        // placed tile의 경우 특별 처리: 실제 캐릭터가 있는지만 확인
+        bool hasActualCharacter = false;
+        if (tile.IsPlaceTile() || tile.IsPlaced2())
+        {
+            // placed tile은 PlaceTile/Placed2 자식이 아닌 실제 캐릭터만 확인
+            Character[] allChars = Object.FindObjectsByType<Character>(FindObjectsSortMode.None);
+            foreach (var c in allChars)
+            {
+                if (c != null && c.currentTile == tile)
+                {
+                    hasActualCharacter = true;
+                    break;
+                }
+            }
+            
+            if (hasActualCharacter)
+            {
+                Debug.LogWarning($"[PlacementManager] {tile.name} placed tile에 이미 캐릭터가 있습니다. 배치 불가!");
+                return;
+            }
+        }
+        else
+        {
+            // placable/walkable 타일은 기존 로직 사용
+            if (CheckAnyCharacterHasCurrentTile(tile))
+            {
+                Debug.LogWarning($"[PlacementManager] {tile.name} 타일은 이미 캐릭터가 점유 중입니다. 배치 불가!");
+                return;
+            }
+        }
+        // ================================================================================
+        
         if (isArea2 && isHost)
         {
             Debug.LogWarning("[PlacementManager] 지역2에는 (호스트) 배치 불가");
@@ -368,7 +427,8 @@ public class PlacementManager : MonoBehaviour
                         selectUI.MarkCardAsUsed(currentCharacterIndex);
                     }
 
-                    currentCharacterIndex = -1;
+                    // ▼▼ [수정] 자동으로 -1로 설정하지 않고, CharacterSelectUI에서 관리하도록 함 ▼▼
+                    // currentCharacterIndex = -1;
                 }
                 else
                 {
@@ -424,7 +484,8 @@ public class PlacementManager : MonoBehaviour
                         selectUI.MarkCardAsUsed(currentCharacterIndex);
                     }
 
-                    currentCharacterIndex = -1;
+                    // ▼▼ [수정] 자동으로 -1로 설정하지 않고, CharacterSelectUI에서 관리하도록 함 ▼▼
+                    // currentCharacterIndex = -1;
                 }
                 else
                 {
@@ -492,7 +553,8 @@ public class PlacementManager : MonoBehaviour
                 }
 
                 Debug.Log($"[PlacementManager] [{data.characterName}] 배치 완료 (cost={data.cost})");
-                currentCharacterIndex = -1;
+                // ▼▼ [수정] 자동으로 -1로 설정하지 않고, CharacterSelectUI에서 관리하도록 함 ▼▼
+                // currentCharacterIndex = -1;
             }
         }
         else if (tile.IsPlaceTile() || tile.IsPlaced2())
@@ -556,7 +618,8 @@ public class PlacementManager : MonoBehaviour
                 }
 
                 Debug.Log($"[PlacementManager] [{data.characterName}] 배치 완료 (on PlaceTile/Placed2, cost={data.cost})");
-                currentCharacterIndex = -1;
+                // ▼▼ [수정] 자동으로 -1로 설정하지 않고, CharacterSelectUI에서 관리하도록 함 ▼▼
+                // currentCharacterIndex = -1;
             }
         }
         else
@@ -659,15 +722,45 @@ public class PlacementManager : MonoBehaviour
             }
 
             // === [수정 추가] 타일에 이미 캐릭터가 있는지 확인 => 중복 배치 방지 ===
-            if (CheckAnyCharacterHasCurrentTile(tile))
+            // placed tile의 경우 특별 처리: 실제 캐릭터가 있는지만 확인
+            bool hasActualCharacter = false;
+            if (tile.IsPlaceTile() || tile.IsPlaced2())
             {
-                Debug.LogWarning($"[PlacementManager] {tile.name}는 이미 캐릭터가 있어 소환 불가!");
-                if (mineralsSpent && targetMineralBar != null)
+                // placed tile은 PlaceTile/Placed2 자식이 아닌 실제 캐릭터만 확인
+                Character[] allChars = Object.FindObjectsByType<Character>(FindObjectsSortMode.None);
+                foreach (var c in allChars)
                 {
-                    targetMineralBar.RefundMinerals(data.cost);
-                    Debug.Log($"[PlacementManager] 소환 불가로 {(tileIsArea2 ? "지역2" : "지역1")} 미네랄 {data.cost} 환불");
+                    if (c != null && c.currentTile == tile)
+                    {
+                        hasActualCharacter = true;
+                        break;
+                    }
                 }
-                return false;
+                
+                if (hasActualCharacter)
+                {
+                    Debug.LogWarning($"[PlacementManager] {tile.name} placed tile에 이미 캐릭터가 있어 소환 불가!");
+                    if (mineralsSpent && targetMineralBar != null)
+                    {
+                        targetMineralBar.RefundMinerals(data.cost);
+                        Debug.Log($"[PlacementManager] 소환 불가로 {(tileIsArea2 ? "지역2" : "지역1")} 미네랄 {data.cost} 환불");
+                    }
+                    return false;
+                }
+            }
+            else
+            {
+                // placable/walkable 타일은 기존 로직 사용
+                if (CheckAnyCharacterHasCurrentTile(tile))
+                {
+                    Debug.LogWarning($"[PlacementManager] {tile.name}는 이미 캐릭터가 있어 소환 불가!");
+                    if (mineralsSpent && targetMineralBar != null)
+                    {
+                        targetMineralBar.RefundMinerals(data.cost);
+                        Debug.Log($"[PlacementManager] 소환 불가로 {(tileIsArea2 ? "지역2" : "지역1")} 미네랄 {data.cost} 환불");
+                    }
+                    return false;
+                }
             }
             // ==================================================================
 
@@ -978,16 +1071,53 @@ public class PlacementManager : MonoBehaviour
     }
 
     // ---------------------------------------------------------------------------
-    // (C) "드래그된 캐릭터"를 새 타일로 옮기거나(이동) / 합성 시도
+    // (C) "드래그된 캐릭터"를 새 타일로 옮기거나(이동) / 합성 시도 [강화됨]
     // ---------------------------------------------------------------------------
     public void OnDropCharacter(Character movingChar, Tile newTile)
     {
-        if (movingChar == null || newTile == null) return;
+        if (movingChar == null || newTile == null) 
+        {
+            Debug.LogWarning("[PlacementManager] OnDropCharacter: movingChar 또는 newTile이 null");
+            return;
+        }
+
+        Debug.Log($"[PlacementManager] 드래그 드롭: {movingChar.characterName} -> {newTile.name}");
 
         Tile oldTile = movingChar.currentTile;
+        
+        // ▼▼ [강화] 이전 타일 참조 완전히 정리 ▼▼
         if (oldTile != null)
         {
-            RemovePlaceTileChild(oldTile);
+            Debug.Log($"[PlacementManager] {movingChar.characterName}의 이전 타일 {oldTile.name} 참조 정리");
+            
+            // placed tile인 경우 상태 재확인
+            if (oldTile.IsPlaceTile() || oldTile.IsPlaced2())
+            {
+                // 다른 캐릭터가 있는지 확인
+                Character[] allChars = Object.FindObjectsByType<Character>(FindObjectsSortMode.None);
+                bool hasOtherCharacter = false;
+                foreach (var c in allChars)
+                {
+                    if (c != null && c != movingChar && c.currentTile == oldTile)
+                    {
+                        hasOtherCharacter = true;
+                        break;
+                    }
+                }
+                
+                // placed tile은 자식 관리가 아닌 비주얼 업데이트만 필요
+                if (!hasOtherCharacter)
+                {
+                    // placed tile에서 캐릭터가 없어졌으므로 시각적 업데이트
+                    oldTile.RefreshTileVisual();
+                    Debug.Log($"[PlacementManager] placed tile {oldTile.name}에서 캐릭터 제거됨");
+                }
+            }
+            else
+            {
+                // placable tile의 경우 기존 로직
+                RemovePlaceTileChild(oldTile);
+            }
         }
 
         bool occupantExists = CheckAnyCharacterHasCurrentTile(newTile);
@@ -1111,18 +1241,191 @@ public class PlacementManager : MonoBehaviour
         }
     }
 
+    // =========================== [강화된 타일 참조 관리 시스템] ===========================
+    /// <summary>
+    /// [강화] 캐릭터가 타일을 점유하고 있는지 확인하며, 중복 참조 감지 및 자동 정리도 수행
+    /// </summary>
     private bool CheckAnyCharacterHasCurrentTile(Tile tile)
     {
-        Character[] allChars = FindObjectsByType<Character>(FindObjectsSortMode.None);
+        if (tile == null) return false;
+
+        Character[] allChars = Object.FindObjectsByType<Character>(FindObjectsSortMode.None);
+        List<Character> occupyingChars = new List<Character>();
+        
+        // 해당 타일을 참조하는 모든 캐릭터 찾기
         foreach (var c in allChars)
         {
             if (c != null && c.currentTile == tile)
             {
-                return true;
+                occupyingChars.Add(c);
             }
         }
-        return false;
+        
+        // 중복 참조 감지 및 정리
+        if (occupyingChars.Count > 1)
+        {
+            Debug.LogWarning($"[PlacementManager] {tile.name} 타일에 {occupyingChars.Count}개의 중복 참조 감지! 자동 정리 수행");
+            CleanupDuplicateReferences(tile, occupyingChars);
+            return occupyingChars.Count > 0;
+        }
+        
+        // 유효하지 않은 참조 정리 (캐릭터가 실제로는 다른 위치에 있는 경우)
+        for (int i = occupyingChars.Count - 1; i >= 0; i--)
+        {
+            Character c = occupyingChars[i];
+            if (Vector3.Distance(c.transform.position, tile.transform.position) > 2.0f) // 임계값 설정
+            {
+                Debug.LogWarning($"[PlacementManager] {c.characterName}이 {tile.name}을 참조하지만 실제 위치가 다름. 참조 정리");
+                c.currentTile = null;
+                occupyingChars.RemoveAt(i);
+            }
+        }
+        
+        // ▼▼ [추가] PlaceTile/Placed2 상태 실시간 반영 ▼▼
+        bool hasOccupant = occupyingChars.Count > 0;
+        
+        // placed tile은 이미 그 자체가 PlaceTile/Placed2 타입이므로 자식 관리 불필요
+        if (tile.IsPlaceTile() || tile.IsPlaced2())
+        {
+            // ▼▼ [추가] placed tile의 경우 실시간 상태 업데이트 ▼▼
+            if (!hasOccupant)
+            {
+                // placed tile이 비어있으면 즉시 비주얼 업데이트
+                tile.RefreshTileVisual();
+            }
+            return hasOccupant;
+        }
+        
+        // placable tile의 경우만 자식 관리
+        bool hasPlaceTileChild = (tile.transform.Find("PlaceTile") != null || tile.transform.Find("Placed2") != null);
+        
+        // 캐릭터가 있는데 PlaceTile 자식이 없으면 생성
+        if (hasOccupant && !hasPlaceTileChild)
+        {
+            Debug.Log($"[PlacementManager] {tile.name}에 캐릭터가 있지만 PlaceTile 자식이 없음. 생성");
+            CreatePlaceTileChild(tile);
+        }
+        // 캐릭터가 없는데 PlaceTile 자식이 있으면 제거
+        else if (!hasOccupant && hasPlaceTileChild)
+        {
+            Debug.Log($"[PlacementManager] {tile.name}에 캐릭터가 없지만 PlaceTile 자식이 있음. 제거");
+            RemovePlaceTileChild(tile);
+        }
+        
+        return hasOccupant;
     }
+
+    private void CleanupDuplicateReferences(Tile tile, List<Character> duplicateChars)
+    {
+        if (duplicateChars.Count <= 1) return;
+        
+        Character closestChar = null;
+        float closestDistance = float.MaxValue;
+        
+        foreach (var c in duplicateChars)
+        {
+            float distance = Vector3.Distance(c.transform.position, tile.transform.position);
+            if (distance < closestDistance)
+            {
+                closestDistance = distance;
+                closestChar = c;
+            }
+        }
+        
+        foreach (var c in duplicateChars)
+        {
+            if (c != closestChar)
+            {
+                Debug.Log($"[PlacementManager] {c.characterName}의 {tile.name} 참조 해제 (중복 정리)");
+                c.currentTile = null;
+            }
+        }
+    }
+
+    public void CleanupDestroyedCharacterReferences()
+    {
+        Character[] allChars = Object.FindObjectsByType<Character>(FindObjectsSortMode.None);
+        
+        foreach (var c in allChars)
+        {
+            if (c == null || !c.gameObject.activeInHierarchy)
+            {
+                continue;
+            }
+            
+            if (c.currentTile != null)
+            {
+                float distance = Vector3.Distance(c.transform.position, c.currentTile.transform.position);
+                if (distance > 5.0f)
+                {
+                    Debug.LogWarning($"[PlacementManager] {c.characterName}의 타일 참조가 잘못됨 (거리: {distance}). 참조 정리");
+                    c.currentTile = null;
+                }
+            }
+        }
+    }
+
+    public void CleanupAllTileReferences()
+    {
+        Debug.Log("[PlacementManager] 전체 타일 참조 정리 시작");
+        
+        CleanupDestroyedCharacterReferences();
+        
+        Tile[] allTiles = Object.FindObjectsByType<Tile>(FindObjectsSortMode.None);
+        int cleanedCount = 0;
+        
+        foreach (var tile in allTiles)
+        {
+            if (tile == null) continue;
+            
+            Character[] allChars = Object.FindObjectsByType<Character>(FindObjectsSortMode.None);
+            List<Character> tileOccupants = new List<Character>();
+            
+            foreach (var c in allChars)
+            {
+                if (c != null && c.currentTile == tile)
+                {
+                    tileOccupants.Add(c);
+                }
+            }
+            
+            if (tileOccupants.Count > 1)
+            {
+                CleanupDuplicateReferences(tile, tileOccupants);
+                cleanedCount++;
+            }
+        }
+        
+        Debug.Log($"[PlacementManager] 전체 타일 참조 정리 완료 - {cleanedCount}개 타일에서 중복 참조 정리됨");
+    }
+
+    public void ClearCharacterTileReference(Character character)
+    {
+        if (character == null) return;
+        
+        Tile oldTile = character.currentTile;
+        character.currentTile = null;
+        
+        if (oldTile != null)
+        {
+            // placed tile과 placable tile 구분 처리
+            if (oldTile.IsPlaceTile() || oldTile.IsPlaced2())
+            {
+                // placed tile은 비주얼만 업데이트
+                oldTile.RefreshTileVisual();
+                Debug.Log($"[PlacementManager] {character.characterName}의 placed tile {oldTile.name} 비주얼 업데이트");
+            }
+            else
+            {
+                // placable tile은 자식 제거
+                RemovePlaceTileChild(oldTile);
+                Debug.Log($"[PlacementManager] {character.characterName}의 {oldTile.name} 참조 정리 완료");
+            }
+        }
+    }
+
+    private float lastCleanupTime = 0f;
+    private const float CLEANUP_INTERVAL = 5f;
 
     private bool TryMergeCharacter(Character movingChar, Tile newTile)
     {
@@ -1148,8 +1451,6 @@ public class PlacementManager : MonoBehaviour
                             return true;
 
                         case CharacterStar.TwoStar:
-                            // 2성 vs 2성 합성 -> 3성으로 가는 로직이라면 수정 가능
-                            // 여기서는 요구사항에 따라 2성에서 다시 '2성 풀' 중 임의로 재탄생이라 가정
                             otherChar.star = CharacterStar.TwoStar;
                             RandomizeAppearanceByStarAndRace(otherChar, CharacterStar.TwoStar);
                             UpgradeStats(otherChar);
@@ -1158,7 +1459,6 @@ public class PlacementManager : MonoBehaviour
                             return true;
 
                         case CharacterStar.ThreeStar:
-                            // 3성 vs 3성 합성 -> 3성 풀 재등장이라 가정
                             otherChar.star = CharacterStar.ThreeStar;
                             RandomizeAppearanceByStarAndRace(otherChar, CharacterStar.ThreeStar);
                             UpgradeStats(otherChar);
@@ -1181,9 +1481,6 @@ public class PlacementManager : MonoBehaviour
         return false;
     }
 
-    /// <summary>
-    /// [합성 후 외형/데이터 갱신] 1성→2성 / 2성→2성(재탄생) / 3성→3성(재탄생)
-    /// </summary>
     private void RandomizeAppearanceByStarAndRace(Character ch, CharacterStar newStar)
     {
         StarMergeDatabaseObject targetDB;
@@ -1215,7 +1512,6 @@ public class PlacementManager : MonoBehaviour
                 ch.characterName = chosenData.characterName;
                 ch.race = chosenData.race;
 
-                // UI Image가 있을 경우 아이콘 교체
                 if (chosenData.buttonIcon != null && ch.GetComponentInChildren<SpriteRenderer>() == null)
                 {
                     var uiImg = ch.GetComponentInChildren<UnityEngine.UI.Image>();
@@ -1225,10 +1521,8 @@ public class PlacementManager : MonoBehaviour
                     }
                 }
 
-                /// [추가] 2~3성일 경우, “앞/뒤 이미지” 적용 로직 (예시)
                 if (newStar == CharacterStar.TwoStar || newStar == CharacterStar.ThreeStar)
                 {
-                    // 만약 chosenData에 frontSprite/backSprite가 있다고 가정
                     if (chosenData.frontSprite != null)
                     {
                         SetFrontImage(ch, chosenData.frontSprite);
@@ -1245,7 +1539,7 @@ public class PlacementManager : MonoBehaviour
             }
         }
 
-        // starMergeDB가 없거나, 선택 실패 -> 기존 characterDatabase를 이용한 fallback
+        // starMergeDB가 없거나 선택 실패 -> fallback: characterDatabase
         if (characterDatabase == null || characterDatabase.currentRegisteredCharacters == null)
         {
             Debug.LogWarning("[PlacementManager] characterDatabase가 없어 임의 외형 변경 불가(fallback도 실패)");
@@ -1305,7 +1599,6 @@ public class PlacementManager : MonoBehaviour
         ch.characterName = chosenAlt.characterName;
         ch.race = chosenAlt.race;
 
-        // UI Image가 있을 경우 아이콘 교체
         if (chosenAlt.buttonIcon != null && ch.GetComponentInChildren<SpriteRenderer>() == null)
         {
             var uiImg = ch.GetComponentInChildren<UnityEngine.UI.Image>();
@@ -1315,7 +1608,6 @@ public class PlacementManager : MonoBehaviour
             }
         }
 
-        /// [추가] 2~3성일 경우, “앞/뒤 이미지” 적용 로직 (fallback)
         if (newStar == CharacterStar.TwoStar || newStar == CharacterStar.ThreeStar)
         {
             if (chosenAlt.frontSprite != null)
@@ -1405,30 +1697,54 @@ public class PlacementManager : MonoBehaviour
         character.areaIndex = isArea2 ? 2 : 1;
     }
 
-    private void CreatePlaceTileChild(Tile tile)
+    public void CreatePlaceTileChild(Tile tile)
     {
+        if (tile == null) return;
+        
+        // ▼▼ [수정] placed tile은 이미 PlaceTile/Placed2 타입이므로 자식 생성 불필요 ▼▼
+        if (tile.IsPlaceTile() || tile.IsPlaced2())
+        {
+            Debug.Log($"[PlacementManager] {tile.name}은 이미 placed tile이므로 자식 생성 생략");
+            tile.RefreshTileVisual();
+            return;
+        }
+        
+        // 기존 PlaceTile/Placed2 자식 제거
         Transform exist = tile.transform.Find("PlaceTile");
         Transform exist2 = tile.transform.Find("Placed2");
-        if (exist == null && exist2 == null)
-        {
-            GameObject placeTileObj = new GameObject("PlaceTile");
-            placeTileObj.transform.SetParent(tile.transform, false);
-            placeTileObj.transform.localPosition = Vector3.zero;
-        }
+        if (exist != null) Destroy(exist.gameObject);
+        if (exist2 != null) Destroy(exist2.gameObject);
+        
+        // 새로운 PlaceTile 자식 생성 (placable tile용)
+        GameObject placeTileObj = new GameObject("PlaceTile");
+        placeTileObj.transform.SetParent(tile.transform, false);
+        placeTileObj.transform.localPosition = Vector3.zero;
+        
+        // ▼▼ [추가] 타일 비주얼 업데이트 ▼▼
+        tile.RefreshTileVisual();
+        
+        Debug.Log($"[PlacementManager] {tile.name}에 {placeTileObj.name} 자식 생성 완료");
     }
 
-    private void RemovePlaceTileChild(Tile tile)
+    public void RemovePlaceTileChild(Tile tile)
     {
+        if (tile == null) return;
+        
         Transform exist = tile.transform.Find("PlaceTile");
         if (exist != null)
         {
             Destroy(exist.gameObject);
+            Debug.Log($"[PlacementManager] {tile.name}의 PlaceTile 자식 제거");
         }
         Transform exist2 = tile.transform.Find("Placed2");
         if (exist2 != null)
         {
             Destroy(exist2.gameObject);
+            Debug.Log($"[PlacementManager] {tile.name}의 Placed2 자식 제거");
         }
+        
+        // ▼▼ [추가] 타일 비주얼 업데이트 ▼▼
+        tile.RefreshTileVisual();
     }
 
     public int FindCharacterIndexInEnemyDatabase(CharacterData character)
@@ -1496,7 +1812,7 @@ public class PlacementManager : MonoBehaviour
 
         // 캐릭터의 코스트 찾기
         int cost = 10; // 기본 코스트 값
-        
+
         // 데이터베이스에서 해당 캐릭터 찾기
         if (characterDatabase != null && characterDatabase.currentRegisteredCharacters != null)
         {
@@ -1511,7 +1827,7 @@ public class PlacementManager : MonoBehaviour
                 }
             }
         }
-        
+
         // 지역2 캐릭터라면 enemyDatabase에서도 찾아보기
         if (occupant.areaIndex == 2 && enemyDatabase != null && enemyDatabase.characters != null)
         {
@@ -1543,16 +1859,9 @@ public class PlacementManager : MonoBehaviour
         }
 
         bool itemSuccess = (Random.value < itemChance);
-        if (itemSuccess && itemInventoryManager != null && itemInventoryManager.GetOwnedItems().Count < 9)
-        {
-            // 아이템 인벤토리 매니저가 있으나, 실제 추가 메서드는 구현되지 않았다고 가정
-            Debug.Log($"[PlacementManager] 별={occupant.star} 캐릭터 제거 -> 아이템 획득! (확률: {itemChance*100}%)");
-            Debug.LogWarning("[PlacementManager] 아이템 인벤토리 매니저에 적절한 랜덤 아이템 추가 로직 구현 필요");
-        }
-        else
-        {
-            Debug.Log($"[PlacementManager] 별={occupant.star} 캐릭터 제거 -> 아이템 획득 실패 (확률: {itemChance*100}%)");
-        }
+
+        // ▼▼ [수정] 여기서 실제로 itemDatabase에서 랜덤 아이템을 찾아 인벤토리에 추가 ▼▼        if (itemSuccess)        {            if (itemInventoryManager == null)            {                Debug.LogWarning("[PlacementManager] itemInventoryManager가 null입니다. Inspector에서 연결해주세요!");            }            else if (itemInventoryManager.GetOwnedItems().Count < 9)            {                if (itemInventoryManager.ItemDatabase != null && itemInventoryManager.ItemDatabase.items != null                    && itemInventoryManager.ItemDatabase.items.Length > 0)                {                    int randomIndex = Random.Range(0, itemInventoryManager.ItemDatabase.items.Length);                    ItemData rewardItem = itemInventoryManager.ItemDatabase.items[randomIndex];                    // 인벤토리에 추가                    itemInventoryManager.AddItem(rewardItem);                    // 아이템 패널 새로고침                    ItemPanelManager panelMgr = FindFirstObjectByType<ItemPanelManager>();                    if (panelMgr != null)                    {                        panelMgr.RefreshItemPanel();                    }                    Debug.Log($"[PlacementManager] 별={occupant.star} 캐릭터 제거 -> 아이템 획득! '{rewardItem.itemName}'");                }                else                {                    Debug.LogWarning("[PlacementManager] itemDatabase가 비었거나 items가 0개임 => 아이템 실제 지급 불가");                }            }            else            {                Debug.Log($"[PlacementManager] 인벤토리가 가득 참 (9개) => 아이템 획득 불가");            }        }        else        {            Debug.Log($"[PlacementManager] 별={occupant.star} 캐릭터 제거 -> 아이템 획득 실패 (확률: {itemChance*100}%)");        }
+        // ▲▲ [수정 끝] ▲▲
 
         // 3) 미네랄 환급
         float ratio = 0f;
@@ -1568,7 +1877,7 @@ public class PlacementManager : MonoBehaviour
                 ratio = 0.1f; // 10%
                 break;
         }
-        
+
         int halfCost = cost / 2;
         float refundFloat = halfCost * ratio;
         int finalRefund = Mathf.FloorToInt(refundFloat);
@@ -1576,12 +1885,12 @@ public class PlacementManager : MonoBehaviour
         if (occupant.areaIndex == 1 && region1MineralBar != null)
         {
             region1MineralBar.RefundMinerals(finalRefund);
-            Debug.Log($"[PlacementManager] area1 캐릭터 제거 => 미네랄 {finalRefund} 환급 (코스트 {cost}/2 * {ratio*100}%)");
+            Debug.Log($"[PlacementManager] area1 캐릭터 제거 => 미네랄 {finalRefund} 환급 (코스트 {cost}/2 * {ratio * 100}%)");
         }
         else if (occupant.areaIndex == 2 && region2MineralBar != null)
         {
             region2MineralBar.RefundMinerals(finalRefund);
-            Debug.Log($"[PlacementManager] area2 캐릭터 제거 => 미네랄 {finalRefund} 환급 (코스트 {cost}/2 * {ratio*100}%)");
+            Debug.Log($"[PlacementManager] area2 캐릭터 제거 => 미네랄 {finalRefund} 환급 (코스트 {cost}/2 * {ratio * 100}%)");
         }
 
         // 4) 캐릭터 오브젝트 Destroy
@@ -1589,19 +1898,26 @@ public class PlacementManager : MonoBehaviour
         Destroy(occupant.gameObject);
 
         // 5) 타일에서 "PlaceTile"/"Placed2" 자식 제거
-        RemovePlaceTileChild(tile);
+        // placed tile인 경우 자식 제거가 아닌 비주얼 업데이트만
+        if (tile.IsPlaceTile() || tile.IsPlaced2())
+        {
+            tile.RefreshTileVisual();
+            Debug.Log($"[PlacementManager] placed tile {tile.name}에서 캐릭터 제거 후 비주얼 업데이트");
+        }
+        else
+        {
+            RemovePlaceTileChild(tile);
+        }
+        
+        // ▼▼ [추가] 타일 상태 즉시 업데이트 ▼▼
+        OnCharacterRemovedFromTile(tile);
 
         Debug.Log($"[PlacementManager] {tile.name} 타일의 캐릭터 제거 완료 (Star={occupant.star})");
     }
     // =====================================================================
 
-    /// <summary>
-    /// [추가] 2성/3성용 앞/뒤 이미지를 세팅하는 메서드 예시
-    /// 실제로는 Character 스크립트나, UI 구조에 맞춰서 수정해야 함.
-    /// </summary>
     private void SetFrontImage(Character ch, Sprite frontSprite)
     {
-        // 예: 캐릭터 하위 오브젝트 이름이 "FrontImage"라고 가정
         Transform frontObj = ch.transform.Find("FrontImage");
         if (frontObj != null)
         {
@@ -1615,7 +1931,6 @@ public class PlacementManager : MonoBehaviour
 
     private void SetBackImage(Character ch, Sprite backSprite)
     {
-        // 예: 캐릭터 하위 오브젝트 이름이 "BackImage"라고 가정
         Transform backObj = ch.transform.Find("BackImage");
         if (backObj != null)
         {
@@ -1625,5 +1940,80 @@ public class PlacementManager : MonoBehaviour
                 img.sprite = backSprite;
             }
         }
+    }
+
+    private void UpdatePlacedTileStates()
+    {
+        Tile[] allTiles = Object.FindObjectsByType<Tile>(FindObjectsSortMode.None);
+        Character[] allChars = Object.FindObjectsByType<Character>(FindObjectsSortMode.None);
+        
+        foreach (var tile in allTiles)
+        {
+            if (tile == null) continue;
+            
+            // placed tile만 처리
+            if (tile.IsPlaceTile() || tile.IsPlaced2())
+            {
+                // 해당 타일에 캐릭터가 있는지 확인
+                bool hasCharacter = false;
+                foreach (var c in allChars)
+                {
+                    if (c != null && c.currentTile == tile)
+                    {
+                        hasCharacter = true;
+                        break;
+                    }
+                }
+                
+                // 캐릭터 존재 여부에 따라 비주얼 업데이트
+                // placed tile은 자식 관리가 아닌 비주얼 업데이트로 상태 반영
+                tile.RefreshTileVisual();
+                
+                if (!hasCharacter)
+                {
+                    Debug.Log($"[PlacementManager] placed tile {tile.name}이 비어있음");
+                }
+            }
+        }
+    }
+
+    // ▼▼ [추가] 캐릭터 사망/제거 시 즉시 호출되는 타일 상태 업데이트 메서드 ▼▼
+    public void OnCharacterRemovedFromTile(Tile tile)
+    {
+        if (tile == null) return;
+        
+        Debug.Log($"[PlacementManager] {tile.name} 타일에서 캐릭터 제거됨. 즉시 상태 업데이트");
+        
+        // placed tile인 경우
+        if (tile.IsPlaceTile() || tile.IsPlaced2())
+        {
+            // 즉시 비주얼 업데이트로 빈 타일임을 표시
+            tile.RefreshTileVisual();
+            
+            // 추가로 타일이 비어있음을 확실히 하기 위해 모든 캐릭터 확인
+            Character[] allChars = Object.FindObjectsByType<Character>(FindObjectsSortMode.None);
+            bool stillHasCharacter = false;
+            foreach (var c in allChars)
+            {
+                if (c != null && c.currentTile == tile)
+                {
+                    stillHasCharacter = true;
+                    break;
+                }
+            }
+            
+            if (!stillHasCharacter)
+            {
+                Debug.Log($"[PlacementManager] {tile.name} placed tile이 완전히 비어있음 확인");
+            }
+        }
+        else
+        {
+            // placable tile인 경우 PlaceTile 자식 제거
+            RemovePlaceTileChild(tile);
+        }
+        
+        // 타일의 배치 가능 상태 즉시 업데이트
+        tile.ResetHighlight();
     }
 }

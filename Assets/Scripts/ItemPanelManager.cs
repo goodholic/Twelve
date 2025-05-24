@@ -22,6 +22,38 @@ public class ItemPanelManager : MonoBehaviour
     // 실제 보유 아이템 목록을 캐싱하기 위한 리스트
     private List<ItemData> itemList = new List<ItemData>();
 
+    private void Start()
+    {
+        // 컴포넌트 연결 확인
+        if (itemInventoryManager == null)
+        {
+            itemInventoryManager = FindFirstObjectByType<ItemInventoryManager>();
+            if (itemInventoryManager == null)
+            {
+                Debug.LogError("[ItemPanelManager] ItemInventoryManager를 찾을 수 없습니다!");
+            }
+        }
+
+        // 슬롯 버튼 확인
+        if (itemSlotButtons == null || itemSlotButtons.Count == 0)
+        {
+            Debug.LogError("[ItemPanelManager] itemSlotButtons이 설정되지 않았습니다!");
+        }
+        else
+        {
+            for (int i = 0; i < itemSlotButtons.Count; i++)
+            {
+                if (itemSlotButtons[i] == null)
+                {
+                    Debug.LogError($"[ItemPanelManager] itemSlotButtons[{i}]가 null입니다!");
+                }
+            }
+        }
+
+        // 초기 새로고침
+        RefreshItemPanel();
+    }
+
     /// <summary>
     /// 아이템 인벤토리 패널(5칸)을 새로고침
     /// </summary>
@@ -69,16 +101,22 @@ public class ItemPanelManager : MonoBehaviour
                 }
 
                 // 드래그 스크립트(DraggableItemUI) 연결
-                DraggableItemUI dragItem = itemSlotButtons[i].GetComponent<DraggableItemUI>();
-                if (dragItem != null)
+                if (itemSlotButtons[i] != null)
                 {
-                    dragItem.currentItem = currentItem; // 여기서 아이템 설정
-                    dragItem.parentPanel = dragParentPanel;
+                    DraggableItemUI dragItem = itemSlotButtons[i].GetComponent<DraggableItemUI>();
+                    if (dragItem != null)
+                    {
+                        dragItem.currentItem = currentItem; // 여기서 아이템 설정
+                        dragItem.parentPanel = dragParentPanel;
+                    }
                 }
 
                 // (선택) 버튼 클릭 시 -> 콘솔 로그
                 int copyIndex = i;
-                itemSlotButtons[i].onClick.AddListener(() => OnClickItemSlot(copyIndex));
+                if (itemSlotButtons[i] != null)
+                {
+                    itemSlotButtons[i].onClick.AddListener(() => OnClickItemSlot(copyIndex));
+                }
             }
             else
             {
@@ -94,11 +132,14 @@ public class ItemPanelManager : MonoBehaviour
                 }
 
                 // 드래그 스크립트가 있다면 currentItem = null로 처리
-                DraggableItemUI dragItem = itemSlotButtons[i].GetComponent<DraggableItemUI>();
-                if (dragItem != null)
+                if (itemSlotButtons[i] != null)
                 {
-                    dragItem.currentItem = null;  // 빈칸이므로 null 설정
-                    dragItem.parentPanel = dragParentPanel;
+                    DraggableItemUI dragItem = itemSlotButtons[i].GetComponent<DraggableItemUI>();
+                    if (dragItem != null)
+                    {
+                        dragItem.currentItem = null;  // 빈칸이므로 null 설정
+                        dragItem.parentPanel = dragParentPanel;
+                    }
                 }
             }
         }

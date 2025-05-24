@@ -180,7 +180,7 @@ public class Character : NetworkBehaviour, IDamageable
     //           + 넘어간 뒤에는 walkable/walkable2를 따라가지 않음
     //           + 공격 시에는 특정 태그("Opponent Player"/"Player") 추적
     // -------------------------------------------------------
-    private bool hasCrossedRegion = false;
+    public bool hasCrossedRegion = false;
     private string chaseTag = null;
 
     // [추가] 태그들
@@ -990,33 +990,18 @@ public class Character : NetworkBehaviour, IDamageable
             
             if (parentPanel == null)
             {
-                Canvas canvas = FindFirstObjectByType<Canvas>();
-                if (canvas != null)
+                Canvas[] canvases = FindObjectsByType<Canvas>(FindObjectsSortMode.None);
+                foreach (Canvas canvas in canvases)
                 {
-                    GameObject bulletPanelObj = new GameObject("EmergencyBulletPanel");
-                    parentPanel = bulletPanelObj.AddComponent<RectTransform>();
-                    bulletPanelObj.transform.SetParent(canvas.transform, false);
-                    bulletPanel = parentPanel;
-                    Debug.LogWarning($"[Character] 비상용 총알 패널을 생성했습니다.");
-                }
-            }
-        }
-        
-        if (parentPanel == null || !parentPanel.gameObject.scene.IsValid())
-        {
-            Debug.LogWarning($"[Character] 유효한 총알 패널이 없음, 대체 패널 생성 시도");
-            
-            Canvas[] canvases = FindObjectsByType<Canvas>(FindObjectsSortMode.None);
-            foreach (Canvas canvas in canvases)
-            {
-                if (canvas.isActiveAndEnabled)
-                {
-                    GameObject bulletPanelObj = new GameObject("EmergencyBulletPanel");
-                    parentPanel = bulletPanelObj.AddComponent<RectTransform>();
-                    bulletPanelObj.transform.SetParent(canvas.transform, false);
-                    bulletPanel = parentPanel;
-                    Debug.LogWarning($"[Character] 비상용 총알 패널을 {canvas.name}에 생성했습니다.");
-                    break;
+                    if (canvas.isActiveAndEnabled)
+                    {
+                        GameObject bulletPanelObj = new GameObject("EmergencyBulletPanel");
+                        parentPanel = bulletPanelObj.AddComponent<RectTransform>();
+                        bulletPanelObj.transform.SetParent(canvas.transform, false);
+                        bulletPanel = parentPanel;
+                        Debug.LogWarning($"[Character] 비상용 총알 패널을 {canvas.name}에 생성했습니다.");
+                        break;
+                    }
                 }
             }
         }
@@ -1168,7 +1153,43 @@ public class Character : NetworkBehaviour, IDamageable
         if (currentHP <= 0f)
         {
             Debug.Log($"[Character] {characterName} 사망 (HP=0)!");
+            
+            // ▼▼ [강화] 사망 시 타일 참조 완전히 정리 ▼▼
+            if (currentTile != null && PlacementManager.Instance != null)
+            {
+                Debug.Log($"[Character] {characterName} 사망 - {currentTile.name} 타일 참조 정리");
+                
+                // 타일을 미리 저장 (ClearCharacterTileReference에서 null로 설정되기 전에)
+                Tile dyingTile = currentTile;
+                
+                // placed tile인 경우와 placable tile인 경우를 구분
+                if (currentTile.IsPlaceTile() || currentTile.IsPlaced2())
+                {
+                    // placed tile은 자식 제거하지 않고 비주얼만 업데이트
+                    currentTile.RefreshTileVisual();
+                    Debug.Log($"[Character] placed tile {currentTile.name} 비주얼 업데이트");
+                }
+                else
+                {
+                    // placable tile은 PlaceTile 자식 제거
+                    PlacementManager.Instance.RemovePlaceTileChild(currentTile);
+                }
+                
+                // 타일 참조 정리
+                PlacementManager.Instance.ClearCharacterTileReference(this);
+                
+                // ▼▼ [추가] 타일 상태 즉시 업데이트 ▼▼
+                PlacementManager.Instance.OnCharacterRemovedFromTile(dyingTile);
+            }
+            
+            // 캐릭터 오브젝트 파괴
             Destroy(gameObject);
+            
+            // ▼▼ [강화] 사망 후 전체 참조 상태 정리 ▼▼
+            if (PlacementManager.Instance != null)
+            {
+                PlacementManager.Instance.CleanupDestroyedCharacterReferences();
+            }
         }
     }
 
@@ -1200,7 +1221,7 @@ public class Character : NetworkBehaviour, IDamageable
             }
         }
     }
-
+    
     /// <summary>
     /// 점프해온 상대 지역 캐릭터를 찾는 메서드
     /// 일반 배치된 캐릭터가 점프해온 적 캐릭터를 공격할 때 사용합니다.
@@ -1292,6 +1313,37 @@ public class Character : NetworkBehaviour, IDamageable
         else if (uiImage != null)
         {
             uiImage.sprite = spriteToUse;
+        }
+    }
+
+    private void OnDestroy()
+    {
+        // 캐릭터가 파괴될 때 타일 참조 정리
+        if (currentTile != null && PlacementManager.Instance != null)
+        {
+            Debug.Log($"[Character] {characterName} 파괴됨 - {currentTile.name} 타일 참조 정리");
+            
+            // 타일을 미리 저장
+            Tile destroyedTile = currentTile;
+            
+            // placed tile인 경우와 placable tile인 경우를 구분
+            if (currentTile.IsPlaceTile() || currentTile.IsPlaced2())
+            {
+                // placed tile은 자식 제거하지 않고 비주얼만 업데이트
+                currentTile.RefreshTileVisual();
+                Debug.Log($"[Character] placed tile {currentTile.name} 비주얼 업데이트");
+            }
+            else
+            {
+                // placable tile은 PlaceTile 자식 제거
+                PlacementManager.Instance.RemovePlaceTileChild(currentTile);
+            }
+            
+            // 타일 참조를 null로 설정
+            currentTile = null;
+            
+            // ▼▼ [추가] 타일 상태 즉시 업데이트 ▼▼
+            PlacementManager.Instance.OnCharacterRemovedFromTile(destroyedTile);
         }
     }
 }

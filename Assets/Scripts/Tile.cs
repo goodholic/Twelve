@@ -63,11 +63,17 @@ public class Tile : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 이 타일이 'Placable' 형태인지 체크
+    /// </summary>
     public bool IsPlacable()
     {
         return (transform.Find("Placable") != null);
     }
 
+    /// <summary>
+    /// 이 타일이 'Placable2' 형태인지 체크
+    /// </summary>
     public bool IsPlacable2()
     {
         for (int i = 0; i < transform.childCount; i++)
@@ -81,8 +87,18 @@ public class Tile : MonoBehaviour
         return false;
     }
 
+    /// <summary>
+    /// 이 타일이 'PlaceTile' 형태인지 (원래 Occupied)
+    /// </summary>
     public bool IsPlaceTile()
     {
+        // 자기 자신의 이름이 PlacedTile인 경우
+        if (gameObject.name.ToLower().Contains("placedtile") || gameObject.name.ToLower().Contains("placetile"))
+        {
+            return true;
+        }
+        
+        // 자식 중에 PlaceTile이 있는 경우
         for (int i = 0; i < transform.childCount; i++)
         {
             string childName = transform.GetChild(i).name.ToLower();
@@ -94,8 +110,18 @@ public class Tile : MonoBehaviour
         return false;
     }
 
+    /// <summary>
+    /// 이 타일이 'Placed2' 형태인지 (원래 Occupied2)
+    /// </summary>
     public bool IsPlaced2()
     {
+        // 자기 자신의 이름이 Placed2인 경우
+        if (gameObject.name.ToLower().Contains("placed2"))
+        {
+            return true;
+        }
+        
+        // 자식 중에 Placed2가 있는 경우
         for (int i = 0; i < transform.childCount; i++)
         {
             string childName = transform.GetChild(i).name.ToLower();
@@ -107,11 +133,17 @@ public class Tile : MonoBehaviour
         return false;
     }
 
+    /// <summary>
+    /// 이 타일이 'Walkable' 형태인지
+    /// </summary>
     public bool IsWalkable()
     {
         return (transform.Find("Walkable") != null);
     }
 
+    /// <summary>
+    /// 이 타일이 'Walkable2' 형태인지
+    /// </summary>
     public bool IsWalkable2()
     {
         for (int i = 0; i < transform.childCount; i++)
@@ -126,7 +158,7 @@ public class Tile : MonoBehaviour
     }
 
     /// <summary>
-    /// 이 타일이 캐릭터 배치 가능한지 여부
+    /// 이 타일이 캐릭터 배치 가능한 상태인지 (Walkable/Placable/PlaceTile/등등)
     /// </summary>
     public bool CanPlaceCharacter()
     {
@@ -138,25 +170,35 @@ public class Tile : MonoBehaviour
         return hasAnyType;
     }
 
+    /// <summary>
+    /// 타일 클릭 시 로직
+    /// - removeMode가 true면 캐릭터 제거 시도
+    /// - 아니면 PlacementManager 통해 캐릭터 배치
+    /// </summary>
     public void OnClickPlacableTile()
     {
         Debug.Log($"[Tile] 클릭됨: {name} (Index={tileIndex}, row={row}, col={column})");
+        
+        // ▼▼ [추가] 타일 상태 디버그 정보 ▼▼
+        Debug.Log($"[Tile] 타일 상태 - Walkable:{IsWalkable()}, Walkable2:{IsWalkable2()}, " +
+                  $"Placable:{IsPlacable()}, Placable2:{IsPlacable2()}, " +
+                  $"PlaceTile:{IsPlaceTile()}, Placed2:{IsPlaced2()}");
 
-        // ================== [수정한 부분] ==================
-        // removeMode가 true라면, PlacementManager.Instance.RemoveCharacterOnTile(this) 호출
+        // 추가: 만약 removeMode가 true라면 제거 로직
         if (PlacementManager.Instance != null && PlacementManager.Instance.removeMode)
         {
             PlacementManager.Instance.RemoveCharacterOnTile(this);
-            return; // 클릭 이벤트는 여기서 종료
+            return; // 여기서 종료
         }
-        // ==================================================
 
-        // 기존 로직: 캐릭터 배치
+        // 기존 로직: 캐릭터 배치 시도
         if (CanPlaceCharacter())
         {
             var mgr = PlacementManager.Instance;
             if (mgr != null)
             {
+                // ▼▼ [추가] PlacementManager의 현재 상태 확인 ▼▼
+                Debug.Log($"[Tile] PlacementManager 상태 - currentCharacterIndex: {mgr.GetCurrentCharacterIndex()}");
                 mgr.PlaceCharacterOnTile(this);
             }
             else

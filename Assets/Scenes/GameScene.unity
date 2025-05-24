@@ -25403,6 +25403,14 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 589611559}
     - target: {fileID: 5936602111350020016, guid: 118959c0638e93c428cdfd166de58153, type: 3}
+      propertyPath: itemSlotImages.Array.size
+      value: 5
+      objectReference: {fileID: 0}
+    - target: {fileID: 5936602111350020016, guid: 118959c0638e93c428cdfd166de58153, type: 3}
+      propertyPath: itemSlotButtons.Array.size
+      value: 5
+      objectReference: {fileID: 0}
+    - target: {fileID: 5936602111350020016, guid: 118959c0638e93c428cdfd166de58153, type: 3}
       propertyPath: 'itemSlotImages.Array.data[0]'
       value: 
       objectReference: {fileID: 1481377060}
@@ -25437,6 +25445,10 @@ PrefabInstance:
     - target: {fileID: 5936602111350020016, guid: 118959c0638e93c428cdfd166de58153, type: 3}
       propertyPath: 'itemSlotImages.Array.data[8]'
       value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 5936602111350020016, guid: 118959c0638e93c428cdfd166de58153, type: 3}
+      propertyPath: itemSlotNameTexts.Array.size
+      value: 5
       objectReference: {fileID: 0}
     - target: {fileID: 5936602111350020016, guid: 118959c0638e93c428cdfd166de58153, type: 3}
       propertyPath: 'itemSlotButtons.Array.data[0]'
