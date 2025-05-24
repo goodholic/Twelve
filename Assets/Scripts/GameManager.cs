@@ -4,6 +4,7 @@ using Fusion;
 // ▼ 아래 2줄은 필요하다면 제거하거나 주석처리 가능합니다.
 // using UnityEngine.SceneManagement; // (씬 전환 미사용 시 주석처리 가능)
 using TMPro;
+using UnityEngine.UI; // ▼▼ [추가] Image 클래스 사용을 위해 추가 ▼▼
 
 public class GameManager : MonoBehaviour
 {
@@ -155,6 +156,13 @@ public class GameManager : MonoBehaviour
         isVictory = victory;
 
         Debug.Log($"[GameManager] GameOver!! isVictory={victory}");
+        
+        // ▼▼ [추가] resultPanel null 체크 디버그 로그 ▼▼
+        Debug.Log($"[GameManager] resultPanel is null? {resultPanel == null}");
+        if (resultPanel != null)
+        {
+            Debug.Log($"[GameManager] resultPanel name: {resultPanel.name}, active: {resultPanel.activeSelf}");
+        }
 
         // 승리 시 100골드 지급
         if (victory)
@@ -174,18 +182,210 @@ public class GameManager : MonoBehaviour
         // === 씬 이동 대신, 결과 패널을 켬 ===
         if (resultPanel != null)
         {
+            Debug.Log($"[GameManager] resultPanel을 활성화합니다: {resultPanel.name}");
             resultPanel.SetActive(true);
 
             // 승리냐 패배냐에 따라 텍스트 변경
             if (resultPanelText != null)
             {
                 resultPanelText.text = victory ? "승리!" : "패배...";
+                Debug.Log($"[GameManager] 결과 텍스트 설정: {resultPanelText.text}");
+            }
+            else
+            {
+                Debug.LogWarning("[GameManager] resultPanelText가 null입니다!");
             }
         }
         // else: 혹시라도 resultPanel이 null이면 메세지만 출력
         else
         {
-            Debug.LogWarning("[GameManager] resultPanel이 null -> 결과 UI를 표시할 수 없습니다.");
+            Debug.LogError("[GameManager] resultPanel이 null -> 결과 UI를 표시할 수 없습니다. Inspector에서 연결해주세요!");
+            
+            // ▼▼ [추가] Fallback: 씬에서 Victory 패널 찾기 ▼▼
+            Debug.Log("[GameManager] Fallback: 씬에서 Victory/Defeat 패널을 찾아봅니다...");
+            
+            // 비활성화된 오브젝트도 찾을 수 있도록 모든 GameObject 검색
+            GameObject[] allObjects = Resources.FindObjectsOfTypeAll<GameObject>();
+            GameObject foundPanel = null;
+            
+            // 더 많은 패널 이름 패턴 추가
+            string[] panelKeywords = { "Victory", "Result", "Win", "GameOver", "End", "Popup", "Panel" };
+            
+            foreach (GameObject obj in allObjects)
+            {
+                // 패널 이름에 키워드가 포함되어 있는지 확인
+                bool hasKeyword = false;
+                foreach (string keyword in panelKeywords)
+                {
+                    if (obj.name.IndexOf(keyword, System.StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        hasKeyword = true;
+                        break;
+                    }
+                }
+                
+                if (hasKeyword)
+                {
+                    // Canvas나 Panel 컴포넌트가 있는지 확인
+                    if (obj.GetComponent<Canvas>() != null || obj.GetComponent<CanvasGroup>() != null || 
+                        (obj.GetComponent<RectTransform>() != null && obj.transform.parent != null))
+                    {
+                        // 프리팹이 아닌 씬의 오브젝트인지 확인
+                        if (obj.scene.IsValid() && obj.scene.name != null)
+                        {
+                            Debug.Log($"[GameManager] 후보 패널 발견: {obj.name} (씬: {obj.scene.name}, 활성화: {obj.activeSelf})");
+                            
+                            // Victory나 Win이 포함된 패널을 우선적으로 선택
+                            if (obj.name.IndexOf("Victory", System.StringComparison.OrdinalIgnoreCase) >= 0 || 
+                                obj.name.IndexOf("Win", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                            {
+                                foundPanel = obj;
+                                break;
+                            }
+                            // 아니면 Result가 포함된 패널 선택
+                            else if (foundPanel == null && obj.name.IndexOf("Result", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                            {
+                                foundPanel = obj;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // 패널을 못 찾았으면 Canvas를 찾아서 그 자식들 검색
+            if (foundPanel == null)
+            {
+                Debug.Log("[GameManager] 패널을 못 찾았습니다. Canvas의 자식들을 검색합니다...");
+                Canvas[] allCanvases = Resources.FindObjectsOfTypeAll<Canvas>();
+                
+                foreach (Canvas canvas in allCanvases)
+                {
+                    if (canvas.gameObject.scene.IsValid())
+                    {
+                        Debug.Log($"[GameManager] Canvas 발견: {canvas.name}");
+                        
+                        // Canvas의 모든 자식 검색
+                        RectTransform[] children = canvas.GetComponentsInChildren<RectTransform>(true);
+                        foreach (RectTransform child in children)
+                        {
+                            foreach (string keyword in panelKeywords)
+                            {
+                                if (child.name.IndexOf(keyword, System.StringComparison.OrdinalIgnoreCase) >= 0)
+                                {
+                                    Debug.Log($"[GameManager] Canvas 자식에서 패널 발견: {child.name}");
+                                    if (child.name.IndexOf("Victory", System.StringComparison.OrdinalIgnoreCase) >= 0 || 
+                                        child.name.IndexOf("Win", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                        child.name.IndexOf("Result", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                                    {
+                                        foundPanel = child.gameObject;
+                                        break;
+                                    }
+                                }
+                            }
+                            if (foundPanel != null) break;
+                        }
+                        if (foundPanel != null) break;
+                    }
+                }
+            }
+            
+            if (foundPanel != null)
+            {
+                Debug.Log($"[GameManager] Victory 패널을 찾았습니다: {foundPanel.name}. 활성화합니다.");
+                foundPanel.SetActive(true);
+                
+                // 부모 오브젝트들도 활성화 (Canvas가 비활성화되어 있을 수 있음)
+                Transform parent = foundPanel.transform.parent;
+                while (parent != null)
+                {
+                    if (!parent.gameObject.activeSelf)
+                    {
+                        Debug.Log($"[GameManager] 부모 오브젝트도 활성화: {parent.name}");
+                        parent.gameObject.SetActive(true);
+                    }
+                    parent = parent.parent;
+                }
+                
+                // 텍스트도 찾아서 업데이트 시도
+                var textComponents = foundPanel.GetComponentsInChildren<TextMeshProUGUI>(true);
+                bool textFound = false;
+                foreach (var text in textComponents)
+                {
+                    // VICTORY 텍스트나 결과 텍스트 찾기
+                    if (text.name.IndexOf("Result", System.StringComparison.OrdinalIgnoreCase) >= 0 || 
+                        text.name.IndexOf("Text", System.StringComparison.OrdinalIgnoreCase) >= 0 || 
+                        text.name.IndexOf("Victory", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        text.text.IndexOf("VICTORY", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        if (victory)
+                        {
+                            // 기존 텍스트에 VICTORY가 있으면 유지, 없으면 "승리!"로 변경
+                            if (text.text.IndexOf("VICTORY", System.StringComparison.OrdinalIgnoreCase) < 0)
+                            {
+                                text.text = "승리!";
+                            }
+                        }
+                        else
+                        {
+                            text.text = "패배...";
+                        }
+                        Debug.Log($"[GameManager] 텍스트 업데이트: {text.name} = {text.text}");
+                        textFound = true;
+                    }
+                }
+                
+                if (!textFound)
+                {
+                    Debug.LogWarning("[GameManager] 결과 텍스트를 찾을 수 없었습니다.");
+                }
+                
+                // 패널이 제대로 표시되는지 확인
+                Debug.Log($"[GameManager] 패널 활성화 상태: {foundPanel.activeSelf}");
+                Canvas foundCanvas = foundPanel.GetComponentInParent<Canvas>();
+                if (foundCanvas != null)
+                {
+                    Debug.Log($"[GameManager] Canvas 활성화 상태: {foundCanvas.gameObject.activeSelf}");
+                }
+            }
+            else
+            {
+                Debug.LogError("[GameManager] Victory 패널을 찾을 수 없습니다. Unity Inspector에서 GameManager의 Result Panel을 연결해주세요!");
+                
+                // 최후의 수단: 간단한 승리 메시지 생성
+                Debug.Log("[GameManager] 최후의 수단: 간단한 승리 메시지를 생성합니다.");
+                Canvas mainCanvas = FindFirstObjectByType<Canvas>();
+                if (mainCanvas != null)
+                {
+                    GameObject victoryObj = new GameObject("VictoryMessage");
+                    victoryObj.transform.SetParent(mainCanvas.transform, false);
+                    
+                    RectTransform rect = victoryObj.AddComponent<RectTransform>();
+                    rect.anchorMin = new Vector2(0.5f, 0.5f);
+                    rect.anchorMax = new Vector2(0.5f, 0.5f);
+                    rect.sizeDelta = new Vector2(400, 200);
+                    rect.anchoredPosition = Vector2.zero;
+                    
+                    Image bg = victoryObj.AddComponent<Image>();
+                    bg.color = new Color(0, 0, 0, 0.8f);
+                    
+                    GameObject textObj = new GameObject("Text");
+                    textObj.transform.SetParent(victoryObj.transform, false);
+                    
+                    RectTransform textRect = textObj.AddComponent<RectTransform>();
+                    textRect.anchorMin = Vector2.zero;
+                    textRect.anchorMax = Vector2.one;
+                    textRect.sizeDelta = Vector2.zero;
+                    textRect.anchoredPosition = Vector2.zero;
+                    
+                    TextMeshProUGUI tmpText = textObj.AddComponent<TextMeshProUGUI>();
+                    tmpText.text = victory ? "승리!" : "패배...";
+                    tmpText.fontSize = 48;
+                    tmpText.alignment = TextAlignmentOptions.Center;
+                    tmpText.color = victory ? Color.yellow : Color.red;
+                    
+                    Debug.Log("[GameManager] 간단한 승리 메시지를 생성했습니다.");
+                }
+            }
         }
     }
 }
