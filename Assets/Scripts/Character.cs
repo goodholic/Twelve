@@ -1154,42 +1154,54 @@ public class Character : NetworkBehaviour, IDamageable
         {
             Debug.Log($"[Character] {characterName} 사망 (HP=0)!");
             
-            // ▼▼ [강화] 사망 시 타일 참조 완전히 정리 ▼▼
-            if (currentTile != null && PlacementManager.Instance != null)
+            // ▼▼ [수정] 안전한 타일 참조 정리 ▼▼
+            if (currentTile != null)
             {
-                Debug.Log($"[Character] {characterName} 사망 - {currentTile.name} 타일 참조 정리");
-                
                 // 타일을 미리 저장 (ClearCharacterTileReference에서 null로 설정되기 전에)
                 Tile dyingTile = currentTile;
                 
-                // placed tile인 경우와 placable tile인 경우를 구분
-                if (currentTile.IsPlaceTile() || currentTile.IsPlaced2())
+                // PlacementManager가 유효한지 확인
+                if (PlacementManager.Instance != null && PlacementManager.Instance.gameObject.activeInHierarchy)
                 {
-                    // placed tile은 자식 제거하지 않고 비주얼만 업데이트
-                    currentTile.RefreshTileVisual();
-                    Debug.Log($"[Character] placed tile {currentTile.name} 비주얼 업데이트");
+                    Debug.Log($"[Character] {characterName} 사망 - {dyingTile.name} 타일 참조 정리");
+                    
+                    // placed tile인 경우와 placable tile인 경우를 구분
+                    if (dyingTile.IsPlaceTile() || dyingTile.IsPlaced2())
+                    {
+                        // placed tile은 자식 제거하지 않고 비주얼만 업데이트
+                        dyingTile.RefreshTileVisual();
+                        Debug.Log($"[Character] placed tile {dyingTile.name} 비주얼 업데이트");
+                    }
+                    else
+                    {
+                        // placable tile은 PlaceTile 자식 제거
+                        PlacementManager.Instance.RemovePlaceTileChild(dyingTile);
+                    }
+                    
+                    // 타일 참조 정리
+                    PlacementManager.Instance.ClearCharacterTileReference(this);
+                    
+                    // 타일 상태 즉시 업데이트
+                    PlacementManager.Instance.OnCharacterRemovedFromTile(dyingTile);
                 }
                 else
                 {
-                    // placable tile은 PlaceTile 자식 제거
-                    PlacementManager.Instance.RemovePlaceTileChild(currentTile);
+                    // PlacementManager가 없으면 수동으로 참조 정리
+                    currentTile = null;
                 }
-                
-                // 타일 참조 정리
-                PlacementManager.Instance.ClearCharacterTileReference(this);
-                
-                // ▼▼ [추가] 타일 상태 즉시 업데이트 ▼▼
-                PlacementManager.Instance.OnCharacterRemovedFromTile(dyingTile);
             }
             
-            // 캐릭터 오브젝트 파괴
-            Destroy(gameObject);
+            // ▼▼ [수정] 안전한 오브젝트 파괴를 위해 즉시 파괴 대신 다음 프레임에 파괴 ▼▼
+            // 모든 참조를 먼저 해제
+            currentTarget = null;
+            currentCharTarget = null;
+            pathWaypoints = null;
             
-            // ▼▼ [강화] 사망 후 전체 참조 상태 정리 ▼▼
-            if (PlacementManager.Instance != null)
-            {
-                PlacementManager.Instance.CleanupDestroyedCharacterReferences();
-            }
+            // 코루틴 정지
+            StopAllCoroutines();
+            
+            // 다음 프레임에 파괴
+            Destroy(gameObject, 0.01f);
         }
     }
 
@@ -1206,6 +1218,9 @@ public class Character : NetworkBehaviour, IDamageable
     /// </summary>
     private void LateUpdate()
     {
+        // ▼▼ [수정] 오브젝트가 파괴 중이면 실행하지 않음 ▼▼
+        if (this == null || gameObject == null) return;
+        
         // HP 바 위치 보정(머리 위에 표시)
         if (hpBarCanvas != null)
         {
@@ -1263,17 +1278,6 @@ public class Character : NetworkBehaviour, IDamageable
     // =========================
     private void UpdateCharacterDirectionSprite() // [추가]
     {
-        if (characterUpDirectionSprite == null || characterDownDirectionSprite == null)
-        {
-            // 만약 위/아래 스프라이트가 설정 안 됐다면 수행 X
-            return;
-        }
-        if (spriteRenderer == null && uiImage == null)
-        {
-            // 스프라이트 렌더러 / UI 이미지 둘 다 없으면 수행 X
-            return;
-        }
-
         // 현재 이동(또는 타겟) 방향 계산
         Vector2 velocity = Vector2.zero;
 
@@ -1296,12 +1300,45 @@ public class Character : NetworkBehaviour, IDamageable
             velocity = (currentTarget.transform.position - transform.position);
         }
 
-        // =============================
-        // ** 수정된 부분 **
-        // 속도가 0일 때는 기본적으로 "아래(앞)" 스프라이트를 쓰도록
-        // isMovingUp = (velocity.y > 0f)
-        // =============================
-        bool isMovingUp = (velocity.y > 0f);  // 기존: (velocity.y >= 0f);
+        // 위쪽으로 이동하는지 확인 (속도가 0일 때는 기본적으로 아래쪽)
+        bool isMovingUp = (velocity.y > 0f);
+        
+        // ▼▼ [수정] 2~3성 캐릭터의 FrontImage/BackImage 처리 추가 ▼▼
+        // 먼저 2~3성 캐릭터의 앞뒤 이미지 처리
+        if (star == CharacterStar.TwoStar || star == CharacterStar.ThreeStar)
+        {
+            Transform frontImageObj = transform.Find("FrontImage");
+            Transform backImageObj = transform.Find("BackImage");
+            
+            if (frontImageObj != null || backImageObj != null)
+            {
+                // FrontImage는 위쪽을 볼 때, BackImage는 아래쪽을 볼 때 표시
+                if (frontImageObj != null)
+                {
+                    frontImageObj.gameObject.SetActive(isMovingUp);
+                }
+                if (backImageObj != null)
+                {
+                    backImageObj.gameObject.SetActive(!isMovingUp);
+                }
+                
+                // 2~3성 캐릭터는 FrontImage/BackImage를 사용하므로 여기서 리턴
+                return;
+            }
+        }
+        // ▲▲ [수정 끝] ▲▲
+        
+        // 기존 로직: 1성 캐릭터의 characterUpDirectionSprite/characterDownDirectionSprite 처리
+        if (characterUpDirectionSprite == null || characterDownDirectionSprite == null)
+        {
+            // 만약 위/아래 스프라이트가 설정 안 됐다면 수행 X
+            return;
+        }
+        if (spriteRenderer == null && uiImage == null)
+        {
+            // 스프라이트 렌더러 / UI 이미지 둘 다 없으면 수행 X
+            return;
+        }
 
         Sprite spriteToUse = isMovingUp ? characterUpDirectionSprite : characterDownDirectionSprite;
 
@@ -1318,32 +1355,55 @@ public class Character : NetworkBehaviour, IDamageable
 
     private void OnDestroy()
     {
+        // ▼▼ [수정] 안전한 파괴 처리 ▼▼
+        // Unity가 이미 파괴 중인 경우 추가 작업을 하지 않음
+        if (this == null) return;
+        
         // 캐릭터가 파괴될 때 타일 참조 정리
-        if (currentTile != null && PlacementManager.Instance != null)
+        if (currentTile != null)
         {
-            Debug.Log($"[Character] {characterName} 파괴됨 - {currentTile.name} 타일 참조 정리");
-            
-            // 타일을 미리 저장
-            Tile destroyedTile = currentTile;
-            
-            // placed tile인 경우와 placable tile인 경우를 구분
-            if (currentTile.IsPlaceTile() || currentTile.IsPlaced2())
+            // 타일이 유효한지 확인
+            if (currentTile.gameObject != null && currentTile.gameObject.activeInHierarchy)
             {
-                // placed tile은 자식 제거하지 않고 비주얼만 업데이트
-                currentTile.RefreshTileVisual();
-                Debug.Log($"[Character] placed tile {currentTile.name} 비주얼 업데이트");
-            }
-            else
-            {
-                // placable tile은 PlaceTile 자식 제거
-                PlacementManager.Instance.RemovePlaceTileChild(currentTile);
+                Debug.Log($"[Character] {characterName} 파괴됨 - {currentTile.name} 타일 참조 정리");
+                
+                // 타일을 미리 저장
+                Tile destroyedTile = currentTile;
+                
+                // PlacementManager가 유효한지 확인
+                if (PlacementManager.Instance != null && PlacementManager.Instance.gameObject != null && PlacementManager.Instance.gameObject.activeInHierarchy)
+                {
+                    // placed tile인 경우와 placable tile인 경우를 구분
+                    if (destroyedTile.IsPlaceTile() || destroyedTile.IsPlaced2())
+                    {
+                        // placed tile은 자식 제거하지 않고 비주얼만 업데이트
+                        destroyedTile.RefreshTileVisual();
+                        Debug.Log($"[Character] placed tile {destroyedTile.name} 비주얼 업데이트");
+                    }
+                    else
+                    {
+                        // placable tile은 PlaceTile 자식 제거
+                        PlacementManager.Instance.RemovePlaceTileChild(destroyedTile);
+                    }
+                    
+                    // 타일 상태 즉시 업데이트
+                    PlacementManager.Instance.OnCharacterRemovedFromTile(destroyedTile);
+                }
             }
             
             // 타일 참조를 null로 설정
             currentTile = null;
-            
-            // ▼▼ [추가] 타일 상태 즉시 업데이트 ▼▼
-            PlacementManager.Instance.OnCharacterRemovedFromTile(destroyedTile);
         }
+        
+        // 모든 참조 해제
+        currentTarget = null;
+        currentCharTarget = null;
+        pathWaypoints = null;
+        rangeIndicatorInstance = null;
+        starVisualInstance = null;
+        hpBarCanvas = null;
+        hpFillImage = null;
+        bulletPanel = null;
+        opponentBulletPanel = null;
     }
 }

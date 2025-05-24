@@ -284,7 +284,58 @@ public class PlacementManager : MonoBehaviour
             return;
         }
         
-        // ================================================================================
+        // ▼▼ [추가] 타일이 placed/placable인 경우, 빈 타일이 있는지 확인 ▼▼
+        if (tile.IsPlaceTile() || tile.IsPlaced2() || tile.IsPlacable() || tile.IsPlacable2())
+        {
+            // 현재 타일에 캐릭터가 있는지 확인
+            bool currentTileOccupied = false;
+            if (tile.IsPlaceTile() || tile.IsPlaced2())
+            {
+                Character[] allChars = Object.FindObjectsByType<Character>(FindObjectsSortMode.None);
+                foreach (var c in allChars)
+                {
+                    if (c != null && c.currentTile == tile)
+                    {
+                        currentTileOccupied = true;
+                        break;
+                    }
+                }
+            }
+            else
+            {
+                currentTileOccupied = CheckAnyCharacterHasCurrentTile(tile);
+            }
+            
+            // 현재 타일이 점유되어 있으면, 빈 placed/placable 타일을 찾거나 walkable로 전환
+            if (currentTileOccupied)
+            {
+                Debug.Log($"[PlacementManager] {tile.name}에 이미 캐릭터가 있음. 빈 타일을 찾거나 walkable로 전환합니다.");
+                
+                // 먼저 빈 placed/placable 타일 찾기
+                Tile emptyTile = FindEmptyPlacedOrPlacableTile(tile.isRegion2);
+                if (emptyTile != null)
+                {
+                    Debug.Log($"[PlacementManager] 빈 타일 {emptyTile.name}을 찾았습니다. 해당 타일에 배치합니다.");
+                    tile = emptyTile;
+                }
+                else
+                {
+                    // 빈 placed/placable 타일이 없으면 walkable 타일 찾기
+                    Debug.Log($"[PlacementManager] 빈 placed/placable 타일이 없습니다. walkable 타일로 전환합니다.");
+                    Tile walkableTile = FindEmptyWalkableTile(tile.isRegion2);
+                    if (walkableTile != null)
+                    {
+                        tile = walkableTile;
+                        Debug.Log($"[PlacementManager] walkable 타일 {tile.name}에 배치합니다.");
+                    }
+                    else
+                    {
+                        Debug.LogWarning("[PlacementManager] 배치 가능한 타일이 없습니다!");
+                        return;
+                    }
+                }
+            }
+        }
 
         bool isArea2 = (tile.IsWalkable2() || tile.IsPlacable2() || tile.IsPlaced2());
         
@@ -445,15 +496,18 @@ public class PlacementManager : MonoBehaviour
                 GameObject allyObj = Instantiate(data.spawnPrefab, opponentOurMonsterPanel);
                 if (allyObj != null)
                 {
+                    allyObj.SetActive(true);
                     RectTransform allyRect = allyObj.GetComponent<RectTransform>();
                     if (allyRect != null)
                     {
                         Vector2 localPos = opponentOurMonsterPanel.InverseTransformPoint(spawnPos);
+                        allyRect.SetParent(opponentOurMonsterPanel, false);
                         allyRect.localRotation = Quaternion.identity;
                         allyRect.anchoredPosition = localPos;
                     }
                     else
                     {
+                        allyObj.transform.SetParent(null);
                         allyObj.transform.position = spawnPos;
                         allyObj.transform.localRotation = Quaternion.identity;
                     }
@@ -1344,22 +1398,31 @@ public class PlacementManager : MonoBehaviour
 
     public void CleanupDestroyedCharacterReferences()
     {
+        // ▼▼ [수정] 안전한 참조 정리를 위한 null 체크 강화 ▼▼
+        if (this == null || gameObject == null || !gameObject.activeInHierarchy) return;
+        
         Character[] allChars = Object.FindObjectsByType<Character>(FindObjectsSortMode.None);
         
         foreach (var c in allChars)
         {
-            if (c == null || !c.gameObject.activeInHierarchy)
-            {
-                continue;
-            }
+            // 캐릭터 오브젝트가 유효한지 확인
+            if (c == null || c.gameObject == null) continue;
             
-            if (c.currentTile != null)
+            // 캐릭터가 활성화되어 있고 파괴 중이 아닌지 확인
+            if (!c.gameObject.activeInHierarchy) continue;
+            
+            // 타일 참조가 유효한지 확인
+            if (c.currentTile != null && c.currentTile.gameObject != null)
             {
-                float distance = Vector3.Distance(c.transform.position, c.currentTile.transform.position);
-                if (distance > 5.0f)
+                // 거리 계산 전에 transform이 유효한지 확인
+                if (c.transform != null && c.currentTile.transform != null)
                 {
-                    Debug.LogWarning($"[PlacementManager] {c.characterName}의 타일 참조가 잘못됨 (거리: {distance}). 참조 정리");
-                    c.currentTile = null;
+                    float distance = Vector3.Distance(c.transform.position, c.currentTile.transform.position);
+                    if (distance > 5.0f)
+                    {
+                        Debug.LogWarning($"[PlacementManager] {c.characterName}의 타일 참조가 잘못됨 (거리: {distance}). 참조 정리");
+                        c.currentTile = null;
+                    }
                 }
             }
         }
@@ -1440,35 +1503,36 @@ public class PlacementManager : MonoBehaviour
             {
                 if (otherChar.star == movingChar.star && otherChar.characterName == movingChar.characterName)
                 {
+                    // ▼▼ [수정] 프리팹 교체를 위한 준비 ▼▼
+                    CharacterStar targetStar = CharacterStar.OneStar;
+                    bool shouldReplace = false;
+                    
                     switch (otherChar.star)
                     {
                         case CharacterStar.OneStar:
-                            otherChar.star = CharacterStar.TwoStar;
-                            RandomizeAppearanceByStarAndRace(otherChar, CharacterStar.TwoStar);
-                            UpgradeStats(otherChar);
-                            Destroy(movingChar.gameObject);
-                            Debug.Log("[PlacementManager] 합성 성공 (1성→2성)");
-                            return true;
+                            targetStar = CharacterStar.TwoStar;
+                            shouldReplace = true;
+                            break;
 
                         case CharacterStar.TwoStar:
-                            otherChar.star = CharacterStar.TwoStar;
-                            RandomizeAppearanceByStarAndRace(otherChar, CharacterStar.TwoStar);
-                            UpgradeStats(otherChar);
-                            Destroy(movingChar.gameObject);
-                            Debug.Log("[PlacementManager] 합성 성공 => 2성 풀 중 임의 캐릭터 재탄생");
-                            return true;
+                            targetStar = CharacterStar.TwoStar; // 2성끼리 합성해도 2성
+                            shouldReplace = true;
+                            break;
 
                         case CharacterStar.ThreeStar:
-                            otherChar.star = CharacterStar.ThreeStar;
-                            RandomizeAppearanceByStarAndRace(otherChar, CharacterStar.ThreeStar);
-                            UpgradeStats(otherChar);
-                            Destroy(movingChar.gameObject);
-                            Debug.Log("[PlacementManager] 합성 성공 => 3성 풀 중 임의 캐릭터 재탄생");
-                            return true;
+                            targetStar = CharacterStar.ThreeStar; // 3성끼리 합성해도 3성
+                            shouldReplace = true;
+                            break;
 
                         default:
                             Debug.Log("[PlacementManager] 알 수 없는 별 => 합성 불가");
                             return false;
+                    }
+                    
+                    if (shouldReplace)
+                    {
+                        // ▼▼ [수정] 프리팹 교체 로직 ▼▼
+                        return ReplaceCharacterWithNewStar(otherChar, movingChar, targetStar);
                     }
                 }
                 else
@@ -1479,6 +1543,213 @@ public class PlacementManager : MonoBehaviour
             }
         }
         return false;
+    }
+    
+    /// <summary>
+    /// 캐릭터를 새로운 별 등급의 프리팹으로 교체
+    /// </summary>
+    private bool ReplaceCharacterWithNewStar(Character targetChar, Character movingChar, CharacterStar newStar)
+    {
+        Debug.Log($"[PlacementManager] 프리팹 교체 시작: {targetChar.characterName} -> {newStar}");
+        
+        // 기존 캐릭터 정보 저장
+        Tile currentTile = targetChar.currentTile;
+        int areaIndex = targetChar.areaIndex;
+        Vector3 position = targetChar.transform.position;
+        Transform parent = targetChar.transform.parent;
+        
+        // StarMergeDatabase에서 새로운 캐릭터 데이터 선택
+        StarMergeDatabaseObject targetDB = (areaIndex == 2 && starMergeDatabaseRegion2 != null) 
+            ? starMergeDatabaseRegion2 : starMergeDatabase;
+            
+        if (targetDB == null)
+        {
+            Debug.LogWarning("[PlacementManager] StarMergeDatabase가 null입니다.");
+            RandomizeAppearanceByStarAndRace(targetChar, newStar);
+            UpgradeStats(targetChar);
+            Destroy(movingChar.gameObject);
+            return true;
+        }
+        
+        // 새로운 캐릭터 데이터 선택
+        RaceType raceType = (RaceType)targetChar.race;
+        CharacterData newCharData = null;
+        
+        if (newStar == CharacterStar.TwoStar)
+        {
+            newCharData = targetDB.GetRandom2Star(raceType);
+        }
+        else if (newStar == CharacterStar.ThreeStar)
+        {
+            newCharData = targetDB.GetRandom3Star(raceType);
+        }
+        
+        if (newCharData == null || newCharData.spawnPrefab == null)
+        {
+            Debug.LogWarning($"[PlacementManager] {newStar} 프리팹을 찾을 수 없습니다. 기존 방식으로 처리");
+            RandomizeAppearanceByStarAndRace(targetChar, newStar);
+            UpgradeStats(targetChar);
+            Destroy(movingChar.gameObject);
+            return true;
+        }
+        
+        // 새로운 프리팹으로 캐릭터 생성
+        GameObject newCharObj = Instantiate(newCharData.spawnPrefab, parent);
+        if (newCharObj == null)
+        {
+            Debug.LogError("[PlacementManager] 새 프리팹 생성 실패");
+            return false;
+        }
+        
+        // 위치 설정
+        RectTransform newCharRect = newCharObj.GetComponent<RectTransform>();
+        if (newCharRect != null)
+        {
+            RectTransform oldRect = targetChar.GetComponent<RectTransform>();
+            if (oldRect != null)
+            {
+                newCharRect.anchoredPosition = oldRect.anchoredPosition;
+                newCharRect.localRotation = oldRect.localRotation;
+            }
+        }
+        else
+        {
+            newCharObj.transform.position = position;
+            newCharObj.transform.localRotation = targetChar.transform.localRotation;
+        }
+        
+        // Character 컴포넌트 설정
+        Character newCharacter = newCharObj.GetComponent<Character>();
+        if (newCharacter != null)
+        {
+            // 기본 정보 복사
+            newCharacter.currentTile = currentTile;
+            newCharacter.areaIndex = areaIndex;
+            newCharacter.isHero = targetChar.isHero;
+            newCharacter.isCharAttack = targetChar.isCharAttack;
+            newCharacter.currentWaypointIndex = targetChar.currentWaypointIndex;
+            newCharacter.maxWaypointIndex = targetChar.maxWaypointIndex;
+            newCharacter.pathWaypoints = targetChar.pathWaypoints;
+            
+            // 새로운 데이터 적용
+            newCharacter.characterName = newCharData.characterName;
+            newCharacter.race = newCharData.race;
+            newCharacter.star = newStar;
+            
+            // 스탯 설정 (업그레이드된 값)
+            float statMultiplier = 1.0f;
+            switch (newStar)
+            {
+                case CharacterStar.TwoStar:
+                    statMultiplier = 1.3f;
+                    break;
+                case CharacterStar.ThreeStar:
+                    statMultiplier = 1.6f;
+                    break;
+            }
+            
+            newCharacter.attackPower = newCharData.attackPower * statMultiplier;
+            newCharacter.attackSpeed = newCharData.attackSpeed * 1.1f;
+            newCharacter.attackRange = newCharData.attackRange * 1.1f;
+            newCharacter.currentHP = newCharData.maxHP * statMultiplier;
+            newCharacter.moveSpeed = newCharData.moveSpeed;
+            
+            // 별 비주얼 적용
+            newCharacter.ApplyStarVisual();
+            
+            // 패널 설정
+            if (areaIndex == 2 && opponentBulletPanel != null)
+            {
+                newCharacter.opponentBulletPanel = opponentBulletPanel;
+            }
+            else
+            {
+                newCharacter.SetBulletPanel(bulletPanel);
+            }
+            
+            // ▼▼ [핵심] 앞뒤 이미지 적용 ▼▼
+            if (newCharData.frontSprite != null || newCharData.backSprite != null)
+            {
+                ApplyFrontBackImages(newCharacter, newCharData);
+            }
+        }
+        
+        // 기존 캐릭터들 제거
+        Destroy(targetChar.gameObject);
+        Destroy(movingChar.gameObject);
+        
+        Debug.Log($"[PlacementManager] 합성 성공! 새로운 {newStar} 캐릭터 '{newCharData.characterName}' 생성 완료");
+        return true;
+    }
+    
+    /// <summary>
+    /// 캐릭터에 앞뒤 이미지 적용
+    /// </summary>
+    private void ApplyFrontBackImages(Character character, CharacterData data)
+    {
+        // 기존 이미지 컴포넌트 찾기 또는 생성
+        Transform frontImageObj = character.transform.Find("FrontImage");
+        Transform backImageObj = character.transform.Find("BackImage");
+        
+        // FrontImage 생성 또는 업데이트
+        if (data.frontSprite != null)
+        {
+            if (frontImageObj == null)
+            {
+                GameObject frontGO = new GameObject("FrontImage");
+                frontGO.transform.SetParent(character.transform, false);
+                frontImageObj = frontGO.transform;
+                
+                Image frontImg = frontGO.AddComponent<Image>();
+                RectTransform frontRect = frontGO.GetComponent<RectTransform>();
+                frontRect.anchorMin = new Vector2(0.5f, 0.5f);
+                frontRect.anchorMax = new Vector2(0.5f, 0.5f);
+                frontRect.pivot = new Vector2(0.5f, 0.5f);
+                frontRect.sizeDelta = new Vector2(100, 100); // 크기 조정 필요시 수정
+                frontRect.anchoredPosition = Vector2.zero;
+            }
+            
+            Image frontImage = frontImageObj.GetComponent<Image>();
+            if (frontImage != null)
+            {
+                frontImage.sprite = data.frontSprite;
+                frontImage.preserveAspect = true;
+            }
+            
+            // 처음에는 숨김 (Character 스크립트에서 방향에 따라 표시)
+            frontImageObj.gameObject.SetActive(false);
+        }
+        
+        // BackImage 생성 또는 업데이트
+        if (data.backSprite != null)
+        {
+            if (backImageObj == null)
+            {
+                GameObject backGO = new GameObject("BackImage");
+                backGO.transform.SetParent(character.transform, false);
+                backImageObj = backGO.transform;
+                
+                Image backImg = backGO.AddComponent<Image>();
+                RectTransform backRect = backGO.GetComponent<RectTransform>();
+                backRect.anchorMin = new Vector2(0.5f, 0.5f);
+                backRect.anchorMax = new Vector2(0.5f, 0.5f);
+                backRect.pivot = new Vector2(0.5f, 0.5f);
+                backRect.sizeDelta = new Vector2(100, 100); // 크기 조정 필요시 수정
+                backRect.anchoredPosition = Vector2.zero;
+            }
+            
+            Image backImage = backImageObj.GetComponent<Image>();
+            if (backImage != null)
+            {
+                backImage.sprite = data.backSprite;
+                backImage.preserveAspect = true;
+            }
+            
+            // 기본적으로 뒷모습 표시
+            backImageObj.gameObject.SetActive(true);
+        }
+        
+        Debug.Log($"[PlacementManager] {character.characterName}에 앞뒤 이미지 적용 완료");
     }
 
     private void RandomizeAppearanceByStarAndRace(Character ch, CharacterStar newStar)
@@ -2016,4 +2287,119 @@ public class PlacementManager : MonoBehaviour
         // 타일의 배치 가능 상태 즉시 업데이트
         tile.ResetHighlight();
     }
+
+    // ▼▼ [추가] 빈 placed/placable 타일 찾기 메서드 ▼▼
+    private Tile FindEmptyPlacedOrPlacableTile(bool isRegion2)
+    {
+        Tile[] allTiles = Object.FindObjectsByType<Tile>(FindObjectsSortMode.None);
+        List<Tile> emptyTiles = new List<Tile>();
+        
+        foreach (var tile in allTiles)
+        {
+            if (tile == null) continue;
+            if (tile.isRegion2 != isRegion2) continue;
+            
+            // placed 또는 placable 타일인지 확인
+            if (tile.IsPlaceTile() || tile.IsPlaced2() || tile.IsPlacable() || tile.IsPlacable2())
+            {
+                // 타일이 비어있는지 확인
+                bool isEmpty = true;
+                
+                if (tile.IsPlaceTile() || tile.IsPlaced2())
+                {
+                    // placed tile의 경우
+                    Character[] allChars = Object.FindObjectsByType<Character>(FindObjectsSortMode.None);
+                    foreach (var c in allChars)
+                    {
+                        if (c != null && c.currentTile == tile)
+                        {
+                            isEmpty = false;
+                            break;
+                        }
+                    }
+                }
+                else
+                {
+                    // placable tile의 경우
+                    isEmpty = !CheckAnyCharacterHasCurrentTile(tile);
+                }
+                
+                if (isEmpty)
+                {
+                    emptyTiles.Add(tile);
+                }
+            }
+        }
+        
+        // 랜덤하게 하나 선택
+        if (emptyTiles.Count > 0)
+        {
+            return emptyTiles[Random.Range(0, emptyTiles.Count)];
+        }
+        
+        return null;
+    }
+    
+    // ▼▼ [추가] 빈 walkable 타일 찾기 메서드 ▼▼
+    private Tile FindEmptyWalkableTile(bool isRegion2)
+    {
+        Tile[] allTiles = Object.FindObjectsByType<Tile>(FindObjectsSortMode.None);
+        List<Tile> walkableTiles = new List<Tile>();
+        
+        foreach (var tile in allTiles)
+        {
+            if (tile == null) continue;
+            if (tile.isRegion2 != isRegion2) continue;
+            
+            // walkable 타일인지 확인
+            if ((isRegion2 && tile.IsWalkable2()) || (!isRegion2 && tile.IsWalkable()))
+            {
+                walkableTiles.Add(tile);
+            }
+        }
+        
+        // walkable 타일은 언제나 사용 가능하므로 랜덤하게 하나 선택
+        if (walkableTiles.Count > 0)
+        {
+            return walkableTiles[Random.Range(0, walkableTiles.Count)];
+        }
+        
+        return null;
+    }
+
+    /// <summary>
+    /// ▼▼ [추가] 버튼 클릭으로 자동 배치 (placed/placable 꽉 차면 walkable로) ▼▼
+    /// </summary>
+    public void OnClickAutoPlace()
+    {
+        if (currentCharacterIndex < 0)
+        {
+            Debug.LogWarning("[PlacementManager] 캐릭터를 먼저 선택하세요!");
+            return;
+        }
+        
+        // 지역1(호스트 기준)의 빈 타일 찾기
+        bool targetRegion2 = !isHost;
+        
+        // 1. 먼저 빈 placed/placable 타일 찾기
+        Tile targetTile = FindEmptyPlacedOrPlacableTile(targetRegion2);
+        
+        // 2. placed/placable이 모두 꽉 찼으면 walkable 타일 찾기
+        if (targetTile == null)
+        {
+            Debug.Log("[PlacementManager] placed/placable 타일이 모두 꽉 찼습니다. walkable 타일로 전환합니다.");
+            targetTile = FindEmptyWalkableTile(targetRegion2);
+        }
+        
+        // 3. 찾은 타일에 배치
+        if (targetTile != null)
+        {
+            PlaceCharacterOnTile(targetTile);
+        }
+        else
+        {
+            Debug.LogWarning("[PlacementManager] 배치 가능한 타일이 없습니다!");
+        }
+    }
 }
+        

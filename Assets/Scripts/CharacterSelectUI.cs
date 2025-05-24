@@ -247,8 +247,11 @@ public class CharacterSelectUI : MonoBehaviour
         if (placementManager != null)
         {
             placementManager.OnClickSelectUnit(clickedIndex);
+            
+            // ▼▼ [추가] 자동 배치 호출 (placed/placable 꽉 차면 walkable로) ▼▼
+            placementManager.OnClickAutoPlace();
         }
-        Debug.Log($"[CharacterSelectUI] 카드({clickedIndex}) 클릭 -> 배치 대기상태");
+        Debug.Log($"[CharacterSelectUI] 카드({clickedIndex}) 클릭 -> 자동 배치 시도");
     }
 
     /// <summary>
