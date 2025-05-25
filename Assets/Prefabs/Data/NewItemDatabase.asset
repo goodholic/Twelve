@@ -18,13 +18,52 @@ MonoBehaviour:
     effectType: 0
     effectValue: 1
     description: "\uACF5\uACA9 +1 \uAC15\uD654"
+    areaRadius: 3
+    starMin: 2
+    starMax: 3
+    damageValue: 30
   - itemName: item2
     itemIcon: {fileID: -1617030066853271768, guid: 6f82d2a0cd21fd341afe2399d3921af4, type: 3}
     effectType: 1
     effectValue: 1
     description: "HP +1 \uAC15\uD654"
+    areaRadius: 3
+    starMin: 2
+    starMax: 3
+    damageValue: 30
   - itemName: item3
     itemIcon: {fileID: 6357378504039656821, guid: 4718d571eee996e43942c737d6eb75b5, type: 3}
     effectType: 2
     effectValue: 1
     description: "\uC0AC\uAC70\uB9AC +1 \uAC15\uD654"
+    areaRadius: 3
+    starMin: 2
+    starMax: 3
+    damageValue: 30
+  - itemName: item4
+    itemIcon: {fileID: 21300000, guid: 29f97b37517574767aea9efc6d7b80ab, type: 3}
+    effectType: 3
+    effectValue: 1
+    description: "\uD5C8\uB9AC\uCF00\uC778"
+    areaRadius: 3
+    starMin: 0
+    starMax: 0
+    damageValue: 0
+  - itemName: item5
+    itemIcon: {fileID: 21300000, guid: 4eefee5f08c8f418daedacb1efed828c, type: 3}
+    effectType: 4
+    effectValue: 1
+    description: "\uACF5\uACA9 \uC2A4\uD0AC"
+    areaRadius: 3
+    starMin: 0
+    starMax: 0
+    damageValue: 30
+  - itemName: item6
+    itemIcon: {fileID: 21300000, guid: f48638625b65a4d5c9d2128905265108, type: 3}
+    effectType: 5
+    effectValue: 1
+    description: "2~3\uC131 \uB79C\uB364 \uC18C\uD658"
+    areaRadius: 0
+    starMin: 2
+    starMax: 3
+    damageValue: 0

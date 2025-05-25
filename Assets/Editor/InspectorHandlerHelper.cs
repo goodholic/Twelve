@@ -72,7 +72,7 @@ public static class InspectorHandlerHelper
         int fixedCount = 0;
         
         // 현재 씬의 모든 게임오브젝트 검사
-        foreach (var obj in UnityEngine.Object.FindObjectsOfType<GameObject>())
+        foreach (var obj in UnityEngine.Object.FindObjectsByType<GameObject>(FindObjectsSortMode.None))
         {
             if (obj == null) continue;
             

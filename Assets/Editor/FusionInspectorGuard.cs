@@ -105,7 +105,7 @@ public static class FusionInspectorGuard
     [MenuItem("Tools/Fusion/모든 NetworkBehaviour 플래그 정리")]
     public static void CleanAllNetworkBehaviourFlags()
     {
-        var allNetworkBehaviours = UnityEngine.Object.FindObjectsOfType<MonoBehaviour>()
+        var allNetworkBehaviours = UnityEngine.Object.FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None)
             .Where(mb => {
                 if (mb == null) return false;
                 try {

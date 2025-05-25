@@ -133,7 +133,7 @@ public static class NetworkSafetyMenu
     [MenuItem("Tools/Fusion/NetworkObject 수정 및 설정 초기화")]
     public static void ResetAndFixNetworkObjects()
     {
-        var networkObjects = UnityEngine.Object.FindObjectsOfType<MonoBehaviour>()
+        var networkObjects = UnityEngine.Object.FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None)
             .Where(mb => mb.GetType().Name == "NetworkObject")
             .ToList();
             

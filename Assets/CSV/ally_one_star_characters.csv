@@ -1,4 +1,4 @@
-이름,초기 별,종족,공격력,공격속도,공격범위,최대 HP,이동속도,공격 타입,광역공격,비용
+﻿이름,초기 별,종족,공격력,공격속도,공격범위,최대 HP,이동속도,공격 타입,광역공격,비용
 RandomChar_0,1,Human,9,1,1.5,100,1,Ranged,아니오,1
 RandomChar_1,1,Human,5,1,1.5,100,1,LongRange,아니오,2
 RandomChar_2,1,Human,27,1,1.5,100,1,Melee,아니오,3
@@ -8,4 +8,4 @@ RandomChar_5,1,Orc,11,1,1.5,100,1,LongRange,아니오,3
 RandomChar_6,1,Orc,28,1,1.5,100,1,Ranged,예,1
 RandomChar_7,1,Elf,11,1,1.5,100,1,LongRange,아니오,2
 RandomChar_8,1,Elf,11,1,1.5,100,1,LongRange,아니오,3
-RandomChar_9,1,Elf,11,1,1.5,100,1,LongRange,아니오,1 
+RandomChar_9,1,Elf,11,1,1.5,100,1,LongRange,아니오,1
