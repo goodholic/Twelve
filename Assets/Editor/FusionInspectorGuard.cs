@@ -116,12 +116,15 @@ public static class FusionInspectorGuard
                     return false;
                 }
             })
+            .Where(mb => mb != null)
             .ToList();
             
         int fixedCount = 0;
         
         foreach (var behaviour in allNetworkBehaviours)
         {
+            if (behaviour == null) continue;
+            
             if ((behaviour.hideFlags & HideFlags.DontSaveInEditor) != 0 ||
                 (behaviour.hideFlags & HideFlags.HideAndDontSave) != 0)
             {

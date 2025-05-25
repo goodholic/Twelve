@@ -90,16 +90,52 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   star: 1
+  characterName: 
+  race: 0
+  attackTargetType: 0
+  movementType: 0
   attackPower: 10
   attackSpeed: 1
   attackRange: 1.5
+  currentHP: 100
+  moveSpeed: 3
   currentTile: {fileID: 0}
   currentTarget: {fileID: 0}
+  currentCharTarget: {fileID: 0}
+  isAreaAttack: 0
+  areaAttackRadius: 1
+  isHero: 0
   rangeIndicatorPrefab: {fileID: 3037178901491863121, guid: 70e5c5e981d70c247a317a909d42c752, type: 3}
   showRangeIndicator: 0
   bulletPrefab: {fileID: 4838677500344597568, guid: 98e2d8dedad69744188b9d82f84a8124, type: 3}
   bulletSpeed: 5
-  bulletPanel: {fileID: 0}
+  bulletUpDirectionSprite: {fileID: 0}
+  bulletDownDirectionSprite: {fileID: 0}
+  opponentBulletPanel: {fileID: 0}
+  twoStarOutlineColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
+  twoStarOutlineWidth: 1
+  threeStarOutlineColor: {r: 0, g: 1, b: 1, a: 1}
+  threeStarOutlineWidth: 1.5
+  areaIndex: 1
+  hpBarCanvas: {fileID: 0}
+  hpFillImage: {fileID: 0}
+  selectedRoute: 1
+  pathWaypoints: []
+  currentWaypointIndex: -1
+  maxWaypointIndex: 6
+  newAttackRangeOnClick: 4
+  star2Prefab: {fileID: 0}
+  star3Prefab: {fileID: 0}
+  rangeType: 0
+  attackInfoText: {fileID: 0}
+  attackInfoOffset: {x: 1, y: 0, z: 0}
+  isCharAttack: 1
+  hasCrossedRegion: 1
+  playerTag: Player
+  opponentPlayerTag: Opponent Player
+  characterTag: Character
+  characterUpDirectionSprite: {fileID: 0}
+  characterDownDirectionSprite: {fileID: 0}
 --- !u!114 &-8302018339929061932
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -113,3 +149,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   parentPanel: {fileID: 3504338384272343577, guid: 9a44fedc711c03541adc233db7cd34dd, type: 3}
+  dragScale: 1.1
+  dragYOffset: 30
+  validDropColor: {r: 0.5, g: 1, b: 0.5, a: 1}
+  invalidDropColor: {r: 1, g: 0.5, b: 0.5, a: 1}

@@ -9,6 +9,12 @@ public enum GridTileType
     None,
     Walkable,
     Walkable2,
+    WalkableLeft,
+    WalkableCenter,
+    WalkableRight,
+    Walkable2Left,
+    Walkable2Center,
+    Walkable2Right,
     Placable,
     Placable2,
     // 원래 Occupied → PlaceTile
@@ -31,7 +37,7 @@ public class TileReferenceRow
 
 public class TileGridEditor : MonoBehaviour
 {
-    [Header("Grid State: 7 x 12 (None/Walkable/Walkable2/Placable/Placable2/PlaceTile/Placed2)")]
+    [Header("Grid State: 7 x 12 (None/Walkable/Walkable2/WalkableLeft/WalkableCenter/WalkableRight/Walkable2Left/Walkable2Center/Walkable2Right/Placable/Placable2/PlaceTile/Placed2)")]
     public TileRow[] rows = new TileRow[7];
 
     [Header("Tile References: 7 x 12")]
@@ -145,6 +151,12 @@ public class TileGridEditor : MonoBehaviour
         // RemoveChildIfExists에서 "Occupied" → "PlaceTile", "Occupied2" → "Placed2"
         RemoveChildIfExists(tile.transform, "Walkable");
         RemoveChildIfExists(tile.transform, "Walkable2");
+        RemoveChildIfExists(tile.transform, "WalkableLeft");
+        RemoveChildIfExists(tile.transform, "WalkableCenter");
+        RemoveChildIfExists(tile.transform, "WalkableRight");
+        RemoveChildIfExists(tile.transform, "Walkable2Left");
+        RemoveChildIfExists(tile.transform, "Walkable2Center");
+        RemoveChildIfExists(tile.transform, "Walkable2Right");
         RemoveChildIfExists(tile.transform, "Placable");
         RemoveChildIfExists(tile.transform, "Placable2");
         RemoveChildIfExists(tile.transform, "PlaceTile");
@@ -161,6 +173,30 @@ public class TileGridEditor : MonoBehaviour
 
             case GridTileType.Walkable2:
                 CreateChild(tile.transform, "Walkable2");
+                break;
+
+            case GridTileType.WalkableLeft:
+                CreateChild(tile.transform, "WalkableLeft");
+                break;
+
+            case GridTileType.WalkableCenter:
+                CreateChild(tile.transform, "WalkableCenter");
+                break;
+
+            case GridTileType.WalkableRight:
+                CreateChild(tile.transform, "WalkableRight");
+                break;
+
+            case GridTileType.Walkable2Left:
+                CreateChild(tile.transform, "Walkable2Left");
+                break;
+
+            case GridTileType.Walkable2Center:
+                CreateChild(tile.transform, "Walkable2Center");
+                break;
+
+            case GridTileType.Walkable2Right:
+                CreateChild(tile.transform, "Walkable2Right");
                 break;
 
             case GridTileType.Placable:
@@ -302,7 +338,7 @@ public class TileGridEditorInspector : Editor
 
         EditorGUILayout.HelpBox(
             @"[사용 방법]
-1) [Grid State] 영역 각 칸 클릭 -> (None -> Walkable -> Walkable2 -> Placable -> Placable2 -> PlaceTile -> Placed2 -> None) 순환.
+1) [Grid State] 영역 각 칸 클릭 -> (None -> Walkable -> Walkable2 -> WalkableLeft -> WalkableCenter -> WalkableRight -> Walkable2Left -> Walkable2Center -> Walkable2Right -> Placable -> Placable2 -> PlaceTile -> Placed2 -> None) 순환.
 2) [Tile References] 7×12에 씬상의 Tile을 연결.
 3) [Apply] 버튼으로 Tile에 자식 오브젝트 생성/삭제하여 적용.",
             MessageType.Info
@@ -318,6 +354,12 @@ public class TileGridEditorInspector : Editor
             case GridTileType.None:      return "X";
             case GridTileType.Walkable:  return "W1";
             case GridTileType.Walkable2: return "W2";
+            case GridTileType.WalkableLeft: return "W1L";
+            case GridTileType.WalkableCenter: return "W1C";
+            case GridTileType.WalkableRight: return "W1R";
+            case GridTileType.Walkable2Left: return "W2L";
+            case GridTileType.Walkable2Center: return "W2C";
+            case GridTileType.Walkable2Right: return "W2R";
             case GridTileType.Placable:  return "P1";
             case GridTileType.Placable2: return "P2";
             case GridTileType.PlaceTile: return "O1"; // 시각 구분 위해 "O1"이라 표기(실제는 PlaceTile)
@@ -332,7 +374,13 @@ public class TileGridEditorInspector : Editor
         {
             case GridTileType.None:      return GridTileType.Walkable;
             case GridTileType.Walkable:  return GridTileType.Walkable2;
-            case GridTileType.Walkable2: return GridTileType.Placable;
+            case GridTileType.Walkable2: return GridTileType.WalkableLeft;
+            case GridTileType.WalkableLeft: return GridTileType.WalkableCenter;
+            case GridTileType.WalkableCenter: return GridTileType.WalkableRight;
+            case GridTileType.WalkableRight: return GridTileType.Walkable2Left;
+            case GridTileType.Walkable2Left: return GridTileType.Walkable2Center;
+            case GridTileType.Walkable2Center: return GridTileType.Walkable2Right;
+            case GridTileType.Walkable2Right: return GridTileType.Placable;
             case GridTileType.Placable:  return GridTileType.Placable2;
             case GridTileType.Placable2: return GridTileType.PlaceTile;
             case GridTileType.PlaceTile: return GridTileType.Placed2;

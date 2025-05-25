@@ -92,7 +92,6 @@ GameObject:
   - component: {fileID: 6385625882228646952}
   - component: {fileID: -7655625836665576883}
   - component: {fileID: 2266177391045644896}
-  - component: {fileID: -4607439710107378125}
   m_Layer: 5
   m_Name: 4_Sheild
   m_TagString: Player
@@ -173,6 +172,8 @@ MonoBehaviour:
   star: 2
   characterName: 
   race: 0
+  attackTargetType: 0
+  movementType: 0
   attackPower: 8
   attackSpeed: 0.9
   attackRange: 1
@@ -184,15 +185,6 @@ MonoBehaviour:
   isAreaAttack: 0
   areaAttackRadius: 1
   isHero: 0
-  pathWaypoints:
-  - {fileID: 7533954594709166238, guid: 2c7af040127463842bb538e73144355c, type: 3}
-  - {fileID: 375125270241151848, guid: 8210aa4d54b99484ab283b8e5a075126, type: 3}
-  - {fileID: 42882207359262647, guid: 7afd324640599d944874bb3817ee81d0, type: 3}
-  - {fileID: 6385198090815582965, guid: 809c2e58c41253d4188a8f22159c1345, type: 3}
-  - {fileID: 6461034117732938839, guid: d988006bd53f4b0468d4fcedc810ac64, type: 3}
-  - {fileID: 8360226188534919249, guid: 975390a5ef2c9ba45a77f5afca985383, type: 3}
-  currentWaypointIndex: -1
-  maxWaypointIndex: 6
   rangeIndicatorPrefab: {fileID: 3037178901491863121, guid: 70e5c5e981d70c247a317a909d42c752, type: 3}
   showRangeIndicator: 0
   bulletPrefab: {fileID: 5801004295746515674, guid: 1b1d81b5c756ede4c9b95594b8cf0650, type: 3}
@@ -207,6 +199,16 @@ MonoBehaviour:
   areaIndex: 1
   hpBarCanvas: {fileID: 4192170669526148759}
   hpFillImage: {fileID: 6481272997027908798}
+  selectedRoute: 0
+  pathWaypoints:
+  - {fileID: 7533954594709166238, guid: 2c7af040127463842bb538e73144355c, type: 3}
+  - {fileID: 375125270241151848, guid: 8210aa4d54b99484ab283b8e5a075126, type: 3}
+  - {fileID: 42882207359262647, guid: 7afd324640599d944874bb3817ee81d0, type: 3}
+  - {fileID: 6385198090815582965, guid: 809c2e58c41253d4188a8f22159c1345, type: 3}
+  - {fileID: 6461034117732938839, guid: d988006bd53f4b0468d4fcedc810ac64, type: 3}
+  - {fileID: 8360226188534919249, guid: 975390a5ef2c9ba45a77f5afca985383, type: 3}
+  currentWaypointIndex: -1
+  maxWaypointIndex: 6
   newAttackRangeOnClick: 4
   star2Prefab: {fileID: 0}
   star3Prefab: {fileID: 0}
@@ -214,12 +216,6 @@ MonoBehaviour:
   attackInfoText: {fileID: 0}
   attackInfoOffset: {x: 1, y: 0, z: 0}
   isCharAttack: 0
-  playerTag: Player
-  opponentPlayerTag: Opponent Player
-  characterTag: Character
-  endTileRect: {fileID: 4614398458146241476, guid: 02fa27106db89b544bba34f1b127942e, type: 3}
-  targetJumpPosition: {fileID: 4614398458146241476, guid: 02fa27106db89b544bba34f1b127942e, type: 3}
-  startJumpPosition: {fileID: 7728088104138265406, guid: dd3720c0124e04b4d83c775b74fdac3c, type: 3}
   characterUpDirectionSprite: {fileID: 534889178492203294, guid: 14dc81182d920d648be19dafd53c8dd0, type: 3}
   characterDownDirectionSprite: {fileID: 3693417305482316580, guid: 106922203adcec14b87120e875b01b13, type: 3}
 --- !u!114 &-1726057578584330707
@@ -358,20 +354,6 @@ MonoBehaviour:
   endTileRect: {fileID: 4614398458146241476, guid: 02fa27106db89b544bba34f1b127942e, type: 3}
   autoJumpOnStart: 0
   isJumping: 0
---- !u!114 &-4607439710107378125
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4332806432069123864}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 1541381998, guid: e725a070cec140c4caffb81624c8c787, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  Guid:
-    RawGuidValue: 58a720aae3abe2b4bb11169c4be82eaf
 --- !u!1 &6603760508219376514
 GameObject:
   m_ObjectHideFlags: 0

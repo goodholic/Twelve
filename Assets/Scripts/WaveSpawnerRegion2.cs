@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
 using UnityEngine.SceneManagement; // [수정추가]
@@ -14,8 +15,12 @@ public class WaveSpawnerRegion2 : MonoBehaviour
     [Header("몬스터 부모 오브젝트(Region2)")]
     public Transform enemyMonsterParent;
 
+    [Header("몬스터 이동 경로 - Region2")]
+    [Tooltip("몬스터가 따라갈 웨이포인트")]
+    public Transform[] monsterWaypoints2;
+    
     // [수정] 기존 단일 경로를 제거하고 3개 루트로 변경
-    [Header("공격 루트 설정 (좌/중/우) - Region2")]
+    [Header("캐릭터 공격 루트 설정 (좌/중/우) - Region2")]
     [Tooltip("좌측 루트 웨이포인트")]
     public Transform[] walkableLeft2;
     [Tooltip("중앙 루트 웨이포인트")]
@@ -23,13 +28,29 @@ public class WaveSpawnerRegion2 : MonoBehaviour
     [Tooltip("우측 루트 웨이포인트")]
     public Transform[] walkableRight2;
     
-    [Header("루트별 스폰 위치 - Region2")]
+    [Header("캐릭터 루트별 스폰 위치 - Region2")]
     [Tooltip("좌측 루트 스폰 위치")]
     public Transform leftSpawnPoint2;
     [Tooltip("중앙 루트 스폰 위치")]
     public Transform centerSpawnPoint2;
     [Tooltip("우측 루트 스폰 위치")]
     public Transform rightSpawnPoint2;
+
+    [Header("캐릭터 루트별 점프 지점 - Region2")]
+    [Tooltip("좌측 루트 점프 시작 지점")]
+    public Transform leftJumpPoint2;
+    [Tooltip("중앙 루트 점프 시작 지점")]
+    public Transform centerJumpPoint2;
+    [Tooltip("우측 루트 점프 시작 지점")]
+    public Transform rightJumpPoint2;
+
+    [Header("캐릭터 루트별 점프 도착 지점 - Region2")]
+    [Tooltip("좌측 루트 점프 도착 지점 (목표)")]
+    public Transform leftTargetPoint2;
+    [Tooltip("중앙 루트 점프 도착 지점 (목표)")]
+    public Transform centerTargetPoint2;
+    [Tooltip("우측 루트 점프 도착 지점 (목표)")]
+    public Transform rightTargetPoint2;
 
     [Header("웨이브 설정 (Region2)")]
     public float timeBetweenWaves2 = 5f;
@@ -166,17 +187,49 @@ public class WaveSpawnerRegion2 : MonoBehaviour
     /// </summary>
     private Transform[] GetWaypointsForRoute(RouteType route)
     {
-        switch (route)
+        // 모든 walkable2 타일을 포함하는 통합 경로 반환
+        return GetAllWalkableWaypoints();
+    }
+    
+    /// <summary>
+    /// 모든 walkable2 타일의 웨이포인트를 하나의 배열로 반환
+    /// </summary>
+    private Transform[] GetAllWalkableWaypoints()
+    {
+        List<Transform> allWaypoints = new List<Transform>();
+        
+        // 좌측 경로 추가
+        if (walkableLeft2 != null)
         {
-            case RouteType.Left:
-                return walkableLeft2;
-            case RouteType.Center:
-                return walkableCenter2;
-            case RouteType.Right:
-                return walkableRight2;
-            default:
-                return walkableCenter2;
+            allWaypoints.AddRange(walkableLeft2);
         }
+        
+        // 중앙 경로 추가
+        if (walkableCenter2 != null)
+        {
+            allWaypoints.AddRange(walkableCenter2);
+        }
+        
+        // 우측 경로 추가
+        if (walkableRight2 != null)
+        {
+            allWaypoints.AddRange(walkableRight2);
+        }
+        
+        // 중복 제거 및 거리 기준 정렬
+        List<Transform> uniqueWaypoints = new List<Transform>();
+        foreach (var waypoint in allWaypoints)
+        {
+            if (waypoint != null && !uniqueWaypoints.Contains(waypoint))
+            {
+                uniqueWaypoints.Add(waypoint);
+            }
+        }
+        
+        // Y 좌표 기준으로 정렬 (위에서 아래로 - 지역2는 반대)
+        uniqueWaypoints.Sort((a, b) => b.position.y.CompareTo(a.position.y));
+        
+        return uniqueWaypoints.ToArray();
     }
 
     /// <summary>
@@ -216,6 +269,42 @@ public class WaveSpawnerRegion2 : MonoBehaviour
         return transform.position;
     }
 
+    /// <summary>
+    /// 선택된 루트에 따른 점프 지점 반환
+    /// </summary>
+    public Transform GetJumpPointForRoute(RouteType route)
+    {
+        switch (route)
+        {
+            case RouteType.Left:
+                return leftJumpPoint2;
+            case RouteType.Center:
+                return centerJumpPoint2;
+            case RouteType.Right:
+                return rightJumpPoint2;
+            default:
+                return centerJumpPoint2;
+        }
+    }
+
+    /// <summary>
+    /// 선택된 루트에 따른 도착 지점 반환
+    /// </summary>
+    public Transform GetTargetPointForRoute(RouteType route)
+    {
+        switch (route)
+        {
+            case RouteType.Left:
+                return leftTargetPoint2;
+            case RouteType.Center:
+                return centerTargetPoint2;
+            case RouteType.Right:
+                return rightTargetPoint2;
+            default:
+                return centerTargetPoint2;
+        }
+    }
+
     // ======================================================
     // [수정] SpawnEnemyMonster → 인자 (int indexInWave) + 루트 선택
     // ======================================================
@@ -227,19 +316,15 @@ public class WaveSpawnerRegion2 : MonoBehaviour
             return;
         }
 
-        // 랜덤하게 루트 선택
-        RouteType selectedRoute = GetRandomRoute();
-        Transform[] selectedWaypoints = GetWaypointsForRoute(selectedRoute);
-        
-        // 선택된 루트가 유효한지 확인
-        if (selectedWaypoints == null || selectedWaypoints.Length == 0)
+        // 몬스터는 단일 경로 사용
+        if (monsterWaypoints2 == null || monsterWaypoints2.Length == 0)
         {
-            Debug.LogError($"[WaveSpawnerRegion2] {selectedRoute} 루트의 웨이포인트가 설정되지 않았습니다!");
+            Debug.LogError($"[WaveSpawnerRegion2] 몬스터 웨이포인트가 설정되지 않았습니다!");
             return;
         }
 
-        // 스폰 위치 결정
-        Vector3 spawnPos = GetSpawnPositionForRoute(selectedRoute);
+        // 스폰 위치는 첫 번째 웨이포인트
+        Vector3 spawnPos = monsterWaypoints2[0].position;
 
         // -----------------------------------------------
         // [수정추가] 챕터별 3번째 몬스터만 다음 챕터 몬스터
@@ -303,7 +388,7 @@ public class WaveSpawnerRegion2 : MonoBehaviour
         Monster enemyComp = enemyObj.GetComponent<Monster>();
         if (enemyComp != null)
         {
-            enemyComp.pathWaypoints = selectedWaypoints; // 선택된 루트의 웨이포인트 설정
+            enemyComp.pathWaypoints = monsterWaypoints2; // 몬스터 단일 경로 설정
             enemyComp.areaIndex = 2;
             enemyComp.OnDeath += HandleEnemyMonsterDeath;
             
@@ -311,7 +396,7 @@ public class WaveSpawnerRegion2 : MonoBehaviour
             enemyComp.currentChapter = monsterChapter;
             
             // 몬스터 정보 로그 출력
-            Debug.Log($"[WaveSpawnerRegion2] Spawned Monster on {selectedRoute} route, indexInWave={indexInWave}, chapter={monsterChapter}, Wave={currentWave2}");
+            Debug.Log($"[WaveSpawnerRegion2] Spawned Monster, indexInWave={indexInWave}, chapter={monsterChapter}, Wave={currentWave2}");
         }
     }
 

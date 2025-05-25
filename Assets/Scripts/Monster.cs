@@ -44,6 +44,10 @@ public class Monster : NetworkBehaviour, IDamageable
     [Header("Area 구분 (1 or 2)")]
     public int areaIndex = 1;
 
+
+
+
+
     private void Awake()
     {
         // 챕터에 따른 스탯 증가 적용
@@ -65,6 +69,8 @@ public class Monster : NetworkBehaviour, IDamageable
             UpdateHpBar();
         }
     }
+
+
 
     /// <summary>
     /// 챕터에 따라 몬스터 스탯을 강화합니다 (1.1배씩 증가)
@@ -149,6 +155,8 @@ public class Monster : NetworkBehaviour, IDamageable
         }
     }
 
+
+
     private void MoveAlongPath2D()
     {
         if (pathWaypoints == null || pathWaypoints.Length == 0 || currentWaypointIndex >= pathWaypoints.Length)
@@ -177,6 +185,8 @@ public class Monster : NetworkBehaviour, IDamageable
             }
         }
     }
+
+
 
     private void OnReachEndPoint()
     {

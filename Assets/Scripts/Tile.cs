@@ -21,6 +21,12 @@ public class Tile : MonoBehaviour
     [Header("Tile Prefabs (시각용)")]
     public GameObject walkablePrefab;
     public GameObject walkable2Prefab;
+    public GameObject walkableLeftPrefab;
+    public GameObject walkableCenterPrefab;
+    public GameObject walkableRightPrefab;
+    public GameObject walkable2LeftPrefab;
+    public GameObject walkable2CenterPrefab;
+    public GameObject walkable2RightPrefab;
     public GameObject placablePrefab;
     public GameObject placable2Prefab;
     public GameObject placeTilePrefab; // 원래 occupiedPrefab → placeTilePrefab
@@ -158,12 +164,110 @@ public class Tile : MonoBehaviour
     }
 
     /// <summary>
+    /// 이 타일이 'WalkableLeft' 형태인지
+    /// </summary>
+    public bool IsWalkableLeft()
+    {
+        for (int i = 0; i < transform.childCount; i++)
+        {
+            string childName = transform.GetChild(i).name.ToLower();
+            if (childName.Contains("walkableleft") && !childName.Contains("walkable2"))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// 이 타일이 'WalkableCenter' 형태인지
+    /// </summary>
+    public bool IsWalkableCenter()
+    {
+        for (int i = 0; i < transform.childCount; i++)
+        {
+            string childName = transform.GetChild(i).name.ToLower();
+            if (childName.Contains("walkablecenter") && !childName.Contains("walkable2"))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// 이 타일이 'WalkableRight' 형태인지
+    /// </summary>
+    public bool IsWalkableRight()
+    {
+        for (int i = 0; i < transform.childCount; i++)
+        {
+            string childName = transform.GetChild(i).name.ToLower();
+            if (childName.Contains("walkableright") && !childName.Contains("walkable2"))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// 이 타일이 'Walkable2Left' 형태인지
+    /// </summary>
+    public bool IsWalkable2Left()
+    {
+        for (int i = 0; i < transform.childCount; i++)
+        {
+            string childName = transform.GetChild(i).name.ToLower();
+            if (childName.Contains("walkable2left"))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// 이 타일이 'Walkable2Center' 형태인지
+    /// </summary>
+    public bool IsWalkable2Center()
+    {
+        for (int i = 0; i < transform.childCount; i++)
+        {
+            string childName = transform.GetChild(i).name.ToLower();
+            if (childName.Contains("walkable2center"))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// 이 타일이 'Walkable2Right' 형태인지
+    /// </summary>
+    public bool IsWalkable2Right()
+    {
+        for (int i = 0; i < transform.childCount; i++)
+        {
+            string childName = transform.GetChild(i).name.ToLower();
+            if (childName.Contains("walkable2right"))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /// <summary>
     /// 이 타일이 캐릭터 배치 가능한 상태인지 (Walkable/Placable/PlaceTile/등등)
     /// </summary>
     public bool CanPlaceCharacter()
     {
         bool hasAnyType =
             IsWalkable() || IsWalkable2() ||
+            IsWalkableLeft() || IsWalkableCenter() || IsWalkableRight() ||
+            IsWalkable2Left() || IsWalkable2Center() || IsWalkable2Right() ||
             IsPlacable() || IsPlacable2() ||
             IsPlaceTile() || IsPlaced2();
 
@@ -181,6 +285,8 @@ public class Tile : MonoBehaviour
         
         // ▼▼ [추가] 타일 상태 디버그 정보 ▼▼
         Debug.Log($"[Tile] 타일 상태 - Walkable:{IsWalkable()}, Walkable2:{IsWalkable2()}, " +
+                  $"WalkableLeft:{IsWalkableLeft()}, WalkableCenter:{IsWalkableCenter()}, WalkableRight:{IsWalkableRight()}, " +
+                  $"Walkable2Left:{IsWalkable2Left()}, Walkable2Center:{IsWalkable2Center()}, Walkable2Right:{IsWalkable2Right()}, " +
                   $"Placable:{IsPlacable()}, Placable2:{IsPlacable2()}, " +
                   $"PlaceTile:{IsPlaceTile()}, Placed2:{IsPlaced2()}");
 
@@ -324,13 +430,30 @@ public class Tile : MonoBehaviour
     {
         bool w1 = IsWalkable();
         bool w2 = IsWalkable2();
+        bool wLeft = IsWalkableLeft();
+        bool wCenter = IsWalkableCenter();
+        bool wRight = IsWalkableRight();
+        bool w2Left = IsWalkable2Left();
+        bool w2Center = IsWalkable2Center();
+        bool w2Right = IsWalkable2Right();
         bool p1 = IsPlacable();
         bool p2 = IsPlacable2();
         bool pTile = IsPlaceTile();
         bool p2Tile = IsPlaced2();
 
+        // Walkable2 타입들 우선 체크
+        if (w2Left && walkable2LeftPrefab != null) return walkable2LeftPrefab;
+        if (w2Center && walkable2CenterPrefab != null) return walkable2CenterPrefab;
+        if (w2Right && walkable2RightPrefab != null) return walkable2RightPrefab;
         if (w2 && walkable2Prefab != null) return walkable2Prefab;
+        
+        // Walkable 타입들 체크
+        if (wLeft && walkableLeftPrefab != null) return walkableLeftPrefab;
+        if (wCenter && walkableCenterPrefab != null) return walkableCenterPrefab;
+        if (wRight && walkableRightPrefab != null) return walkableRightPrefab;
         if (w1 && walkablePrefab  != null) return walkablePrefab;
+        
+        // 기타 타입들
         if (p2 && placable2Prefab != null) return placable2Prefab;
         if (p1 && placablePrefab  != null) return placablePrefab;
         if (p2Tile && placed2Prefab != null) return placed2Prefab;

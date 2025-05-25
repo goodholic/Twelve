@@ -270,7 +270,6 @@ GameObject:
   - component: {fileID: -2227661921399277953}
   - component: {fileID: -1280375214095741299}
   - component: {fileID: 19114604235587391}
-  - component: {fileID: 497023688604374137}
   m_Layer: 5
   m_Name: 5_OPWizard
   m_TagString: Untagged
@@ -351,6 +350,8 @@ MonoBehaviour:
   star: 2
   characterName: 
   race: 1
+  attackTargetType: 0
+  movementType: 0
   attackPower: 13
   attackSpeed: 1.1
   attackRange: 2.5
@@ -362,15 +363,6 @@ MonoBehaviour:
   isAreaAttack: 0
   areaAttackRadius: 1
   isHero: 0
-  pathWaypoints:
-  - {fileID: 8870864530132773612, guid: 056b317d9e4875f45a50c4cd69148f3b, type: 3}
-  - {fileID: 4135260548019697524, guid: 3dfa4a4749de3374681c0d2b6815dc7e, type: 3}
-  - {fileID: 7052993515450296238, guid: f7691f68b1c1ffe4fb4d79c652d7dd9d, type: 3}
-  - {fileID: 5210701647780469663, guid: 699b367bf23ad6a408eb1c6fad0ab9d9, type: 3}
-  - {fileID: 4818939896627276988, guid: d2e0810630198c148979fa75ad079427, type: 3}
-  - {fileID: 1411693949256981867, guid: 03cdf8ef9ab1edb41ab152615dc955bf, type: 3}
-  currentWaypointIndex: -1
-  maxWaypointIndex: 6
   rangeIndicatorPrefab: {fileID: 3037178901491863121, guid: 70e5c5e981d70c247a317a909d42c752, type: 3}
   showRangeIndicator: 0
   bulletPrefab: {fileID: 4981713407830389979, guid: fd278dad8fe460b49982870a2bba35db, type: 3}
@@ -385,6 +377,16 @@ MonoBehaviour:
   areaIndex: 2
   hpBarCanvas: {fileID: 8546277056661707996}
   hpFillImage: {fileID: 1991106492107900503}
+  selectedRoute: 0
+  pathWaypoints:
+  - {fileID: 8870864530132773612, guid: 056b317d9e4875f45a50c4cd69148f3b, type: 3}
+  - {fileID: 4135260548019697524, guid: 3dfa4a4749de3374681c0d2b6815dc7e, type: 3}
+  - {fileID: 7052993515450296238, guid: f7691f68b1c1ffe4fb4d79c652d7dd9d, type: 3}
+  - {fileID: 5210701647780469663, guid: 699b367bf23ad6a408eb1c6fad0ab9d9, type: 3}
+  - {fileID: 4818939896627276988, guid: d2e0810630198c148979fa75ad079427, type: 3}
+  - {fileID: 1411693949256981867, guid: 03cdf8ef9ab1edb41ab152615dc955bf, type: 3}
+  currentWaypointIndex: -1
+  maxWaypointIndex: 6
   newAttackRangeOnClick: 4
   star2Prefab: {fileID: 0}
   star3Prefab: {fileID: 0}
@@ -392,12 +394,6 @@ MonoBehaviour:
   attackInfoText: {fileID: 0}
   attackInfoOffset: {x: 1, y: 0, z: 0}
   isCharAttack: 0
-  playerTag: Player
-  opponentPlayerTag: Opponent Player
-  characterTag: Character
-  endTileRect: {fileID: 7728088104138265406, guid: dd3720c0124e04b4d83c775b74fdac3c, type: 3}
-  targetJumpPosition: {fileID: 7728088104138265406, guid: dd3720c0124e04b4d83c775b74fdac3c, type: 3}
-  startJumpPosition: {fileID: 4614398458146241476, guid: 02fa27106db89b544bba34f1b127942e, type: 3}
   characterUpDirectionSprite: {fileID: 1260488849704146986, guid: a36beba533bec3a47ae40996203d5d9d, type: 3}
   characterDownDirectionSprite: {fileID: -7922221060769593201, guid: 063382343f2e08145b6aabb45fb5cbba, type: 3}
 --- !u!114 &4078812631583206235
@@ -536,17 +532,3 @@ MonoBehaviour:
   endTileRect: {fileID: 7728088104138265406, guid: dd3720c0124e04b4d83c775b74fdac3c, type: 3}
   autoJumpOnStart: 0
   isJumping: 0
---- !u!114 &497023688604374137
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 9176415509751804172}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 1541381998, guid: e725a070cec140c4caffb81624c8c787, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  Guid:
-    RawGuidValue: c911aa14e94247f41a5ebbc1fd14a44a

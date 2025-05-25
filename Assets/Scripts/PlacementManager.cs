@@ -7,6 +7,7 @@ using UnityEngine.UI;
 // RouteType enum 추가
 public enum RouteType
 {
+    Default,  // 타워용 기본값
     Left,
     Center,
     Right
@@ -345,7 +346,7 @@ public class PlacementManager : MonoBehaviour
             }
         }
 
-        bool isArea2 = (tile.IsWalkable2() || tile.IsPlacable2() || tile.IsPlaced2());
+        bool isArea2 = (tile.IsWalkable2() || tile.IsWalkable2Left() || tile.IsWalkable2Center() || tile.IsWalkable2Right() || tile.IsPlacable2() || tile.IsPlaced2());
         
         // ▼▼ [추가] 미네랄 상태 확인 로그 ▼▼
         MineralBar targetMineralBar = isArea2 ? region2MineralBar : region1MineralBar;
@@ -386,6 +387,69 @@ public class PlacementManager : MonoBehaviour
             }
         }
         // ================================================================================
+        
+        // ▼▼ [추가] 타일이 placed/placable인 경우, 모든 타일이 차있으면 walkable로 자동 전환 ▼▼
+        if (tile.IsPlaceTile() || tile.IsPlaced2() || tile.IsPlacable() || tile.IsPlacable2())
+        {
+            // 모든 placed/placable 타일이 차있는지 확인
+            bool allPlacedTilesFull = true;
+            Tile[] allTiles = Object.FindObjectsByType<Tile>(FindObjectsSortMode.None);
+            Character[] allChars = Object.FindObjectsByType<Character>(FindObjectsSortMode.None);
+            
+            foreach (var t in allTiles)
+            {
+                if (t == null) continue;
+                if (t.isRegion2 != tile.isRegion2) continue;
+                
+                // placed 또는 placable 타일인지 확인
+                if (t.IsPlaceTile() || t.IsPlaced2() || t.IsPlacable() || t.IsPlacable2())
+                {
+                    // 타일이 비어있는지 확인
+                    bool isEmpty = true;
+                    
+                    if (t.IsPlaceTile() || t.IsPlaced2())
+                    {
+                        // placed tile의 경우
+                        foreach (var c in allChars)
+                        {
+                            if (c != null && c.currentTile == t)
+                            {
+                                isEmpty = false;
+                                break;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        // placable tile의 경우
+                        isEmpty = !CheckAnyCharacterHasCurrentTile(t);
+                    }
+                    
+                    if (isEmpty)
+                    {
+                        allPlacedTilesFull = false;
+                        break;
+                    }
+                }
+            }
+            
+            // 모든 placed/placable 타일이 차있으면 walkable 타일로 전환
+            if (allPlacedTilesFull)
+            {
+                Debug.Log($"[PlacementManager] 모든 placed/placable 타일이 가득 참. walkable 타일로 자동 전환합니다.");
+                Tile walkableTile = FindEmptyWalkableTile(tile.isRegion2);
+                if (walkableTile != null)
+                {
+                    tile = walkableTile;
+                    Debug.Log($"[PlacementManager] walkable 타일 {tile.name}으로 배치 변경");
+                }
+                else
+                {
+                    Debug.LogWarning("[PlacementManager] walkable 타일도 없습니다!");
+                    return;
+                }
+            }
+        }
         
         if (isArea2 && isHost)
         {
@@ -438,49 +502,25 @@ public class PlacementManager : MonoBehaviour
             return;
         }
 
-        if (tile.IsWalkable())
+        if (tile.IsWalkable() || tile.IsWalkableLeft() || tile.IsWalkableCenter() || tile.IsWalkableRight())
         {
             WaveSpawner spawner = FindFirstObjectByType<WaveSpawner>();
             if (spawner != null && ourMonsterPanel != null)
             {
-                // 랜덤 루트 선택
-                RouteType selectedRoute = GetRandomRoute();
-                Transform[] waypoints = GetWaypointsForRoute(spawner, selectedRoute);
-                
-                if (waypoints == null || waypoints.Length == 0)
-                {
-                    Debug.LogWarning($"[PlacementManager] {selectedRoute} 루트의 웨이포인트가 없습니다.");
-                    return;
-                }
-                
-                Vector3 spawnPos = waypoints[0].position;
+                // ▼▼ [수정] 먼저 캐릭터를 생성하고 루트 선택 UI 표시
                 GameObject allyObj = Instantiate(data.spawnPrefab, ourMonsterPanel);
                 if (allyObj != null)
                 {
-                    RectTransform allyRect = allyObj.GetComponent<RectTransform>();
-                    if (allyRect != null)
-                    {
-                        Vector2 localPos = ourMonsterPanel.InverseTransformPoint(spawnPos);
-                        allyRect.anchoredPosition = localPos;
-                        allyRect.localRotation = Quaternion.identity;
-                    }
-                    else
-                    {
-                        allyObj.transform.position = spawnPos;
-                        allyObj.transform.localRotation = Quaternion.identity;
-                    }
-
+                    // 임시로 화면 밖에 배치
+                    allyObj.transform.position = new Vector3(-1000, -1000, 0);
+                    
                     Character allyCharacter = allyObj.GetComponent<Character>();
                     allyCharacter.currentTile = null;
                     allyCharacter.isHero = (currentCharacterIndex == 9);
                     allyCharacter.isCharAttack = !allyCharacter.isHero;
-
-                    allyCharacter.currentWaypointIndex = 0;
-                    allyCharacter.maxWaypointIndex = 6;
-                    allyCharacter.pathWaypoints = waypoints;
                     allyCharacter.areaIndex = 1;
-                    allyCharacter.selectedRoute = selectedRoute; // 선택된 루트 저장
-
+                    
+                    // 기본 스탯 설정
                     allyCharacter.attackPower = data.attackPower;
                     allyCharacter.attackSpeed = data.attackSpeed;
                     allyCharacter.attackRange = data.attackRange;
@@ -488,9 +528,11 @@ public class PlacementManager : MonoBehaviour
                     allyCharacter.star = data.initialStar;
                     allyCharacter.ApplyStarVisual();
                     allyCharacter.moveSpeed = data.moveSpeed;
-
-                    Debug.Log($"[PlacementManager] [{data.characterName}] (area1) 몬스터 소환 - {selectedRoute} 루트 선택 (cost={data.cost})");
-
+                    
+                    // ▼▼ [수정] 자동으로 루트 결정 (UI 없이)
+                    RouteType selectedRoute = DetermineRouteFromTile(tile, spawner);
+                    OnRouteSelected(allyCharacter, tile, selectedRoute, spawner);
+                    
                     var selectUI = FindFirstObjectByType<CharacterSelectUI>();
                     if (selectUI != null)
                     {
@@ -503,64 +545,47 @@ public class PlacementManager : MonoBehaviour
                 Debug.LogWarning("[PlacementManager] WaveSpawner/ourMonsterPanel이 없어 소환 실패");
             }
         }
-        else if (tile.IsWalkable2())
+        else if (tile.IsWalkable2() || tile.IsWalkable2Left() || tile.IsWalkable2Center() || tile.IsWalkable2Right())
         {
             WaveSpawnerRegion2 spawner2 = FindFirstObjectByType<WaveSpawnerRegion2>();
-            if (spawner2 != null && spawner2.walkableCenter2 != null && spawner2.walkableCenter2.Length > 0 && opponentOurMonsterPanel != null)
+            if (spawner2 != null && opponentOurMonsterPanel != null)
             {
-                Vector3 spawnPos = spawner2.walkableCenter2[0].position;
-                GameObject allyObj = Instantiate(data.spawnPrefab, opponentOurMonsterPanel);
-                if (allyObj != null)
+                // ▼▼ [수정] 먼저 캐릭터를 생성하고 루트 선택 UI 표시
+                GameObject enemyObj = Instantiate(data.spawnPrefab, opponentOurMonsterPanel);
+                if (enemyObj != null)
                 {
-                    allyObj.SetActive(true);
-                    RectTransform allyRect = allyObj.GetComponent<RectTransform>();
-                    if (allyRect != null)
-                    {
-                        Vector2 localPos = opponentOurMonsterPanel.InverseTransformPoint(spawnPos);
-                        allyRect.SetParent(opponentOurMonsterPanel, false);
-                        allyRect.localRotation = Quaternion.identity;
-                        allyRect.anchoredPosition = localPos;
-                    }
-                    else
-                    {
-                        allyObj.transform.SetParent(null);
-                        allyObj.transform.position = spawnPos;
-                        allyObj.transform.localRotation = Quaternion.identity;
-                    }
-
-                    Character allyCharacter = allyObj.GetComponent<Character>();
-                    allyCharacter.currentTile = null;
-                    allyCharacter.isHero = (currentCharacterIndex == 9);
-                    allyCharacter.isCharAttack = !allyCharacter.isHero;
-
-                    allyCharacter.currentWaypointIndex = 0;
-                    allyCharacter.maxWaypointIndex = 6;
-                    allyCharacter.pathWaypoints = spawner2.walkableCenter2;
-                    allyCharacter.areaIndex = 2;
-
-                    allyCharacter.attackPower = data.attackPower;
-                    allyCharacter.attackSpeed = data.attackSpeed;
-                    allyCharacter.attackRange = data.attackRange;
-                    allyCharacter.currentHP = data.maxHP;
-                    allyCharacter.star = data.initialStar;
-                    allyCharacter.ApplyStarVisual();
-                    allyCharacter.moveSpeed = data.moveSpeed;
-
-                    Debug.Log($"[PlacementManager] [{data.characterName}] (지역2) 몬스터 소환 (cost={data.cost})");
-
+                    // 임시로 화면 밖에 배치
+                    enemyObj.transform.position = new Vector3(-1000, -1000, 0);
+                    
+                    Character enemyCharacter = enemyObj.GetComponent<Character>();
+                    enemyCharacter.currentTile = null;
+                    enemyCharacter.isHero = false;
+                    enemyCharacter.isCharAttack = true;
+                    enemyCharacter.areaIndex = 2;
+                    
+                    // 기본 스탯 설정
+                    enemyCharacter.attackPower = data.attackPower;
+                    enemyCharacter.attackSpeed = data.attackSpeed;
+                    enemyCharacter.attackRange = data.attackRange;
+                    enemyCharacter.currentHP = data.maxHP;
+                    enemyCharacter.star = data.initialStar;
+                    enemyCharacter.ApplyStarVisual();
+                    enemyCharacter.moveSpeed = data.moveSpeed;
+                    
+                    // ▼▼ [수정] 자동으로 루트 결정 (UI 없이)
+                    RouteType selectedRoute = DetermineRouteFromTile(tile, spawner2);
+                    OnRouteSelectedRegion2(enemyCharacter, tile, selectedRoute, spawner2);
+                    
                     var selectUI = FindFirstObjectByType<CharacterSelectUI>();
                     if (selectUI != null)
                     {
                         selectUI.MarkCardAsUsed(currentCharacterIndex);
                     }
-
-                    // ▼▼ [수정] 자동으로 -1로 설정하지 않고, CharacterSelectUI에서 관리하도록 함 ▼▼
-                    // currentCharacterIndex = -1;
                 }
-                else
-                {
-                    Debug.LogWarning("[PlacementManager] WaveSpawnerRegion2/opponentOurMonsterPanel이 없어 소환 실패");
-                }
+            }
+            else
+            {
+                Debug.LogWarning("[PlacementManager] WaveSpawnerRegion2/opponentOurMonsterPanel이 없어 소환 실패");
             }
         }
         else if (tile.IsPlacable() || tile.IsPlacable2())
@@ -747,7 +772,7 @@ public class PlacementManager : MonoBehaviour
                 return false;
             }
 
-            bool tileIsArea2 = tile.IsWalkable2() || tile.IsPlacable2() || tile.IsPlaced2();
+            bool tileIsArea2 = tile.IsWalkable2() || tile.IsWalkable2Left() || tile.IsWalkable2Center() || tile.IsWalkable2Right() || tile.IsPlacable2() || tile.IsPlaced2();
             if (!forceEnemyArea2)
             {
                 if (tileIsArea2 && isHost)
@@ -834,7 +859,7 @@ public class PlacementManager : MonoBehaviour
             }
             // ==================================================================
 
-            if (tile.IsWalkable())
+            if (tile.IsWalkable() || tile.IsWalkableLeft() || tile.IsWalkableCenter() || tile.IsWalkableRight())
             {
                 WaveSpawner spawner = FindFirstObjectByType<WaveSpawner>();
                 if (spawner == null || ourMonsterPanel == null)
@@ -859,8 +884,8 @@ public class PlacementManager : MonoBehaviour
                     return false;
                 }
 
-                // 랜덤 루트 선택
-                RouteType selectedRoute = GetRandomRoute();
+                // 타일 위치에 따른 루트 선택
+                RouteType selectedRoute = DetermineRouteFromTile(tile, spawner);
                 Transform[] waypoints = GetWaypointsForRoute(spawner, selectedRoute);
                 
                 if (waypoints == null || waypoints.Length == 0)
@@ -873,7 +898,7 @@ public class PlacementManager : MonoBehaviour
                     return false;
                 }
 
-                Vector3 spawnPos = waypoints[0].position;
+                Vector3 spawnPos = GetSpawnPositionForRoute(spawner, selectedRoute);
                 GameObject allyMonsterObj = Instantiate(prefabToSpawn, ourMonsterPanel);
                 if (allyMonsterObj != null)
                 {
@@ -898,10 +923,12 @@ public class PlacementManager : MonoBehaviour
                     allyChar.isCharAttack = !allyChar.isHero;
 
                     allyChar.currentWaypointIndex = 0;
-                    allyChar.maxWaypointIndex = 6;
-                    allyChar.areaIndex = 1;
                     allyChar.pathWaypoints = waypoints;
+                    allyChar.maxWaypointIndex = waypoints.Length - 1; // 실제 웨이포인트 길이에 맞게 설정
+                    allyChar.areaIndex = 1;
                     allyChar.selectedRoute = selectedRoute; // 선택된 루트 저장
+
+
 
                     allyChar.attackPower = data.attackPower;
                     allyChar.attackSpeed = data.attackSpeed;
@@ -924,13 +951,13 @@ public class PlacementManager : MonoBehaviour
                     return false;
                 }
             }
-            else if (tile.IsWalkable2())
+            else if (tile.IsWalkable2() || tile.IsWalkable2Left() || tile.IsWalkable2Center() || tile.IsWalkable2Right())
             {
                 WaveSpawnerRegion2 spawner2 = FindFirstObjectByType<WaveSpawnerRegion2>();
                 if (spawner2 != null && opponentOurMonsterPanel != null)
                 {
-                    // 랜덤 루트 선택
-                    RouteType selectedRoute = GetRandomRoute();
+                    // 타일 위치에 따른 루트 선택
+                    RouteType selectedRoute = DetermineRouteFromTile(tile, spawner2);
                     Transform[] waypoints = GetWaypointsForRoute(spawner2, selectedRoute);
                     
                     if (waypoints == null || waypoints.Length == 0)
@@ -939,44 +966,46 @@ public class PlacementManager : MonoBehaviour
                         return false;
                     }
                     
-                    Vector3 spawnPos = waypoints[0].position;
-                    GameObject allyObj = Instantiate(data.spawnPrefab, opponentOurMonsterPanel);
-                    if (allyObj != null)
+                                    Vector3 spawnPos = GetSpawnPositionForRoute(spawner2, selectedRoute);
+                GameObject enemyObj = Instantiate(data.spawnPrefab, opponentOurMonsterPanel);
+                if (enemyObj != null)
+                {
+                    enemyObj.SetActive(true);
+                    RectTransform enemyRect = enemyObj.GetComponent<RectTransform>();
+                    if (enemyRect != null)
                     {
-                        allyObj.SetActive(true);
-                        RectTransform allyRect = allyObj.GetComponent<RectTransform>();
-                        if (allyRect != null)
-                        {
-                            Vector2 localPos = opponentOurMonsterPanel.InverseTransformPoint(spawnPos);
-                            allyRect.SetParent(opponentOurMonsterPanel, false);
-                            allyRect.localRotation = Quaternion.identity;
-                            allyRect.anchoredPosition = localPos;
+                        Vector2 localPos = opponentOurMonsterPanel.InverseTransformPoint(spawnPos);
+                        enemyRect.SetParent(opponentOurMonsterPanel, false);
+                            enemyRect.anchoredPosition = localPos;
+                            enemyRect.localRotation = Quaternion.identity;
                         }
                         else
                         {
-                            allyObj.transform.SetParent(null);
-                            allyObj.transform.position = spawnPos;
-                            allyObj.transform.localRotation = Quaternion.identity;
+                            enemyObj.transform.SetParent(null);
+                            enemyObj.transform.position = spawnPos;
+                            enemyObj.transform.localRotation = Quaternion.identity;
                         }
 
-                        Character allyCharacter = allyObj.GetComponent<Character>();
-                        allyCharacter.currentTile = null;
-                        allyCharacter.isHero = (currentCharacterIndex == 9);
-                        allyCharacter.isCharAttack = !allyCharacter.isHero;
+                        Character enemyCharacter = enemyObj.GetComponent<Character>();
+                        enemyCharacter.currentTile = null;
+                        enemyCharacter.isHero = false;
+                        enemyCharacter.isCharAttack = true;
 
-                        allyCharacter.currentWaypointIndex = 0;
-                        allyCharacter.maxWaypointIndex = 6;
-                        allyCharacter.pathWaypoints = waypoints;
-                        allyCharacter.areaIndex = 2;
-                        allyCharacter.selectedRoute = selectedRoute; // 선택된 루트 저장
+                        enemyCharacter.currentWaypointIndex = 0;
+                        enemyCharacter.pathWaypoints = waypoints;
+                        enemyCharacter.maxWaypointIndex = waypoints.Length - 1; // 실제 웨이포인트 길이에 맞게 설정
+                        enemyCharacter.areaIndex = 2;
+                        enemyCharacter.selectedRoute = selectedRoute; // 선택된 루트 저장
 
-                        allyCharacter.attackPower = data.attackPower;
-                        allyCharacter.attackSpeed = data.attackSpeed;
-                        allyCharacter.attackRange = data.attackRange;
-                        allyCharacter.currentHP = data.maxHP;
-                        allyCharacter.star = data.initialStar;
-                        allyCharacter.ApplyStarVisual();
-                        allyCharacter.moveSpeed = data.moveSpeed;
+
+
+                        enemyCharacter.attackPower = data.attackPower;
+                        enemyCharacter.attackSpeed = data.attackSpeed;
+                        enemyCharacter.attackRange = data.attackRange;
+                        enemyCharacter.currentHP = data.maxHP;
+                        enemyCharacter.star = data.initialStar;
+                        enemyCharacter.ApplyStarVisual();
+                        enemyCharacter.moveSpeed = data.moveSpeed;
 
                         Debug.Log($"[PlacementManager] [{data.characterName}] (지역2) 몬스터 소환 - {selectedRoute} 루트 선택 (cost={data.cost})");
 
@@ -989,7 +1018,7 @@ public class PlacementManager : MonoBehaviour
                 }
                 else
                 {
-                    Debug.LogWarning("[PlacementManager] WaveSpawnerRegion2/opponentOurMonsterPanel이 없어 소환 실패");
+                    Debug.LogWarning("[PlacementManager] WaveSpawnerRegion2/enemyMonsterPanel이 없어 소환 실패");
                 }
             }
             else if (tile.IsPlacable() || tile.IsPlacable2())
@@ -1223,12 +1252,27 @@ public class PlacementManager : MonoBehaviour
                 return;
             }
 
-            if (newTile.IsWalkable())
+            if (newTile.IsWalkable() || newTile.IsWalkableLeft() || newTile.IsWalkableCenter() || newTile.IsWalkableRight())
             {
                 WaveSpawner spawner = FindFirstObjectByType<WaveSpawner>();
-                if (spawner != null && spawner.walkableCenter != null && spawner.walkableCenter.Length > 0 && ourMonsterPanel != null)
+                if (spawner != null && ourMonsterPanel != null)
                 {
-                    Vector3 spawnPos = spawner.walkableCenter[0].position;
+                    // 타일 위치에 따른 루트 선택
+                    RouteType selectedRoute = DetermineRouteFromTile(newTile, spawner);
+                    Transform[] waypoints = GetWaypointsForRoute(spawner, selectedRoute);
+                    
+                    if (waypoints == null || waypoints.Length == 0)
+                    {
+                        Debug.LogWarning($"[PlacementManager] {selectedRoute} 루트의 웨이포인트가 없습니다.");
+                        if (oldTile != null)
+                        {
+                            MoveCharacterToTile(movingChar, oldTile);
+                            CreatePlaceTileChild(oldTile);
+                        }
+                        return;
+                    }
+                    
+                    Vector3 spawnPos = waypoints[0].position;
 
                     RectTransform charRect = movingChar.GetComponent<RectTransform>();
                     if (charRect != null)
@@ -1247,12 +1291,13 @@ public class PlacementManager : MonoBehaviour
 
                     movingChar.currentTile = null;
                     movingChar.currentWaypointIndex = 0;
-                    movingChar.maxWaypointIndex = 6;
+                    movingChar.pathWaypoints = waypoints;
+                    movingChar.maxWaypointIndex = waypoints.Length - 1; // 실제 웨이포인트 길이에 맞게 설정
                     movingChar.areaIndex = 1;
-                    movingChar.pathWaypoints = spawner.walkableCenter;
+                    movingChar.selectedRoute = selectedRoute; // 선택된 루트 저장
                     movingChar.isCharAttack = !movingChar.isHero;
 
-                    Debug.Log($"[PlacementManager] 드래그로 (placable→walkable) 이동 => waypoint[0]에서 시작");
+                    Debug.Log($"[PlacementManager] 드래그로 (placable→walkable) 이동 => {selectedRoute} 루트 선택, waypoint[0]에서 시작");
                 }
                 else
                 {
@@ -1264,12 +1309,27 @@ public class PlacementManager : MonoBehaviour
                     return;
                 }
             }
-            else if (newTile.IsWalkable2())
+            else if (newTile.IsWalkable2() || newTile.IsWalkable2Left() || newTile.IsWalkable2Center() || newTile.IsWalkable2Right())
             {
                 WaveSpawnerRegion2 spawner2 = FindFirstObjectByType<WaveSpawnerRegion2>();
-                if (spawner2 != null && spawner2.walkableCenter2 != null && spawner2.walkableCenter2.Length > 0 && opponentOurMonsterPanel != null)
+                if (spawner2 != null && opponentOurMonsterPanel != null)
                 {
-                    Vector3 spawnPos2 = spawner2.walkableCenter2[0].position;
+                    // 타일 위치에 따른 루트 선택
+                    RouteType selectedRoute = DetermineRouteFromTile(newTile, spawner2);
+                    Transform[] waypoints = GetWaypointsForRoute(spawner2, selectedRoute);
+                    
+                    if (waypoints == null || waypoints.Length == 0)
+                    {
+                        Debug.LogWarning($"[PlacementManager] {selectedRoute} 루트의 웨이포인트가 없습니다.");
+                        if (oldTile != null)
+                        {
+                            MoveCharacterToTile(movingChar, oldTile);
+                            CreatePlaceTileChild(oldTile);
+                        }
+                        return;
+                    }
+                    
+                    Vector3 spawnPos2 = waypoints[0].position;
 
                     RectTransform charRect = movingChar.GetComponent<RectTransform>();
                     if (charRect != null)
@@ -1288,12 +1348,13 @@ public class PlacementManager : MonoBehaviour
 
                     movingChar.currentTile = null;
                     movingChar.currentWaypointIndex = 0;
-                    movingChar.maxWaypointIndex = 6;
+                    movingChar.pathWaypoints = waypoints;
+                    movingChar.maxWaypointIndex = waypoints.Length - 1; // 실제 웨이포인트 길이에 맞게 설정
                     movingChar.areaIndex = 2;
-                    movingChar.pathWaypoints = spawner2.walkableCenter2;
+                    movingChar.selectedRoute = selectedRoute; // 선택된 루트 저장
                     movingChar.isCharAttack = !movingChar.isHero;
 
-                    Debug.Log($"[PlacementManager] 드래그로 (placable→walkable2) 이동 => waypoint[0]에서 시작");
+                    Debug.Log($"[PlacementManager] 드래그로 (placable→walkable2) 이동 => {selectedRoute} 루트 선택, waypoint[0]에서 시작");
                 }
                 else
                 {
@@ -1309,7 +1370,7 @@ public class PlacementManager : MonoBehaviour
             {
                 MoveCharacterToTile(movingChar, newTile);
                 movingChar.currentWaypointIndex = -1;
-                movingChar.maxWaypointIndex = 6;
+                movingChar.maxWaypointIndex = -1; // placable/placed 타일에서는 웨이포인트 사용 안함
                 movingChar.isCharAttack = false;
             }
 
@@ -1949,13 +2010,14 @@ public class PlacementManager : MonoBehaviour
     {
         if (tile == null) return;
 
-        bool isArea2 = tile.IsWalkable2() || tile.IsPlacable2() || tile.IsPlaced2();
+        bool isArea2 = tile.IsWalkable2() || tile.IsWalkable2Left() || tile.IsWalkable2Center() || tile.IsWalkable2Right() || tile.IsPlacable2() || tile.IsPlaced2();
 
         RectTransform charRect = character.GetComponent<RectTransform>();
         if (charRect != null)
         {
             RectTransform targetParent;
-            if ((tile.IsWalkable() || tile.IsWalkable2()) && ourMonsterPanel != null)
+            if ((tile.IsWalkable() || tile.IsWalkableLeft() || tile.IsWalkableCenter() || tile.IsWalkableRight() || 
+                 tile.IsWalkable2() || tile.IsWalkable2Left() || tile.IsWalkable2Center() || tile.IsWalkable2Right()) && ourMonsterPanel != null)
             {
                 targetParent = ourMonsterPanel;
             }
@@ -2374,10 +2436,20 @@ public class PlacementManager : MonoBehaviour
             if (tile == null) continue;
             if (tile.isRegion2 != isRegion2) continue;
             
-            // walkable 타일인지 확인
-            if ((isRegion2 && tile.IsWalkable2()) || (!isRegion2 && tile.IsWalkable()))
+            // walkable 타일인지 확인 (모든 walkable 타입 포함)
+            if (isRegion2)
             {
-                walkableTiles.Add(tile);
+                if (tile.IsWalkable2() || tile.IsWalkable2Left() || tile.IsWalkable2Center() || tile.IsWalkable2Right())
+                {
+                    walkableTiles.Add(tile);
+                }
+            }
+            else
+            {
+                if (tile.IsWalkable() || tile.IsWalkableLeft() || tile.IsWalkableCenter() || tile.IsWalkableRight())
+                {
+                    walkableTiles.Add(tile);
+                }
             }
         }
         
@@ -2427,6 +2499,215 @@ public class PlacementManager : MonoBehaviour
 
     // ======================== [추가] 3개 루트 시스템 헬퍼 메서드들 ========================
     /// <summary>
+    /// 타일의 위치에 따라 적절한 루트를 결정합니다.
+    /// </summary>
+    private RouteType DetermineRouteFromTile(Tile tile, WaveSpawner spawner)
+    {
+        if (tile == null || spawner == null) return RouteType.Default;
+        
+        // ▼▼ [추가] placable/placed 타일인 경우 Default 루트 사용 (타워용)
+        if (tile.IsPlacable() || tile.IsPlaceTile())
+        {
+            Debug.Log($"[PlacementManager] 타일 {tile.name}은 타워용 타일이므로 Default 루트 선택");
+            return RouteType.Default;
+        }
+        
+        // ▼▼ [추가] 새로운 타일 타입별 루트 직접 결정
+        if (tile.IsWalkableLeft())
+        {
+            Debug.Log($"[PlacementManager] 타일 {tile.name}은 WalkableLeft 타일이므로 Left 루트 선택");
+            return RouteType.Left;
+        }
+        if (tile.IsWalkableCenter())
+        {
+            Debug.Log($"[PlacementManager] 타일 {tile.name}은 WalkableCenter 타일이므로 Center 루트 선택");
+            return RouteType.Center;
+        }
+        if (tile.IsWalkableRight())
+        {
+            Debug.Log($"[PlacementManager] 타일 {tile.name}은 WalkableRight 타일이므로 Right 루트 선택");
+            return RouteType.Right;
+        }
+        
+        float tileX = tile.transform.position.x;
+        
+        // ▼▼ [수정] 각 루트의 중심점을 더 정확하게 계산
+        float leftMinX = float.MaxValue, leftMaxX = float.MinValue;
+        float centerMinX = float.MaxValue, centerMaxX = float.MinValue;
+        float rightMinX = float.MaxValue, rightMaxX = float.MinValue;
+        
+        // 좌측 루트의 X 범위
+        if (spawner.walkableLeft != null && spawner.walkableLeft.Length > 0)
+        {
+            foreach (var waypoint in spawner.walkableLeft)
+            {
+                if (waypoint != null)
+                {
+                    float x = waypoint.position.x;
+                    if (x < leftMinX) leftMinX = x;
+                    if (x > leftMaxX) leftMaxX = x;
+                }
+            }
+        }
+        
+        // 중앙 루트의 X 범위
+        if (spawner.walkableCenter != null && spawner.walkableCenter.Length > 0)
+        {
+            foreach (var waypoint in spawner.walkableCenter)
+            {
+                if (waypoint != null)
+                {
+                    float x = waypoint.position.x;
+                    if (x < centerMinX) centerMinX = x;
+                    if (x > centerMaxX) centerMaxX = x;
+                }
+            }
+        }
+        
+        // 우측 루트의 X 범위
+        if (spawner.walkableRight != null && spawner.walkableRight.Length > 0)
+        {
+            foreach (var waypoint in spawner.walkableRight)
+            {
+                if (waypoint != null)
+                {
+                    float x = waypoint.position.x;
+                    if (x < rightMinX) rightMinX = x;
+                    if (x > rightMaxX) rightMaxX = x;
+                }
+            }
+        }
+        
+        // 각 루트의 중심점 계산
+        float leftCenterX = (leftMinX + leftMaxX) / 2;
+        float centerCenterX = (centerMinX + centerMaxX) / 2;
+        float rightCenterX = (rightMinX + rightMaxX) / 2;
+        
+        // 타일이 어느 범위에 속하는지 확인
+        if (leftMinX != float.MaxValue && tileX >= leftMinX && tileX <= leftMaxX)
+        {
+            Debug.Log($"[PlacementManager] 타일 {tile.name} (X: {tileX})은 좌측 루트 범위에 있음");
+            return RouteType.Left;
+        }
+        else if (rightMinX != float.MaxValue && tileX >= rightMinX && tileX <= rightMaxX)
+        {
+            Debug.Log($"[PlacementManager] 타일 {tile.name} (X: {tileX})은 우측 루트 범위에 있음");
+            return RouteType.Right;
+        }
+        else if (centerMinX != float.MaxValue && tileX >= centerMinX && tileX <= centerMaxX)
+        {
+            Debug.Log($"[PlacementManager] 타일 {tile.name} (X: {tileX})은 중앙 루트 범위에 있음");
+            return RouteType.Center;
+        }
+        
+        // 범위 밖이면 가장 가까운 중심점으로
+        float distToLeft = (leftCenterX != float.MaxValue) ? Mathf.Abs(tileX - leftCenterX) : float.MaxValue;
+        float distToCenter = (centerCenterX != float.MaxValue) ? Mathf.Abs(tileX - centerCenterX) : float.MaxValue;
+        float distToRight = (rightCenterX != float.MaxValue) ? Mathf.Abs(tileX - rightCenterX) : float.MaxValue;
+        
+        Debug.Log($"[PlacementManager] 타일 {tile.name} (X: {tileX}) - 좌측 거리: {distToLeft}, 중앙 거리: {distToCenter}, 우측 거리: {distToRight}");
+        
+        if (distToLeft < distToCenter && distToLeft < distToRight)
+        {
+            Debug.Log($"[PlacementManager] 타일 {tile.name}은 좌측 루트 선택 (가장 가까움)");
+            return RouteType.Left;
+        }
+        else if (distToRight < distToCenter && distToRight < distToLeft)
+        {
+            Debug.Log($"[PlacementManager] 타일 {tile.name}은 우측 루트 선택 (가장 가까움)");
+            return RouteType.Right;
+        }
+        else
+        {
+            Debug.Log($"[PlacementManager] 타일 {tile.name}은 중앙 루트 선택 (기본값)");
+            return RouteType.Default; // ▼▼ [수정] Center → Default로 변경
+        }
+    }
+    
+    /// <summary>
+    /// 타일의 위치에 따라 적절한 루트를 결정합니다. (지역2용)
+    /// </summary>
+    private RouteType DetermineRouteFromTile(Tile tile, WaveSpawnerRegion2 spawner)
+    {
+        if (tile == null || spawner == null) return RouteType.Default;
+        
+        // ▼▼ [추가] placable2/placed2 타일인 경우 Default 루트 사용 (타워용)
+        if (tile.IsPlacable2() || tile.IsPlaced2())
+        {
+            Debug.Log($"[PlacementManager] 타일 {tile.name}은 타워용 타일이므로 Default 루트 선택");
+            return RouteType.Default;
+        }
+        
+        // ▼▼ [추가] 새로운 타일 타입별 루트 직접 결정
+        if (tile.IsWalkable2Left())
+        {
+            Debug.Log($"[PlacementManager] 타일 {tile.name}은 Walkable2Left 타일이므로 Left 루트 선택");
+            return RouteType.Left;
+        }
+        if (tile.IsWalkable2Center())
+        {
+            Debug.Log($"[PlacementManager] 타일 {tile.name}은 Walkable2Center 타일이므로 Center 루트 선택");
+            return RouteType.Center;
+        }
+        if (tile.IsWalkable2Right())
+        {
+            Debug.Log($"[PlacementManager] 타일 {tile.name}은 Walkable2Right 타일이므로 Right 루트 선택");
+            return RouteType.Right;
+        }
+        
+        float tileX = tile.transform.position.x;
+        
+        // 좌측 루트의 X 범위 확인
+        if (spawner.walkableLeft2 != null && spawner.walkableLeft2.Length > 0)
+        {
+            float leftAvgX = 0f;
+            foreach (var waypoint in spawner.walkableLeft2)
+            {
+                if (waypoint != null) leftAvgX += waypoint.position.x;
+            }
+            leftAvgX /= spawner.walkableLeft2.Length;
+            
+            // 중앙 루트의 X 평균
+            float centerAvgX = 0f;
+            if (spawner.walkableCenter2 != null && spawner.walkableCenter2.Length > 0)
+            {
+                foreach (var waypoint in spawner.walkableCenter2)
+                {
+                    if (waypoint != null) centerAvgX += waypoint.position.x;
+                }
+                centerAvgX /= spawner.walkableCenter2.Length;
+            }
+            
+            // 우측 루트의 X 평균
+            float rightAvgX = 0f;
+            if (spawner.walkableRight2 != null && spawner.walkableRight2.Length > 0)
+            {
+                foreach (var waypoint in spawner.walkableRight2)
+                {
+                    if (waypoint != null) rightAvgX += waypoint.position.x;
+                }
+                rightAvgX /= spawner.walkableRight2.Length;
+            }
+            
+            // 타일이 어느 루트에 가장 가까운지 판단
+            float distToLeft = Mathf.Abs(tileX - leftAvgX);
+            float distToCenter = Mathf.Abs(tileX - centerAvgX);
+            float distToRight = Mathf.Abs(tileX - rightAvgX);
+            
+            if (distToLeft <= distToCenter && distToLeft <= distToRight)
+            {
+                return RouteType.Left;
+            }
+            else if (distToRight <= distToCenter && distToRight <= distToLeft)
+            {
+                return RouteType.Right;
+            }
+        }
+        
+        return RouteType.Default; // ▼▼ [수정] Center → Default로 변경
+    }
+    
+    /// <summary>
     /// 랜덤하게 루트(좌/중/우)를 선택합니다.
     /// </summary>
     private RouteType GetRandomRoute()
@@ -2437,11 +2718,14 @@ public class PlacementManager : MonoBehaviour
 
     /// <summary>
     /// WaveSpawner에서 선택된 루트에 대한 웨이포인트 배열을 반환합니다.
+    /// 캐릭터는 선택된 루트만 사용합니다.
     /// </summary>
     private Transform[] GetWaypointsForRoute(WaveSpawner spawner, RouteType route)
     {
         switch (route)
         {
+            case RouteType.Default:
+                return spawner.walkableCenter; // Default는 Center 루트 사용
             case RouteType.Left:
                 return spawner.walkableLeft;
             case RouteType.Center:
@@ -2452,14 +2736,58 @@ public class PlacementManager : MonoBehaviour
                 return spawner.walkableCenter;
         }
     }
+    
+    /// <summary>
+    /// WaveSpawner의 모든 walkable 타일 웨이포인트를 하나의 배열로 반환
+    /// </summary>
+    private Transform[] GetAllWalkableWaypointsFromSpawner(WaveSpawner spawner)
+    {
+        List<Transform> allWaypoints = new List<Transform>();
+        
+        // 좌측 경로 추가
+        if (spawner.walkableLeft != null)
+        {
+            allWaypoints.AddRange(spawner.walkableLeft);
+        }
+        
+        // 중앙 경로 추가
+        if (spawner.walkableCenter != null)
+        {
+            allWaypoints.AddRange(spawner.walkableCenter);
+        }
+        
+        // 우측 경로 추가
+        if (spawner.walkableRight != null)
+        {
+            allWaypoints.AddRange(spawner.walkableRight);
+        }
+        
+        // 중복 제거 및 거리 기준 정렬
+        List<Transform> uniqueWaypoints = new List<Transform>();
+        foreach (var waypoint in allWaypoints)
+        {
+            if (waypoint != null && !uniqueWaypoints.Contains(waypoint))
+            {
+                uniqueWaypoints.Add(waypoint);
+            }
+        }
+        
+        // Y 좌표 기준으로 정렬 (아래에서 위로)
+        uniqueWaypoints.Sort((a, b) => a.position.y.CompareTo(b.position.y));
+        
+        return uniqueWaypoints.ToArray();
+    }
 
     /// <summary>
     /// WaveSpawnerRegion2에서 선택된 루트에 대한 웨이포인트 배열을 반환합니다.
+    /// 캐릭터는 선택된 루트만 사용합니다.
     /// </summary>
     private Transform[] GetWaypointsForRoute(WaveSpawnerRegion2 spawner, RouteType route)
     {
         switch (route)
         {
+            case RouteType.Default:
+                return spawner.walkableCenter2; // Default는 Center 루트 사용
             case RouteType.Left:
                 return spawner.walkableLeft2;
             case RouteType.Center:
@@ -2470,29 +2798,82 @@ public class PlacementManager : MonoBehaviour
                 return spawner.walkableCenter2;
         }
     }
+    
+    /// <summary>
+    /// WaveSpawnerRegion2의 모든 walkable2 타일 웨이포인트를 하나의 배열로 반환
+    /// </summary>
+    private Transform[] GetAllWalkableWaypointsFromSpawner(WaveSpawnerRegion2 spawner)
+    {
+        List<Transform> allWaypoints = new List<Transform>();
+        
+        // 좌측 경로 추가
+        if (spawner.walkableLeft2 != null)
+        {
+            allWaypoints.AddRange(spawner.walkableLeft2);
+        }
+        
+        // 중앙 경로 추가
+        if (spawner.walkableCenter2 != null)
+        {
+            allWaypoints.AddRange(spawner.walkableCenter2);
+        }
+        
+        // 우측 경로 추가
+        if (spawner.walkableRight2 != null)
+        {
+            allWaypoints.AddRange(spawner.walkableRight2);
+        }
+        
+        // 중복 제거 및 거리 기준 정렬
+        List<Transform> uniqueWaypoints = new List<Transform>();
+        foreach (var waypoint in allWaypoints)
+        {
+            if (waypoint != null && !uniqueWaypoints.Contains(waypoint))
+            {
+                uniqueWaypoints.Add(waypoint);
+            }
+        }
+        
+        // Y 좌표 기준으로 정렬 (위에서 아래로 - 지역2는 반대)
+        uniqueWaypoints.Sort((a, b) => b.position.y.CompareTo(a.position.y));
+        
+        return uniqueWaypoints.ToArray();
+    }
 
     /// <summary>
     /// WaveSpawner에서 선택된 루트에 대한 스폰 위치를 반환합니다.
     /// </summary>
     private Vector3 GetSpawnPositionForRoute(WaveSpawner spawner, RouteType route)
     {
+        Transform spawnPoint = null;
+        
+        switch (route)
+        {
+            case RouteType.Default:
+                spawnPoint = spawner.centerSpawnPoint; // Default는 Center 스폰 포인트 사용
+                break;
+            case RouteType.Left:
+                spawnPoint = spawner.leftSpawnPoint;
+                break;
+            case RouteType.Center:
+                spawnPoint = spawner.centerSpawnPoint;
+                break;
+            case RouteType.Right:
+                spawnPoint = spawner.rightSpawnPoint;
+                break;
+        }
+        
+        // 스폰 포인트가 설정되어 있으면 그 위치 사용
+        if (spawnPoint != null)
+        {
+            return spawnPoint.position;
+        }
+        
+        // 스폰 포인트가 없으면 해당 루트의 첫 번째 웨이포인트 위치 사용
         Transform[] waypoints = GetWaypointsForRoute(spawner, route);
         if (waypoints != null && waypoints.Length > 0)
         {
             return waypoints[0].position;
-        }
-        
-        // 기본값으로 center 스폰 포인트 반환
-        Transform centerSpawnPoint = spawner.centerSpawnPoint;
-        if (centerSpawnPoint != null)
-        {
-            return centerSpawnPoint.position;
-        }
-        
-        // 스폰 포인트도 없으면 웨이포인트의 첫 번째 위치 반환
-        if (spawner.walkableCenter != null && spawner.walkableCenter.Length > 0)
-        {
-            return spawner.walkableCenter[0].position;
         }
         
         return Vector3.zero;
@@ -2503,26 +2884,131 @@ public class PlacementManager : MonoBehaviour
     /// </summary>
     private Vector3 GetSpawnPositionForRoute(WaveSpawnerRegion2 spawner, RouteType route)
     {
+        Transform spawnPoint = null;
+        
+        switch (route)
+        {
+            case RouteType.Default:
+                spawnPoint = spawner.centerSpawnPoint2; // Default는 Center 스폰 포인트 사용
+                break;
+            case RouteType.Left:
+                spawnPoint = spawner.leftSpawnPoint2;
+                break;
+            case RouteType.Center:
+                spawnPoint = spawner.centerSpawnPoint2;
+                break;
+            case RouteType.Right:
+                spawnPoint = spawner.rightSpawnPoint2;
+                break;
+        }
+        
+        // 스폰 포인트가 설정되어 있으면 그 위치 사용
+        if (spawnPoint != null)
+        {
+            return spawnPoint.position;
+        }
+        
+        // 스폰 포인트가 없으면 해당 루트의 첫 번째 웨이포인트 위치 사용
         Transform[] waypoints = GetWaypointsForRoute(spawner, route);
         if (waypoints != null && waypoints.Length > 0)
         {
             return waypoints[0].position;
         }
         
-        // 기본값으로 center 스폰 포인트 반환
-        Transform centerSpawnPoint = spawner.centerSpawnPoint2;
-        if (centerSpawnPoint != null)
-        {
-            return centerSpawnPoint.position;
-        }
-        
-        // 스폰 포인트도 없으면 웨이포인트의 첫 번째 위치 반환
-        if (spawner.walkableCenter2 != null && spawner.walkableCenter2.Length > 0)
-        {
-            return spawner.walkableCenter2[0].position;
-        }
-        
         return Vector3.zero;
+    }
+
+    /// <summary>
+    /// 루트가 선택되었을 때 호출되는 메서드
+    /// </summary>
+    private void OnRouteSelected(Character character, Tile tile, RouteType selectedRoute, WaveSpawner spawner)
+    {
+        Transform[] waypoints = GetWaypointsForRoute(spawner, selectedRoute);
+        
+        if (waypoints == null || waypoints.Length == 0)
+        {
+            Debug.LogWarning($"[PlacementManager] {selectedRoute} 루트의 웨이포인트가 없습니다.");
+            Destroy(character.gameObject);
+            return;
+        }
+        
+        Vector3 spawnPos = GetSpawnPositionForRoute(spawner, selectedRoute);
+        
+        // 캐릭터를 실제 위치로 이동
+        RectTransform allyRect = character.GetComponent<RectTransform>();
+        if (allyRect != null)
+        {
+            Vector2 localPos = ourMonsterPanel.InverseTransformPoint(spawnPos);
+            allyRect.anchoredPosition = localPos;
+            allyRect.localRotation = Quaternion.identity;
+        }
+        else
+        {
+            character.transform.position = spawnPos;
+            character.transform.localRotation = Quaternion.identity;
+        }
+        
+        // 웨이포인트 설정
+        character.currentWaypointIndex = 0;
+        character.pathWaypoints = waypoints;
+        character.maxWaypointIndex = waypoints.Length - 1;
+        character.selectedRoute = selectedRoute;
+        
+        Debug.Log($"[PlacementManager] 캐릭터 {character.characterName}에게 {selectedRoute} 루트 설정 완료. 웨이포인트 개수: {waypoints.Length}");
+        
+        // 타일을 사용된 것으로 표시 - Tile 클래스에 메서드가 없으므로 제거
+        // tile.SetAsUsed();
+    }
+    
+    /// <summary>
+    /// 루트 선택이 취소되었을 때 호출되는 메서드
+    /// </summary>
+    private void OnRouteCancelled(Character character)
+    {
+        Debug.Log($"[PlacementManager] 루트 선택 취소 - 캐릭터 제거: {character.characterName}");
+        // RouteSelectionUI에서 이미 캐릭터를 제거하고 미네랄을 환불함
+    }
+
+    /// <summary>
+    /// 지역2에서 루트가 선택되었을 때 호출되는 메서드
+    /// </summary>
+    private void OnRouteSelectedRegion2(Character character, Tile tile, RouteType selectedRoute, WaveSpawnerRegion2 spawner2)
+    {
+        Transform[] waypoints = GetWaypointsForRoute(spawner2, selectedRoute);
+        
+        if (waypoints == null || waypoints.Length == 0)
+        {
+            Debug.LogWarning($"[PlacementManager] {selectedRoute} 루트의 웨이포인트가 없습니다.");
+            Destroy(character.gameObject);
+            return;
+        }
+        
+        Vector3 spawnPos = GetSpawnPositionForRoute(spawner2, selectedRoute);
+        
+        // 캐릭터를 실제 위치로 이동
+        RectTransform enemyRect = character.GetComponent<RectTransform>();
+        if (enemyRect != null)
+        {
+            Vector2 localPos = opponentOurMonsterPanel.InverseTransformPoint(spawnPos);
+            enemyRect.anchoredPosition = localPos;
+            enemyRect.localRotation = Quaternion.identity;
+        }
+        else
+        {
+            character.transform.position = spawnPos;
+            character.transform.localRotation = Quaternion.identity;
+        }
+        
+        // 웨이포인트 설정
+        character.currentWaypointIndex = 0;
+        character.pathWaypoints = waypoints;
+        character.maxWaypointIndex = waypoints.Length - 1;
+        character.selectedRoute = selectedRoute;
+        
+        Debug.Log($"[PlacementManager] 캐릭터 {character.characterName}에게 {selectedRoute} 루트 설정 완료. 웨이포인트 개수: {waypoints.Length}");
+        
+        // 타일을 사용된 것으로 표시 - Tile 클래스에 메서드가 없으므로 제거
+        // tile.SetAsUsed();
     }
 }
         

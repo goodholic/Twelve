@@ -95,16 +95,7 @@ public class Character : NetworkBehaviour, IDamageable
     [Tooltip("주인공(히어로) 여부")]
     public bool isHero = false;
 
-    [Header("Path Waypoints for Auto Movement")]
-    public Transform[] pathWaypoints;
 
-    /// <summary>
-    /// 현재 웨이포인트 인덱스 (기본 -1이면 이동 안 함)
-    /// </summary>
-    public int currentWaypointIndex = -1;
-
-    [Header("[추가] 최대 웨이포인트 인덱스 (기본=6)")]
-    public int maxWaypointIndex = 6;
 
     // 사거리 표시용
     [Header("Range Indicator Settings")]
@@ -160,8 +151,13 @@ public class Character : NetworkBehaviour, IDamageable
 
     // ▼▼ [추가] 선택된 루트 정보 저장
     [Header("Route Selection")]
-    [Tooltip("캐릭터가 선택한 루트 (Left/Center/Right)")]
-    public RouteType selectedRoute = RouteType.Center;
+    [Tooltip("캐릭터가 선택한 루트 (Default/Left/Center/Right)")]
+    public RouteType selectedRoute = RouteType.Default;
+    
+    // WaveSpawner에서 관리하는 이동 정보
+    [HideInInspector] public Transform[] pathWaypoints;
+    [HideInInspector] public int currentWaypointIndex = -1;
+    [HideInInspector] public int maxWaypointIndex = 6;
 
     // ▼▼ [수정추가] 새 공격 범위
     [Header("클릭 시 변경될 새로운 공격 범위(예: 4.0f)")]
@@ -202,34 +198,11 @@ public class Character : NetworkBehaviour, IDamageable
     // ================================
     private CharacterJumpController jumpController;
     private bool isJumpingAcross = false; // 점프 중 여부
+    private bool hasJumped = false; // 점프 완료 여부 추가
 
-    // -------------------------------------------------------
-    // (★ 추가) 한 번이라도 Region1→Region2 (또는 반대)로 넘어갔는지
-    //           + 넘어간 뒤에는 walkable/walkable2를 따라가지 않음
-    //           + 공격 시에는 특정 태그("Opponent Player"/"Player") 추적
-    // -------------------------------------------------------
-    public bool hasCrossedRegion = false;
-    private string chaseTag = null;
 
-    // [추가] 태그들
-    [Header("다른 지역 캐릭터 태그 (공격용)")]
-    public string playerTag = "Player";
-    public string opponentPlayerTag = "Opponent Player";
-    public string characterTag = "Character";
 
-    // =========================
-    // [수정] endPos를 인스펙터에서
-    //        지정할 RectTransform
-    // =========================
-    [Header("End Tile Rect (Inspector에서 지정)")]
-    [SerializeField] private RectTransform endTileRect; // [수정 추가]
 
-    // [추가] 캔버스의 자식 오브젝트를 직접 참조
-    [Header("점프할 대상 위치 (Canvas의 자식 오브젝트)")]
-    [SerializeField] private Transform targetJumpPosition;
-
-    [Header("점프 시작 위치 (Canvas의 자식 오브젝트)")]
-    [SerializeField] private Transform startJumpPosition;
 
     // ================================
     // [수정] (아래) 위/아래 방향 캐릭터 스프라이트 추가
@@ -366,54 +339,43 @@ public class Character : NetworkBehaviour, IDamageable
             return;
         }
 
-        // 점프 후 상대 지역 캐릭터 추적 로직
-        if (hasCrossedRegion)
+        // ▼▼ [수정] placable/placed 타일의 캐릭터는 이동하지 않음
+        if (currentTile != null && (currentTile.IsPlacable() || currentTile.IsPlacable2() || 
+            currentTile.IsPlaceTile() || currentTile.IsPlaced2()))
         {
-            // 점프한 캐릭터는 상대 지역의 캐릭터들을 추적
-            if (currentCharTarget == null || !currentCharTarget.gameObject.activeInHierarchy)
-            {
-                // 타겟이 없거나 비활성화됐으면 새 타겟 탐색
-                FindNewOpponentAfterCrossing();
-            }
-            
-            if (currentCharTarget != null)
-            {
-                // 타겟이 있으면 해당 타겟을 향해 이동
-                MoveTowardsTarget(currentCharTarget.transform.position);
-            }
-            else
-            {
-                // 캐릭터 타겟이 없으면 성을 향해 이동
-                MoveTowardsCastle();
-            }
-
-            // [추가] 캐릭터 스프라이트 Up/Down 갱신
-            UpdateCharacterDirectionSprite(); // [수정추가]
+            // placable/placed 타일에 있는 캐릭터는 이동하지 않음
             return;
         }
 
-        // 일반 이동 로직 (기존 코드)
-        if (currentWaypointIndex == -1)
-        {
-            // [추가] 캐릭터 스프라이트 Up/Down 갱신
-            UpdateCharacterDirectionSprite(); // [수정추가]
-            return;
-        }
-
+        // walkable 타일에 배치된 캐릭터는 currentWaypointIndex가 0 이상이어야 함
         if (pathWaypoints != null && pathWaypoints.Length > 0 && currentWaypointIndex >= 0)
         {
             MoveAlongWaypoints();
         }
+        // ▼▼ [수정] walkable 타일에서 시작한 캐릭터도 이동 가능하도록
+        else if (currentWaypointIndex == -1 && pathWaypoints != null && pathWaypoints.Length > 0)
+        {
+            // walkable 타일에 처음 배치된 경우 이동 시작
+            currentWaypointIndex = 0;
+            Debug.Log($"[Character] {characterName} walkable 타일에서 이동 시작 - 웨이포인트 개수: {pathWaypoints.Length}, 루트: {selectedRoute}");
+        }
 
         // [추가] 캐릭터 스프라이트 Up/Down 갱신
-        UpdateCharacterDirectionSprite(); // [수정추가]
+        UpdateCharacterDirectionSprite();
     }
 
     private void MoveAlongWaypoints()
     {
         if (pathWaypoints == null || pathWaypoints.Length == 0)
         {
+            Debug.LogWarning($"[Character] {characterName}의 pathWaypoints가 null이거나 비어있음");
             return;
+        }
+
+        // maxWaypointIndex를 실제 배열 길이에 맞게 조정
+        if (maxWaypointIndex < 0 || maxWaypointIndex >= pathWaypoints.Length)
+        {
+            maxWaypointIndex = pathWaypoints.Length - 1;
         }
 
         if (currentWaypointIndex > maxWaypointIndex)
@@ -430,7 +392,20 @@ public class Character : NetworkBehaviour, IDamageable
         }
 
         Transform target = pathWaypoints[currentWaypointIndex];
-        if (target == null) return;
+        if (target == null) 
+        {
+            Debug.LogWarning($"[Character] {characterName}의 웨이포인트[{currentWaypointIndex}]가 null");
+            return;
+        }
+
+        // ===============================
+        // [추가] 점프 포인트 도달 체크
+        // ===============================
+        if (!isJumpingAcross && CheckIfAtJumpPoint())
+        {
+            StartJumpToOtherRegion();
+            return;
+        }
 
         Vector2 currentPos = transform.position;
         Vector2 targetPos = target.position;
@@ -458,6 +433,246 @@ public class Character : NetworkBehaviour, IDamageable
         }
     }
 
+    /// <summary>
+    /// 현재 위치가 점프 포인트인지 확인
+    /// </summary>
+    private bool CheckIfAtJumpPoint()
+    {
+        // 이미 점프를 완료했으면 더 이상 체크하지 않음
+        if (hasJumped) return false;
+        
+        // WaveSpawner 참조 가져오기
+        if (areaIndex == 1)
+        {
+            if (waveSpawner == null)
+                waveSpawner = FindFirstObjectByType<WaveSpawner>();
+            
+            if (waveSpawner != null)
+            {
+                Transform jumpPoint = waveSpawner.GetJumpPointForRoute((WaveSpawner.RouteType)selectedRoute);
+                if (jumpPoint != null)
+                {
+                    float distToJumpPoint = Vector2.Distance(transform.position, jumpPoint.position);
+                    if (distToJumpPoint < 0.5f) // 점프 포인트에 충분히 가까우면
+                    {
+                        Debug.Log($"[Character] {characterName}이(가) 점프 포인트에 도달!");
+                        return true;
+                    }
+                }
+            }
+        }
+        else if (areaIndex == 2)
+        {
+            if (waveSpawnerRegion == null)
+                waveSpawnerRegion = FindFirstObjectByType<WaveSpawnerRegion2>();
+            
+            if (waveSpawnerRegion != null)
+            {
+                Transform jumpPoint = waveSpawnerRegion.GetJumpPointForRoute((WaveSpawnerRegion2.RouteType)selectedRoute);
+                if (jumpPoint != null)
+                {
+                    float distToJumpPoint = Vector2.Distance(transform.position, jumpPoint.position);
+                    if (distToJumpPoint < 0.5f) // 점프 포인트에 충분히 가까우면
+                    {
+                        Debug.Log($"[Character] {characterName}이(가) 점프 포인트에 도달!");
+                        return true;
+                    }
+                }
+            }
+        }
+        
+        return false;
+    }
+
+    /// <summary>
+    /// 다른 지역으로 점프 시작
+    /// </summary>
+    private void StartJumpToOtherRegion()
+    {
+        if (isJumpingAcross) return;
+        isJumpingAcross = true;
+
+        // 지역1 → 지역2로 점프
+        if (areaIndex == 1)
+        {
+            if (waveSpawner != null)
+            {
+                Transform targetPoint = waveSpawner.GetTargetPointForRoute((WaveSpawner.RouteType)selectedRoute);
+                
+                if (targetPoint != null)
+                {
+                    // 점프 애니메이션 시작
+                    StartCoroutine(JumpToRegion(targetPoint.position, 2));
+        }
+        else
+        {
+                    Debug.LogWarning($"[Character] 점프 도착 지점이 설정되지 않았습니다. Route: {selectedRoute}");
+                    isJumpingAcross = false;
+                }
+            }
+        }
+        // 지역2 → 지역1로 점프
+        else if (areaIndex == 2)
+        {
+            if (waveSpawnerRegion != null)
+            {
+                Transform targetPoint = waveSpawnerRegion.GetTargetPointForRoute((WaveSpawnerRegion2.RouteType)selectedRoute);
+                
+                if (targetPoint != null)
+                {
+                    // 점프 애니메이션 시작
+                    StartCoroutine(JumpToRegion(targetPoint.position, 1));
+            }
+            else
+            {
+                    Debug.LogWarning($"[Character] 점프 도착 지점이 설정되지 않았습니다. Route: {selectedRoute}");
+                    isJumpingAcross = false;
+                }
+            }
+        }
+    }
+    
+    /// <summary>
+    /// 점프 애니메이션 코루틴
+    /// </summary>
+    private IEnumerator JumpToRegion(Vector3 targetPos, int newAreaIndex)
+    {
+        // 1. 점프 시작
+        Vector3 startPos = transform.position;
+        
+        // 2. 점프 애니메이션 (포물선 이동)
+        float jumpDuration = 1.0f; // 점프 시간
+        float jumpHeight = 1.0f; // ▼▼ [수정] 점프 높이 3.0f → 1.0f로 감소
+        float elapsedTime = 0f;
+        
+        while (elapsedTime < jumpDuration)
+        {
+            elapsedTime += Time.deltaTime;
+            float t = elapsedTime / jumpDuration;
+            
+            // 포물선 이동
+            Vector3 currentPos = Vector3.Lerp(startPos, targetPos, t);
+            currentPos.y += jumpHeight * Mathf.Sin(t * Mathf.PI); // 포물선 높이
+            
+            transform.position = currentPos;
+            
+            yield return null;
+        }
+        
+        // 3. 도착 위치에 정확히 배치
+        transform.position = targetPos;
+        
+        // 4. 지역 정보 업데이트
+        areaIndex = newAreaIndex;
+        isJumpingAcross = false;
+        hasJumped = true; // 점프 완료 표시
+        
+        // 5. 새로운 지역의 웨이포인트 설정
+        if (newAreaIndex == 1)
+        {
+            // 지역1의 웨이포인트 설정
+            if (waveSpawner != null)
+            {
+                // 지역1은 walkable 타일을 따라 이동
+                Transform[] waypoints = null;
+                switch (selectedRoute)
+                {
+                    case RouteType.Default:
+                        waypoints = waveSpawner.walkableCenter; // Default는 Center 루트 사용
+                        break;
+                    case RouteType.Left:
+                        waypoints = waveSpawner.walkableLeft;
+                        break;
+                    case RouteType.Center:
+                        waypoints = waveSpawner.walkableCenter;
+                        break;
+                    case RouteType.Right:
+                        waypoints = waveSpawner.walkableRight;
+                        break;
+                }
+                
+                if (waypoints != null && waypoints.Length > 0)
+                {
+                    pathWaypoints = waypoints;
+                    currentWaypointIndex = 0;
+                    maxWaypointIndex = waypoints.Length - 1;
+                    Debug.Log($"[Character] {characterName}이(가) 지역1로 점프 완료. {selectedRoute} 루트 시작");
+                }
+            }
+        }
+        else if (newAreaIndex == 2)
+        {
+            // 지역2의 웨이포인트 설정
+            if (waveSpawnerRegion == null)
+                waveSpawnerRegion = FindFirstObjectByType<WaveSpawnerRegion2>();
+            
+            if (waveSpawnerRegion != null)
+            {
+                // 지역2는 walkable2 타일을 따라 이동
+                Transform[] waypoints = null;
+                switch (selectedRoute)
+                {
+                    case RouteType.Default:
+                        waypoints = waveSpawnerRegion.walkableCenter2; // Default는 Center 루트 사용
+                        break;
+                    case RouteType.Left:
+                        waypoints = waveSpawnerRegion.walkableLeft2;
+                        break;
+                    case RouteType.Center:
+                        waypoints = waveSpawnerRegion.walkableCenter2;
+                        break;
+                    case RouteType.Right:
+                        waypoints = waveSpawnerRegion.walkableRight2;
+                        break;
+                }
+                
+                if (waypoints != null && waypoints.Length > 0)
+                {
+                    pathWaypoints = waypoints;
+                    currentWaypointIndex = 0;
+                    maxWaypointIndex = waypoints.Length - 1;
+                    Debug.Log($"[Character] {characterName}이(가) 지역2로 점프 완료. {selectedRoute} 루트 시작");
+                }
+            }
+        }
+        
+        // 6. 패널 변경 (지역에 따라)
+        UpdatePanelForRegion(newAreaIndex);
+    }
+    
+    /// <summary>
+    /// 지역에 따라 캐릭터의 부모 패널을 변경
+    /// </summary>
+    private void UpdatePanelForRegion(int newAreaIndex)
+    {
+        RectTransform charRect = GetComponent<RectTransform>();
+        if (charRect != null)
+        {
+            if (newAreaIndex == 1)
+            {
+                // 지역1로 이동 시 ourMonsterPanel로 변경
+                PlacementManager pm = PlacementManager.Instance;
+                if (pm != null && pm.ourMonsterPanel != null)
+                {
+                    charRect.SetParent(pm.ourMonsterPanel, false);
+                    Vector2 localPos = pm.ourMonsterPanel.InverseTransformPoint(transform.position);
+                    charRect.anchoredPosition = localPos;
+                }
+            }
+            else if (newAreaIndex == 2)
+            {
+                // 지역2로 이동 시 opponentOurMonsterPanel로 변경
+                PlacementManager pm = PlacementManager.Instance;
+                if (pm != null && pm.opponentOurMonsterPanel != null)
+                {
+                    charRect.SetParent(pm.opponentOurMonsterPanel, false);
+                    Vector2 localPos = pm.opponentOurMonsterPanel.InverseTransformPoint(transform.position);
+                    charRect.anchoredPosition = localPos;
+                }
+            }
+        }
+    }
+
     private void OnArriveCastle()
     {
         // 히어로는 파괴/소멸 로직 없음
@@ -467,145 +682,71 @@ public class Character : NetworkBehaviour, IDamageable
         }
 
         // ===============================
-        // [수정] '끝'에 도달하면 "상대 지역으로 점프"
-        //        (단, 이미 점프중이면 중복 방지)
+        // [수정] '끝'에 도달하면 성에 데미지를 주고 캐릭터 제거
         // ===============================
+        
+        // 이미 처리 중이면 중복 방지
         if (isJumpingAcross) return;
-
-        if (areaIndex == 1)
+        
+        Debug.Log($"[Character] {characterName}이(가) 성에 도달했습니다! (지역: {areaIndex}, 점프했음: {hasJumped})");
+        
+        // ▼▼ [수정] 타 지역의 성에 도달한 경우 성 데미지 처리
+        // 지역1 캐릭터가 지역2 성에 도달한 경우 (점프를 통해)
+        if (areaIndex == 2 && hasJumped)
         {
-            // 지역1 -> 지역2
-            StartCoroutine(CrossToOtherRegion(2));
-        }
-        else
-        {
-            // 지역2 -> 지역1
-            StartCoroutine(CrossToOtherRegion(1));
-        }
-    }
-
-    private IEnumerator CrossToOtherRegion(int nextAreaIndex)
-    {
-        isJumpingAcross = true;
-
-        Vector3 startPos;
-        Vector3 endPos;
-
-        // 시작 위치 설정
-        if (startJumpPosition != null)
-        {
-            // UI 요소인 경우
-            RectTransform rt = startJumpPosition as RectTransform;
-            if (rt != null && rt.parent != null)
+            // 지역2의 성에 데미지
+            WaveSpawnerRegion2 spawner2 = FindFirstObjectByType<WaveSpawnerRegion2>();
+            if (spawner2 != null)
             {
-                Vector3[] corners = new Vector3[4];
-                rt.GetWorldCorners(corners);
-                startPos = corners[0]; 
-                startPos.z = 0f;
+                spawner2.TakeDamageToRegion2(1);
+                Debug.Log($"[Character] {characterName}이(가) 지역2 성에 1 데미지를 입혔습니다!");
             }
-            else
+        }
+        // 지역2 캐릭터가 지역1 성에 도달한 경우 (점프를 통해)
+        else if (areaIndex == 1 && hasJumped)
+        {
+            // 지역1의 성에 데미지
+            GameManager gameManager = FindFirstObjectByType<GameManager>();
+            if (gameManager != null)
             {
-                startPos = startJumpPosition.position;
+                gameManager.TakeDamageToRegion1(1);
+                Debug.Log($"[Character] {characterName}이(가) 지역1 성에 1 데미지를 입혔습니다!");
             }
         }
         else
         {
-            startPos = transform.position;
+            // 자기 지역 성에 도달한 경우 (점프하지 않은 캐릭터)
+            Debug.LogWarning($"[Character] {characterName}이(가) 자기 팀 성에 도달했지만 데미지를 주지 않습니다.");
         }
-
-        // [수정] 캔버스의 자식 오브젝트 위치 사용
-        if (targetJumpPosition != null)
+        
+        // 캐릭터 제거 (성에 도달하면 무조건 사라짐)
+        Debug.Log($"[Character] {characterName}이(가) 성에 도달하여 제거됩니다.");
+        
+        // 타일 참조 정리
+        if (currentTile != null)
         {
-            RectTransform rt = targetJumpPosition as RectTransform;
-            if (rt != null && rt.parent != null)
+            Tile tile = currentTile;
+            if (PlacementManager.Instance != null && PlacementManager.Instance.gameObject.activeInHierarchy)
             {
-                Vector3[] corners = new Vector3[4];
-                rt.GetWorldCorners(corners);
-                endPos = corners[0]; 
-                endPos.z = 0f;
-            }
-            else
-            {
-                endPos = targetJumpPosition.position;
-            }
+                PlacementManager.Instance.ClearCharacterTileReference(this);
+                PlacementManager.Instance.OnCharacterRemovedFromTile(tile);
         }
         else
         {
-            if (pathWaypoints != null && pathWaypoints.Length > 0 
-                && currentWaypointIndex >= 0 && currentWaypointIndex < pathWaypoints.Length)
-            {
-                Transform waypointTr = pathWaypoints[currentWaypointIndex];
-                RectTransform rt = waypointTr as RectTransform;
-                if (rt != null && rt.parent != null)
-                {
-                    Vector2 localPos = rt.parent.InverseTransformPoint(rt.position);
-                    endPos = rt.parent.TransformPoint(localPos);
-                }
-                else
-                {
-                    endPos = waypointTr.position;
-                }
-            }
-            else
-            {
-                endPos = transform.position;
-                Debug.LogWarning("현재 웨이포인트 인덱스가 유효하지 않아 기본 위치로...");
+                currentTile = null;
             }
         }
-
-        if (endTileRect != null)
-        {
-            endPos = endTileRect.position;
-        }
-
-        // 실제 점프(포물선) - 일반 점프 설정으로 복원
-        if (jumpController != null)
-        {
-            // 기본 점프 높이와 속도 사용
-            jumpController.jumpArcHeight = 80f;   // 원래 점프 높이
-            jumpController.jumpDuration = 1.0f;   // 원래 점프 속도
-            jumpController.JumpToPosition(startPos, endPos, jumpController.jumpArcHeight, jumpController.jumpDuration);
-
-            while (jumpController.isJumping)
-            {
-                yield return null;
-            }
-        }
-        else
-        {
-            // 점프 컨트롤러가 없으면 즉시 이동
-            transform.position = endPos;
-        }
-
-        // === 점프 후 처리 ===
-        // 지역 인덱스는 *변경하지 않는다* (요청사항)
-        hasCrossedRegion = true;
+        
+        // 모든 참조 해제
+        currentTarget = null;
+        currentCharTarget = null;
         pathWaypoints = null;
-        currentWaypointIndex = -1;
-        maxWaypointIndex = -1;
-
-        // region1->region2 => chaseTag="Opponent Player"
-        // region2->region1 => chaseTag="Player"
-        if (nextAreaIndex == 2)
-        {
-            chaseTag = opponentPlayerTag;
-        }
-        else
-        {
-            chaseTag = playerTag;
-        }
-
-        // 넘어간 캐릭터는 'Character' 태그로 변경
-        gameObject.tag = characterTag;
-
-        Debug.Log($"[Character] {characterName}(areaIndex={areaIndex})가 점프 후 태그 변경: {gameObject.tag}, 타겟 태그: {chaseTag}");
-
-        Vector3 fixPos = transform.position;
-        fixPos.z = 0f;
-        transform.position = fixPos;
-
-        isJumpingAcross = false;
-        yield break;
+        
+        // 코루틴 정지
+        StopAllCoroutines();
+        
+        // 캐릭터 파괴
+        Destroy(gameObject);
     }
 
     private IEnumerator AttackRoutine()
@@ -621,58 +762,41 @@ public class Character : NetworkBehaviour, IDamageable
             currentTarget = null;
             IDamageable targetToDamage = null;
 
-            // 히어로 캐릭터는 몬스터만 공격
-            if (isHero)
+            // ▼▼ [수정] AttackTargetType에 따른 타겟 선택
+            switch (attackTargetType)
             {
-                currentTarget = FindHeroTargetInRange();
-                if (currentTarget != null)
-                {
-                    targetToDamage = currentTarget;
-                    Debug.Log($"[Character] 히어로 {characterName}이(가) 몬스터 {currentTarget.name}을(를) 타겟으로 설정!");
-                }
-            }
-            else if (hasCrossedRegion)
-            {
-                // 점프한 캐릭터는 상대 지역 캐릭터 또는 성을 공격
-                // 먼저 범위 내 캐릭터를 찾음
-                currentCharTarget = FindOpponentCharacterInRange();
-                if (currentCharTarget != null)
-                {
-                    targetToDamage = currentCharTarget;
-                    Debug.Log($"[Character] 점프한 {characterName}(areaIndex={areaIndex})가 " +
-                              $"상대 지역 캐릭터 {currentCharTarget.characterName}(areaIndex={currentCharTarget.areaIndex})를 공격!");
-                }
-                else
-                {
-                    // 캐릭터가 없으면 성을 공격
-                    if (CanAttackCastle())
+                case AttackTargetType.All:
+                    // 모든 대상 공격 - 캐릭터 우선, 없으면 몬스터
+                    currentCharTarget = FindCharacterTargetInRange();
+                    if (currentCharTarget != null)
                     {
-                        // 성 공격 처리
-                        AttackCastle();
-                        // AttackRoutine은 계속 진행되므로 여기서는 targetToDamage를 null로 유지
-                        targetToDamage = null;
+                        targetToDamage = currentCharTarget;
+                        Debug.Log($"[Character] {characterName}이(가) 캐릭터 {currentCharTarget.characterName}을(를) 타겟으로 설정!");
                     }
-                }
-            }
-            else
-            {
-                // 수정: 일반 캐릭터는 우선 점프해온 상대 캐릭터를 찾고, 없으면 몬스터 공격
-                currentCharTarget = FindJumpedOpponentCharacterInRange();
-                
-                if (currentCharTarget != null)
-                {
-                    targetToDamage = currentCharTarget;
-                    Debug.Log($"[Character] {characterName}이(가) 점프해온 상대 캐릭터 {currentCharTarget.characterName}을(를) 타겟으로 설정!");
-                }
-                else
-                {
-                    currentTarget = FindMonsterTargetInRange();
-                    if (currentTarget != null)
+                    else
                     {
-                        targetToDamage = currentTarget;
-                        Debug.Log($"[Character] {characterName}이(가) 몬스터 {currentTarget.name}을(를) 타겟으로 설정!");
+                        currentTarget = isHero ? FindHeroTargetInRange() : FindMonsterTargetInRange();
+                        if (currentTarget != null)
+                        {
+                            targetToDamage = currentTarget;
+                            Debug.Log($"[Character] {characterName}이(가) 몬스터 {currentTarget.name}을(를) 타겟으로 설정!");
+                        }
                     }
-                }
+                    break;
+                    
+                case AttackTargetType.CharacterOnly:
+                    // 캐릭터만 공격
+                    currentCharTarget = FindCharacterTargetInRange();
+                    if (currentCharTarget != null)
+                    {
+                        targetToDamage = currentCharTarget;
+                        Debug.Log($"[Character] {characterName}이(가) 캐릭터 {currentCharTarget.characterName}을(를) 타겟으로 설정!");
+                    }
+                    break;
+                    
+                case AttackTargetType.CastleOnly:
+                    // 성만 공격 - 이동만 하고 전투하지 않음
+                    break;
             }
 
             // 타겟이 있으면 공격 실행
@@ -698,9 +822,20 @@ public class Character : NetworkBehaviour, IDamageable
 
     private Monster FindMonsterTargetInRange()
     {
-        // areaIndex=1 → "Monster" 태그
-        // areaIndex=2 → "EnemyMonster" 태그
-        string targetTag = (areaIndex == 1) ? "Monster" : "EnemyMonster";
+        // ▼▼ [수정] 점프한 캐릭터는 타 지역의 몬스터도 공격 가능
+        string targetTag;
+        
+        if (hasJumped)
+        {
+            // 점프한 캐릭터는 현재 지역의 몬스터를 공격
+            targetTag = (areaIndex == 1) ? "Monster" : "EnemyMonster";
+        }
+        else
+        {
+            // 점프하지 않은 캐릭터는 자기 지역의 몬스터만 공격
+            targetTag = (areaIndex == 1) ? "Monster" : "EnemyMonster";
+        }
+        
         GameObject[] foundObjs = GameObject.FindGameObjectsWithTag(targetTag);
 
         Monster nearest = null;
@@ -712,65 +847,19 @@ public class Character : NetworkBehaviour, IDamageable
             Monster m = mo.GetComponent<Monster>();
             if (m == null) continue;
 
-            Vector3 screenPos = Camera.main.WorldToScreenPoint(m.transform.position);
-            if (screenPos.x < 0f || screenPos.x > 1080f || screenPos.y < 0f || screenPos.y > 1920f)
+            // 거리 계산
+            float dist = Vector3.Distance(transform.position, m.transform.position);
+            if (dist <= attackRange && dist < nearestDist)
             {
-                continue;
-            }
-
-            float dist = Vector2.Distance(transform.position, m.transform.position);
-            if (dist < attackRange && dist < nearestDist)
-            {
-                nearestDist = dist;
                 nearest = m;
-            }
-        }
-        return nearest;
-    }
-
-    private Character FindOpponentCharacterInRange()
-    {
-        Character[] allChars = FindObjectsByType<Character>(FindObjectsSortMode.None);
-        Character nearest = null;
-        float nearestDist = Mathf.Infinity;
-
-        foreach (Character c in allChars)
-        {
-            if (c == this) continue;
-            if (c == null || !c.gameObject.activeInHierarchy) continue;
-            
-            if (c.isHero) continue;
-
-            if (c.areaIndex != this.areaIndex)
-            {
-                float dist = Vector2.Distance(transform.position, c.transform.position);
-                
-                float effectiveRange = attackRange;
-                
-                if (dist < effectiveRange && dist < nearestDist)
-                {
-                    if (this.hasCrossedRegion && tag == characterTag)
-                    {
                         nearestDist = dist;
-                        nearest = c;
-                    }
-                    else if (c.hasCrossedRegion && c.tag == characterTag)
-                    {
-                        nearestDist = dist;
-                        nearest = c;
-                    }
-                }
             }
-        }
-        
-        if (nearest != null && !nearest.Equals(null))
-        {
-            Debug.Log($"[Character] {characterName}(areaIndex={areaIndex}, tag={tag})가 " +
-                     $"{nearest.characterName}(areaIndex={nearest.areaIndex}, tag={nearest.tag})를 발견!");
         }
         
         return nearest;
     }
+
+
 
     // 히어로 캐릭터를 위한 몬스터 탐색 메소드 - 더 넓은 범위 적용
     private Monster FindHeroTargetInRange()
@@ -805,85 +894,76 @@ public class Character : NetworkBehaviour, IDamageable
         return nearest;
     }
 
-    private void FindNewOpponentAfterCrossing()
+    /// <summary>
+    /// 공격 범위 내의 적 캐릭터를 찾습니다.
+    /// </summary>
+    private Character FindCharacterTargetInRange()
     {
-        Character[] allChars = FindObjectsByType<Character>(FindObjectsSortMode.None);
-        Character newTarget = null;
-        float closestDist = 100f;
+        // 모든 캐릭터 찾기
+        Character[] allCharacters = FindObjectsByType<Character>(FindObjectsSortMode.None);
+        
+        Character nearest = null;
+        float nearestDist = Mathf.Infinity;
 
-        foreach (Character c in allChars)
+        foreach (Character character in allCharacters)
         {
-            if (c == this || c == null || !c.gameObject.activeInHierarchy) continue;
-            if (c.isHero) continue;
-            if (c.areaIndex != this.areaIndex)
+            if (character == null || character == this) continue;
+            
+            // ▼▼ [수정] 점프한 캐릭터는 타 지역의 캐릭터를 공격 가능
+            bool canAttack = false;
+            
+            if (hasJumped)
             {
-                float dist = Vector2.Distance(transform.position, c.transform.position);
-                if (dist < closestDist)
+                // 점프한 캐릭터는 현재 있는 지역의 다른 팀 캐릭터를 공격
+                // 지역1에서 온 캐릭터가 지역2에 있으면, 지역2의 원래 캐릭터들을 공격
+                // 지역2에서 온 캐릭터가 지역1에 있으면, 지역1의 원래 캐릭터들을 공격
+                
+                // 원래 지역1 캐릭터가 지역2로 점프한 경우
+                if (areaIndex == 2 && !character.hasJumped && character.areaIndex == 2)
                 {
-                    closestDist = dist;
-                    newTarget = c;
+                    canAttack = true;
+                }
+                // 원래 지역2 캐릭터가 지역1로 점프한 경우
+                else if (areaIndex == 1 && !character.hasJumped && character.areaIndex == 1)
+                {
+                    canAttack = true;
+                }
+                // 둘 다 점프한 캐릭터인 경우 (서로 다른 원래 지역)
+                else if (character.hasJumped)
+                {
+                    // 원래 지역이 다르면 공격 가능
+                    int myOriginalArea = (areaIndex == 1) ? 2 : 1; // 현재 지역과 반대가 원래 지역
+                    int targetOriginalArea = (character.areaIndex == 1) ? 2 : 1;
+                    if (myOriginalArea != targetOriginalArea)
+                    {
+                        canAttack = true;
+                    }
                 }
             }
-        }
+            else
+            {
+                // 점프하지 않은 캐릭터는 자기 지역에 온 점프한 적 캐릭터만 공격
+                if (character.hasJumped && character.areaIndex == areaIndex)
+                {
+                    canAttack = true;
+                }
+            }
+            
+            if (!canAttack) continue;
 
-        if (newTarget != null)
-        {
-            currentCharTarget = newTarget;
-            Debug.Log($"[Character] 점프한 {characterName}(areaIndex={areaIndex})가 " +
-                     $"새 타겟 {newTarget.characterName}(areaIndex={newTarget.areaIndex})을 탐색함!");
+            // 거리 계산
+            float dist = Vector3.Distance(transform.position, character.transform.position);
+            if (dist <= attackRange && dist < nearestDist)
+            {
+                nearest = character;
+                nearestDist = dist;
+            }
         }
+        
+        return nearest;
     }
 
-    private void MoveTowardsTarget(Vector3 targetPosition)
-    {
-        float distToTarget = Vector2.Distance(transform.position, targetPosition);
-        float stopDistance = attackRange * 0.7f;
-        
-        if (distToTarget <= stopDistance)
-        {
-            return;
-        }
-        
-        float superFastSpeed = 15.0f;
-        
-        Vector3 direction = (targetPosition - transform.position).normalized;
-        transform.position += direction * superFastSpeed * Time.deltaTime;
-    }
 
-    /// <summary>
-    /// 점프한 캐릭터가 성으로 이동하는 메서드
-    /// </summary>
-    private void MoveTowardsCastle()
-    {
-        Vector3 castlePosition;
-        
-        // 지역2에서 지역1로 점프한 경우 (지역1의 성으로 이동)
-        if (areaIndex == 2)
-        {
-            // 지역1 성은 보통 화면 하단 중앙
-            castlePosition = new Vector3(0f, -8f, 0f);
-        }
-        // 지역1에서 지역2로 점프한 경우 (지역2의 성으로 이동)
-        else
-        {
-            // 지역2 성은 보통 화면 상단 중앙
-            castlePosition = new Vector3(0f, 8f, 0f);
-        }
-        
-        float distToCastle = Vector2.Distance(transform.position, castlePosition);
-        float stopDistance = attackRange * 0.9f; // 성에 더 가까이 접근
-        
-        if (distToCastle <= stopDistance)
-        {
-            // 성 공격 범위에 도달
-            return;
-        }
-        
-        // 성을 향해 이동
-        float moveSpeed = 10.0f;
-        Vector3 direction = (castlePosition - transform.position).normalized;
-        transform.position += direction * moveSpeed * Time.deltaTime;
-    }
 
     // 통합된 공격 메소드
     private void AttackTarget(IDamageable target)
@@ -895,8 +975,6 @@ public class Character : NetworkBehaviour, IDamageable
         Vector3 targetPosition = Vector3.zero;
         string targetName = "Unknown";
         GameObject targetGameObject = null;
-        bool isCharacterTarget = false;
-        bool isJumpedCharacterTarget = false;
         
         if (target is Monster monster)
         {
@@ -911,8 +989,6 @@ public class Character : NetworkBehaviour, IDamageable
             targetPosition = character.transform.position;
             targetName = character.characterName;
             targetGameObject = character.gameObject;
-            isCharacterTarget = true;
-            isJumpedCharacterTarget = character.hasCrossedRegion;
         }
         else
         {
@@ -963,16 +1039,7 @@ public class Character : NetworkBehaviour, IDamageable
                 {
                     float bulletSpeed = 10.0f;
                     
-                    if (isCharacterTarget && ((Character)target).hasCrossedRegion)
-                    {
-                        bulletSpeed = 80.0f;
-                        Debug.Log($"[Character] {characterName}이(가) 점프해온 캐릭터를 향해 초고속 총알 발사! (속도: {bulletSpeed})");
-                    }
-                    else if (isCharacterTarget)
-                    {
-                        bulletSpeed = 15.0f;
-                        Debug.Log($"[Character] {characterName}이(가) 상대 캐릭터를 향해 빠른 총알 발사! (속도: {bulletSpeed})");
-                    }
+
                     
                     if (isHero)
                     {
@@ -1129,14 +1196,7 @@ public class Character : NetworkBehaviour, IDamageable
             if (c == this || c == null) continue;
             if (c.isHero) continue;
             
-            if (c.areaIndex != this.areaIndex && c.hasCrossedRegion)
-            {
-                float dist = Vector2.Distance(centerPos, c.transform.position);
-                if (dist <= damageRadius)
-                {
-                    c.TakeDamage(attackPower);
-                }
-            }
+
         }
 
         Debug.Log($"[Character] 광역 공격! 범위={damageRadius}, Damage={attackPower}");
@@ -1318,40 +1378,7 @@ public class Character : NetworkBehaviour, IDamageable
         }
     }
     
-    /// <summary>
-    /// 점프해온 상대 지역 캐릭터를 찾는 메서드
-    /// 일반 배치된 캐릭터가 점프해온 적 캐릭터를 공격할 때 사용합니다.
-    /// </summary>
-    private Character FindJumpedOpponentCharacterInRange()
-    {
-        Character[] allChars = FindObjectsByType<Character>(FindObjectsSortMode.None);
-        Character nearest = null;
-        float nearestDist = Mathf.Infinity;
 
-        foreach (Character c in allChars)
-        {
-            if (c == this) continue;
-            if (c == null || !c.gameObject.activeInHierarchy) continue;
-            if (c.isHero) continue;
-            if (c.areaIndex != this.areaIndex && c.hasCrossedRegion && c.tag == characterTag)
-            {
-                float dist = Vector2.Distance(transform.position, c.transform.position);
-                if (dist < attackRange && dist < nearestDist)
-                {
-                    nearestDist = dist;
-                    nearest = c;
-                }
-            }
-        }
-        
-        if (nearest != null && !nearest.Equals(null))
-        {
-            Debug.Log($"[Character] {characterName}(areaIndex={areaIndex})가 " +
-                    $"점프해온 상대 캐릭터 {nearest.characterName}(areaIndex={nearest.areaIndex}, tag={nearest.tag})를 발견!");
-        }
-        
-        return nearest;
-    }
 
     // =========================
     // [추가] 캐릭터가 위/아래 방향으로 이동(또는 타겟 추적)할 때
@@ -1488,107 +1515,5 @@ public class Character : NetworkBehaviour, IDamageable
         opponentBulletPanel = null;
     }
 
-    /// <summary>
-    /// 점프한 캐릭터가 성을 공격할 수 있는지 확인
-    /// </summary>
-    private bool CanAttackCastle()
-    {
-        // 점프한 캐릭터만 성을 공격 가능
-        if (!hasCrossedRegion) return false;
-        
-        // 성까지의 거리를 체크 (성은 보통 마지막 웨이포인트 근처에 있음)
-        // 간단하게 항상 true를 반환하여 캐릭터가 없으면 성을 공격하도록 함
-        return true;
-    }
-    
-    /// <summary>
-    /// 성을 공격하는 메서드
-    /// </summary>
-    private void AttackCastle()
-    {
-        // 점프해서 지역2에서 지역1로 온 경우 (areaIndex는 여전히 2)
-        if (areaIndex == 2)
-        {
-            // 지역1의 성 공격
-            if (CastleHealthManager.Instance != null)
-            {
-                int damage = Mathf.RoundToInt(attackPower);
-                CastleHealthManager.Instance.TakeDamage(damage);
-                Debug.Log($"[Character] 점프한 {characterName}이(가) 지역1 성을 공격! (데미지: {damage})");
-                
-                // 공격 이펙트나 애니메이션 재생 (선택사항)
-                if (bulletPrefab != null)
-                {
-                    // 성을 향한 총알 발사 이펙트 (실제 데미지는 이미 적용됨)
-                    // 총알은 시각적 효과만 제공
-                    GameObject bulletObj = Instantiate(bulletPrefab);
-                    if (bulletPanel != null)
-                    {
-                        bulletObj.transform.SetParent(bulletPanel, false);
-                        RectTransform bulletRect = bulletObj.GetComponent<RectTransform>();
-                        if (bulletRect != null)
-                        {
-                            Vector2 localPos = bulletPanel.InverseTransformPoint(transform.position);
-                            bulletRect.anchoredPosition = localPos;
-                        }
-                    }
-                    else
-                    {
-                        bulletObj.transform.position = transform.position;
-                    }
-                    
-                    Bullet bulletComp = bulletObj.GetComponent<Bullet>();
-                    if (bulletComp != null)
-                    {
-                        bulletComp.speed = 10.0f;
-                        Destroy(bulletObj, 1.0f); // 1초 후 삭제
-                    }
-                    else
-                    {
-                        Destroy(bulletObj);
-                    }
-                }
-            }
-        }
-        // 점프해서 지역1에서 지역2로 온 경우 (areaIndex는 여전히 1)
-        else if (areaIndex == 1)
-        {
-            // 지역2의 체력 감소
-            var wave2 = FindFirstObjectByType<WaveSpawnerRegion2>();
-            if (wave2 != null)
-            {
-                int damage = Mathf.RoundToInt(attackPower);
-                wave2.TakeDamageToRegion2(damage);
-                Debug.Log($"[Character] 점프한 {characterName}이(가) 지역2를 공격! (데미지: {damage})");
-                
-                // 공격 이펙트나 애니메이션 재생 (선택사항)
-                if (bulletPrefab != null && opponentBulletPanel != null)
-                {
-                    GameObject bulletObj = Instantiate(bulletPrefab);
-                    bulletObj.transform.SetParent(opponentBulletPanel, false);
-                    
-                    RectTransform bulletRect = bulletObj.GetComponent<RectTransform>();
-                    if (bulletRect != null)
-                    {
-                        Vector2 localPos = opponentBulletPanel.InverseTransformPoint(transform.position);
-                        bulletRect.anchoredPosition = localPos;
-                    }
-                    
-                    // 성의 위치는 보통 화면 상단
-                    Vector3 castlePosition = new Vector3(transform.position.x, 10f, 0f);
-                    
-                    Bullet bulletComp = bulletObj.GetComponent<Bullet>();
-                    if (bulletComp != null)
-                    {
-                        bulletComp.speed = 10.0f;
-                        Destroy(bulletObj, 1.0f); // 1초 후 삭제
-                    }
-                    else
-                    {
-                        Destroy(bulletObj);
-                    }
-                }
-            }
-        }
-    }
+
 }

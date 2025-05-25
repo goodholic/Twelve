@@ -418,6 +418,7 @@ GameObject:
   - component: {fileID: 5670030765548674520}
   - component: {fileID: 2141491803386084039}
   - component: {fileID: 6630857357964607972}
+  - component: {fileID: -1017472417224420751}
   m_Layer: 5
   m_Name: enemy1MonsterPrefab
   m_TagString: EnemyMonster
@@ -505,6 +506,8 @@ MonoBehaviour:
   - {fileID: 4818939896627276988, guid: d2e0810630198c148979fa75ad079427, type: 3}
   - {fileID: 1411693949256981867, guid: 03cdf8ef9ab1edb41ab152615dc955bf, type: 3}
   damageToCastle: 1
+  currentChapter: 1
+  chapterStatMultiplier: 1.1
   hpBarCanvas: {fileID: 9120607937602211272}
   hpFillImage: {fileID: 1852803273427388667}
   areaIndex: 2
@@ -527,3 +530,17 @@ MonoBehaviour:
   NetworkedBehaviours:
   - {fileID: 2141491803386084039}
   ForceRemoteRenderTimeframe: 0
+--- !u!114 &-1017472417224420751
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8358110294926570447}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 1541381998, guid: e725a070cec140c4caffb81624c8c787, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  Guid:
+    RawGuidValue: 57b37e1c5199dee40851d75e480fb5ed

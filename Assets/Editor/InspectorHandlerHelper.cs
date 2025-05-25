@@ -5,6 +5,7 @@ using UnityEditor.SceneManagement;
 using System;
 using System.Reflection;
 using System.Collections.Generic;
+using System.Linq;
 
 /// <summary>
 /// Unity 인스펙터에서 안전하게 객체를 편집할 수 있도록 지원하는 헬퍼 클래스입니다.
@@ -71,8 +72,12 @@ public static class InspectorHandlerHelper
         
         int fixedCount = 0;
         
-        // 현재 씬의 모든 게임오브젝트 검사
-        foreach (var obj in UnityEngine.Object.FindObjectsByType<GameObject>(FindObjectsSortMode.None))
+        // 현재 씬의 모든 게임오브젝트 검사 (null 필터링 추가)
+        var gameObjects = UnityEngine.Object.FindObjectsByType<GameObject>(FindObjectsSortMode.None)
+            .Where(obj => obj != null)
+            .ToArray();
+            
+        foreach (var obj in gameObjects)
         {
             if (obj == null) continue;
             
@@ -95,7 +100,11 @@ public static class InspectorHandlerHelper
             }
             
             // 모든 컴포넌트 검사
-            foreach (var comp in obj.GetComponents<Component>())
+            var components = obj.GetComponents<Component>()
+                .Where(comp => comp != null)
+                .ToArray();
+                
+            foreach (var comp in components)
             {
                 if (comp == null) continue;
                 

@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
 
@@ -9,7 +10,11 @@ public class WaveSpawner : MonoBehaviour
     public Transform monsterParent;
     
     // [수정] 기존 단일 경로를 제거하고 3개 루트로 변경
-    [Header("공격 루트 설정 (좌/중/우)")]
+    [Header("몬스터 이동 경로")]
+    [Tooltip("몬스터가 따라갈 웨이포인트")]
+    public Transform[] monsterWaypoints;
+    
+    [Header("캐릭터 공격 루트 설정 (좌/중/우)")]
     [Tooltip("좌측 루트 웨이포인트")]
     public Transform[] walkableLeft;
     [Tooltip("중앙 루트 웨이포인트")]
@@ -17,13 +22,29 @@ public class WaveSpawner : MonoBehaviour
     [Tooltip("우측 루트 웨이포인트")]
     public Transform[] walkableRight;
     
-    [Header("루트별 스폰 위치")]
+    [Header("캐릭터 루트별 스폰 위치")]
     [Tooltip("좌측 루트 스폰 위치")]
     public Transform leftSpawnPoint;
     [Tooltip("중앙 루트 스폰 위치")]
     public Transform centerSpawnPoint;
     [Tooltip("우측 루트 스폰 위치")]
     public Transform rightSpawnPoint;
+
+    [Header("캐릭터 루트별 점프 지점")]
+    [Tooltip("좌측 루트 점프 시작 지점")]
+    public Transform leftJumpPoint;
+    [Tooltip("중앙 루트 점프 시작 지점")]
+    public Transform centerJumpPoint;
+    [Tooltip("우측 루트 점프 시작 지점")]
+    public Transform rightJumpPoint;
+
+    [Header("캐릭터 루트별 점프 도착 지점")]
+    [Tooltip("좌측 루트 점프 도착 지점 (목표)")]
+    public Transform leftTargetPoint;
+    [Tooltip("중앙 루트 점프 도착 지점 (목표)")]  
+    public Transform centerTargetPoint;
+    [Tooltip("우측 루트 점프 도착 지점 (목표)")]
+    public Transform rightTargetPoint;
 
     [Header("웨이브/몬스터 설정")]
     public float timeBetweenWaves = 5f;
@@ -191,17 +212,49 @@ public class WaveSpawner : MonoBehaviour
     /// </summary>
     private Transform[] GetWaypointsForRoute(RouteType route)
     {
-        switch (route)
+        // 모든 walkable 타일을 포함하는 통합 경로 반환
+        return GetAllWalkableWaypoints();
+    }
+    
+    /// <summary>
+    /// 모든 walkable 타일의 웨이포인트를 하나의 배열로 반환
+    /// </summary>
+    private Transform[] GetAllWalkableWaypoints()
+    {
+        List<Transform> allWaypoints = new List<Transform>();
+        
+        // 좌측 경로 추가
+        if (walkableLeft != null)
         {
-            case RouteType.Left:
-                return walkableLeft;
-            case RouteType.Center:
-                return walkableCenter;
-            case RouteType.Right:
-                return walkableRight;
-            default:
-                return walkableCenter;
+            allWaypoints.AddRange(walkableLeft);
         }
+        
+        // 중앙 경로 추가
+        if (walkableCenter != null)
+        {
+            allWaypoints.AddRange(walkableCenter);
+        }
+        
+        // 우측 경로 추가
+        if (walkableRight != null)
+        {
+            allWaypoints.AddRange(walkableRight);
+        }
+        
+        // 중복 제거 및 거리 기준 정렬
+        List<Transform> uniqueWaypoints = new List<Transform>();
+        foreach (var waypoint in allWaypoints)
+        {
+            if (waypoint != null && !uniqueWaypoints.Contains(waypoint))
+            {
+                uniqueWaypoints.Add(waypoint);
+            }
+        }
+        
+        // Y 좌표 기준으로 정렬 (아래에서 위로)
+        uniqueWaypoints.Sort((a, b) => a.position.y.CompareTo(b.position.y));
+        
+        return uniqueWaypoints.ToArray();
     }
 
     /// <summary>
@@ -242,6 +295,42 @@ public class WaveSpawner : MonoBehaviour
     }
 
     /// <summary>
+    /// 선택된 루트에 따른 점프 지점 반환
+    /// </summary>
+    public Transform GetJumpPointForRoute(RouteType route)
+    {
+        switch (route)
+        {
+            case RouteType.Left:
+                return leftJumpPoint;
+            case RouteType.Center:
+                return centerJumpPoint;
+            case RouteType.Right:
+                return rightJumpPoint;
+            default:
+                return centerJumpPoint;
+        }
+    }
+
+    /// <summary>
+    /// 선택된 루트에 따른 도착 지점 반환
+    /// </summary>
+    public Transform GetTargetPointForRoute(RouteType route)
+    {
+        switch (route)
+        {
+            case RouteType.Left:
+                return leftTargetPoint;
+            case RouteType.Center:
+                return centerTargetPoint;
+            case RouteType.Right:
+                return rightTargetPoint;
+            default:
+                return centerTargetPoint;
+        }
+    }
+
+    /// <summary>
     /// (수정) 몬스터 소환 로직에 indexInWave 추가 + 챕터별 로직 + 루트 선택
     /// </summary>
     private void SpawnMonster(int indexInWave)
@@ -253,18 +342,15 @@ public class WaveSpawner : MonoBehaviour
         }
 
         // 랜덤하게 루트 선택
-        RouteType selectedRoute = GetRandomRoute();
-        Transform[] selectedWaypoints = GetWaypointsForRoute(selectedRoute);
-        
-        // 선택된 루트가 유효한지 확인
-        if (selectedWaypoints == null || selectedWaypoints.Length == 0)
+        // 몬스터는 단일 경로 사용
+        if (monsterWaypoints == null || monsterWaypoints.Length == 0)
         {
-            Debug.LogError($"[WaveSpawner] {selectedRoute} 루트의 웨이포인트가 설정되지 않았습니다!");
+            Debug.LogError($"[WaveSpawner] 몬스터 웨이포인트가 설정되지 않았습니다!");
             return;
         }
 
-        // 스폰 위치 결정
-        Vector3 spawnPos = GetSpawnPositionForRoute(selectedRoute);
+        // 스폰 위치는 첫 번째 웨이포인트
+        Vector3 spawnPos = monsterWaypoints[0].position;
 
         // -------------- [수정추가] 챕터 로직 --------------
         GameObject prefabToSpawn = monsterPrefab; // 기본값
@@ -328,13 +414,13 @@ public class WaveSpawner : MonoBehaviour
         if (mComp != null)
         {
             mComp.areaIndex = 1; // 지역1
-            mComp.pathWaypoints = selectedWaypoints; // 선택된 루트의 웨이포인트 설정
+            mComp.pathWaypoints = monsterWaypoints; // 몬스터 단일 경로 설정
             mComp.OnDeath += HandleMonsterDeath;
 
             // 챕터 설정
             mComp.currentChapter = monsterChapter;
 
-            Debug.Log($"[WaveSpawner] Spawned Monster on {selectedRoute} route, indexInWave={indexInWave}, chapter={monsterChapter}, Wave={currentWave}");
+            Debug.Log($"[WaveSpawner] Spawned Monster, indexInWave={indexInWave}, chapter={monsterChapter}, Wave={currentWave}");
         }
         else
         {

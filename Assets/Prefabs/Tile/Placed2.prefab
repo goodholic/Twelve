@@ -142,10 +142,16 @@ MonoBehaviour:
   blockedColor: {r: 1, g: 0, b: 0, a: 1}
   walkablePrefab: {fileID: 0}
   walkable2Prefab: {fileID: 0}
+  walkableLeftPrefab: {fileID: 0}
+  walkableCenterPrefab: {fileID: 0}
+  walkableRightPrefab: {fileID: 0}
+  walkable2LeftPrefab: {fileID: 0}
+  walkable2CenterPrefab: {fileID: 0}
+  walkable2RightPrefab: {fileID: 0}
   placablePrefab: {fileID: 0}
   placable2Prefab: {fileID: 0}
   placeTilePrefab: {fileID: 0}
-  placed2Prefab: {fileID: 0}
+  placed2Prefab: {fileID: 2984778444758371570}
   currentVisual: {fileID: 0}
   tileButton: {fileID: 8297781879647861321, guid: d988006bd53f4b0468d4fcedc810ac64, type: 3}
   row: 0

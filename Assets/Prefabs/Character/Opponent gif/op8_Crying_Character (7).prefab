@@ -186,6 +186,8 @@ MonoBehaviour:
   star: 1
   characterName: 
   race: 2
+  attackTargetType: 0
+  movementType: 0
   attackPower: 9
   attackSpeed: 1.5
   attackRange: 1.1
@@ -197,15 +199,6 @@ MonoBehaviour:
   isAreaAttack: 1
   areaAttackRadius: 2
   isHero: 0
-  pathWaypoints:
-  - {fileID: 8870864530132773612, guid: 056b317d9e4875f45a50c4cd69148f3b, type: 3}
-  - {fileID: 4135260548019697524, guid: 3dfa4a4749de3374681c0d2b6815dc7e, type: 3}
-  - {fileID: 7052993515450296238, guid: f7691f68b1c1ffe4fb4d79c652d7dd9d, type: 3}
-  - {fileID: 5210701647780469663, guid: 699b367bf23ad6a408eb1c6fad0ab9d9, type: 3}
-  - {fileID: 4818939896627276988, guid: d2e0810630198c148979fa75ad079427, type: 3}
-  - {fileID: 1411693949256981867, guid: 03cdf8ef9ab1edb41ab152615dc955bf, type: 3}
-  currentWaypointIndex: -1
-  maxWaypointIndex: 6
   rangeIndicatorPrefab: {fileID: 3037178901491863121, guid: 70e5c5e981d70c247a317a909d42c752, type: 3}
   showRangeIndicator: 0
   bulletPrefab: {fileID: 5776322284297556845, guid: 9562eb3a035ad4e4aa8164e3a28d071b, type: 3}
@@ -220,6 +213,16 @@ MonoBehaviour:
   areaIndex: 2
   hpBarCanvas: {fileID: 5059402541332753097}
   hpFillImage: {fileID: 4114483899292617885}
+  selectedRoute: 0
+  pathWaypoints:
+  - {fileID: 8870864530132773612, guid: 056b317d9e4875f45a50c4cd69148f3b, type: 3}
+  - {fileID: 4135260548019697524, guid: 3dfa4a4749de3374681c0d2b6815dc7e, type: 3}
+  - {fileID: 7052993515450296238, guid: f7691f68b1c1ffe4fb4d79c652d7dd9d, type: 3}
+  - {fileID: 5210701647780469663, guid: 699b367bf23ad6a408eb1c6fad0ab9d9, type: 3}
+  - {fileID: 4818939896627276988, guid: d2e0810630198c148979fa75ad079427, type: 3}
+  - {fileID: 1411693949256981867, guid: 03cdf8ef9ab1edb41ab152615dc955bf, type: 3}
+  currentWaypointIndex: -1
+  maxWaypointIndex: 6
   newAttackRangeOnClick: 4
   star2Prefab: {fileID: 0}
   star3Prefab: {fileID: 0}
@@ -227,12 +230,6 @@ MonoBehaviour:
   attackInfoText: {fileID: 0}
   attackInfoOffset: {x: 1, y: 0, z: 0}
   isCharAttack: 0
-  playerTag: Player
-  opponentPlayerTag: Opponent Player
-  characterTag: Character
-  endTileRect: {fileID: 7728088104138265406, guid: dd3720c0124e04b4d83c775b74fdac3c, type: 3}
-  targetJumpPosition: {fileID: 7728088104138265406, guid: dd3720c0124e04b4d83c775b74fdac3c, type: 3}
-  startJumpPosition: {fileID: 4614398458146241476, guid: 02fa27106db89b544bba34f1b127942e, type: 3}
   characterUpDirectionSprite: {fileID: 4280033459730307846, guid: 6e1cef4fd5d60574a888d9ba067a7b33, type: 3}
   characterDownDirectionSprite: {fileID: 3720560539788255154, guid: d79c81f044308b84fa382be4ab5182dc, type: 3}
 --- !u!114 &7552802495602455483

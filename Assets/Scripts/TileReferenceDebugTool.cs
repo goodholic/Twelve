@@ -23,8 +23,6 @@ public class TileReferenceDebugTool : MonoBehaviour
         public string problemDescription;
     }
     
-    private float lastCheckTime = 0f;
-    
     private void Start()
     {
         if (enableRealtimeCheck)
@@ -38,8 +36,13 @@ public class TileReferenceDebugTool : MonoBehaviour
     {
         tileStatuses.Clear();
         
-        Tile[] allTiles = Object.FindObjectsByType<Tile>(FindObjectsSortMode.None);
-        Character[] allChars = Object.FindObjectsByType<Character>(FindObjectsSortMode.None);
+        Tile[] allTiles = Object.FindObjectsByType<Tile>(FindObjectsSortMode.None)
+            .Where(t => t != null)
+            .ToArray();
+            
+        Character[] allChars = Object.FindObjectsByType<Character>(FindObjectsSortMode.None)
+            .Where(c => c != null)
+            .ToArray();
         
         foreach (var tile in allTiles)
         {
@@ -152,8 +155,13 @@ public class TileReferenceDebugTool : MonoBehaviour
     {
         int fixedCount = 0;
         
-        Tile[] allTiles = Object.FindObjectsByType<Tile>(FindObjectsSortMode.None);
-        Character[] allChars = Object.FindObjectsByType<Character>(FindObjectsSortMode.None);
+        Tile[] allTiles = Object.FindObjectsByType<Tile>(FindObjectsSortMode.None)
+            .Where(t => t != null)
+            .ToArray();
+            
+        Character[] allChars = Object.FindObjectsByType<Character>(FindObjectsSortMode.None)
+            .Where(c => c != null)
+            .ToArray();
         
         foreach (var tile in allTiles)
         {
@@ -210,8 +218,14 @@ public class TileReferenceDebugTool : MonoBehaviour
     [ContextMenu("빈 Placed Tile 재설정")]
     public void ResetEmptyPlacedTiles()
     {
-        Tile[] allTiles = Object.FindObjectsByType<Tile>(FindObjectsSortMode.None);
-        Character[] allChars = Object.FindObjectsByType<Character>(FindObjectsSortMode.None);
+        Tile[] allTiles = Object.FindObjectsByType<Tile>(FindObjectsSortMode.None)
+            .Where(t => t != null)
+            .ToArray();
+            
+        Character[] allChars = Object.FindObjectsByType<Character>(FindObjectsSortMode.None)
+            .Where(c => c != null)
+            .ToArray();
+            
         int resetCount = 0;
         
         foreach (var tile in allTiles)

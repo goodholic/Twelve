@@ -57,6 +57,11 @@ public class GameManager : MonoBehaviour
     public GameObject resultPanel;          // 인스펙터에서 연결 (기본비활성)
     public TextMeshProUGUI resultPanelText; // 승/패 문구 표시용 TMP
 
+    // =================== [추가] 지역1 성 체력 관리 ===================
+    [Header("지역1 성 체력")]
+    [SerializeField] private TextMeshProUGUI region1LifeText;
+    public int region1Life = 10;
+
     private void Awake()
     {
         // 싱글톤 중복 방지
@@ -122,6 +127,9 @@ public class GameManager : MonoBehaviour
         {
             placementManager = FindFirstObjectByType<PlacementManager>();
         }
+        
+        // 지역1 생명력 텍스트 초기화
+        UpdateRegion1LifeText();
     }
 
     private void Update()
@@ -386,6 +394,36 @@ public class GameManager : MonoBehaviour
                     Debug.Log("[GameManager] 간단한 승리 메시지를 생성했습니다.");
                 }
             }
+        }
+    }
+
+    /// <summary>
+    /// 지역1 성에 데미지를 입힙니다.
+    /// </summary>
+    public void TakeDamageToRegion1(int amount)
+    {
+        region1Life -= amount;
+        if (region1Life < 0)
+            region1Life = 0;
+
+        UpdateRegion1LifeText();
+        Debug.Log($"[GameManager] 지역1 체력 감소: {amount} => 남은 HP={region1Life}");
+
+        if (region1Life <= 0)
+        {
+            Debug.LogWarning("[GameManager] 지역1 체력=0 => 플레이어 패배!");
+            SetGameOver(false); // 패배
+        }
+    }
+
+    /// <summary>
+    /// 지역1 생명력 텍스트 업데이트
+    /// </summary>
+    private void UpdateRegion1LifeText()
+    {
+        if (region1LifeText != null)
+        {
+            region1LifeText.text = $"HP: {region1Life}";
         }
     }
 }

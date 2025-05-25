@@ -136,12 +136,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d4ba59c64d440da43b1fd6675e7f4f72, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  isRegion2: 0
   tileImage: {fileID: 7713982869585605871}
   defaultColor: {r: 1, g: 1, b: 1, a: 1}
   highlightColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
   blockedColor: {r: 1, g: 0, b: 0, a: 1}
   walkablePrefab: {fileID: 3021528759696385224, guid: 98f8088c62cb9ef42b323256cf58714e, type: 3}
   walkable2Prefab: {fileID: 4598292325110892213, guid: 3e4f46edd7e2da443aa747cd113e27e7, type: 3}
+  walkableLeftPrefab: {fileID: 3021528759696385224, guid: bae457b65a98fb241aa890573666aafe, type: 3}
+  walkableCenterPrefab: {fileID: 3021528759696385224, guid: 57cecdf26f1b1f142a7750582981966a, type: 3}
+  walkableRightPrefab: {fileID: 3021528759696385224, guid: 0701d1a166963304fb885edf66dda210, type: 3}
+  walkable2LeftPrefab: {fileID: 4598292325110892213, guid: bdd46f47a3061384bb42cc62701a331f, type: 3}
+  walkable2CenterPrefab: {fileID: 4598292325110892213, guid: a7014343127332d4cb128e76f962c846, type: 3}
+  walkable2RightPrefab: {fileID: 4598292325110892213, guid: 6a5784086ec373241a95b19370e68bde, type: 3}
   placablePrefab: {fileID: 3174726448645328520, guid: 3620584c6edf7494eac937a9149ea4c0, type: 3}
   placable2Prefab: {fileID: 4692362406737092058, guid: 3d9908dea6881434a95fe43d458245b6, type: 3}
   placeTilePrefab: {fileID: 6338111628792593086, guid: 52a4d614f8b259046b0910c69f2ac539, type: 3}

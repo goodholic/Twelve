@@ -134,7 +134,7 @@ public static class NetworkSafetyMenu
     public static void ResetAndFixNetworkObjects()
     {
         var networkObjects = UnityEngine.Object.FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None)
-            .Where(mb => mb.GetType().Name == "NetworkObject")
+            .Where(mb => mb != null && mb.GetType().Name == "NetworkObject")
             .ToList();
             
         if (networkObjects.Count == 0)
@@ -159,6 +159,8 @@ public static class NetworkSafetyMenu
         
         foreach (var networkObj in networkObjects)
         {
+            if (networkObj == null) continue; // 추가 안전장치
+            
             try
             {
                 // HideFlags 수정

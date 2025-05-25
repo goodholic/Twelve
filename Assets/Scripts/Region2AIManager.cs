@@ -22,8 +22,13 @@ public class Region2AIManager : MonoBehaviour
     [Header("소환 실패 시 재시도 대기 시간")]
     public float retryInterval = 0.3f;
 
-    [Header("지역2 타일들 (Walkable2)")]
-    public List<Tile> walkable2Tiles = new List<Tile>();
+    [Header("지역2 타일들 (Walkable2) - 3개 루트")]
+    [Tooltip("좌측 루트 walkable2 타일들")]
+    public List<Tile> walkable2LeftTiles = new List<Tile>();
+    [Tooltip("중앙 루트 walkable2 타일들")]
+    public List<Tile> walkable2CenterTiles = new List<Tile>();
+    [Tooltip("우측 루트 walkable2 타일들")]
+    public List<Tile> walkable2RightTiles = new List<Tile>();
 
     [Header("지역2 타일들 (Placable2)")]
     public List<Tile> placable2Tiles = new List<Tile>();
@@ -233,16 +238,22 @@ public class Region2AIManager : MonoBehaviour
     }
 
     /// <summary>
-    /// walkable2Tiles / placable2Tiles 중 랜덤
+    /// walkable2 3개 루트 중 하나 선택 후 타일 / placable2Tiles 중 랜덤
     /// </summary>
     private Tile PickRandomRegion2Tile()
     {
-        bool hasWalkable2 = (walkable2Tiles != null && walkable2Tiles.Count > 0);
+        // walkable2 타일들을 하나의 리스트로 합침
+        List<Tile> allWalkable2Tiles = new List<Tile>();
+        if (walkable2LeftTiles != null) allWalkable2Tiles.AddRange(walkable2LeftTiles);
+        if (walkable2CenterTiles != null) allWalkable2Tiles.AddRange(walkable2CenterTiles);
+        if (walkable2RightTiles != null) allWalkable2Tiles.AddRange(walkable2RightTiles);
+        
+        bool hasWalkable2 = allWalkable2Tiles.Count > 0;
         bool hasPlacable2 = (placable2Tiles != null && placable2Tiles.Count > 0);
 
         if (!hasWalkable2 && !hasPlacable2)
         {
-            Debug.LogError("[Region2AIManager] 소환 가능한 타일이 없습니다. walkable2Tiles와 placable2Tiles를 Inspector에서 설정해주세요.");
+            Debug.LogError("[Region2AIManager] 소환 가능한 타일이 없습니다. walkable2 루트 타일들과 placable2Tiles를 Inspector에서 설정해주세요.");
             return null;
         }
 
@@ -254,13 +265,21 @@ public class Region2AIManager : MonoBehaviour
             if (hasWalkable2 && hasPlacable2)
             {
                 if (Random.value < 0.5f)
-                    selectedTile = walkable2Tiles[Random.Range(0, walkable2Tiles.Count)];
+                {
+                    // walkable2에서 선택할 때는 루트를 먼저 선택
+                    RouteType selectedRoute = GetRandomRoute();
+                    selectedTile = GetWalkable2TileForRoute(selectedRoute);
+                }
                 else
+                {
                     selectedTile = placable2Tiles[Random.Range(0, placable2Tiles.Count)];
+                }
             }
             else if (hasWalkable2)
             {
-                selectedTile = walkable2Tiles[Random.Range(0, walkable2Tiles.Count)];
+                // walkable2에서 선택할 때는 루트를 먼저 선택
+                RouteType selectedRoute = GetRandomRoute();
+                selectedTile = GetWalkable2TileForRoute(selectedRoute);
             }
             else
             {
@@ -278,17 +297,63 @@ public class Region2AIManager : MonoBehaviour
             }
         }
         
-        // 결국 적합한 타일을 못 찾으면 첫 번째를 사용
+        // 결국 적합한 타일을 못 찾으면 랜덤 루트의 첫 번째를 사용
         if (hasWalkable2)
         {
-            Debug.LogWarning("[Region2AIManager] 적합한 타일을 찾지 못해 첫 번째 walkable2 타일 사용");
-            return walkable2Tiles[0];
+            RouteType fallbackRoute = GetRandomRoute();
+            Debug.LogWarning($"[Region2AIManager] 적합한 타일을 찾지 못해 {fallbackRoute} 루트의 첫 번째 walkable2 타일 사용");
+            return GetWalkable2TileForRoute(fallbackRoute);
         }
         else
         {
             Debug.LogWarning("[Region2AIManager] 적합한 타일을 찾지 못해 첫 번째 placable2 타일 사용");
             return placable2Tiles[0];
         }
+    }
+    
+    /// <summary>
+    /// 랜덤하게 루트(좌/중/우)를 선택합니다.
+    /// </summary>
+    private RouteType GetRandomRoute()
+    {
+        int randomValue = Random.Range(0, 3);
+        return (RouteType)randomValue;
+    }
+    
+    /// <summary>
+    /// 선택된 루트에 해당하는 walkable2 타일을 반환합니다.
+    /// </summary>
+    private Tile GetWalkable2TileForRoute(RouteType route)
+    {
+        List<Tile> routeTiles = null;
+        
+        switch (route)
+        {
+            case RouteType.Left:
+                routeTiles = walkable2LeftTiles;
+                break;
+            case RouteType.Center:
+                routeTiles = walkable2CenterTiles;
+                break;
+            case RouteType.Right:
+                routeTiles = walkable2RightTiles;
+                break;
+        }
+        
+        if (routeTiles != null && routeTiles.Count > 0)
+        {
+            return routeTiles[Random.Range(0, routeTiles.Count)];
+        }
+        
+        // 해당 루트에 타일이 없으면 다른 루트에서 찾기
+        if (walkable2LeftTiles != null && walkable2LeftTiles.Count > 0)
+            return walkable2LeftTiles[Random.Range(0, walkable2LeftTiles.Count)];
+        if (walkable2CenterTiles != null && walkable2CenterTiles.Count > 0)
+            return walkable2CenterTiles[Random.Range(0, walkable2CenterTiles.Count)];
+        if (walkable2RightTiles != null && walkable2RightTiles.Count > 0)
+            return walkable2RightTiles[Random.Range(0, walkable2RightTiles.Count)];
+            
+        return null;
     }
     
     /// <summary>
