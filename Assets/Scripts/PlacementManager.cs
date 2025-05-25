@@ -4,6 +4,14 @@ using Fusion;
 using System.Collections.Generic;
 using UnityEngine.UI;
 
+// RouteType enum 추가
+public enum RouteType
+{
+    Left,
+    Center,
+    Right
+}
+
 public class PlacementManager : MonoBehaviour
 {
     public static PlacementManager Instance { get; private set; }
@@ -433,9 +441,19 @@ public class PlacementManager : MonoBehaviour
         if (tile.IsWalkable())
         {
             WaveSpawner spawner = FindFirstObjectByType<WaveSpawner>();
-            if (spawner != null && spawner.pathWaypoints != null && spawner.pathWaypoints.Length > 0 && ourMonsterPanel != null)
+            if (spawner != null && ourMonsterPanel != null)
             {
-                Vector3 spawnPos = spawner.pathWaypoints[0].position;
+                // 랜덤 루트 선택
+                RouteType selectedRoute = GetRandomRoute();
+                Transform[] waypoints = GetWaypointsForRoute(spawner, selectedRoute);
+                
+                if (waypoints == null || waypoints.Length == 0)
+                {
+                    Debug.LogWarning($"[PlacementManager] {selectedRoute} 루트의 웨이포인트가 없습니다.");
+                    return;
+                }
+                
+                Vector3 spawnPos = waypoints[0].position;
                 GameObject allyObj = Instantiate(data.spawnPrefab, ourMonsterPanel);
                 if (allyObj != null)
                 {
@@ -459,8 +477,9 @@ public class PlacementManager : MonoBehaviour
 
                     allyCharacter.currentWaypointIndex = 0;
                     allyCharacter.maxWaypointIndex = 6;
-                    allyCharacter.pathWaypoints = spawner.pathWaypoints;
+                    allyCharacter.pathWaypoints = waypoints;
                     allyCharacter.areaIndex = 1;
+                    allyCharacter.selectedRoute = selectedRoute; // 선택된 루트 저장
 
                     allyCharacter.attackPower = data.attackPower;
                     allyCharacter.attackSpeed = data.attackSpeed;
@@ -470,29 +489,26 @@ public class PlacementManager : MonoBehaviour
                     allyCharacter.ApplyStarVisual();
                     allyCharacter.moveSpeed = data.moveSpeed;
 
-                    Debug.Log($"[PlacementManager] [{data.characterName}] (area1) 몬스터 소환 (cost={data.cost})");
+                    Debug.Log($"[PlacementManager] [{data.characterName}] (area1) 몬스터 소환 - {selectedRoute} 루트 선택 (cost={data.cost})");
 
                     var selectUI = FindFirstObjectByType<CharacterSelectUI>();
                     if (selectUI != null)
                     {
                         selectUI.MarkCardAsUsed(currentCharacterIndex);
                     }
-
-                    // ▼▼ [수정] 자동으로 -1로 설정하지 않고, CharacterSelectUI에서 관리하도록 함 ▼▼
-                    // currentCharacterIndex = -1;
                 }
-                else
-                {
-                    Debug.LogWarning("[PlacementManager] WaveSpawner/ourMonsterPanel이 없어 소환 실패");
-                }
+            }
+            else
+            {
+                Debug.LogWarning("[PlacementManager] WaveSpawner/ourMonsterPanel이 없어 소환 실패");
             }
         }
         else if (tile.IsWalkable2())
         {
             WaveSpawnerRegion2 spawner2 = FindFirstObjectByType<WaveSpawnerRegion2>();
-            if (spawner2 != null && spawner2.topWaypointsForAI != null && spawner2.topWaypointsForAI.Length > 0 && opponentOurMonsterPanel != null)
+            if (spawner2 != null && spawner2.walkableCenter2 != null && spawner2.walkableCenter2.Length > 0 && opponentOurMonsterPanel != null)
             {
-                Vector3 spawnPos = spawner2.topWaypointsForAI[0].position;
+                Vector3 spawnPos = spawner2.walkableCenter2[0].position;
                 GameObject allyObj = Instantiate(data.spawnPrefab, opponentOurMonsterPanel);
                 if (allyObj != null)
                 {
@@ -519,7 +535,7 @@ public class PlacementManager : MonoBehaviour
 
                     allyCharacter.currentWaypointIndex = 0;
                     allyCharacter.maxWaypointIndex = 6;
-                    allyCharacter.pathWaypoints = spawner2.topWaypointsForAI;
+                    allyCharacter.pathWaypoints = spawner2.walkableCenter2;
                     allyCharacter.areaIndex = 2;
 
                     allyCharacter.attackPower = data.attackPower;
@@ -821,7 +837,7 @@ public class PlacementManager : MonoBehaviour
             if (tile.IsWalkable())
             {
                 WaveSpawner spawner = FindFirstObjectByType<WaveSpawner>();
-                if (spawner == null || spawner.pathWaypoints.Length == 0 || ourMonsterPanel == null)
+                if (spawner == null || ourMonsterPanel == null)
                 {
                     if (mineralsSpent && targetMineralBar != null)
                     {
@@ -843,7 +859,21 @@ public class PlacementManager : MonoBehaviour
                     return false;
                 }
 
-                Vector3 spawnPos = spawner.pathWaypoints[0].position;
+                // 랜덤 루트 선택
+                RouteType selectedRoute = GetRandomRoute();
+                Transform[] waypoints = GetWaypointsForRoute(spawner, selectedRoute);
+                
+                if (waypoints == null || waypoints.Length == 0)
+                {
+                    if (mineralsSpent && targetMineralBar != null)
+                    {
+                        targetMineralBar.RefundMinerals(data.cost);
+                    }
+                    Debug.LogWarning($"[PlacementManager] {selectedRoute} 루트의 웨이포인트가 없습니다.");
+                    return false;
+                }
+
+                Vector3 spawnPos = waypoints[0].position;
                 GameObject allyMonsterObj = Instantiate(prefabToSpawn, ourMonsterPanel);
                 if (allyMonsterObj != null)
                 {
@@ -870,7 +900,8 @@ public class PlacementManager : MonoBehaviour
                     allyChar.currentWaypointIndex = 0;
                     allyChar.maxWaypointIndex = 6;
                     allyChar.areaIndex = 1;
-                    allyChar.pathWaypoints = spawner.pathWaypoints;
+                    allyChar.pathWaypoints = waypoints;
+                    allyChar.selectedRoute = selectedRoute; // 선택된 루트 저장
 
                     allyChar.attackPower = data.attackPower;
                     allyChar.attackSpeed = data.attackSpeed;
@@ -880,7 +911,7 @@ public class PlacementManager : MonoBehaviour
                     allyChar.ApplyStarVisual();
                     allyChar.moveSpeed = data.moveSpeed;
 
-                    Debug.Log($"[PlacementManager] 드래그로 [{data.characterName}] (area1) 몬스터 소환 (cost={data.cost})");
+                    Debug.Log($"[PlacementManager] 드래그로 [{data.characterName}] (area1) 몬스터 소환 - {selectedRoute} 루트 선택 (cost={data.cost})");
                     success = true;
                 }
                 else
@@ -896,77 +927,69 @@ public class PlacementManager : MonoBehaviour
             else if (tile.IsWalkable2())
             {
                 WaveSpawnerRegion2 spawner2 = FindFirstObjectByType<WaveSpawnerRegion2>();
-                if (spawner2 == null || spawner2.topWaypointsForAI.Length == 0 || opponentOurMonsterPanel == null)
+                if (spawner2 != null && opponentOurMonsterPanel != null)
                 {
-                    if (mineralsSpent && targetMineralBar != null)
+                    // 랜덤 루트 선택
+                    RouteType selectedRoute = GetRandomRoute();
+                    Transform[] waypoints = GetWaypointsForRoute(spawner2, selectedRoute);
+                    
+                    if (waypoints == null || waypoints.Length == 0)
                     {
-                        targetMineralBar.RefundMinerals(data.cost);
+                        Debug.LogWarning($"[PlacementManager] {selectedRoute} 루트의 웨이포인트가 없습니다.");
+                        return false;
                     }
-                    Debug.LogWarning("[PlacementManager] Walkable2 => 소환 실패");
-                    return false;
-                }
-
-                GameObject prefabToSpawn = data.spawnPrefab;
-                Character cc = prefabToSpawn.GetComponent<Character>();
-                if (cc == null)
-                {
-                    if (mineralsSpent && targetMineralBar != null)
+                    
+                    Vector3 spawnPos = waypoints[0].position;
+                    GameObject allyObj = Instantiate(data.spawnPrefab, opponentOurMonsterPanel);
+                    if (allyObj != null)
                     {
-                        targetMineralBar.RefundMinerals(data.cost);
+                        allyObj.SetActive(true);
+                        RectTransform allyRect = allyObj.GetComponent<RectTransform>();
+                        if (allyRect != null)
+                        {
+                            Vector2 localPos = opponentOurMonsterPanel.InverseTransformPoint(spawnPos);
+                            allyRect.SetParent(opponentOurMonsterPanel, false);
+                            allyRect.localRotation = Quaternion.identity;
+                            allyRect.anchoredPosition = localPos;
+                        }
+                        else
+                        {
+                            allyObj.transform.SetParent(null);
+                            allyObj.transform.position = spawnPos;
+                            allyObj.transform.localRotation = Quaternion.identity;
+                        }
+
+                        Character allyCharacter = allyObj.GetComponent<Character>();
+                        allyCharacter.currentTile = null;
+                        allyCharacter.isHero = (currentCharacterIndex == 9);
+                        allyCharacter.isCharAttack = !allyCharacter.isHero;
+
+                        allyCharacter.currentWaypointIndex = 0;
+                        allyCharacter.maxWaypointIndex = 6;
+                        allyCharacter.pathWaypoints = waypoints;
+                        allyCharacter.areaIndex = 2;
+                        allyCharacter.selectedRoute = selectedRoute; // 선택된 루트 저장
+
+                        allyCharacter.attackPower = data.attackPower;
+                        allyCharacter.attackSpeed = data.attackSpeed;
+                        allyCharacter.attackRange = data.attackRange;
+                        allyCharacter.currentHP = data.maxHP;
+                        allyCharacter.star = data.initialStar;
+                        allyCharacter.ApplyStarVisual();
+                        allyCharacter.moveSpeed = data.moveSpeed;
+
+                        Debug.Log($"[PlacementManager] [{data.characterName}] (지역2) 몬스터 소환 - {selectedRoute} 루트 선택 (cost={data.cost})");
+
+                        var selectUI = FindFirstObjectByType<CharacterSelectUI>();
+                        if (selectUI != null)
+                        {
+                            selectUI.MarkCardAsUsed(currentCharacterIndex);
+                        }
                     }
-                    Debug.LogError($"[PlacementManager] '{prefabToSpawn.name}' 프리팹에 Character 없음 => 실패");
-                    return false;
-                }
-
-                Vector3 spawnPos2 = spawner2.topWaypointsForAI[0].position;
-                GameObject allyObj = Instantiate(prefabToSpawn, opponentOurMonsterPanel);
-                if (allyObj != null)
-                {
-                    allyObj.SetActive(true);
-                    RectTransform allyRect = allyObj.GetComponent<RectTransform>();
-                    if (allyRect != null)
-                    {
-                        Vector2 localPos = opponentOurMonsterPanel.InverseTransformPoint(spawnPos2);
-                        allyRect.SetParent(opponentOurMonsterPanel, false);
-                        allyRect.localRotation = Quaternion.identity;
-                        allyRect.anchoredPosition = localPos;
-                    }
-                    else
-                    {
-                        allyObj.transform.SetParent(null);
-                        allyObj.transform.position = spawnPos2;
-                        allyObj.transform.localRotation = Quaternion.identity;
-                    }
-
-                    Character allyCharacter = allyObj.GetComponent<Character>();
-                    allyCharacter.currentTile = null;
-                    allyCharacter.isHero = (summonIndex == 9);
-                    allyCharacter.isCharAttack = !allyCharacter.isHero;
-
-                    allyCharacter.currentWaypointIndex = 0;
-                    allyCharacter.maxWaypointIndex = 6;
-                    allyCharacter.areaIndex = 2;
-                    allyCharacter.pathWaypoints = spawner2.topWaypointsForAI;
-
-                    allyCharacter.attackPower = data.attackPower;
-                    allyCharacter.attackSpeed = data.attackSpeed;
-                    allyCharacter.attackRange = data.attackRange;
-                    allyCharacter.currentHP = data.maxHP;
-                    allyCharacter.star = data.initialStar;
-                    allyCharacter.ApplyStarVisual();
-                    allyCharacter.moveSpeed = data.moveSpeed;
-
-                    Debug.Log($"[PlacementManager] 드래그로 [{data.characterName}] (지역2) 몬스터 소환 완료 (cost={data.cost})");
-                    success = true;
                 }
                 else
                 {
-                    if (mineralsSpent && targetMineralBar != null)
-                    {
-                        targetMineralBar.RefundMinerals(data.cost);
-                    }
-                    Debug.LogError("[PlacementManager] Walkable2 => Instantiate 실패");
-                    return false;
+                    Debug.LogWarning("[PlacementManager] WaveSpawnerRegion2/opponentOurMonsterPanel이 없어 소환 실패");
                 }
             }
             else if (tile.IsPlacable() || tile.IsPlacable2())
@@ -1203,9 +1226,9 @@ public class PlacementManager : MonoBehaviour
             if (newTile.IsWalkable())
             {
                 WaveSpawner spawner = FindFirstObjectByType<WaveSpawner>();
-                if (spawner != null && spawner.pathWaypoints != null && spawner.pathWaypoints.Length > 0 && ourMonsterPanel != null)
+                if (spawner != null && spawner.walkableCenter != null && spawner.walkableCenter.Length > 0 && ourMonsterPanel != null)
                 {
-                    Vector3 spawnPos = spawner.pathWaypoints[0].position;
+                    Vector3 spawnPos = spawner.walkableCenter[0].position;
 
                     RectTransform charRect = movingChar.GetComponent<RectTransform>();
                     if (charRect != null)
@@ -1226,7 +1249,7 @@ public class PlacementManager : MonoBehaviour
                     movingChar.currentWaypointIndex = 0;
                     movingChar.maxWaypointIndex = 6;
                     movingChar.areaIndex = 1;
-                    movingChar.pathWaypoints = spawner.pathWaypoints;
+                    movingChar.pathWaypoints = spawner.walkableCenter;
                     movingChar.isCharAttack = !movingChar.isHero;
 
                     Debug.Log($"[PlacementManager] 드래그로 (placable→walkable) 이동 => waypoint[0]에서 시작");
@@ -1244,9 +1267,9 @@ public class PlacementManager : MonoBehaviour
             else if (newTile.IsWalkable2())
             {
                 WaveSpawnerRegion2 spawner2 = FindFirstObjectByType<WaveSpawnerRegion2>();
-                if (spawner2 != null && spawner2.topWaypointsForAI != null && spawner2.topWaypointsForAI.Length > 0 && opponentOurMonsterPanel != null)
+                if (spawner2 != null && spawner2.walkableCenter2 != null && spawner2.walkableCenter2.Length > 0 && opponentOurMonsterPanel != null)
                 {
-                    Vector3 spawnPos2 = spawner2.topWaypointsForAI[0].position;
+                    Vector3 spawnPos2 = spawner2.walkableCenter2[0].position;
 
                     RectTransform charRect = movingChar.GetComponent<RectTransform>();
                     if (charRect != null)
@@ -1267,7 +1290,7 @@ public class PlacementManager : MonoBehaviour
                     movingChar.currentWaypointIndex = 0;
                     movingChar.maxWaypointIndex = 6;
                     movingChar.areaIndex = 2;
-                    movingChar.pathWaypoints = spawner2.topWaypointsForAI;
+                    movingChar.pathWaypoints = spawner2.walkableCenter2;
                     movingChar.isCharAttack = !movingChar.isHero;
 
                     Debug.Log($"[PlacementManager] 드래그로 (placable→walkable2) 이동 => waypoint[0]에서 시작");
@@ -2400,6 +2423,106 @@ public class PlacementManager : MonoBehaviour
         {
             Debug.LogWarning("[PlacementManager] 배치 가능한 타일이 없습니다!");
         }
+    }
+
+    // ======================== [추가] 3개 루트 시스템 헬퍼 메서드들 ========================
+    /// <summary>
+    /// 랜덤하게 루트(좌/중/우)를 선택합니다.
+    /// </summary>
+    private RouteType GetRandomRoute()
+    {
+        int randomValue = Random.Range(0, 3);
+        return (RouteType)randomValue;
+    }
+
+    /// <summary>
+    /// WaveSpawner에서 선택된 루트에 대한 웨이포인트 배열을 반환합니다.
+    /// </summary>
+    private Transform[] GetWaypointsForRoute(WaveSpawner spawner, RouteType route)
+    {
+        switch (route)
+        {
+            case RouteType.Left:
+                return spawner.walkableLeft;
+            case RouteType.Center:
+                return spawner.walkableCenter;
+            case RouteType.Right:
+                return spawner.walkableRight;
+            default:
+                return spawner.walkableCenter;
+        }
+    }
+
+    /// <summary>
+    /// WaveSpawnerRegion2에서 선택된 루트에 대한 웨이포인트 배열을 반환합니다.
+    /// </summary>
+    private Transform[] GetWaypointsForRoute(WaveSpawnerRegion2 spawner, RouteType route)
+    {
+        switch (route)
+        {
+            case RouteType.Left:
+                return spawner.walkableLeft2;
+            case RouteType.Center:
+                return spawner.walkableCenter2;
+            case RouteType.Right:
+                return spawner.walkableRight2;
+            default:
+                return spawner.walkableCenter2;
+        }
+    }
+
+    /// <summary>
+    /// WaveSpawner에서 선택된 루트에 대한 스폰 위치를 반환합니다.
+    /// </summary>
+    private Vector3 GetSpawnPositionForRoute(WaveSpawner spawner, RouteType route)
+    {
+        Transform[] waypoints = GetWaypointsForRoute(spawner, route);
+        if (waypoints != null && waypoints.Length > 0)
+        {
+            return waypoints[0].position;
+        }
+        
+        // 기본값으로 center 스폰 포인트 반환
+        Transform centerSpawnPoint = spawner.centerSpawnPoint;
+        if (centerSpawnPoint != null)
+        {
+            return centerSpawnPoint.position;
+        }
+        
+        // 스폰 포인트도 없으면 웨이포인트의 첫 번째 위치 반환
+        if (spawner.walkableCenter != null && spawner.walkableCenter.Length > 0)
+        {
+            return spawner.walkableCenter[0].position;
+        }
+        
+        return Vector3.zero;
+    }
+
+    /// <summary>
+    /// WaveSpawnerRegion2에서 선택된 루트에 대한 스폰 위치를 반환합니다.
+    /// </summary>
+    private Vector3 GetSpawnPositionForRoute(WaveSpawnerRegion2 spawner, RouteType route)
+    {
+        Transform[] waypoints = GetWaypointsForRoute(spawner, route);
+        if (waypoints != null && waypoints.Length > 0)
+        {
+            return waypoints[0].position;
+        }
+        
+        // 기본값으로 center 스폰 포인트 반환
+        Transform centerSpawnPoint = spawner.centerSpawnPoint2;
+        if (centerSpawnPoint != null)
+        {
+            return centerSpawnPoint.position;
+        }
+        
+        // 스폰 포인트도 없으면 웨이포인트의 첫 번째 위치 반환
+        if (spawner.walkableCenter2 != null && spawner.walkableCenter2.Length > 0)
+        {
+            return spawner.walkableCenter2[0].position;
+        }
+        
+        return Vector3.zero;
     }
 }
         

@@ -14,8 +14,22 @@ public class WaveSpawnerRegion2 : MonoBehaviour
     [Header("몬스터 부모 오브젝트(Region2)")]
     public Transform enemyMonsterParent;
 
-    [Header("위쪽(상단) 지역 웨이포인트들(Region2)")]
-    public Transform[] topWaypointsForAI;
+    // [수정] 기존 단일 경로를 제거하고 3개 루트로 변경
+    [Header("공격 루트 설정 (좌/중/우) - Region2")]
+    [Tooltip("좌측 루트 웨이포인트")]
+    public Transform[] walkableLeft2;
+    [Tooltip("중앙 루트 웨이포인트")]
+    public Transform[] walkableCenter2;
+    [Tooltip("우측 루트 웨이포인트")]
+    public Transform[] walkableRight2;
+    
+    [Header("루트별 스폰 위치 - Region2")]
+    [Tooltip("좌측 루트 스폰 위치")]
+    public Transform leftSpawnPoint2;
+    [Tooltip("중앙 루트 스폰 위치")]
+    public Transform centerSpawnPoint2;
+    [Tooltip("우측 루트 스폰 위치")]
+    public Transform rightSpawnPoint2;
 
     [Header("웨이브 설정 (Region2)")]
     public float timeBetweenWaves2 = 5f;
@@ -35,7 +49,9 @@ public class WaveSpawnerRegion2 : MonoBehaviour
     // ===============================
     // [수정추가] 챕터별 몬스터 교체 로직
     // ===============================
-    [Header("[수정추가] 지역2용 챕터 몬스터 교체 옵션")]    [Tooltip("true면 2챕터일 때 5마리 중 3번째는 '3챕터 몬스터'로 소환")]    public bool useChapterMonsterLogic = true;
+    [Header("[수정추가] 지역2용 챕터 몬스터 교체 옵션")]    
+    [Tooltip("true면 2챕터일 때 5마리 중 3번째는 '3챕터 몬스터'로 소환")]    
+    public bool useChapterMonsterLogic = true;
 
     [Tooltip("현재 챕터(2라면 5마리 중 3번째는 3챕터 몬스터)")]
     public int currentChapter = 2;
@@ -55,6 +71,14 @@ public class WaveSpawnerRegion2 : MonoBehaviour
     [Header("지역2 전용 생명력(텍스트)")]
     [SerializeField] private TextMeshProUGUI region2LifeText;
     public int region2Life = 10;
+
+    // 루트 타입 열거형
+    public enum RouteType
+    {
+        Left,
+        Center,
+        Right
+    }
 
     private void Start()
     {
@@ -128,8 +152,72 @@ public class WaveSpawnerRegion2 : MonoBehaviour
         isSpawning2 = false;
     }
 
+    /// <summary>
+    /// 랜덤 루트 선택
+    /// </summary>
+    private RouteType GetRandomRoute()
+    {
+        int randomIndex = Random.Range(0, 3);
+        return (RouteType)randomIndex;
+    }
+
+    /// <summary>
+    /// 선택된 루트에 따른 웨이포인트 배열 반환
+    /// </summary>
+    private Transform[] GetWaypointsForRoute(RouteType route)
+    {
+        switch (route)
+        {
+            case RouteType.Left:
+                return walkableLeft2;
+            case RouteType.Center:
+                return walkableCenter2;
+            case RouteType.Right:
+                return walkableRight2;
+            default:
+                return walkableCenter2;
+        }
+    }
+
+    /// <summary>
+    /// 선택된 루트에 따른 스폰 위치 반환
+    /// </summary>
+    private Vector3 GetSpawnPositionForRoute(RouteType route)
+    {
+        Transform spawnPoint = null;
+        
+        switch (route)
+        {
+            case RouteType.Left:
+                spawnPoint = leftSpawnPoint2;
+                break;
+            case RouteType.Center:
+                spawnPoint = centerSpawnPoint2;
+                break;
+            case RouteType.Right:
+                spawnPoint = rightSpawnPoint2;
+                break;
+        }
+
+        // 스폰 포인트가 설정되어 있으면 그 위치 사용
+        if (spawnPoint != null)
+        {
+            return spawnPoint.position;
+        }
+        
+        // 스폰 포인트가 없으면 해당 루트의 첫 번째 웨이포인트 위치 사용
+        Transform[] waypoints = GetWaypointsForRoute(route);
+        if (waypoints != null && waypoints.Length > 0 && waypoints[0] != null)
+        {
+            return waypoints[0].position;
+        }
+
+        // 모두 실패하면 기본 위치 사용
+        return transform.position;
+    }
+
     // ======================================================
-    // [수정] SpawnEnemyMonster → 인자 (int indexInWave)
+    // [수정] SpawnEnemyMonster → 인자 (int indexInWave) + 루트 선택
     // ======================================================
     private void SpawnEnemyMonster(int indexInWave)
     {
@@ -139,11 +227,19 @@ public class WaveSpawnerRegion2 : MonoBehaviour
             return;
         }
 
-        Vector3 spawnPos = transform.position;
-        if (topWaypointsForAI != null && topWaypointsForAI.Length > 0 && topWaypointsForAI[0] != null)
+        // 랜덤하게 루트 선택
+        RouteType selectedRoute = GetRandomRoute();
+        Transform[] selectedWaypoints = GetWaypointsForRoute(selectedRoute);
+        
+        // 선택된 루트가 유효한지 확인
+        if (selectedWaypoints == null || selectedWaypoints.Length == 0)
         {
-            spawnPos = topWaypointsForAI[0].position;
+            Debug.LogError($"[WaveSpawnerRegion2] {selectedRoute} 루트의 웨이포인트가 설정되지 않았습니다!");
+            return;
         }
+
+        // 스폰 위치 결정
+        Vector3 spawnPos = GetSpawnPositionForRoute(selectedRoute);
 
         // -----------------------------------------------
         // [수정추가] 챕터별 3번째 몬스터만 다음 챕터 몬스터
@@ -207,18 +303,15 @@ public class WaveSpawnerRegion2 : MonoBehaviour
         Monster enemyComp = enemyObj.GetComponent<Monster>();
         if (enemyComp != null)
         {
-            enemyComp.pathWaypoints = topWaypointsForAI;
+            enemyComp.pathWaypoints = selectedWaypoints; // 선택된 루트의 웨이포인트 설정
             enemyComp.areaIndex = 2;
             enemyComp.OnDeath += HandleEnemyMonsterDeath;
             
             // 챕터에 따른 몬스터 스탯 설정
             enemyComp.currentChapter = monsterChapter;
             
-            // 몬스터 챕터 정보 로그 출력 (다음 챕터 몬스터의 경우)
-            if (monsterChapter > currentChapter)
-            {
-                Debug.Log($"[WaveSpawnerRegion2] '다음 챕터({monsterChapter})' 몬스터 생성! indexInWave={indexInWave}");
-            }
+            // 몬스터 정보 로그 출력
+            Debug.Log($"[WaveSpawnerRegion2] Spawned Monster on {selectedRoute} route, indexInWave={indexInWave}, chapter={monsterChapter}, Wave={currentWave2}");
         }
     }
 

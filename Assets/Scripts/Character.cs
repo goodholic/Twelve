@@ -34,6 +34,21 @@ public enum CharacterRace
     Elf
 }
 
+// [추가] 공격 타입 enum
+public enum AttackTargetType
+{
+    All,            // 모든 대상 공격 (기본)
+    CastleOnly,     // 성만 공격
+    CharacterOnly   // 캐릭터만 공격
+}
+
+// [추가] 이동 타입 enum
+public enum MovementType
+{
+    Ground,  // 지상
+    Air      // 공중
+}
+
 public class Character : NetworkBehaviour, IDamageable
 {
     [Header("Character Star Info (별)")]
@@ -45,6 +60,14 @@ public class Character : NetworkBehaviour, IDamageable
     // [추가] 종족 정보
     [Header("종족 정보 (Human / Orc / Elf)")]
     public CharacterRace race = CharacterRace.Human;
+
+    // [추가] 공격 및 이동 타입
+    [Header("공격 및 이동 타입")]
+    [Tooltip("공격 대상 타입")]
+    public AttackTargetType attackTargetType = AttackTargetType.All;
+    
+    [Tooltip("이동 타입 (지상/공중)")]
+    public MovementType movementType = MovementType.Ground;
 
     // ==================
     // 전투 스탯
@@ -134,6 +157,11 @@ public class Character : NetworkBehaviour, IDamageable
     public Canvas hpBarCanvas;
     [Tooltip("HP Bar Fill Image (체력 비율)")]
     public Image hpFillImage;
+
+    // ▼▼ [추가] 선택된 루트 정보 저장
+    [Header("Route Selection")]
+    [Tooltip("캐릭터가 선택한 루트 (Left/Center/Right)")]
+    public RouteType selectedRoute = RouteType.Center;
 
     // ▼▼ [수정추가] 새 공격 범위
     [Header("클릭 시 변경될 새로운 공격 범위(예: 4.0f)")]
@@ -347,10 +375,16 @@ public class Character : NetworkBehaviour, IDamageable
                 // 타겟이 없거나 비활성화됐으면 새 타겟 탐색
                 FindNewOpponentAfterCrossing();
             }
-            else
+            
+            if (currentCharTarget != null)
             {
                 // 타겟이 있으면 해당 타겟을 향해 이동
                 MoveTowardsTarget(currentCharTarget.transform.position);
+            }
+            else
+            {
+                // 캐릭터 타겟이 없으면 성을 향해 이동
+                MoveTowardsCastle();
             }
 
             // [추가] 캐릭터 스프라이트 Up/Down 갱신
@@ -599,13 +633,25 @@ public class Character : NetworkBehaviour, IDamageable
             }
             else if (hasCrossedRegion)
             {
-                // 점프한 캐릭터는 오직 상대 지역 캐릭터만 공격 (몬스터 무시)
+                // 점프한 캐릭터는 상대 지역 캐릭터 또는 성을 공격
+                // 먼저 범위 내 캐릭터를 찾음
                 currentCharTarget = FindOpponentCharacterInRange();
                 if (currentCharTarget != null)
                 {
                     targetToDamage = currentCharTarget;
                     Debug.Log($"[Character] 점프한 {characterName}(areaIndex={areaIndex})가 " +
                               $"상대 지역 캐릭터 {currentCharTarget.characterName}(areaIndex={currentCharTarget.areaIndex})를 공격!");
+                }
+                else
+                {
+                    // 캐릭터가 없으면 성을 공격
+                    if (CanAttackCastle())
+                    {
+                        // 성 공격 처리
+                        AttackCastle();
+                        // AttackRoutine은 계속 진행되므로 여기서는 targetToDamage를 null로 유지
+                        targetToDamage = null;
+                    }
                 }
             }
             else
@@ -802,6 +848,41 @@ public class Character : NetworkBehaviour, IDamageable
         
         Vector3 direction = (targetPosition - transform.position).normalized;
         transform.position += direction * superFastSpeed * Time.deltaTime;
+    }
+
+    /// <summary>
+    /// 점프한 캐릭터가 성으로 이동하는 메서드
+    /// </summary>
+    private void MoveTowardsCastle()
+    {
+        Vector3 castlePosition;
+        
+        // 지역2에서 지역1로 점프한 경우 (지역1의 성으로 이동)
+        if (areaIndex == 2)
+        {
+            // 지역1 성은 보통 화면 하단 중앙
+            castlePosition = new Vector3(0f, -8f, 0f);
+        }
+        // 지역1에서 지역2로 점프한 경우 (지역2의 성으로 이동)
+        else
+        {
+            // 지역2 성은 보통 화면 상단 중앙
+            castlePosition = new Vector3(0f, 8f, 0f);
+        }
+        
+        float distToCastle = Vector2.Distance(transform.position, castlePosition);
+        float stopDistance = attackRange * 0.9f; // 성에 더 가까이 접근
+        
+        if (distToCastle <= stopDistance)
+        {
+            // 성 공격 범위에 도달
+            return;
+        }
+        
+        // 성을 향해 이동
+        float moveSpeed = 10.0f;
+        Vector3 direction = (castlePosition - transform.position).normalized;
+        transform.position += direction * moveSpeed * Time.deltaTime;
     }
 
     // 통합된 공격 메소드
@@ -1405,5 +1486,109 @@ public class Character : NetworkBehaviour, IDamageable
         hpFillImage = null;
         bulletPanel = null;
         opponentBulletPanel = null;
+    }
+
+    /// <summary>
+    /// 점프한 캐릭터가 성을 공격할 수 있는지 확인
+    /// </summary>
+    private bool CanAttackCastle()
+    {
+        // 점프한 캐릭터만 성을 공격 가능
+        if (!hasCrossedRegion) return false;
+        
+        // 성까지의 거리를 체크 (성은 보통 마지막 웨이포인트 근처에 있음)
+        // 간단하게 항상 true를 반환하여 캐릭터가 없으면 성을 공격하도록 함
+        return true;
+    }
+    
+    /// <summary>
+    /// 성을 공격하는 메서드
+    /// </summary>
+    private void AttackCastle()
+    {
+        // 점프해서 지역2에서 지역1로 온 경우 (areaIndex는 여전히 2)
+        if (areaIndex == 2)
+        {
+            // 지역1의 성 공격
+            if (CastleHealthManager.Instance != null)
+            {
+                int damage = Mathf.RoundToInt(attackPower);
+                CastleHealthManager.Instance.TakeDamage(damage);
+                Debug.Log($"[Character] 점프한 {characterName}이(가) 지역1 성을 공격! (데미지: {damage})");
+                
+                // 공격 이펙트나 애니메이션 재생 (선택사항)
+                if (bulletPrefab != null)
+                {
+                    // 성을 향한 총알 발사 이펙트 (실제 데미지는 이미 적용됨)
+                    // 총알은 시각적 효과만 제공
+                    GameObject bulletObj = Instantiate(bulletPrefab);
+                    if (bulletPanel != null)
+                    {
+                        bulletObj.transform.SetParent(bulletPanel, false);
+                        RectTransform bulletRect = bulletObj.GetComponent<RectTransform>();
+                        if (bulletRect != null)
+                        {
+                            Vector2 localPos = bulletPanel.InverseTransformPoint(transform.position);
+                            bulletRect.anchoredPosition = localPos;
+                        }
+                    }
+                    else
+                    {
+                        bulletObj.transform.position = transform.position;
+                    }
+                    
+                    Bullet bulletComp = bulletObj.GetComponent<Bullet>();
+                    if (bulletComp != null)
+                    {
+                        bulletComp.speed = 10.0f;
+                        Destroy(bulletObj, 1.0f); // 1초 후 삭제
+                    }
+                    else
+                    {
+                        Destroy(bulletObj);
+                    }
+                }
+            }
+        }
+        // 점프해서 지역1에서 지역2로 온 경우 (areaIndex는 여전히 1)
+        else if (areaIndex == 1)
+        {
+            // 지역2의 체력 감소
+            var wave2 = FindFirstObjectByType<WaveSpawnerRegion2>();
+            if (wave2 != null)
+            {
+                int damage = Mathf.RoundToInt(attackPower);
+                wave2.TakeDamageToRegion2(damage);
+                Debug.Log($"[Character] 점프한 {characterName}이(가) 지역2를 공격! (데미지: {damage})");
+                
+                // 공격 이펙트나 애니메이션 재생 (선택사항)
+                if (bulletPrefab != null && opponentBulletPanel != null)
+                {
+                    GameObject bulletObj = Instantiate(bulletPrefab);
+                    bulletObj.transform.SetParent(opponentBulletPanel, false);
+                    
+                    RectTransform bulletRect = bulletObj.GetComponent<RectTransform>();
+                    if (bulletRect != null)
+                    {
+                        Vector2 localPos = opponentBulletPanel.InverseTransformPoint(transform.position);
+                        bulletRect.anchoredPosition = localPos;
+                    }
+                    
+                    // 성의 위치는 보통 화면 상단
+                    Vector3 castlePosition = new Vector3(transform.position.x, 10f, 0f);
+                    
+                    Bullet bulletComp = bulletObj.GetComponent<Bullet>();
+                    if (bulletComp != null)
+                    {
+                        bulletComp.speed = 10.0f;
+                        Destroy(bulletObj, 1.0f); // 1초 후 삭제
+                    }
+                    else
+                    {
+                        Destroy(bulletObj);
+                    }
+                }
+            }
+        }
     }
 }

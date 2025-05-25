@@ -7,7 +7,23 @@ public class WaveSpawner : MonoBehaviour
     [Header("몬스터 관련 설정")]
     public GameObject monsterPrefab;
     public Transform monsterParent;
-    public Transform[] pathWaypoints;
+    
+    // [수정] 기존 단일 경로를 제거하고 3개 루트로 변경
+    [Header("공격 루트 설정 (좌/중/우)")]
+    [Tooltip("좌측 루트 웨이포인트")]
+    public Transform[] walkableLeft;
+    [Tooltip("중앙 루트 웨이포인트")]
+    public Transform[] walkableCenter;
+    [Tooltip("우측 루트 웨이포인트")]
+    public Transform[] walkableRight;
+    
+    [Header("루트별 스폰 위치")]
+    [Tooltip("좌측 루트 스폰 위치")]
+    public Transform leftSpawnPoint;
+    [Tooltip("중앙 루트 스폰 위치")]
+    public Transform centerSpawnPoint;
+    [Tooltip("우측 루트 스폰 위치")]
+    public Transform rightSpawnPoint;
 
     [Header("웨이브/몬스터 설정")]
     public float timeBetweenWaves = 5f;
@@ -53,6 +69,14 @@ public class WaveSpawner : MonoBehaviour
     [Tooltip("예: index=0 => 1챕터 몬스터, index=1 => 2챕터 몬스터, ..., index=100 => 101챕터 몬스터")]
     public GameObject[] chapterMonsters = new GameObject[101];
     // =========================================
+
+    // 루트 타입 열거형
+    public enum RouteType
+    {
+        Left,
+        Center,
+        Right
+    }
 
     private void Start()
     {
@@ -154,7 +178,71 @@ public class WaveSpawner : MonoBehaviour
     }
 
     /// <summary>
-    /// (수정) 몬스터 소환 로직에 indexInWave 추가 + 챕터별 로직
+    /// 랜덤 루트 선택
+    /// </summary>
+    private RouteType GetRandomRoute()
+    {
+        int randomIndex = Random.Range(0, 3);
+        return (RouteType)randomIndex;
+    }
+
+    /// <summary>
+    /// 선택된 루트에 따른 웨이포인트 배열 반환
+    /// </summary>
+    private Transform[] GetWaypointsForRoute(RouteType route)
+    {
+        switch (route)
+        {
+            case RouteType.Left:
+                return walkableLeft;
+            case RouteType.Center:
+                return walkableCenter;
+            case RouteType.Right:
+                return walkableRight;
+            default:
+                return walkableCenter;
+        }
+    }
+
+    /// <summary>
+    /// 선택된 루트에 따른 스폰 위치 반환
+    /// </summary>
+    private Vector3 GetSpawnPositionForRoute(RouteType route)
+    {
+        Transform spawnPoint = null;
+        
+        switch (route)
+        {
+            case RouteType.Left:
+                spawnPoint = leftSpawnPoint;
+                break;
+            case RouteType.Center:
+                spawnPoint = centerSpawnPoint;
+                break;
+            case RouteType.Right:
+                spawnPoint = rightSpawnPoint;
+                break;
+        }
+
+        // 스폰 포인트가 설정되어 있으면 그 위치 사용
+        if (spawnPoint != null)
+        {
+            return spawnPoint.position;
+        }
+        
+        // 스폰 포인트가 없으면 해당 루트의 첫 번째 웨이포인트 위치 사용
+        Transform[] waypoints = GetWaypointsForRoute(route);
+        if (waypoints != null && waypoints.Length > 0 && waypoints[0] != null)
+        {
+            return waypoints[0].position;
+        }
+
+        // 모두 실패하면 기본 위치 사용
+        return transform.position;
+    }
+
+    /// <summary>
+    /// (수정) 몬스터 소환 로직에 indexInWave 추가 + 챕터별 로직 + 루트 선택
     /// </summary>
     private void SpawnMonster(int indexInWave)
     {
@@ -164,16 +252,19 @@ public class WaveSpawner : MonoBehaviour
             return;
         }
 
-        // 초기 스폰 위치 (pathWaypoints의 0번지점)
-        Vector3 spawnPos = transform.position;
-        if (pathWaypoints != null && pathWaypoints.Length > 0 && pathWaypoints[0] != null)
+        // 랜덤하게 루트 선택
+        RouteType selectedRoute = GetRandomRoute();
+        Transform[] selectedWaypoints = GetWaypointsForRoute(selectedRoute);
+        
+        // 선택된 루트가 유효한지 확인
+        if (selectedWaypoints == null || selectedWaypoints.Length == 0)
         {
-            spawnPos = pathWaypoints[0].position;
+            Debug.LogError($"[WaveSpawner] {selectedRoute} 루트의 웨이포인트가 설정되지 않았습니다!");
+            return;
         }
-        else
-        {
-            Debug.LogError("[WaveSpawner] pathWaypoints가 제대로 설정되지 않았습니다!");
-        }
+
+        // 스폰 위치 결정
+        Vector3 spawnPos = GetSpawnPositionForRoute(selectedRoute);
 
         // -------------- [수정추가] 챕터 로직 --------------
         GameObject prefabToSpawn = monsterPrefab; // 기본값
@@ -237,13 +328,13 @@ public class WaveSpawner : MonoBehaviour
         if (mComp != null)
         {
             mComp.areaIndex = 1; // 지역1
-            mComp.pathWaypoints = pathWaypoints;
+            mComp.pathWaypoints = selectedWaypoints; // 선택된 루트의 웨이포인트 설정
             mComp.OnDeath += HandleMonsterDeath;
 
             // 챕터 설정
             mComp.currentChapter = monsterChapter;
 
-            Debug.Log($"[WaveSpawner] Spawned Monster indexInWave={indexInWave}, chapter={monsterChapter}, Wave={currentWave}");
+            Debug.Log($"[WaveSpawner] Spawned Monster on {selectedRoute} route, indexInWave={indexInWave}, chapter={monsterChapter}, Wave={currentWave}");
         }
         else
         {
