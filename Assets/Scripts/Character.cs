@@ -200,6 +200,10 @@ public class Character : NetworkBehaviour, IDamageable
     private bool isJumpingAcross = false; // 점프 중 여부
     private bool hasJumped = false; // 점프 완료 여부 추가
 
+    [Header("Jump Settings")]
+    [Tooltip("점프 포인트에 도달했다고 판단하는 거리 임계값")]
+    public float jumpTriggerDistance = 0.5f;
+
 
 
 
@@ -453,9 +457,9 @@ public class Character : NetworkBehaviour, IDamageable
                 if (jumpPoint != null)
                 {
                     float distToJumpPoint = Vector2.Distance(transform.position, jumpPoint.position);
-                    if (distToJumpPoint < 0.5f) // 점프 포인트에 충분히 가까우면
+                    if (distToJumpPoint <= jumpTriggerDistance)
                     {
-                        Debug.Log($"[Character] {characterName}이(가) 점프 포인트에 도달!");
+                        Debug.Log($"[Character] {characterName}이(가) 점프 포인트에 도달! (dist={distToJumpPoint:F2})");
                         return true;
                     }
                 }
@@ -472,9 +476,9 @@ public class Character : NetworkBehaviour, IDamageable
                 if (jumpPoint != null)
                 {
                     float distToJumpPoint = Vector2.Distance(transform.position, jumpPoint.position);
-                    if (distToJumpPoint < 0.5f) // 점프 포인트에 충분히 가까우면
+                    if (distToJumpPoint <= jumpTriggerDistance)
                     {
-                        Debug.Log($"[Character] {characterName}이(가) 점프 포인트에 도달!");
+                        Debug.Log($"[Character] {characterName}이(가) 점프 포인트에 도달! (dist={distToJumpPoint:F2})");
                         return true;
                     }
                 }
