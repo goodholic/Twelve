@@ -329,6 +329,10 @@ public class Character : NetworkBehaviour, IDamageable
             // (필요시 자동 추가 가능)
             // jumpController = gameObject.AddComponent<CharacterJumpController>();
         }
+
+        // 점프 상태 초기화
+        hasJumped = false;
+        isJumpingAcross = false;
     }
 
     private void Update()
@@ -336,14 +340,17 @@ public class Character : NetworkBehaviour, IDamageable
         // 히어로는 pathWaypoints 이동 안 함
         if (isHero)
         {
+            // [수정] 히어로도 스프라이트 방향 업데이트는 수행
+            UpdateCharacterDirectionSprite();
             return;
         }
 
-        // ▼▼ [수정] placable/placed 타일의 캐릭터는 이동하지 않음
+        // ▼▼ [수정] placable/placed 타일의 캐릭터는 이동하지 않지만 스프라이트 업데이트는 수행
         if (currentTile != null && (currentTile.IsPlacable() || currentTile.IsPlacable2() || 
             currentTile.IsPlaceTile() || currentTile.IsPlaced2()))
         {
-            // placable/placed 타일에 있는 캐릭터는 이동하지 않음
+            // placable/placed 타일에 있는 캐릭터는 이동하지 않지만 스프라이트 방향은 업데이트
+            UpdateCharacterDirectionSprite();
             return;
         }
 
@@ -399,9 +406,9 @@ public class Character : NetworkBehaviour, IDamageable
         }
 
         // ===============================
-        // [추가] 점프 포인트 도달 체크
+        // [추가] 점프 포인트 도달 체크 (특정 웨이포인트에서만)
         // ===============================
-        if (!isJumpingAcross && CheckIfAtJumpPoint())
+        if (!isJumpingAcross && !hasJumped && ShouldCheckForJump() && CheckIfAtJumpPoint())
         {
             StartJumpToOtherRegion();
             return;
@@ -434,51 +441,100 @@ public class Character : NetworkBehaviour, IDamageable
     }
 
     /// <summary>
-    /// 현재 위치가 점프 포인트인지 확인
+    /// 점프를 체크해야 하는 상황인지 확인 (특정 웨이포인트 범위에서만)
+    /// </summary>
+    private bool ShouldCheckForJump()
+    {
+        // 웨이포인트 기반 이동 중이어야 함
+        if (pathWaypoints == null || pathWaypoints.Length == 0 || currentWaypointIndex < 0)
+            return false;
+            
+        // ▼▼ [수정] 웨이포인트 중간 지점에서 점프 체크 (30% 이상 진행했을 때)
+        float progressRatio = (float)currentWaypointIndex / (float)pathWaypoints.Length;
+        bool shouldCheck = progressRatio >= 0.3f; // 30% 이상 진행했을 때부터 점프 체크
+        
+        if (shouldCheck)
+        {
+            Debug.Log($"[Character] {characterName} - 점프 체크 조건 만족: 진행률 {progressRatio:F2} ({currentWaypointIndex}/{pathWaypoints.Length})");
+        }
+        
+        return shouldCheck;
+    }
+
+    /// <summary>
+    /// 현재 위치가 점프 포인트인지 확인 (CharacterJumpController 기반)
     /// </summary>
     private bool CheckIfAtJumpPoint()
     {
         // 이미 점프를 완료했으면 더 이상 체크하지 않음
-        if (hasJumped) return false;
-        
-        // WaveSpawner 참조 가져오기
-        if (areaIndex == 1)
+        if (hasJumped) 
         {
-            if (waveSpawner == null)
-                waveSpawner = FindFirstObjectByType<WaveSpawner>();
-            
-            if (waveSpawner != null)
-            {
-                Transform jumpPoint = waveSpawner.GetJumpPointForRoute((WaveSpawner.RouteType)selectedRoute);
-                if (jumpPoint != null)
-                {
-                    float distToJumpPoint = Vector2.Distance(transform.position, jumpPoint.position);
-                    if (distToJumpPoint < 0.5f) // 점프 포인트에 충분히 가까우면
-                    {
-                        Debug.Log($"[Character] {characterName}이(가) 점프 포인트에 도달!");
-                        return true;
-                    }
-                }
-            }
+            return false;
         }
-        else if (areaIndex == 2)
+        
+        // CharacterJumpController가 없으면 점프 불가
+        if (jumpController == null)
         {
-            if (waveSpawnerRegion == null)
-                waveSpawnerRegion = FindFirstObjectByType<WaveSpawnerRegion2>();
+            // 경고 메시지를 너무 자주 출력하지 않도록 조건 추가
+            return false;
+        }
+        
+        // CharacterJumpController의 점프 지점 확인
+        CharacterJumpController.RouteType jumpRoute;
+        switch (selectedRoute)
+        {
+            case RouteType.Left:
+                jumpRoute = CharacterJumpController.RouteType.Left;
+                break;
+            case RouteType.Center:
+                jumpRoute = CharacterJumpController.RouteType.Center;
+                break;
+            case RouteType.Right:
+                jumpRoute = CharacterJumpController.RouteType.Right;
+                break;
+            default:
+                jumpRoute = CharacterJumpController.RouteType.Center;
+                break;
+        }
+        
+        Debug.Log($"[Character] {characterName} 점프 체크: 지역{areaIndex}, 선택된 루트: {selectedRoute} → JumpController 루트: {jumpRoute}");
+        
+        // 현재 지역의 점프 시작 지점과 도착 지점 모두 확인
+        RectTransform jumpStartPoint = jumpController.GetJumpStartPoint(areaIndex, jumpRoute);
+        RectTransform jumpEndPoint = jumpController.GetJumpEndPoint(areaIndex == 1 ? 2 : 1, jumpRoute);
+        
+        // 점프 지점이 제대로 설정되지 않았으면 기본 점프 조건 사용
+        if (jumpStartPoint == null || jumpEndPoint == null)
+        {
+            Debug.LogWarning($"[Character] {characterName} - 점프 지점 미설정! 지역{areaIndex}, {jumpRoute} 루트");
+            Debug.LogWarning($"[Character] jumpStartPoint: {(jumpStartPoint != null ? jumpStartPoint.name : "null")}, jumpEndPoint: {(jumpEndPoint != null ? jumpEndPoint.name : "null")}");
             
-            if (waveSpawnerRegion != null)
+            // ▼▼ [수정] 점프 지점이 설정되지 않았어도 웨이포인트 진행률로 점프 허용
+            float progressRatio = (float)currentWaypointIndex / (float)pathWaypoints.Length;
+            if (progressRatio >= 0.5f) // 50% 이상 진행했을 때 점프
             {
-                Transform jumpPoint = waveSpawnerRegion.GetJumpPointForRoute((WaveSpawnerRegion2.RouteType)selectedRoute);
-                if (jumpPoint != null)
-                {
-                    float distToJumpPoint = Vector2.Distance(transform.position, jumpPoint.position);
-                    if (distToJumpPoint < 0.5f) // 점프 포인트에 충분히 가까우면
-                    {
-                        Debug.Log($"[Character] {characterName}이(가) 점프 포인트에 도달!");
-                        return true;
-                    }
-                }
+                Debug.Log($"[Character] {characterName} - 점프 지점 미설정이지만 진행률 {progressRatio:F2}로 점프 허용");
+                return true;
             }
+            Debug.Log($"[Character] {characterName} - 진행률 {progressRatio:F2}이 50% 미만이므로 점프 불허");
+            return false;
+        }
+        
+        // UI 좌표계에서 거리 계산
+        RectTransform charRect = GetComponent<RectTransform>();
+        if (charRect == null)
+        {
+            return false;
+        }
+        
+        Vector2 currentUIPos = charRect.anchoredPosition;
+        Vector2 jumpUIPos = jumpStartPoint.anchoredPosition;
+        float distToJumpPoint = Vector2.Distance(currentUIPos, jumpUIPos);
+        
+        if (distToJumpPoint < 600f) // UI 좌표계에 맞는 거리 임계값
+        {
+            Debug.Log($"[Character] {characterName}이(가) 지역{areaIndex} 점프 포인트에 도달!");
+            return true;
         }
         
         return false;
@@ -490,47 +546,253 @@ public class Character : NetworkBehaviour, IDamageable
     private void StartJumpToOtherRegion()
     {
         if (isJumpingAcross) return;
-        isJumpingAcross = true;
 
-        // 지역1 → 지역2로 점프
-        if (areaIndex == 1)
+        // CharacterJumpController 사용
+        if (jumpController != null)
         {
-            if (waveSpawner != null)
+            CharacterJumpController.RouteType jumpRoute;
+            switch (selectedRoute)
             {
-                Transform targetPoint = waveSpawner.GetTargetPointForRoute((WaveSpawner.RouteType)selectedRoute);
+                case RouteType.Left:
+                    jumpRoute = CharacterJumpController.RouteType.Left;
+                    break;
+                case RouteType.Center:
+                    jumpRoute = CharacterJumpController.RouteType.Center;
+                    break;
+                case RouteType.Right:
+                    jumpRoute = CharacterJumpController.RouteType.Right;
+                    break;
+                default:
+                    jumpRoute = CharacterJumpController.RouteType.Center;
+                    break;
+            }
+
+            // 점프 지점이 제대로 설정되어 있는지 미리 확인
+            int targetRegion = (areaIndex == 1) ? 2 : 1;
+            RectTransform startPoint = jumpController.GetJumpStartPoint(areaIndex, jumpRoute);
+            RectTransform endPoint = jumpController.GetJumpEndPoint(areaIndex, jumpRoute); // 원래 지역의 End 포인트 사용 (실제로는 타겟 지역 위치)
+            
+            Debug.Log($"[Character] {characterName} 점프 지점 확인: 지역{areaIndex}→{targetRegion}, {jumpRoute} 루트");
+            Debug.Log($"[Character] 시작점: {(startPoint != null ? startPoint.name : "null")}, 도착점: {(endPoint != null ? endPoint.name : "null")}");
+            
+            if (startPoint == null || endPoint == null)
+            {
+                // ▼▼ [수정] 점프 지점이 설정되지 않았어도 기본 점프 실행
+                Debug.LogWarning($"[Character] {characterName} - 점프 지점이 설정되지 않았지만 기본 점프를 실행합니다. (지역{areaIndex}→{targetRegion}, {jumpRoute} 루트)");
                 
-                if (targetPoint != null)
-                {
-                    // 점프 애니메이션 시작
-                    StartCoroutine(JumpToRegion(targetPoint.position, 2));
+                // 기본 점프 실행 (CharacterJumpController 없이)
+                isJumpingAcross = true;
+                
+                // 웨이포인트 정보 백업 (점프 전에 미리 저장)
+                Transform[] backupWaypoints = pathWaypoints;
+                int backupCurrentIndex = currentWaypointIndex;
+                int backupMaxIndex = maxWaypointIndex;
+                RouteType backupRoute = selectedRoute;
+                
+                Debug.Log($"[Character] {characterName} 기본 점프 - 웨이포인트 정보 백업: 인덱스 {backupCurrentIndex}, 총 {(backupWaypoints != null ? backupWaypoints.Length : 0)}개");
+                
+                // 점프 완료 처리
+                hasJumped = true; // 점프 완료로 표시
+                
+                // 패널 변경
+                UpdatePanelForRegion(targetRegion);
+                
+                // 웨이포인트 정보 복원 및 계속 진행
+                pathWaypoints = backupWaypoints;
+                currentWaypointIndex = backupCurrentIndex;
+                maxWaypointIndex = backupMaxIndex;
+                selectedRoute = backupRoute;
+                
+                SetWaypointsForNewRegion(targetRegion);
+                
+                isJumpingAcross = false;
+                Debug.Log($"[Character] {characterName} 기본 점프 완료!");
+                return;
+            }
+
+            isJumpingAcross = true;
+            
+            // 지역1 → 지역2로 점프
+            if (areaIndex == 1)
+            {
+                jumpController.onJumpComplete = () => OnJumpComplete(2);
+                jumpController.JumpBetweenRegions(1, 2, jumpRoute);
+                Debug.Log($"[Character] {characterName} CharacterJumpController로 지역1→지역2 점프 시작 (루트: {jumpRoute})");
+            }
+            // 지역2 → 지역1로 점프
+            else if (areaIndex == 2)
+            {
+                jumpController.onJumpComplete = () => OnJumpComplete(1);
+                jumpController.JumpBetweenRegions(2, 1, jumpRoute);
+                Debug.Log($"[Character] {characterName} CharacterJumpController로 지역2→지역1 점프 시작 (루트: {jumpRoute})");
+            }
         }
         else
         {
-                    Debug.LogWarning($"[Character] 점프 도착 지점이 설정되지 않았습니다. Route: {selectedRoute}");
-                    isJumpingAcross = false;
-                }
-            }
+            // CharacterJumpController가 없으면 점프 건너뛰기
+            Debug.LogWarning($"[Character] {characterName}에 CharacterJumpController가 없어 점프를 건너뜁니다.");
+            isJumpingAcross = false;
         }
-        // 지역2 → 지역1로 점프
-        else if (areaIndex == 2)
+    }
+
+    /// <summary>
+    /// CharacterJumpController 점프 완료 콜백
+    /// </summary>
+    private void OnJumpComplete(int targetAreaIndex)
+    {
+        // 지역 정보는 변경하지 않음 (원래 지역 유지)
+        // areaIndex는 캐릭터의 원래 소속 지역을 나타냄
+        isJumpingAcross = false;
+        hasJumped = true; // 점프 완료 표시
+        
+        Debug.Log($"[Character] {characterName} CharacterJumpController 점프 완료! 원래 지역: {areaIndex}, 이동한 지역: {targetAreaIndex}");
+        Debug.Log($"[Character] 점프 완료 시 웨이포인트 상태: 배열 {(pathWaypoints != null ? pathWaypoints.Length : 0)}개, 현재 인덱스: {currentWaypointIndex}");
+        
+        // 웨이포인트 정보가 유실되었는지 확인
+        if (pathWaypoints == null || pathWaypoints.Length == 0)
         {
-            if (waveSpawnerRegion != null)
+            Debug.LogWarning($"[Character] {characterName} 점프 완료 후 웨이포인트 배열이 유실됨! 복구 시도");
+            RestoreOriginalWaypoints();
+        }
+        
+        // 패널 변경 (물리적 위치에 따라)
+        UpdatePanelForRegion(targetAreaIndex);
+        
+        // 웨이포인트 설정 (패널 변경 후에 실행)
+        SetWaypointsForNewRegion(targetAreaIndex);
+    }
+
+    /// <summary>
+    /// 점프 후 원래 지역의 웨이포인트를 계속 따라가도록 설정
+    /// </summary>
+    private void SetWaypointsForNewRegion(int newAreaIndex)
+    {
+        Debug.Log($"[Character] {characterName} 점프 완료. 원래 지역 {areaIndex}의 웨이포인트를 계속 사용하여 지역 {newAreaIndex}를 탐방");
+        Debug.Log($"[Character] 점프 전 웨이포인트 인덱스: {currentWaypointIndex}, 최대 인덱스: {maxWaypointIndex}");
+        
+        // ▼▼ [수정] 웨이포인트 배열이 유실되었을 경우 복구 시도
+        if (pathWaypoints == null || pathWaypoints.Length == 0)
+        {
+            Debug.LogWarning($"[Character] {characterName} 웨이포인트 배열이 유실됨! 원래 지역의 웨이포인트 복구 시도");
+            RestoreOriginalWaypoints();
+        }
+        
+        // 원래 지역의 웨이포인트를 계속 사용하되, 점프 후 다음 웨이포인트부터 진행
+        if (pathWaypoints != null && pathWaypoints.Length > 0)
+        {
+            // 현재 인덱스가 유효한 범위인지 확인
+            if (currentWaypointIndex < 0)
             {
-                Transform targetPoint = waveSpawnerRegion.GetTargetPointForRoute((WaveSpawnerRegion2.RouteType)selectedRoute);
-                
-                if (targetPoint != null)
-                {
-                    // 점프 애니메이션 시작
-                    StartCoroutine(JumpToRegion(targetPoint.position, 1));
+                currentWaypointIndex = 0;
+                Debug.Log($"[Character] {characterName} 웨이포인트 인덱스가 음수였음. 0으로 초기화");
+            }
+            
+            // 다음 웨이포인트로 이동 (점프 후 계속 진행)
+            if (currentWaypointIndex < pathWaypoints.Length - 1)
+            {
+                currentWaypointIndex++;
+                Debug.Log($"[Character] {characterName} 원래 지역 {areaIndex}의 웨이포인트 {currentWaypointIndex}부터 계속 진행 (총 {pathWaypoints.Length}개)");
             }
             else
             {
-                    Debug.LogWarning($"[Character] 점프 도착 지점이 설정되지 않았습니다. Route: {selectedRoute}");
-                    isJumpingAcross = false;
+                Debug.Log($"[Character] {characterName} 이미 마지막 웨이포인트에 도달. 현재 인덱스 유지: {currentWaypointIndex}");
+            }
+            
+            // maxWaypointIndex 재설정
+            maxWaypointIndex = pathWaypoints.Length - 1;
+            
+            Debug.Log($"[Character] 지역 {areaIndex} 캐릭터가 지역 {newAreaIndex}에서 원래 웨이포인트를 따라 탐방 중");
+        }
+        else
+        {
+            Debug.LogError($"[Character] {characterName} 웨이포인트 복구 실패! 점프 후 이동 불가");
+        }
+    }
+    
+    /// <summary>
+    /// 원래 지역의 웨이포인트를 복구하는 메서드
+    /// </summary>
+    private void RestoreOriginalWaypoints()
+    {
+        Debug.Log($"[Character] {characterName} 원래 지역 {areaIndex}의 웨이포인트 복구 시도");
+        
+        if (areaIndex == 1)
+        {
+            // 지역1 캐릭터의 웨이포인트 복구
+            if (waveSpawner != null)
+            {
+                Transform[] restoredWaypoints = GetWaypointsFromOriginalSpawner(waveSpawner, selectedRoute);
+                if (restoredWaypoints != null && restoredWaypoints.Length > 0)
+                {
+                    pathWaypoints = restoredWaypoints;
+                    maxWaypointIndex = restoredWaypoints.Length - 1;
+                    Debug.Log($"[Character] {characterName} 지역1 웨이포인트 복구 성공! ({restoredWaypoints.Length}개, 루트: {selectedRoute})");
+                }
+                else
+                {
+                    Debug.LogError($"[Character] {characterName} 지역1 웨이포인트 복구 실패!");
+                }
+            }
+        }
+        else if (areaIndex == 2)
+        {
+            // 지역2 캐릭터의 웨이포인트 복구
+            if (waveSpawnerRegion != null)
+            {
+                Transform[] restoredWaypoints = GetWaypointsFromOriginalSpawner(waveSpawnerRegion, selectedRoute);
+                if (restoredWaypoints != null && restoredWaypoints.Length > 0)
+                {
+                    pathWaypoints = restoredWaypoints;
+                    maxWaypointIndex = restoredWaypoints.Length - 1;
+                    Debug.Log($"[Character] {characterName} 지역2 웨이포인트 복구 성공! ({restoredWaypoints.Length}개, 루트: {selectedRoute})");
+                }
+                else
+                {
+                    Debug.LogError($"[Character] {characterName} 지역2 웨이포인트 복구 실패!");
                 }
             }
         }
     }
+    
+    /// <summary>
+    /// 원래 스포너에서 웨이포인트를 가져오는 메서드
+    /// </summary>
+    private Transform[] GetWaypointsFromOriginalSpawner(WaveSpawner spawner, RouteType route)
+    {
+        switch (route)
+        {
+            case RouteType.Left:
+                return spawner.walkableLeft;
+            case RouteType.Center:
+                return spawner.walkableCenter;
+            case RouteType.Right:
+                return spawner.walkableRight;
+            case RouteType.Default:
+            default:
+                return spawner.walkableCenter; // 기본값은 중앙 루트
+        }
+    }
+    
+    /// <summary>
+    /// 원래 스포너에서 웨이포인트를 가져오는 메서드 (지역2용)
+    /// </summary>
+    private Transform[] GetWaypointsFromOriginalSpawner(WaveSpawnerRegion2 spawner, RouteType route)
+    {
+        switch (route)
+        {
+            case RouteType.Left:
+                return spawner.walkableLeft2;
+            case RouteType.Center:
+                return spawner.walkableCenter2;
+            case RouteType.Right:
+                return spawner.walkableRight2;
+            case RouteType.Default:
+            default:
+                return spawner.walkableCenter2; // 기본값은 중앙 루트
+        }
+    }
+    
+
     
     /// <summary>
     /// 점프 애니메이션 코루틴
@@ -562,81 +824,15 @@ public class Character : NetworkBehaviour, IDamageable
         // 3. 도착 위치에 정확히 배치
         transform.position = targetPos;
         
-        // 4. 지역 정보 업데이트
-        areaIndex = newAreaIndex;
+        // 4. 점프 상태 업데이트 (지역 정보는 변경하지 않음)
+        // areaIndex는 캐릭터의 원래 소속 지역을 유지
         isJumpingAcross = false;
         hasJumped = true; // 점프 완료 표시
         
         // 5. 새로운 지역의 웨이포인트 설정
-        if (newAreaIndex == 1)
-        {
-            // 지역1의 웨이포인트 설정
-            if (waveSpawner != null)
-            {
-                // 지역1은 walkable 타일을 따라 이동
-                Transform[] waypoints = null;
-                switch (selectedRoute)
-                {
-                    case RouteType.Default:
-                        waypoints = waveSpawner.walkableCenter; // Default는 Center 루트 사용
-                        break;
-                    case RouteType.Left:
-                        waypoints = waveSpawner.walkableLeft;
-                        break;
-                    case RouteType.Center:
-                        waypoints = waveSpawner.walkableCenter;
-                        break;
-                    case RouteType.Right:
-                        waypoints = waveSpawner.walkableRight;
-                        break;
-                }
-                
-                if (waypoints != null && waypoints.Length > 0)
-                {
-                    pathWaypoints = waypoints;
-                    currentWaypointIndex = 0;
-                    maxWaypointIndex = waypoints.Length - 1;
-                    Debug.Log($"[Character] {characterName}이(가) 지역1로 점프 완료. {selectedRoute} 루트 시작");
-                }
-            }
-        }
-        else if (newAreaIndex == 2)
-        {
-            // 지역2의 웨이포인트 설정
-            if (waveSpawnerRegion == null)
-                waveSpawnerRegion = FindFirstObjectByType<WaveSpawnerRegion2>();
-            
-            if (waveSpawnerRegion != null)
-            {
-                // 지역2는 walkable2 타일을 따라 이동
-                Transform[] waypoints = null;
-                switch (selectedRoute)
-                {
-                    case RouteType.Default:
-                        waypoints = waveSpawnerRegion.walkableCenter2; // Default는 Center 루트 사용
-                        break;
-                    case RouteType.Left:
-                        waypoints = waveSpawnerRegion.walkableLeft2;
-                        break;
-                    case RouteType.Center:
-                        waypoints = waveSpawnerRegion.walkableCenter2;
-                        break;
-                    case RouteType.Right:
-                        waypoints = waveSpawnerRegion.walkableRight2;
-                        break;
-                }
-                
-                if (waypoints != null && waypoints.Length > 0)
-                {
-                    pathWaypoints = waypoints;
-                    currentWaypointIndex = 0;
-                    maxWaypointIndex = waypoints.Length - 1;
-                    Debug.Log($"[Character] {characterName}이(가) 지역2로 점프 완료. {selectedRoute} 루트 시작");
-                }
-            }
-        }
+        SetWaypointsForNewRegion(newAreaIndex);
         
-        // 6. 패널 변경 (지역에 따라)
+        // 6. 패널 변경 (물리적 위치에 따라)
         UpdatePanelForRegion(newAreaIndex);
     }
     
@@ -682,46 +878,65 @@ public class Character : NetworkBehaviour, IDamageable
         }
 
         // ===============================
-        // [수정] '끝'에 도달하면 성에 데미지를 주고 캐릭터 제거
+        // [수정] 점프한 캐릭터가 상대 지역의 마지막 지점에 도달하면 삭제
         // ===============================
         
         // 이미 처리 중이면 중복 방지
         if (isJumpingAcross) return;
         
-        Debug.Log($"[Character] {characterName}이(가) 성에 도달했습니다! (지역: {areaIndex}, 점프했음: {hasJumped})");
+        Debug.Log($"[Character] {characterName}이(가) 웨이포인트 끝에 도달했습니다! (원래 지역: {areaIndex}, 점프했음: {hasJumped})");
         
-        // ▼▼ [수정] 타 지역의 성에 도달한 경우 성 데미지 처리
-        // 지역1 캐릭터가 지역2 성에 도달한 경우 (점프를 통해)
-        if (areaIndex == 2 && hasJumped)
+        // ▼▼ [수정] 점프한 캐릭터만 상대 지역 성에 데미지를 주고 삭제
+        if (hasJumped)
         {
-            // 지역2의 성에 데미지
-            WaveSpawnerRegion2 spawner2 = FindFirstObjectByType<WaveSpawnerRegion2>();
-            if (spawner2 != null)
+            // 지역1 캐릭터가 점프해서 지역2 웨이포인트 끝에 도달한 경우
+            if (areaIndex == 1)
             {
-                spawner2.TakeDamageToRegion2(1);
-                Debug.Log($"[Character] {characterName}이(가) 지역2 성에 1 데미지를 입혔습니다!");
+                // 지역2의 성에 데미지
+                WaveSpawnerRegion2 spawner2 = FindFirstObjectByType<WaveSpawnerRegion2>();
+                if (spawner2 != null)
+                {
+                    spawner2.TakeDamageToRegion2(1);
+                    Debug.Log($"[Character] 지역1 캐릭터 {characterName}이(가) 지역2 성에 1 데미지를 입혔습니다!");
+                }
+                
+                // 1지역 캐릭터가 2지역 끝에 도달했으므로 삭제
+                Debug.Log($"[Character] 1지역 캐릭터 {characterName}이(가) 지역2 웨이포인트 끝에 도달하여 삭제됩니다.");
+                DestroyCharacter();
+                return;
             }
-        }
-        // 지역2 캐릭터가 지역1 성에 도달한 경우 (점프를 통해)
-        else if (areaIndex == 1 && hasJumped)
-        {
-            // 지역1의 성에 데미지
-            GameManager gameManager = FindFirstObjectByType<GameManager>();
-            if (gameManager != null)
+            // 지역2 캐릭터가 점프해서 지역1 웨이포인트 끝에 도달한 경우
+            else if (areaIndex == 2)
             {
-                gameManager.TakeDamageToRegion1(1);
-                Debug.Log($"[Character] {characterName}이(가) 지역1 성에 1 데미지를 입혔습니다!");
+                // 지역1의 성에 데미지
+                GameManager gameManager = FindFirstObjectByType<GameManager>();
+                if (gameManager != null)
+                {
+                    gameManager.TakeDamageToRegion1(1);
+                    Debug.Log($"[Character] 지역2 캐릭터 {characterName}이(가) 지역1 성에 1 데미지를 입혔습니다!");
+                }
+                
+                // 2지역 캐릭터가 1지역 끝에 도달했으므로 삭제
+                Debug.Log($"[Character] 2지역 캐릭터 {characterName}이(가) 지역1 웨이포인트 끝에 도달하여 삭제됩니다.");
+                DestroyCharacter();
+                return;
             }
         }
         else
         {
-            // 자기 지역 성에 도달한 경우 (점프하지 않은 캐릭터)
-            Debug.LogWarning($"[Character] {characterName}이(가) 자기 팀 성에 도달했지만 데미지를 주지 않습니다.");
+            // 점프하지 않은 캐릭터는 자기 지역 웨이포인트 끝에 도달 (데미지 없음, 삭제하지 않음)
+            Debug.Log($"[Character] {characterName}이(가) 자기 지역 웨이포인트 끝에 도달했지만 점프하지 않았으므로 삭제하지 않습니다.");
+            return;
         }
-        
-        // 캐릭터 제거 (성에 도달하면 무조건 사라짐)
-        Debug.Log($"[Character] {characterName}이(가) 성에 도달하여 제거됩니다.");
-        
+    }
+
+
+
+    /// <summary>
+    /// 캐릭터를 안전하게 삭제하는 메서드
+    /// </summary>
+    private void DestroyCharacter()
+    {
         // 타일 참조 정리
         if (currentTile != null)
         {
@@ -730,9 +945,9 @@ public class Character : NetworkBehaviour, IDamageable
             {
                 PlacementManager.Instance.ClearCharacterTileReference(this);
                 PlacementManager.Instance.OnCharacterRemovedFromTile(tile);
-        }
-        else
-        {
+            }
+            else
+            {
                 currentTile = null;
             }
         }
@@ -822,19 +1037,8 @@ public class Character : NetworkBehaviour, IDamageable
 
     private Monster FindMonsterTargetInRange()
     {
-        // ▼▼ [수정] 점프한 캐릭터는 타 지역의 몬스터도 공격 가능
-        string targetTag;
-        
-        if (hasJumped)
-        {
-            // 점프한 캐릭터는 현재 지역의 몬스터를 공격
-            targetTag = (areaIndex == 1) ? "Monster" : "EnemyMonster";
-        }
-        else
-        {
-            // 점프하지 않은 캐릭터는 자기 지역의 몬스터만 공격
-            targetTag = (areaIndex == 1) ? "Monster" : "EnemyMonster";
-        }
+        // ▼▼ [수정] 원래 지역에 따라 공격할 몬스터 태그 결정
+        string targetTag = (areaIndex == 1) ? "EnemyMonster" : "Monster";
         
         GameObject[] foundObjs = GameObject.FindGameObjectsWithTag(targetTag);
 
@@ -899,6 +1103,12 @@ public class Character : NetworkBehaviour, IDamageable
     /// </summary>
     private Character FindCharacterTargetInRange()
     {
+        // ▼▼ [수정] 히어로나 점프하지 않은 캐릭터는 상대편 캐릭터를 공격할 수 없음
+        if (this.isHero || !this.hasJumped)
+        {
+            return null; // 히어로이거나 점프하지 않은 캐릭터는 캐릭터 공격 불가
+        }
+        
         // 모든 캐릭터 찾기
         Character[] allCharacters = FindObjectsByType<Character>(FindObjectsSortMode.None);
         
@@ -909,44 +1119,19 @@ public class Character : NetworkBehaviour, IDamageable
         {
             if (character == null || character == this) continue;
             
-            // ▼▼ [수정] 점프한 캐릭터는 타 지역의 캐릭터를 공격 가능
+            // ▼▼ [수정] 히어로끼리는 서로 공격하지 않음
+            if (this.isHero && character.isHero)
+            {
+                continue; // 히어로끼리는 공격하지 않음
+            }
+            
+            // ▼▼ [수정] 원래 지역이 다른 캐릭터만 공격 가능
             bool canAttack = false;
             
-            if (hasJumped)
+            // 원래 지역이 다르면 공격 가능 (점프 여부와 관계없이)
+            if (this.areaIndex != character.areaIndex)
             {
-                // 점프한 캐릭터는 현재 있는 지역의 다른 팀 캐릭터를 공격
-                // 지역1에서 온 캐릭터가 지역2에 있으면, 지역2의 원래 캐릭터들을 공격
-                // 지역2에서 온 캐릭터가 지역1에 있으면, 지역1의 원래 캐릭터들을 공격
-                
-                // 원래 지역1 캐릭터가 지역2로 점프한 경우
-                if (areaIndex == 2 && !character.hasJumped && character.areaIndex == 2)
-                {
-                    canAttack = true;
-                }
-                // 원래 지역2 캐릭터가 지역1로 점프한 경우
-                else if (areaIndex == 1 && !character.hasJumped && character.areaIndex == 1)
-                {
-                    canAttack = true;
-                }
-                // 둘 다 점프한 캐릭터인 경우 (서로 다른 원래 지역)
-                else if (character.hasJumped)
-                {
-                    // 원래 지역이 다르면 공격 가능
-                    int myOriginalArea = (areaIndex == 1) ? 2 : 1; // 현재 지역과 반대가 원래 지역
-                    int targetOriginalArea = (character.areaIndex == 1) ? 2 : 1;
-                    if (myOriginalArea != targetOriginalArea)
-                    {
-                        canAttack = true;
-                    }
-                }
-            }
-            else
-            {
-                // 점프하지 않은 캐릭터는 자기 지역에 온 점프한 적 캐릭터만 공격
-                if (character.hasJumped && character.areaIndex == areaIndex)
-                {
-                    canAttack = true;
-                }
+                canAttack = true;
             }
             
             if (!canAttack) continue;
@@ -1388,28 +1573,56 @@ public class Character : NetworkBehaviour, IDamageable
     {
         // 현재 이동(또는 타겟) 방향 계산
         Vector2 velocity = Vector2.zero;
+        bool hasDirection = false;
 
-        // 웨이포인트 기반 이동 중이면
+        // 1. 웨이포인트 기반 이동 중이면
         if (pathWaypoints != null && currentWaypointIndex >= 0 && currentWaypointIndex < pathWaypoints.Length)
         {
             Transform target = pathWaypoints[currentWaypointIndex];
             if (target != null)
             {
                 velocity = (target.position - transform.position);
+                hasDirection = true;
             }
         }
-        // 아니면 근접 캐릭터 타겟(점프한 상대 등)
-        else if (currentCharTarget != null)
+        
+        // 2. 공격 타겟이 있으면 (타워로 배치된 캐릭터의 경우)
+        if (!hasDirection)
         {
-            velocity = (currentCharTarget.transform.position - transform.position);
+            if (currentCharTarget != null)
+            {
+                velocity = (currentCharTarget.transform.position - transform.position);
+                hasDirection = true;
+            }
+            else if (currentTarget != null)
+            {
+                velocity = (currentTarget.transform.position - transform.position);
+                hasDirection = true;
+            }
         }
-        else if (currentTarget != null)
+        
+        // 3. 타겟이 없으면 공격 범위 내에서 가장 가까운 적을 찾아서 방향 결정
+        if (!hasDirection)
         {
-            velocity = (currentTarget.transform.position - transform.position);
+            // 타워로 배치된 캐릭터의 경우 공격 범위 내 적을 찾아서 방향 설정
+            Monster nearestMonster = isHero ? FindHeroTargetInRange() : FindMonsterTargetInRange();
+            Character nearestCharacter = FindCharacterTargetInRange();
+            
+            // 캐릭터 우선, 없으면 몬스터
+            if (nearestCharacter != null)
+            {
+                velocity = (nearestCharacter.transform.position - transform.position);
+                hasDirection = true;
+            }
+            else if (nearestMonster != null)
+            {
+                velocity = (nearestMonster.transform.position - transform.position);
+                hasDirection = true;
+            }
         }
 
-        // 위쪽으로 이동하는지 확인 (속도가 0일 때는 기본적으로 아래쪽)
-        bool isMovingUp = (velocity.y > 0f);
+        // 4. 방향이 결정되지 않았으면 기본값 사용 (아래쪽)
+        bool isMovingUp = hasDirection ? (velocity.y > 0f) : false;
         
         // ▼▼ [수정] 2~3성 캐릭터의 FrontImage/BackImage 처리 추가 ▼▼
         // 먼저 2~3성 캐릭터의 앞뒤 이미지 처리

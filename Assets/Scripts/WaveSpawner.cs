@@ -30,21 +30,7 @@ public class WaveSpawner : MonoBehaviour
     [Tooltip("우측 루트 스폰 위치")]
     public Transform rightSpawnPoint;
 
-    [Header("캐릭터 루트별 점프 지점")]
-    [Tooltip("좌측 루트 점프 시작 지점")]
-    public Transform leftJumpPoint;
-    [Tooltip("중앙 루트 점프 시작 지점")]
-    public Transform centerJumpPoint;
-    [Tooltip("우측 루트 점프 시작 지점")]
-    public Transform rightJumpPoint;
 
-    [Header("캐릭터 루트별 점프 도착 지점")]
-    [Tooltip("좌측 루트 점프 도착 지점 (목표)")]
-    public Transform leftTargetPoint;
-    [Tooltip("중앙 루트 점프 도착 지점 (목표)")]  
-    public Transform centerTargetPoint;
-    [Tooltip("우측 루트 점프 도착 지점 (목표)")]
-    public Transform rightTargetPoint;
 
     [Header("웨이브/몬스터 설정")]
     public float timeBetweenWaves = 5f;
@@ -294,41 +280,7 @@ public class WaveSpawner : MonoBehaviour
         return transform.position;
     }
 
-    /// <summary>
-    /// 선택된 루트에 따른 점프 지점 반환
-    /// </summary>
-    public Transform GetJumpPointForRoute(RouteType route)
-    {
-        switch (route)
-        {
-            case RouteType.Left:
-                return leftJumpPoint;
-            case RouteType.Center:
-                return centerJumpPoint;
-            case RouteType.Right:
-                return rightJumpPoint;
-            default:
-                return centerJumpPoint;
-        }
-    }
 
-    /// <summary>
-    /// 선택된 루트에 따른 도착 지점 반환
-    /// </summary>
-    public Transform GetTargetPointForRoute(RouteType route)
-    {
-        switch (route)
-        {
-            case RouteType.Left:
-                return leftTargetPoint;
-            case RouteType.Center:
-                return centerTargetPoint;
-            case RouteType.Right:
-                return rightTargetPoint;
-            default:
-                return centerTargetPoint;
-        }
-    }
 
     /// <summary>
     /// (수정) 몬스터 소환 로직에 indexInWave 추가 + 챕터별 로직 + 루트 선택

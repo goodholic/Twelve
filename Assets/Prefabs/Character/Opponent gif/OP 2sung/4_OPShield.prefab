@@ -275,8 +275,20 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   jumpArcHeight: 80
   jumpDuration: 0.8
-  startTileRect: {fileID: 4614398458146241476, guid: 02fa27106db89b544bba34f1b127942e, type: 3}
-  endTileRect: {fileID: 7728088104138265406, guid: dd3720c0124e04b4d83c775b74fdac3c, type: 3}
+  region1LeftJumpStart: {fileID: 7728088104138265406, guid: dd3720c0124e04b4d83c775b74fdac3c, type: 3}
+  region1LeftJumpEnd: {fileID: 4614398458146241476, guid: 02fa27106db89b544bba34f1b127942e, type: 3}
+  region1CenterJumpStart: {fileID: 8849791757388328933, guid: 18a066fd9053bdf4d972a18a8c0d7804, type: 3}
+  region1CenterJumpEnd: {fileID: 6623312479000464561, guid: fb06ae2039c56014dadd9c76cf22e66c, type: 3}
+  region1RightJumpStart: {fileID: 5092398501469691122, guid: d1f77ced7d82bd649a4f8d0cb5377c34, type: 3}
+  region1RightJumpEnd: {fileID: 8383681622649238009, guid: 969b2bae51f31a84181d379038ea0664, type: 3}
+  region2LeftJumpStart: {fileID: 4614398458146241476, guid: 02fa27106db89b544bba34f1b127942e, type: 3}
+  region2LeftJumpEnd: {fileID: 7728088104138265406, guid: dd3720c0124e04b4d83c775b74fdac3c, type: 3}
+  region2CenterJumpStart: {fileID: 6623312479000464561, guid: fb06ae2039c56014dadd9c76cf22e66c, type: 3}
+  region2CenterJumpEnd: {fileID: 8849791757388328933, guid: 18a066fd9053bdf4d972a18a8c0d7804, type: 3}
+  region2RightJumpStart: {fileID: 8383681622649238009, guid: 969b2bae51f31a84181d379038ea0664, type: 3}
+  region2RightJumpEnd: {fileID: 5092398501469691122, guid: d1f77ced7d82bd649a4f8d0cb5377c34, type: 3}
+  startTileRect: {fileID: 0}
+  endTileRect: {fileID: 0}
   autoJumpOnStart: 0
   isJumping: 0
 --- !u!1 &8081079678118653500

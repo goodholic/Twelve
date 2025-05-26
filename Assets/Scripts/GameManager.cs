@@ -188,7 +188,7 @@ public class GameManager : MonoBehaviour
         }
 
         // === 씬 이동 대신, 결과 패널을 켬 ===
-        if (resultPanel != null)
+        if (resultPanel != null && resultPanel.gameObject != null)
         {
             Debug.Log($"[GameManager] resultPanel을 활성화합니다: {resultPanel.name}");
             resultPanel.SetActive(true);
@@ -207,19 +207,19 @@ public class GameManager : MonoBehaviour
         // else: 혹시라도 resultPanel이 null이면 메세지만 출력
         else
         {
-            Debug.LogError("[GameManager] resultPanel이 null -> 결과 UI를 표시할 수 없습니다. Inspector에서 연결해주세요!");
+            Debug.LogWarning("[GameManager] resultPanel이 null 또는 파괴됨 -> Fallback 로직 실행");
             
-            // ▼▼ [추가] Fallback: 씬에서 Victory 패널 찾기 ▼▼
+            // ▼▼ [수정] 더 안전한 Fallback: 씬에서 Victory 패널 찾기 ▼▼
             Debug.Log("[GameManager] Fallback: 씬에서 Victory/Defeat 패널을 찾아봅니다...");
             
-            // 비활성화된 오브젝트도 찾을 수 있도록 모든 GameObject 검색
-            GameObject[] allObjects = Resources.FindObjectsOfTypeAll<GameObject>();
+            // 먼저 활성화된 오브젝트에서 찾기
+            GameObject[] activeObjects = FindObjectsByType<GameObject>(FindObjectsSortMode.None);
             GameObject foundPanel = null;
             
             // 더 많은 패널 이름 패턴 추가
             string[] panelKeywords = { "Victory", "Result", "Win", "GameOver", "End", "Popup", "Panel" };
             
-            foreach (GameObject obj in allObjects)
+            foreach (GameObject obj in activeObjects)
             {
                 // 패널 이름에 키워드가 포함되어 있는지 확인
                 bool hasKeyword = false;

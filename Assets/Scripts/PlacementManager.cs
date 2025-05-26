@@ -2425,40 +2425,114 @@ public class PlacementManager : MonoBehaviour
         return null;
     }
     
-    // ▼▼ [추가] 빈 walkable 타일 찾기 메서드 ▼▼
+    // ▼▼ [수정] 빈 walkable 타일 찾기 메서드 - 랜덤 루트 선택 ▼▼
     private Tile FindEmptyWalkableTile(bool isRegion2)
     {
+        // 먼저 랜덤하게 루트를 선택
+        RouteType selectedRoute = GetRandomRoute();
+        Debug.Log($"[PlacementManager] placed/placable 타일이 꽉 찼으므로 {selectedRoute} 루트의 walkable 타일로 배치");
+        
         Tile[] allTiles = Object.FindObjectsByType<Tile>(FindObjectsSortMode.None);
-        List<Tile> walkableTiles = new List<Tile>();
+        List<Tile> leftTiles = new List<Tile>();
+        List<Tile> centerTiles = new List<Tile>();
+        List<Tile> rightTiles = new List<Tile>();
+        List<Tile> generalWalkableTiles = new List<Tile>();
         
         foreach (var tile in allTiles)
         {
             if (tile == null) continue;
             if (tile.isRegion2 != isRegion2) continue;
             
-            // walkable 타일인지 확인 (모든 walkable 타입 포함)
+            // 루트별로 타일 분류
             if (isRegion2)
             {
-                if (tile.IsWalkable2() || tile.IsWalkable2Left() || tile.IsWalkable2Center() || tile.IsWalkable2Right())
+                if (tile.IsWalkable2Left())
                 {
-                    walkableTiles.Add(tile);
+                    leftTiles.Add(tile);
+                }
+                else if (tile.IsWalkable2Center())
+                {
+                    centerTiles.Add(tile);
+                }
+                else if (tile.IsWalkable2Right())
+                {
+                    rightTiles.Add(tile);
+                }
+                else if (tile.IsWalkable2())
+                {
+                    generalWalkableTiles.Add(tile);
                 }
             }
             else
             {
-                if (tile.IsWalkable() || tile.IsWalkableLeft() || tile.IsWalkableCenter() || tile.IsWalkableRight())
+                if (tile.IsWalkableLeft())
                 {
-                    walkableTiles.Add(tile);
+                    leftTiles.Add(tile);
+                }
+                else if (tile.IsWalkableCenter())
+                {
+                    centerTiles.Add(tile);
+                }
+                else if (tile.IsWalkableRight())
+                {
+                    rightTiles.Add(tile);
+                }
+                else if (tile.IsWalkable())
+                {
+                    generalWalkableTiles.Add(tile);
                 }
             }
         }
         
-        // walkable 타일은 언제나 사용 가능하므로 랜덤하게 하나 선택
-        if (walkableTiles.Count > 0)
+        // 선택된 루트에 해당하는 타일 반환
+        List<Tile> targetTiles = null;
+        switch (selectedRoute)
         {
-            return walkableTiles[Random.Range(0, walkableTiles.Count)];
+            case RouteType.Left:
+                targetTiles = leftTiles;
+                break;
+            case RouteType.Center:
+                targetTiles = centerTiles;
+                break;
+            case RouteType.Right:
+                targetTiles = rightTiles;
+                break;
+            case RouteType.Default:
+                targetTiles = centerTiles; // Default는 Center 사용
+                break;
         }
         
+        // 선택된 루트에 타일이 있으면 랜덤 선택
+        if (targetTiles != null && targetTiles.Count > 0)
+        {
+            Tile selectedTile = targetTiles[Random.Range(0, targetTiles.Count)];
+            Debug.Log($"[PlacementManager] {selectedRoute} 루트의 타일 {selectedTile.name} 선택");
+            return selectedTile;
+        }
+        
+        // 선택된 루트에 타일이 없으면 일반 walkable 타일 사용
+        if (generalWalkableTiles.Count > 0)
+        {
+            Tile selectedTile = generalWalkableTiles[Random.Range(0, generalWalkableTiles.Count)];
+            Debug.Log($"[PlacementManager] {selectedRoute} 루트 타일이 없어 일반 walkable 타일 {selectedTile.name} 선택");
+            return selectedTile;
+        }
+        
+        // 모든 루트에서 타일 찾기 (fallback)
+        List<Tile> allWalkableTiles = new List<Tile>();
+        allWalkableTiles.AddRange(leftTiles);
+        allWalkableTiles.AddRange(centerTiles);
+        allWalkableTiles.AddRange(rightTiles);
+        allWalkableTiles.AddRange(generalWalkableTiles);
+        
+        if (allWalkableTiles.Count > 0)
+        {
+            Tile selectedTile = allWalkableTiles[Random.Range(0, allWalkableTiles.Count)];
+            Debug.Log($"[PlacementManager] fallback으로 타일 {selectedTile.name} 선택");
+            return selectedTile;
+        }
+        
+        Debug.LogWarning($"[PlacementManager] 지역{(isRegion2 ? 2 : 1)}에 walkable 타일이 없습니다!");
         return null;
     }
 
