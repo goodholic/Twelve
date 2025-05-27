@@ -2796,19 +2796,68 @@ public class PlacementManager : MonoBehaviour
     /// </summary>
     private Transform[] GetWaypointsForRoute(WaveSpawner spawner, RouteType route)
     {
+        Transform[] waypoints = null;
+        
         switch (route)
         {
             case RouteType.Default:
-                return spawner.walkableCenter; // Default는 Center 루트 사용
+                waypoints = spawner.walkableCenter; // Default는 Center 루트 사용
+                break;
             case RouteType.Left:
-                return spawner.walkableLeft;
+                waypoints = spawner.walkableLeft;
+                break;
             case RouteType.Center:
-                return spawner.walkableCenter;
+                waypoints = spawner.walkableCenter;
+                break;
             case RouteType.Right:
-                return spawner.walkableRight;
+                waypoints = spawner.walkableRight;
+                break;
             default:
-                return spawner.walkableCenter;
+                waypoints = spawner.walkableCenter;
+                break;
         }
+        
+        // ▼▼ [추가] 웨이포인트 유효성 검사 및 정리 ▼▼
+        if (waypoints != null && waypoints.Length > 0)
+        {
+            List<Transform> validWaypoints = new List<Transform>();
+            
+            for (int i = 0; i < waypoints.Length; i++)
+            {
+                if (waypoints[i] != null)
+                {
+                    validWaypoints.Add(waypoints[i]);
+                }
+                else
+                {
+                    Debug.LogWarning($"[PlacementManager] {route} 루트의 웨이포인트[{i}]가 null입니다!");
+                }
+            }
+            
+            if (validWaypoints.Count > 0)
+            {
+                // ▼▼ [추가] 웨이포인트 간 거리 검사 ▼▼
+                for (int i = 0; i < validWaypoints.Count - 1; i++)
+                {
+                    float distance = Vector2.Distance(validWaypoints[i].position, validWaypoints[i + 1].position);
+                    if (distance > 15f) // UI 좌표계에서 너무 먼 거리
+                    {
+                        Debug.LogWarning($"[PlacementManager] {route} 루트 웨이포인트[{i}]→[{i+1}] 거리가 너무 멉니다: {distance}");
+                    }
+                }
+                
+                Debug.Log($"[PlacementManager] {route} 루트 웨이포인트 검증 완료: {validWaypoints.Count}개 (원본: {waypoints.Length}개)");
+                return validWaypoints.ToArray();
+            }
+            else
+            {
+                Debug.LogError($"[PlacementManager] {route} 루트에 유효한 웨이포인트가 없습니다!");
+                return null;
+            }
+        }
+        
+        Debug.LogWarning($"[PlacementManager] {route} 루트의 웨이포인트 배열이 null이거나 비어있습니다!");
+        return null;
     }
     
     /// <summary>
@@ -2858,19 +2907,68 @@ public class PlacementManager : MonoBehaviour
     /// </summary>
     private Transform[] GetWaypointsForRoute(WaveSpawnerRegion2 spawner, RouteType route)
     {
+        Transform[] waypoints = null;
+        
         switch (route)
         {
             case RouteType.Default:
-                return spawner.walkableCenter2; // Default는 Center 루트 사용
+                waypoints = spawner.walkableCenter2; // Default는 Center 루트 사용
+                break;
             case RouteType.Left:
-                return spawner.walkableLeft2;
+                waypoints = spawner.walkableLeft2;
+                break;
             case RouteType.Center:
-                return spawner.walkableCenter2;
+                waypoints = spawner.walkableCenter2;
+                break;
             case RouteType.Right:
-                return spawner.walkableRight2;
+                waypoints = spawner.walkableRight2;
+                break;
             default:
-                return spawner.walkableCenter2;
+                waypoints = spawner.walkableCenter2;
+                break;
         }
+        
+        // ▼▼ [추가] 웨이포인트 유효성 검사 및 정리 ▼▼
+        if (waypoints != null && waypoints.Length > 0)
+        {
+            List<Transform> validWaypoints = new List<Transform>();
+            
+            for (int i = 0; i < waypoints.Length; i++)
+            {
+                if (waypoints[i] != null)
+                {
+                    validWaypoints.Add(waypoints[i]);
+                }
+                else
+                {
+                    Debug.LogWarning($"[PlacementManager] 지역2 {route} 루트의 웨이포인트[{i}]가 null입니다!");
+                }
+            }
+            
+            if (validWaypoints.Count > 0)
+            {
+                // ▼▼ [추가] 웨이포인트 간 거리 검사 ▼▼
+                for (int i = 0; i < validWaypoints.Count - 1; i++)
+                {
+                    float distance = Vector2.Distance(validWaypoints[i].position, validWaypoints[i + 1].position);
+                    if (distance > 15f) // UI 좌표계에서 너무 먼 거리
+                    {
+                        Debug.LogWarning($"[PlacementManager] 지역2 {route} 루트 웨이포인트[{i}]→[{i+1}] 거리가 너무 멉니다: {distance}");
+                    }
+                }
+                
+                Debug.Log($"[PlacementManager] 지역2 {route} 루트 웨이포인트 검증 완료: {validWaypoints.Count}개 (원본: {waypoints.Length}개)");
+                return validWaypoints.ToArray();
+            }
+            else
+            {
+                Debug.LogError($"[PlacementManager] 지역2 {route} 루트에 유효한 웨이포인트가 없습니다!");
+                return null;
+            }
+        }
+        
+        Debug.LogWarning($"[PlacementManager] 지역2 {route} 루트의 웨이포인트 배열이 null이거나 비어있습니다!");
+        return null;
     }
     
     /// <summary>

@@ -67,7 +67,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: -2510290003378742455, guid: a38f57a22709de2409ce61a033f5cf01, type: 3}
+  m_Sprite: {fileID: 0}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -96,6 +96,12 @@ MonoBehaviour:
   blockedColor: {r: 1, g: 0, b: 0, a: 1}
   walkablePrefab: {fileID: 0}
   walkable2Prefab: {fileID: 0}
+  walkableLeftPrefab: {fileID: 0}
+  walkableCenterPrefab: {fileID: 0}
+  walkableRightPrefab: {fileID: 0}
+  walkable2LeftPrefab: {fileID: 0}
+  walkable2CenterPrefab: {fileID: 0}
+  walkable2RightPrefab: {fileID: 0}
   placablePrefab: {fileID: 0}
   placable2Prefab: {fileID: 4692362406737092058}
   placeTilePrefab: {fileID: 0}

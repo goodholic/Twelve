@@ -416,18 +416,96 @@ public class Character : NetworkBehaviour, IDamageable
 
         Vector2 currentPos = transform.position;
         Vector2 targetPos = target.position;
+        
+        // ▼▼ [수정] 순간이동 방지를 위한 거리 체크 ▼▼
+        float distToTarget = Vector2.Distance(currentPos, targetPos);
+        
+        // ▼▼ [수정] 너무 먼 웨이포인트도 건너뛰지 않고 천천히 이동 ▼▼
+        if (distToTarget > 8f) // 임계값을 다시 8f로 증가 (너무 엄격하지 않게)
+        {
+            Debug.LogWarning($"[Character] {characterName} 웨이포인트가 멀리 있음! 거리: {distToTarget:F2}, 천천히 이동합니다.");
+            
+            // 건너뛰지 않고 천천히 이동 (고정된 느린 속도 사용)
+            float slowMoveDistance = 0.15f * Time.deltaTime; // 고정된 느린 속도
+            Vector3 slowNewPosition = Vector2.MoveTowards(currentPos, targetPos, slowMoveDistance);
+            transform.position = slowNewPosition;
+            
+            Debug.Log($"[Character] {characterName} 먼 웨이포인트로 천천히 이동 중... (속도: {slowMoveDistance:F3})");
+            return;
+        }
+
         Vector2 dir = (targetPos - currentPos).normalized;
 
-        // 지역에 상관없이 동일한 이동 속도 적용
-        // 모든 지역의 캐릭터는 동일한 이동 속도를 가짐
-        float standardMoveSpeed = 1f; // 표준화된 이동 속도
-        float distThisFrame = standardMoveSpeed * Time.deltaTime;
+        // ▼▼ [수정] 모든 지역과 루트에 대한 안정적인 이동 속도 ▼▼
+        float baseSpeed = 0.3f; // 전체적으로 속도를 더 낮춰서 안정성 향상
         
-        transform.position += (Vector3)(dir * distThisFrame);
-
-        float dist = Vector2.Distance(currentPos, targetPos);
-        if (dist < distThisFrame * 1.5f)
+        // 지역별 속도 조정 - 둘 다 동일하게 낮게 설정
+        if (areaIndex == 1)
         {
+            baseSpeed = 0.3f; // 지역1 낮은 속도
+        }
+        else if (areaIndex == 2)
+        {
+            baseSpeed = 0.3f; // 지역2도 동일하게 낮은 속도
+        }
+        
+        // 점프한 캐릭터는 더 안정적으로 이동
+        if (hasJumped)
+        {
+            baseSpeed *= 0.9f; // 점프한 캐릭터는 10% 더 느리게 (20%에서 10%로 완화)
+            Debug.Log($"[Character] {characterName} 점프한 캐릭터 - 안정적 이동 속도: {baseSpeed:F3}");
+        }
+        
+        Debug.Log($"[Character] {characterName} 이동 속도 설정 - 지역: {areaIndex}, 점프: {hasJumped}, 최종 속도: {baseSpeed:F3}");
+        
+        float distThisFrame = baseSpeed * Time.deltaTime;
+        
+        // ▼▼ [수정] 안전한 이동 처리 ▼▼
+        Vector3 newPosition = transform.position + (Vector3)(dir * distThisFrame);
+        
+        // 이동 거리가 너무 크면 제한
+        float moveDistance = Vector2.Distance(transform.position, newPosition);
+        if (moveDistance > 2f) // 한 프레임에 너무 많이 이동하지 않도록
+        {
+            Debug.LogWarning($"[Character] {characterName} 한 프레임 이동 거리가 너무 큼: {moveDistance}, 제한함");
+            newPosition = transform.position + (Vector3)(dir * 2f);
+        }
+        
+        transform.position = newPosition;
+
+        // ▼▼ [수정] 웨이포인트 도달 판정 개선 ▼▼
+        float currentDist = Vector2.Distance(transform.position, targetPos);
+        
+        // 지역별로 동일한 도달 임계값 설정
+        float arrivalThreshold = 0.25f; // 기본값
+        if (areaIndex == 1)
+        {
+            arrivalThreshold = 0.25f; // 지역1 표준 임계값
+        }
+        else if (areaIndex == 2)
+        {
+            arrivalThreshold = 0.25f; // 지역2도 동일한 임계값
+        }
+        
+        // 점프한 캐릭터는 더 정확한 판정
+        if (hasJumped)
+        {
+            arrivalThreshold = 0.2f; // 점프한 캐릭터는 약간 더 정확하게
+        }
+        
+        Debug.Log($"[Character] {characterName} 도달 임계값 설정 - 지역: {areaIndex}, 점프: {hasJumped}, 임계값: {arrivalThreshold}");
+        
+        if (currentDist <= arrivalThreshold)
+        {
+            Debug.Log($"[Character] {characterName} 웨이포인트 {currentWaypointIndex} 도달! (거리: {currentDist:F3}, 임계값: {arrivalThreshold}, 지역: {areaIndex}, 점프: {hasJumped})");
+            
+            // 웨이포인트에 정확히 위치시키기 (순간이동 방지)
+            if (currentDist < 2f) // 너무 멀지 않으면 정확한 위치로 이동
+            {
+                transform.position = targetPos;
+                Debug.Log($"[Character] {characterName} 웨이포인트 위치로 정확히 이동: {targetPos}");
+            }
+            
             currentWaypointIndex++;
             if (currentWaypointIndex > maxWaypointIndex)
             {
@@ -680,6 +758,23 @@ public class Character : NetworkBehaviour, IDamageable
         // 원래 지역의 웨이포인트를 계속 사용하되, 점프 후 다음 웨이포인트부터 진행
         if (pathWaypoints != null && pathWaypoints.Length > 0)
         {
+            // ▼▼ [추가] 웨이포인트 유효성 검사 ▼▼
+            bool waypointsValid = true;
+            for (int i = 0; i < pathWaypoints.Length; i++)
+            {
+                if (pathWaypoints[i] == null)
+                {
+                    Debug.LogError($"[Character] {characterName} 웨이포인트[{i}]가 null! 루트: {selectedRoute}");
+                    waypointsValid = false;
+                }
+            }
+            
+            if (!waypointsValid)
+            {
+                Debug.LogError($"[Character] {characterName} 웨이포인트 배열에 null이 포함됨! 복구 시도");
+                RestoreOriginalWaypoints();
+            }
+            
             // 현재 인덱스가 유효한 범위인지 확인
             if (currentWaypointIndex < 0)
             {
@@ -687,11 +782,28 @@ public class Character : NetworkBehaviour, IDamageable
                 Debug.Log($"[Character] {characterName} 웨이포인트 인덱스가 음수였음. 0으로 초기화");
             }
             
-            // 다음 웨이포인트로 이동 (점프 후 계속 진행)
+            // ▼▼ [수정] 점프 후 웨이포인트 진행 로직 개선 ▼▼
             if (currentWaypointIndex < pathWaypoints.Length - 1)
             {
                 currentWaypointIndex++;
-                Debug.Log($"[Character] {characterName} 원래 지역 {areaIndex}의 웨이포인트 {currentWaypointIndex}부터 계속 진행 (총 {pathWaypoints.Length}개)");
+                Debug.Log($"[Character] {characterName} 원래 지역 {areaIndex}의 웨이포인트 {currentWaypointIndex}부터 계속 진행 (총 {pathWaypoints.Length}개, 루트: {selectedRoute})");
+                
+                // ▼▼ [추가] 다음 웨이포인트 유효성 및 거리 확인 ▼▼
+                if (currentWaypointIndex < pathWaypoints.Length && pathWaypoints[currentWaypointIndex] != null)
+                {
+                    Vector2 nextWaypointPos = pathWaypoints[currentWaypointIndex].position;
+                    Vector2 currentPos = transform.position;
+                    float distanceToNext = Vector2.Distance(currentPos, nextWaypointPos);
+                    
+                    Debug.Log($"[Character] {characterName} 다음 웨이포인트[{currentWaypointIndex}] 위치: {nextWaypointPos}, 현재 위치: {currentPos}, 거리: {distanceToNext:F2}");
+                    
+                    // ▼▼ [수정] 거리가 멀어도 건너뛰지 않고 정보만 로그 출력 ▼▼
+                    if (distanceToNext > 10f) // 임계값을 다시 10f로 증가
+                    {
+                        Debug.LogWarning($"[Character] {characterName} 다음 웨이포인트가 멀리 있음 (거리: {distanceToNext:F2}) - 건너뛰지 않고 계속 진행");
+                        // 웨이포인트를 변경하지 않고 그대로 진행
+                    }
+                }
             }
             else
             {
@@ -701,7 +813,7 @@ public class Character : NetworkBehaviour, IDamageable
             // maxWaypointIndex 재설정
             maxWaypointIndex = pathWaypoints.Length - 1;
             
-            Debug.Log($"[Character] 지역 {areaIndex} 캐릭터가 지역 {newAreaIndex}에서 원래 웨이포인트를 따라 탐방 중");
+            Debug.Log($"[Character] 지역 {areaIndex} 캐릭터가 지역 {newAreaIndex}에서 원래 웨이포인트를 따라 탐방 중 (루트: {selectedRoute})");
         }
         else
         {
@@ -714,7 +826,7 @@ public class Character : NetworkBehaviour, IDamageable
     /// </summary>
     private void RestoreOriginalWaypoints()
     {
-        Debug.Log($"[Character] {characterName} 원래 지역 {areaIndex}의 웨이포인트 복구 시도");
+        Debug.Log($"[Character] {characterName} 원래 지역 {areaIndex}의 웨이포인트 복구 시도 (루트: {selectedRoute})");
         
         if (areaIndex == 1)
         {
@@ -724,14 +836,42 @@ public class Character : NetworkBehaviour, IDamageable
                 Transform[] restoredWaypoints = GetWaypointsFromOriginalSpawner(waveSpawner, selectedRoute);
                 if (restoredWaypoints != null && restoredWaypoints.Length > 0)
                 {
-                    pathWaypoints = restoredWaypoints;
-                    maxWaypointIndex = restoredWaypoints.Length - 1;
-                    Debug.Log($"[Character] {characterName} 지역1 웨이포인트 복구 성공! ({restoredWaypoints.Length}개, 루트: {selectedRoute})");
+                    // ▼▼ [추가] 복구된 웨이포인트 유효성 검사 ▼▼
+                    bool allValid = true;
+                    for (int i = 0; i < restoredWaypoints.Length; i++)
+                    {
+                        if (restoredWaypoints[i] == null)
+                        {
+                            Debug.LogError($"[Character] {characterName} 복구된 지역1 웨이포인트[{i}]가 null!");
+                            allValid = false;
+                        }
+                    }
+                    
+                    if (allValid)
+                    {
+                        pathWaypoints = restoredWaypoints;
+                        maxWaypointIndex = restoredWaypoints.Length - 1;
+                        Debug.Log($"[Character] {characterName} 지역1 웨이포인트 복구 성공! ({restoredWaypoints.Length}개, 루트: {selectedRoute})");
+                        
+                        // ▼▼ [추가] 복구된 웨이포인트 위치 로그 ▼▼
+                        for (int i = 0; i < restoredWaypoints.Length; i++)
+                        {
+                            Debug.Log($"[Character] 복구된 웨이포인트[{i}]: {restoredWaypoints[i].name} at {restoredWaypoints[i].position}");
+                        }
+                    }
+                    else
+                    {
+                        Debug.LogError($"[Character] {characterName} 지역1 웨이포인트 복구 실패 - null 웨이포인트 포함!");
+                    }
                 }
                 else
                 {
-                    Debug.LogError($"[Character] {characterName} 지역1 웨이포인트 복구 실패!");
+                    Debug.LogError($"[Character] {characterName} 지역1 웨이포인트 복구 실패 - 웨이포인트 배열이 null이거나 비어있음!");
                 }
+            }
+            else
+            {
+                Debug.LogError($"[Character] {characterName} 지역1 웨이포인트 복구 실패 - WaveSpawner가 null!");
             }
         }
         else if (areaIndex == 2)
@@ -742,14 +882,42 @@ public class Character : NetworkBehaviour, IDamageable
                 Transform[] restoredWaypoints = GetWaypointsFromOriginalSpawner(waveSpawnerRegion, selectedRoute);
                 if (restoredWaypoints != null && restoredWaypoints.Length > 0)
                 {
-                    pathWaypoints = restoredWaypoints;
-                    maxWaypointIndex = restoredWaypoints.Length - 1;
-                    Debug.Log($"[Character] {characterName} 지역2 웨이포인트 복구 성공! ({restoredWaypoints.Length}개, 루트: {selectedRoute})");
+                    // ▼▼ [추가] 복구된 웨이포인트 유효성 검사 ▼▼
+                    bool allValid = true;
+                    for (int i = 0; i < restoredWaypoints.Length; i++)
+                    {
+                        if (restoredWaypoints[i] == null)
+                        {
+                            Debug.LogError($"[Character] {characterName} 복구된 지역2 웨이포인트[{i}]가 null!");
+                            allValid = false;
+                        }
+                    }
+                    
+                    if (allValid)
+                    {
+                        pathWaypoints = restoredWaypoints;
+                        maxWaypointIndex = restoredWaypoints.Length - 1;
+                        Debug.Log($"[Character] {characterName} 지역2 웨이포인트 복구 성공! ({restoredWaypoints.Length}개, 루트: {selectedRoute})");
+                        
+                        // ▼▼ [추가] 복구된 웨이포인트 위치 로그 ▼▼
+                        for (int i = 0; i < restoredWaypoints.Length; i++)
+                        {
+                            Debug.Log($"[Character] 복구된 웨이포인트[{i}]: {restoredWaypoints[i].name} at {restoredWaypoints[i].position}");
+                        }
+                    }
+                    else
+                    {
+                        Debug.LogError($"[Character] {characterName} 지역2 웨이포인트 복구 실패 - null 웨이포인트 포함!");
+                    }
                 }
                 else
                 {
-                    Debug.LogError($"[Character] {characterName} 지역2 웨이포인트 복구 실패!");
+                    Debug.LogError($"[Character] {characterName} 지역2 웨이포인트 복구 실패 - 웨이포인트 배열이 null이거나 비어있음!");
                 }
+            }
+            else
+            {
+                Debug.LogError($"[Character] {characterName} 지역2 웨이포인트 복구 실패 - WaveSpawnerRegion2가 null!");
             }
         }
     }
@@ -790,6 +958,44 @@ public class Character : NetworkBehaviour, IDamageable
             default:
                 return spawner.walkableCenter2; // 기본값은 중앙 루트
         }
+    }
+    
+    /// <summary>
+    /// 현재 위치에서 가장 가까운 웨이포인트의 인덱스를 찾습니다.
+    /// </summary>
+    private int FindClosestWaypointIndex(Vector2 currentPos)
+    {
+        if (pathWaypoints == null || pathWaypoints.Length == 0)
+        {
+            Debug.LogWarning($"[Character] {characterName} 웨이포인트 배열이 없어 가장 가까운 웨이포인트를 찾을 수 없음");
+            return -1;
+        }
+        
+        int closestIndex = -1;
+        float closestDistance = float.MaxValue;
+        
+        for (int i = 0; i < pathWaypoints.Length; i++)
+        {
+            if (pathWaypoints[i] == null) continue;
+            
+            float distance = Vector2.Distance(currentPos, pathWaypoints[i].position);
+            if (distance < closestDistance)
+            {
+                closestDistance = distance;
+                closestIndex = i;
+            }
+        }
+        
+        if (closestIndex >= 0)
+        {
+            Debug.Log($"[Character] {characterName} 가장 가까운 웨이포인트[{closestIndex}] 찾음 (거리: {closestDistance:F2})");
+        }
+        else
+        {
+            Debug.LogWarning($"[Character] {characterName} 유효한 웨이포인트를 찾을 수 없음");
+        }
+        
+        return closestIndex;
     }
     
 
@@ -844,28 +1050,59 @@ public class Character : NetworkBehaviour, IDamageable
         RectTransform charRect = GetComponent<RectTransform>();
         if (charRect != null)
         {
+            PlacementManager pm = PlacementManager.Instance;
+            if (pm == null)
+            {
+                Debug.LogError($"[Character] {characterName} PlacementManager.Instance가 null!");
+                return;
+            }
+            
             if (newAreaIndex == 1)
             {
                 // 지역1로 이동 시 ourMonsterPanel로 변경
-                PlacementManager pm = PlacementManager.Instance;
-                if (pm != null && pm.ourMonsterPanel != null)
+                if (pm.ourMonsterPanel != null)
                 {
+                    Debug.Log($"[Character] {characterName} 지역1 패널로 이동 (원래 지역: {areaIndex})");
                     charRect.SetParent(pm.ourMonsterPanel, false);
-                    Vector2 localPos = pm.ourMonsterPanel.InverseTransformPoint(transform.position);
+                    
+                    // ▼▼ [수정] 현재 위치를 유지하면서 패널만 변경 ▼▼
+                    Vector3 worldPos = transform.position;
+                    Vector2 localPos = pm.ourMonsterPanel.InverseTransformPoint(worldPos);
                     charRect.anchoredPosition = localPos;
+                    charRect.localRotation = Quaternion.identity;
+                    
+                    Debug.Log($"[Character] {characterName} 지역1 패널 이동 완료 - 월드 위치: {worldPos}, 로컬 위치: {localPos}");
+                }
+                else
+                {
+                    Debug.LogError($"[Character] {characterName} ourMonsterPanel이 null!");
                 }
             }
             else if (newAreaIndex == 2)
             {
                 // 지역2로 이동 시 opponentOurMonsterPanel로 변경
-                PlacementManager pm = PlacementManager.Instance;
-                if (pm != null && pm.opponentOurMonsterPanel != null)
+                if (pm.opponentOurMonsterPanel != null)
                 {
+                    Debug.Log($"[Character] {characterName} 지역2 패널로 이동 (원래 지역: {areaIndex})");
                     charRect.SetParent(pm.opponentOurMonsterPanel, false);
-                    Vector2 localPos = pm.opponentOurMonsterPanel.InverseTransformPoint(transform.position);
+                    
+                    // ▼▼ [수정] 현재 위치를 유지하면서 패널만 변경 ▼▼
+                    Vector3 worldPos = transform.position;
+                    Vector2 localPos = pm.opponentOurMonsterPanel.InverseTransformPoint(worldPos);
                     charRect.anchoredPosition = localPos;
+                    charRect.localRotation = Quaternion.identity;
+                    
+                    Debug.Log($"[Character] {characterName} 지역2 패널 이동 완료 - 월드 위치: {worldPos}, 로컬 위치: {localPos}");
+                }
+                else
+                {
+                    Debug.LogError($"[Character] {characterName} opponentOurMonsterPanel이 null!");
                 }
             }
+        }
+        else
+        {
+            Debug.LogError($"[Character] {characterName} RectTransform이 null!");
         }
     }
 

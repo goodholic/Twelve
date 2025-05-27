@@ -67,7 +67,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: -5530781715760837572, guid: a528957d05e2e60468227ce0004a9fde, type: 3}
+  m_Sprite: {fileID: 0}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -89,16 +89,23 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d4ba59c64d440da43b1fd6675e7f4f72, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  isRegion2: 0
   tileImage: {fileID: 4550177179399208262}
   defaultColor: {r: 1, g: 1, b: 1, a: 1}
   highlightColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
   blockedColor: {r: 1, g: 0, b: 0, a: 1}
   walkablePrefab: {fileID: 3021528759696385224}
   walkable2Prefab: {fileID: 0}
+  walkableLeftPrefab: {fileID: 0}
+  walkableCenterPrefab: {fileID: 0}
+  walkableRightPrefab: {fileID: 0}
+  walkable2LeftPrefab: {fileID: 0}
+  walkable2CenterPrefab: {fileID: 0}
+  walkable2RightPrefab: {fileID: 0}
   placablePrefab: {fileID: 0}
-  picable2Prefab: {fileID: 0}
-  occupiedPrefab: {fileID: 0}
-  occupied2Prefab: {fileID: 0}
+  placable2Prefab: {fileID: 0}
+  placeTilePrefab: {fileID: 0}
+  placed2Prefab: {fileID: 0}
   currentVisual: {fileID: 0}
   tileButton: {fileID: 8297781879647861321, guid: d988006bd53f4b0468d4fcedc810ac64, type: 3}
   row: 0

@@ -198,8 +198,65 @@ public class WaveSpawner : MonoBehaviour
     /// </summary>
     private Transform[] GetWaypointsForRoute(RouteType route)
     {
-        // 모든 walkable 타일을 포함하는 통합 경로 반환
-        return GetAllWalkableWaypoints();
+        Transform[] waypoints = null;
+        
+        switch (route)
+        {
+            case RouteType.Left:
+                waypoints = walkableLeft;
+                break;
+            case RouteType.Center:
+                waypoints = walkableCenter;
+                break;
+            case RouteType.Right:
+                waypoints = walkableRight;
+                break;
+            default:
+                waypoints = walkableCenter; // 기본값은 중앙 루트
+                break;
+        }
+        
+        // ▼▼ [추가] 웨이포인트 유효성 검사 ▼▼
+        if (waypoints != null && waypoints.Length > 0)
+        {
+            List<Transform> validWaypoints = new List<Transform>();
+            
+            for (int i = 0; i < waypoints.Length; i++)
+            {
+                if (waypoints[i] != null)
+                {
+                    validWaypoints.Add(waypoints[i]);
+                }
+                else
+                {
+                    Debug.LogWarning($"[WaveSpawner] {route} 루트의 웨이포인트[{i}]가 null입니다!");
+                }
+            }
+            
+            if (validWaypoints.Count > 0)
+            {
+                // ▼▼ [추가] 웨이포인트 간 거리 검사 ▼▼
+                for (int i = 0; i < validWaypoints.Count - 1; i++)
+                {
+                    float distance = Vector2.Distance(validWaypoints[i].position, validWaypoints[i + 1].position);
+                    if (distance > 12f) // UI 좌표계에서 너무 먼 거리
+                    {
+                        Debug.LogWarning($"[WaveSpawner] {route} 루트 웨이포인트[{i}]→[{i+1}] 거리가 너무 멉니다: {distance:F2}");
+                    }
+                }
+                
+                Debug.Log($"[WaveSpawner] {route} 루트 웨이포인트 검증 완료: {validWaypoints.Count}개");
+                return validWaypoints.ToArray();
+            }
+            else
+            {
+                Debug.LogError($"[WaveSpawner] {route} 루트에 유효한 웨이포인트가 없습니다!");
+                return null;
+            }
+        }
+        
+        Debug.LogWarning($"[WaveSpawner] {route} 루트의 웨이포인트 배열이 null이거나 비어있습니다!");
+        return null;
     }
     
     /// <summary>
@@ -261,11 +318,15 @@ public class WaveSpawner : MonoBehaviour
             case RouteType.Right:
                 spawnPoint = rightSpawnPoint;
                 break;
+            default:
+                spawnPoint = centerSpawnPoint; // 기본값은 중앙 스폰 포인트
+                break;
         }
 
         // 스폰 포인트가 설정되어 있으면 그 위치 사용
         if (spawnPoint != null)
         {
+            Debug.Log($"[WaveSpawner] {route} 루트 스폰 포인트 사용: {spawnPoint.position}");
             return spawnPoint.position;
         }
         
@@ -273,10 +334,12 @@ public class WaveSpawner : MonoBehaviour
         Transform[] waypoints = GetWaypointsForRoute(route);
         if (waypoints != null && waypoints.Length > 0 && waypoints[0] != null)
         {
+            Debug.Log($"[WaveSpawner] {route} 루트 첫 번째 웨이포인트 사용: {waypoints[0].position}");
             return waypoints[0].position;
         }
 
         // 모두 실패하면 기본 위치 사용
+        Debug.LogWarning($"[WaveSpawner] {route} 루트의 스폰 위치를 찾을 수 없어 기본 위치 사용");
         return transform.position;
     }
 

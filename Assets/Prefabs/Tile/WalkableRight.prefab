@@ -67,7 +67,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: -5530781715760837572, guid: a528957d05e2e60468227ce0004a9fde, type: 3}
+  m_Sprite: {fileID: 0}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -95,10 +95,10 @@ MonoBehaviour:
   highlightColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
   blockedColor: {r: 1, g: 0, b: 0, a: 1}
   walkablePrefab: {fileID: 0}
+  walkable2Prefab: {fileID: 0}
   walkableLeftPrefab: {fileID: 0}
   walkableCenterPrefab: {fileID: 0}
   walkableRightPrefab: {fileID: 3021528759696385224}
-  walkable2Prefab: {fileID: 0}
   walkable2LeftPrefab: {fileID: 0}
   walkable2CenterPrefab: {fileID: 0}
   walkable2RightPrefab: {fileID: 0}
@@ -156,4 +156,4 @@ BoxCollider2D:
     adaptiveTiling: 0
   m_AutoTiling: 0
   m_Size: {x: 1, y: 1}
-  m_EdgeRadius: 0 
+  m_EdgeRadius: 0
