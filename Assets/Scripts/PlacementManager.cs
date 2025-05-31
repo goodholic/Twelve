@@ -125,6 +125,16 @@ public class PlacementManager : MonoBehaviour
         {
             Debug.LogWarning("[PlacementManager] characterPanel이 null입니다. (Area1 건물 배치용 패널)");
         }
+        
+        if (bulletPanel == null)
+        {
+            Debug.LogError("[PlacementManager] bulletPanel이 null입니다. 캐릭터의 총알이 제대로 생성되지 않을 수 있습니다.");
+        }
+        
+        if (opponentBulletPanel == null)
+        {
+            Debug.LogWarning("[PlacementManager] opponentBulletPanel이 null입니다. Region2 캐릭터의 총알이 제대로 생성되지 않을 수 있습니다.");
+        }
     }
 
     private void Start()
@@ -591,9 +601,13 @@ public class PlacementManager : MonoBehaviour
                     {
                         characterComp.opponentBulletPanel = opponentBulletPanel;
                     }
-                    else
+                    else if (bulletPanel != null)
                     {
                         characterComp.SetBulletPanel(bulletPanel);
+                    }
+                    else
+                    {
+                        Debug.LogWarning($"[PlacementManager] bulletPanel이 null입니다. Character {characterComp.characterName}의 총알이 제대로 생성되지 않을 수 있습니다.");
                     }
                     characterComp.areaIndex = tile.IsPlacable2() ? 2 : 1;
                 }
@@ -657,9 +671,13 @@ public class PlacementManager : MonoBehaviour
                     {
                         characterComp.opponentBulletPanel = opponentBulletPanel;
                     }
-                    else
+                    else if (bulletPanel != null)
                     {
                         characterComp.SetBulletPanel(bulletPanel);
+                    }
+                    else
+                    {
+                        Debug.LogWarning($"[PlacementManager] bulletPanel이 null입니다. Character {characterComp.characterName}의 총알이 제대로 생성되지 않을 수 있습니다.");
                     }
                 }
 
@@ -1016,9 +1034,13 @@ public class PlacementManager : MonoBehaviour
                         {
                             cComp.opponentBulletPanel = opponentBulletPanel;
                         }
-                        else
+                        else if (bulletPanel != null)
                         {
                             cComp.SetBulletPanel(bulletPanel);
+                        }
+                        else
+                        {
+                            Debug.LogWarning($"[PlacementManager] bulletPanel이 null입니다. Character {cComp.characterName}의 총알이 제대로 생성되지 않을 수 있습니다.");
                         }
                     }
 
@@ -1084,9 +1106,13 @@ public class PlacementManager : MonoBehaviour
                         {
                             cComp.opponentBulletPanel = opponentBulletPanel;
                         }
-                        else
+                        else if (bulletPanel != null)
                         {
                             cComp.SetBulletPanel(bulletPanel);
+                        }
+                        else
+                        {
+                            Debug.LogWarning($"[PlacementManager] bulletPanel이 null입니다. Character {cComp.characterName}의 총알이 제대로 생성되지 않을 수 있습니다.");
                         }
                     }
 
@@ -1662,9 +1688,13 @@ public class PlacementManager : MonoBehaviour
             {
                 newCharacter.opponentBulletPanel = opponentBulletPanel;
             }
-            else
+            else if (bulletPanel != null)
             {
                 newCharacter.SetBulletPanel(bulletPanel);
+            }
+            else
+            {
+                Debug.LogWarning($"[PlacementManager] bulletPanel이 null입니다. Character {newCharacter.characterName}의 총알이 제대로 생성되지 않을 수 있습니다.");
             }
             
             // ▼▼ [핵심] 앞뒤 이미지 적용 ▼▼

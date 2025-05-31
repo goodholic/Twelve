@@ -281,18 +281,16 @@ public static class EditorCleanupUtility
     {
         try
         {
+            // 잘못된 중복 체크 제거
             if (character == null) return;
-            if (character.GetComponent<Character>() == null) return;
 
-            if (character != null)
+            // PlacementManager 찾기
+            PlacementManager manager = Object.FindObjectOfType<PlacementManager>();
+            if (manager != null && manager.bulletPanel != null)
             {
-                PlacementManager manager = Object.FindAnyObjectByType<PlacementManager>();
-                if (manager != null && manager.bulletPanel != null && character != null)
-                {
-                    // 이미 연결되어 있지 않으면 할당
-                    // (필요 시, 무조건 덮어쓰기를 원하면 if(... == null) 체크 제거)
-                    character.SetBulletPanel(manager.bulletPanel);
-                }
+                // bulletPanel 할당
+                character.SetBulletPanel(manager.bulletPanel);
+                Debug.Log($"[EditorCleanupUtility] Character '{character.name}'에 bulletPanel 연결됨", character);
             }
         }
         catch (System.Exception e)

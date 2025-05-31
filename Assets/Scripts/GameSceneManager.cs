@@ -176,6 +176,10 @@ public class GameSceneManager : MonoBehaviour
                     {
                         heroComp.SetBulletPanel(pMan.bulletPanel);
                     }
+                    else
+                    {
+                        Debug.LogWarning("[GameSceneManager] PlacementManager 또는 bulletPanel이 null입니다. Hero의 총알이 제대로 생성되지 않을 수 있습니다.");
+                    }
                 }
 
                 Debug.Log("[GameSceneManager] Hero(인덱스9) 자동 소환 완료");

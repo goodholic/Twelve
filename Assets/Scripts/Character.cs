@@ -1120,6 +1120,13 @@ public class Character : NetworkBehaviour, IDamageable
 
     public void SetBulletPanel(RectTransform panel)
     {
+        // null 체크 추가
+        if (panel == null)
+        {
+            Debug.LogWarning($"[Character] {characterName}에 null bulletPanel이 할당되려고 했습니다. 무시됨.", this);
+            return;
+        }
+        
         bulletPanel = panel;
     }
 
