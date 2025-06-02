@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using System.Linq;
 
 /// <summary>
 /// 캐릭터 선택 UI. 1~9 캐릭터 (또는 덱)에서 4장(Hand) + Next 1장 + Reserve 4장 로직을 다룸.
@@ -56,6 +57,12 @@ public class CharacterSelectUI : MonoBehaviour
 
     [Header("CharacterInventoryManager (인벤토리)")]
     [SerializeField] private CharacterInventoryManager characterInventory;
+
+    // =========================================
+    // [추가] 주사위 버튼 추가
+    // =========================================
+    [Header("자동 합성 버튼 (주사위)")]
+    [SerializeField] private Button diceButton;
 
     private void Start()
     {
@@ -136,6 +143,324 @@ public class CharacterSelectUI : MonoBehaviour
         // UI 갱신
         UpdateHandButtons();
         UpdateNextUnitUI();
+
+        // =========================================
+        // [추가] 주사위 버튼 리스너 등록
+        // =========================================
+        if (diceButton != null)
+        {
+            diceButton.onClick.RemoveAllListeners();
+            diceButton.onClick.AddListener(OnClickAutoMerge);
+            Debug.Log("[CharacterSelectUI] 주사위 버튼 리스너 등록 완료");
+        }
+        else
+        {
+            Debug.LogWarning("[CharacterSelectUI] 주사위 버튼이 연결되지 않았습니다!");
+        }
+    }
+
+    /// <summary>
+    /// 주사위 버튼 클릭 시 호출되는 자동 합성 메서드
+    /// </summary>
+    private void OnClickAutoMerge()
+    {
+        Debug.Log("[CharacterSelectUI] 주사위 버튼 클릭 - 자동 합성 시작");
+
+        // 모든 캐릭터 가져오기
+        Character[] allCharacters = Object.FindObjectsByType<Character>(FindObjectsSortMode.None);
+        
+        // 지역1 캐릭터만 필터링 (areaIndex == 1)
+        List<Character> area1Characters = new List<Character>();
+        foreach (var character in allCharacters)
+        {
+            if (character != null && character.areaIndex == 1 && !character.isHero)
+            {
+                area1Characters.Add(character);
+            }
+        }
+
+        // 1성 캐릭터만 필터링
+        List<Character> oneStarCharacters = new List<Character>();
+        foreach (var character in area1Characters)
+        {
+            if (character.star == CharacterStar.OneStar)
+            {
+                oneStarCharacters.Add(character);
+            }
+        }
+
+        Debug.Log($"[CharacterSelectUI] 지역1 1성 캐릭터 수: {oneStarCharacters.Count}");
+
+        // 3개 미만이면 합성 불가
+        if (oneStarCharacters.Count < 3)
+        {
+            Debug.LogWarning("[CharacterSelectUI] 1성 캐릭터가 3개 미만이므로 합성할 수 없습니다.");
+            return;
+        }
+
+        // 무작위로 3개 선택
+        ShuffleList(oneStarCharacters);
+        List<Character> selectedCharacters = oneStarCharacters.Take(3).ToList();
+
+        // 기획서: 가장 뒤쪽 캐릭터 위치에 생성
+        // 뒤쪽 = Y좌표가 가장 낮은 곳 (UI 좌표계에서)
+        Character backMostCharacter = null;
+        float lowestY = float.MaxValue;
+        Tile targetTile = null;
+
+        foreach (var character in selectedCharacters)
+        {
+            // UI 좌표계에서 Y값 확인
+            RectTransform rect = character.GetComponent<RectTransform>();
+            float y = rect != null ? rect.anchoredPosition.y : character.transform.position.y;
+            
+            if (y < lowestY)
+            {
+                lowestY = y;
+                backMostCharacter = character;
+                targetTile = character.currentTile;
+            }
+        }
+
+        if (backMostCharacter == null || targetTile == null)
+        {
+            Debug.LogError("[CharacterSelectUI] 합성할 캐릭터나 타일을 찾을 수 없습니다.");
+            return;
+        }
+
+        Debug.Log($"[CharacterSelectUI] 합성 대상 3개: {selectedCharacters[0].characterName}, {selectedCharacters[1].characterName}, {selectedCharacters[2].characterName}");
+        Debug.Log($"[CharacterSelectUI] 가장 뒤쪽 캐릭터: {backMostCharacter.characterName} (Y: {lowestY})");
+
+        // 합성 실행
+        ExecuteAutoMerge(selectedCharacters, targetTile);
+    }
+
+    /// <summary>
+    /// 실제 합성을 실행하는 메서드
+    /// </summary>
+    private void ExecuteAutoMerge(List<Character> charactersToMerge, Tile targetTile)
+    {
+        // 첫 번째 캐릭터를 기준으로 정보 저장
+        Character firstChar = charactersToMerge[0];
+        int areaIndex = firstChar.areaIndex;
+        Vector3 position = targetTile.transform.position;
+        Transform parent = firstChar.transform.parent;
+
+        // StarMergeDatabase에서 2성 캐릭터 데이터 가져오기
+        var coreData = CoreDataManager.Instance;
+        StarMergeDatabaseObject targetDB = (areaIndex == 2 && coreData.starMergeDatabaseRegion2 != null) 
+            ? coreData.starMergeDatabaseRegion2 : coreData.starMergeDatabase;
+
+        if (targetDB == null)
+        {
+            Debug.LogWarning("[CharacterSelectUI] StarMergeDatabase가 null입니다.");
+            // 기본 합성 처리
+            BasicMerge(charactersToMerge, targetTile);
+            return;
+        }
+
+        // 랜덤 종족 선택 (3개 중 하나)
+        RaceType selectedRace = (RaceType)charactersToMerge[Random.Range(0, 3)].race;
+        CharacterData newCharData = targetDB.GetRandom2Star(selectedRace);
+
+        if (newCharData == null || newCharData.spawnPrefab == null)
+        {
+            Debug.LogWarning($"[CharacterSelectUI] 2성 프리팹을 찾을 수 없습니다. 기본 합성으로 처리");
+            BasicMerge(charactersToMerge, targetTile);
+            return;
+        }
+
+        // 새로운 2성 캐릭터 생성
+        GameObject newCharObj = Instantiate(newCharData.spawnPrefab, parent);
+        if (newCharObj == null)
+        {
+            Debug.LogError("[CharacterSelectUI] 새 프리팹 생성 실패");
+            return;
+        }
+
+        // 위치 설정
+        RectTransform newCharRect = newCharObj.GetComponent<RectTransform>();
+        if (newCharRect != null && parent != null)
+        {
+            RectTransform parentRect = parent.GetComponent<RectTransform>();
+            if (parentRect != null)
+            {
+                Vector2 localPos = parentRect.InverseTransformPoint(position);
+                newCharRect.anchoredPosition = localPos;
+                newCharRect.localRotation = Quaternion.identity;
+            }
+        }
+        else
+        {
+            newCharObj.transform.position = position;
+            newCharObj.transform.localRotation = Quaternion.identity;
+        }
+
+        // Character 컴포넌트 설정
+        Character newCharacter = newCharObj.GetComponent<Character>();
+        if (newCharacter != null)
+        {
+            // 기본 정보 설정
+            newCharacter.currentTile = targetTile;
+            newCharacter.areaIndex = areaIndex;
+            newCharacter.isHero = false;
+            newCharacter.isCharAttack = false;
+            newCharacter.currentWaypointIndex = -1;
+            newCharacter.maxWaypointIndex = 6;
+
+            // 새로운 데이터 적용
+            newCharacter.characterName = newCharData.characterName;
+            newCharacter.race = newCharData.race;
+            newCharacter.star = CharacterStar.TwoStar;
+
+            // 2성 스탯 적용
+            float statMultiplier = 1.3f;
+            newCharacter.attackPower = newCharData.attackPower * statMultiplier;
+            newCharacter.attackSpeed = newCharData.attackSpeed * 1.1f;
+            newCharacter.attackRange = newCharData.attackRange * 1.1f;
+            newCharacter.currentHP = newCharData.maxHP * statMultiplier;
+            newCharacter.moveSpeed = newCharData.moveSpeed;
+
+            // 별 비주얼 적용
+            newCharacter.ApplyStarVisual();
+
+            // 패널 설정
+            if (coreData.bulletPanel != null)
+            {
+                newCharacter.SetBulletPanel(coreData.bulletPanel);
+            }
+
+            // 앞뒤 이미지 적용
+            if (newCharData.frontSprite != null || newCharData.backSprite != null)
+            {
+                ApplyFrontBackImages(newCharacter, newCharData);
+            }
+        }
+
+        // 기존 3개 캐릭터 제거
+        foreach (var character in charactersToMerge)
+        {
+            if (character != null && character.gameObject != null)
+            {
+                Destroy(character.gameObject);
+            }
+        }
+
+        Debug.Log($"[CharacterSelectUI] 자동 합성 성공! 새로운 2성 캐릭터 '{newCharData.characterName}' 생성");
+    }
+
+    /// <summary>
+    /// 기본 합성 처리 (StarMergeDatabase 없을 때)
+    /// </summary>
+    private void BasicMerge(List<Character> charactersToMerge, Tile targetTile)
+    {
+        // 첫 번째 캐릭터를 2성으로 업그레이드
+        Character targetChar = charactersToMerge[0];
+        targetChar.star = CharacterStar.TwoStar;
+        
+        // 스탯 업그레이드
+        targetChar.attackPower *= 1.3f;
+        targetChar.attackSpeed *= 1.1f;
+        targetChar.attackRange *= 1.1f;
+        targetChar.currentHP *= 1.2f;
+        
+        targetChar.ApplyStarVisual();
+
+        // 위치 이동
+        if (targetChar.transform.parent != null)
+        {
+            RectTransform targetRect = targetChar.GetComponent<RectTransform>();
+            RectTransform parentRect = targetChar.transform.parent.GetComponent<RectTransform>();
+            if (targetRect != null && parentRect != null)
+            {
+                Vector2 localPos = parentRect.InverseTransformPoint(targetTile.transform.position);
+                targetRect.anchoredPosition = localPos;
+            }
+        }
+        else
+        {
+            targetChar.transform.position = targetTile.transform.position;
+        }
+        targetChar.currentTile = targetTile;
+
+        // 나머지 2개 제거
+        for (int i = 1; i < charactersToMerge.Count; i++)
+        {
+            if (charactersToMerge[i] != null && charactersToMerge[i].gameObject != null)
+            {
+                Destroy(charactersToMerge[i].gameObject);
+            }
+        }
+
+        Debug.Log($"[CharacterSelectUI] 기본 합성 완료! {targetChar.characterName}이(가) 2성으로 업그레이드됨");
+    }
+
+    /// <summary>
+    /// 캐릭터에 앞뒤 이미지 적용
+    /// </summary>
+    private void ApplyFrontBackImages(Character character, CharacterData data)
+    {
+        // 기존 이미지 컴포넌트 찾기 또는 생성
+        Transform frontImageObj = character.transform.Find("FrontImage");
+        Transform backImageObj = character.transform.Find("BackImage");
+        
+        // FrontImage 생성 또는 업데이트
+        if (data.frontSprite != null)
+        {
+            if (frontImageObj == null)
+            {
+                GameObject frontGO = new GameObject("FrontImage");
+                frontGO.transform.SetParent(character.transform, false);
+                frontImageObj = frontGO.transform;
+                
+                Image frontImg = frontGO.AddComponent<Image>();
+                RectTransform frontRect = frontGO.GetComponent<RectTransform>();
+                frontRect.anchorMin = new Vector2(0.5f, 0.5f);
+                frontRect.anchorMax = new Vector2(0.5f, 0.5f);
+                frontRect.pivot = new Vector2(0.5f, 0.5f);
+                frontRect.sizeDelta = new Vector2(100, 100);
+                frontRect.anchoredPosition = Vector2.zero;
+            }
+            
+            Image frontImage = frontImageObj.GetComponent<Image>();
+            if (frontImage != null)
+            {
+                frontImage.sprite = data.frontSprite;
+                frontImage.preserveAspect = true;
+            }
+            
+            frontImageObj.gameObject.SetActive(false);
+        }
+        
+        // BackImage 생성 또는 업데이트
+        if (data.backSprite != null)
+        {
+            if (backImageObj == null)
+            {
+                GameObject backGO = new GameObject("BackImage");
+                backGO.transform.SetParent(character.transform, false);
+                backImageObj = backGO.transform;
+                
+                Image backImg = backGO.AddComponent<Image>();
+                RectTransform backRect = backGO.GetComponent<RectTransform>();
+                backRect.anchorMin = new Vector2(0.5f, 0.5f);
+                backRect.anchorMax = new Vector2(0.5f, 0.5f);
+                backRect.pivot = new Vector2(0.5f, 0.5f);
+                backRect.sizeDelta = new Vector2(100, 100);
+                backRect.anchoredPosition = Vector2.zero;
+            }
+            
+            Image backImage = backImageObj.GetComponent<Image>();
+            if (backImage != null)
+            {
+                backImage.sprite = data.backSprite;
+                backImage.preserveAspect = true;
+            }
+            
+            backImageObj.gameObject.SetActive(true);
+        }
+        
+        Debug.Log($"[CharacterSelectUI] {character.characterName}에 앞뒤 이미지 적용 완료");
     }
 
     private void UpdateHandButtons()
@@ -422,7 +747,7 @@ public class CharacterSelectUI : MonoBehaviour
             }
 
             // 소환 시도
-            bool success = placementManager.SummonCharacterOnTile(sb.characterIndex, randomTile, false);
+            bool success = placementManager.SummonCharacterOnTile(sb.characterIndex, randomTile);
             if (success)
             {
                 // 성공하면 카드 사용 처리

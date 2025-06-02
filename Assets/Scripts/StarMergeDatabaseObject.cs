@@ -22,6 +22,25 @@ public class StarMergeDatabaseObject : ScriptableObject
     public RaceStarPool[] threeStarPools;
 
     /// <summary>
+    /// 1성 후보 목록(종족별) - 기본 소환용
+    /// </summary>
+    public RaceStarPool[] oneStarPools;
+
+    /// <summary>
+    /// raceType에 해당하는 1성 풀에서 무작위 CharacterData를 하나 반환.
+    /// </summary>
+    public CharacterData GetRandom1Star(RaceType raceType)
+    {
+        RaceStarPool pool = FindPool(oneStarPools, raceType);
+        if (pool == null || pool.possibleCharacters == null || pool.possibleCharacters.Length == 0)
+        {
+            Debug.LogWarning($"[StarMergeDatabase] 1성 풀에 '{raceType}' 종족 정보가 없거나 비어있음!");
+            return null;
+        }
+        return GetRandomCharacterFromPool(pool);
+    }
+
+    /// <summary>
     /// raceType에 해당하는 2성 풀에서 무작위 CharacterData를 하나 반환.
     /// raceType이 없으면 null 반환.
     /// </summary>
@@ -48,6 +67,80 @@ public class StarMergeDatabaseObject : ScriptableObject
             return null;
         }
         return GetRandomCharacterFromPool(pool);
+    }
+
+    /// <summary>
+    /// 무작위 종족의 특정 등급 캐릭터 반환 (5웨이브 보상용)
+    /// </summary>
+    public CharacterData GetRandomCharacterAnyRace(CharacterStar star)
+    {
+        RaceStarPool[] targetPools = null;
+        
+        switch (star)
+        {
+            case CharacterStar.OneStar:
+                targetPools = oneStarPools;
+                break;
+            case CharacterStar.TwoStar:
+                targetPools = twoStarPools;
+                break;
+            case CharacterStar.ThreeStar:
+                targetPools = threeStarPools;
+                break;
+            default:
+                Debug.LogWarning($"[StarMergeDatabase] 지원하지 않는 등급: {star}");
+                return null;
+        }
+
+        if (targetPools == null || targetPools.Length == 0)
+        {
+            Debug.LogWarning($"[StarMergeDatabase] {star} 풀이 비어있음!");
+            return null;
+        }
+
+        // 무작위 종족 선택
+        RaceStarPool randomPool = targetPools[UnityEngine.Random.Range(0, targetPools.Length)];
+        return GetRandomCharacterFromPool(randomPool);
+    }
+
+    /// <summary>
+    /// 5웨이브 보상용 - 랜덤 2성 캐릭터 3개 반환
+    /// </summary>
+    public CharacterData[] GetWaveRewardCandidates()
+    {
+        CharacterData[] candidates = new CharacterData[3];
+        
+        for (int i = 0; i < 3; i++)
+        {
+            candidates[i] = GetRandomCharacterAnyRace(CharacterStar.TwoStar);
+            
+            // 중복 방지 (간단한 재시도 로직)
+            int retryCount = 0;
+            while (i > 0 && retryCount < 10)
+            {
+                bool isDuplicate = false;
+                for (int j = 0; j < i; j++)
+                {
+                    if (candidates[i] == candidates[j])
+                    {
+                        isDuplicate = true;
+                        break;
+                    }
+                }
+                
+                if (isDuplicate)
+                {
+                    candidates[i] = GetRandomCharacterAnyRace(CharacterStar.TwoStar);
+                    retryCount++;
+                }
+                else
+                {
+                    break;
+                }
+            }
+        }
+        
+        return candidates;
     }
 
     /// <summary>
@@ -102,6 +195,107 @@ public class StarMergeDatabaseObject : ScriptableObject
     //----------------------------------------------
     //=== 아래부터 "더미값 입력" 기능 추가 부분 ===
     //----------------------------------------------
+
+    /// <summary>
+    /// 1성 데이터 추가 예시
+    /// </summary>
+    [ContextMenu("Add Dummy 1Star From Tuple (예시)")]
+    public void AddDummyOneStarFromTuple_Example()
+    {
+        string example = "(human, human, 초보검사, 15, 1.2, 1.0, 200, false, Melee)";
+        AddDummyOneStarFromTuple(example);
+        Debug.Log($"[StarMergeDatabase] 예시로 {example} 를 파싱하여 1성 풀에 추가 완료!");
+    }
+
+    /// <summary>
+    /// 1성 캐릭터 추가
+    /// </summary>
+    public void AddDummyOneStarFromTuple(string tupleLine)
+    {
+        if (string.IsNullOrWhiteSpace(tupleLine))
+        {
+            Debug.LogWarning("[StarMergeDatabase] 입력이 비어있습니다.(1성)");
+            return;
+        }
+
+        // 파싱 로직은 2성/3성과 동일
+        string trimmed = tupleLine.Trim();
+        if (trimmed.StartsWith("(") && trimmed.EndsWith(")"))
+        {
+            trimmed = trimmed.Substring(1, trimmed.Length - 2);
+        }
+        string[] tokens = trimmed.Split(',');
+        if (tokens.Length < 9)
+        {
+            Debug.LogWarning($"[StarMergeDatabase] 토큰 수가 9개 미만(1성) => '{tupleLine}'");
+            return;
+        }
+
+        // 필드 파싱
+        string poolRaceStr = tokens[0].Trim();
+        string charRaceStr = tokens[1].Trim();
+        string nameStr     = tokens[2].Trim();
+
+        string atkStr      = tokens[3].Trim();
+        string aspdStr     = tokens[4].Trim();
+        string rangeStr    = tokens[5].Trim();
+        string maxHpStr    = tokens[6].Trim();
+        string areaStr     = tokens[7].Trim();
+        string rTypeStr    = tokens[8].Trim();
+
+        float atkVal   = ParseFloatSafe(atkStr, 10f);
+        float aspdVal  = ParseFloatSafe(aspdStr, 1f);
+        float rngVal   = ParseFloatSafe(rangeStr, 1.5f);
+        float maxHPVal = ParseFloatSafe(maxHpStr, 100f);
+
+        bool areaAttack = ParseBoolSafe(areaStr);
+        RangeType rangeTypeVal = ParseRangeTypeSafe(rTypeStr, RangeType.Melee);
+
+        RaceType poolRace = ParseRaceType(poolRaceStr, RaceType.Human);
+        RaceType charRace = ParseRaceType(charRaceStr, RaceType.Human);
+
+        // 1성 풀 찾기/생성
+        RaceStarPool targetPool = FindPool(oneStarPools, poolRace);
+        if (targetPool == null)
+        {
+            int oldSize = (oneStarPools == null) ? 0 : oneStarPools.Length;
+            Array.Resize(ref oneStarPools, oldSize + 1);
+            RaceStarPool newPool = new RaceStarPool();
+            newPool.race = poolRace;
+            newPool.possibleCharacters = new WeightedCharacter[0];
+            oneStarPools[oldSize] = newPool;
+            targetPool = newPool;
+        }
+
+        // CharacterData 생성
+        CharacterData newCD = new CharacterData();
+        newCD.characterName = nameStr;
+        newCD.race          = (CharacterRace)charRace;
+        newCD.attackPower   = atkVal;
+        newCD.attackSpeed   = aspdVal;
+        newCD.attackRange   = rngVal;
+        newCD.maxHP         = maxHPVal;
+        newCD.isAreaAttack  = areaAttack;
+        newCD.rangeType     = rangeTypeVal;
+        newCD.initialStar   = CharacterStar.OneStar;
+
+        // WeightedCharacter 생성
+        WeightedCharacter wc = new WeightedCharacter();
+        wc.characterData = newCD;
+        wc.weight = 1f;
+
+        // 풀에 추가
+        int oldLen = (targetPool.possibleCharacters == null) ? 0 : targetPool.possibleCharacters.Length;
+        Array.Resize(ref targetPool.possibleCharacters, oldLen + 1);
+        targetPool.possibleCharacters[oldLen] = wc;
+
+        // 저장
+        EditorUtility.SetDirty(this);
+        AssetDatabase.SaveAssets();
+        AssetDatabase.Refresh();
+
+        Debug.Log($"[StarMergeDatabase] 1성 풀({poolRace})에 '{nameStr}'(종족={charRace},atk={atkVal}) 추가 완료!");
+    }
 
     /// <summary>
     /// 예: (human, human, 꽃의 정령, 40, 1.0, 3.5, 320, true, Ranged)
@@ -327,6 +521,32 @@ public class StarMergeDatabaseObject : ScriptableObject
     // === (새로 추가) 여러 줄을 한꺼번에 처리하는 메서드들 ===
     // ---------------------------------------------------------
     /// <summary>
+    /// 여러 줄(라인별 1개의 튜플)을 한꺼번에 1성 풀에 추가.
+    /// </summary>
+    [ContextMenu("Add Dummy 1Stars From Tuples (Multiline)")]
+    public void AddDummyOneStarFromTuples(string multiline)
+    {
+        if (string.IsNullOrEmpty(multiline))
+        {
+            Debug.LogWarning("[StarMergeDatabase] multiline 입력이 비어있습니다. (1성)");
+            return;
+        }
+
+        string[] lines = multiline.Split('\n');
+        int count = 0;
+        foreach (var line in lines)
+        {
+            string trimmed = line.Trim();
+            if (string.IsNullOrWhiteSpace(trimmed)) continue;
+
+            AddDummyOneStarFromTuple(trimmed);
+            count++;
+        }
+
+        Debug.Log($"[StarMergeDatabase] 1성 튜플 {count}줄 처리 완료!");
+    }
+
+    /// <summary>
     /// 여러 줄(라인별 1개의 튜플)을 한꺼번에 2성 풀에 추가.
     /// 각 줄은 "(human, human, 낭만검객, 20, 1.5, ...)" 형식
     /// </summary>
@@ -386,6 +606,34 @@ public class StarMergeDatabaseObject : ScriptableObject
     [ContextMenu("Add All Sample Data")]
     public void AddAllSampleData()
     {
+        // ===== (0) 1성 다량 튜플 =====
+        string oneStarData = @"
+(human, human, 초보검사, 15, 1.2, 1.0, 200, false, Melee)
+(human, human, 견습마법사, 18, 0.9, 2.5, 150, false, Ranged)
+(human, human, 신참궁수, 20, 1.1, 3.0, 180, false, Ranged)
+(human, orc, 오크전사, 18, 1.0, 1.1, 250, false, Melee)
+(human, orc, 오크주술사, 22, 0.8, 2.8, 160, true, Ranged)
+(human, elf, 엘프궁수, 17, 1.3, 3.2, 170, false, Ranged)
+(human, elf, 엘프드루이드, 19, 0.95, 2.5, 190, true, Ranged)
+
+(orc, human, 초보검사, 15, 1.2, 1.0, 200, false, Melee)
+(orc, human, 견습마법사, 18, 0.9, 2.5, 150, false, Ranged)
+(orc, human, 신참궁수, 20, 1.1, 3.0, 180, false, Ranged)
+(orc, orc, 오크전사, 18, 1.0, 1.1, 250, false, Melee)
+(orc, orc, 오크주술사, 22, 0.8, 2.8, 160, true, Ranged)
+(orc, elf, 엘프궁수, 17, 1.3, 3.2, 170, false, Ranged)
+(orc, elf, 엘프드루이드, 19, 0.95, 2.5, 190, true, Ranged)
+
+(elf, human, 초보검사, 15, 1.2, 1.0, 200, false, Melee)
+(elf, human, 견습마법사, 18, 0.9, 2.5, 150, false, Ranged)
+(elf, human, 신참궁수, 20, 1.1, 3.0, 180, false, Ranged)
+(elf, orc, 오크전사, 18, 1.0, 1.1, 250, false, Melee)
+(elf, orc, 오크주술사, 22, 0.8, 2.8, 160, true, Ranged)
+(elf, elf, 엘프궁수, 17, 1.3, 3.2, 170, false, Ranged)
+(elf, elf, 엘프드루이드, 19, 0.95, 2.5, 190, true, Ranged)
+";
+        AddDummyOneStarFromTuples(oneStarData);
+
         // ===== (1) 2성 다량 튜플 =====
         string twoStarData = @"
 (human, human, 낭만검객, 20, 1.5, 1.2, 320, false, Melee)
@@ -457,7 +705,7 @@ public class StarMergeDatabaseObject : ScriptableObject
 ";
         AddDummyThreeStarFromTuples(threeStarData);
 
-        Debug.Log("[StarMergeDatabase] 모든 샘플 2성/3성 데이터 추가 완료!");
+        Debug.Log("[StarMergeDatabase] 모든 샘플 1성/2성/3성 데이터 추가 완료!");
     }
 
     //===============================================================
@@ -491,31 +739,22 @@ public class StarMergeDatabaseObject : ScriptableObject
 
     private RaceType ParseRaceType(string s, RaceType defaultVal)
     {
-        try
-        {
-            return (RaceType)Enum.Parse(typeof(RaceType), s, true);
-        }
-        catch
-        {
-            return defaultVal;
-        }
+        if (string.IsNullOrWhiteSpace(s)) return defaultVal;
+        s = s.ToLower().Trim();
+        if (s.Contains("human")) return RaceType.Human;
+        if (s.Contains("orc")) return RaceType.Orc;
+        if (s.Contains("elf")) return RaceType.Elf;
+        if (s.Contains("undead")) return RaceType.Undead;
+        return RaceType.Etc;
     }
 
 #endif
 }
 
-public enum RaceType
-{
-    Human,
-    Orc,
-    Elf,
-    Undead,
-    Etc
-}
-
 [System.Serializable]
 public class RaceStarPool
 {
+    [Tooltip("종족 타입")]
     public RaceType race;
     public WeightedCharacter[] possibleCharacters;
 }

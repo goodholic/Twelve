@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 
 /// <summary>
-/// UI 상의 캐릭터를 드래그하여 다른 타일로 옮길 수 있게 하는 스크립트.
+/// UI 상의 캐릭터를 드래그하여 다른 타일로 옮기거나 라인을 변경할 수 있게 하는 스크립트.
 /// </summary>
 [RequireComponent(typeof(RectTransform))]
 public class DraggableCharacterUI : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler
@@ -25,6 +25,13 @@ public class DraggableCharacterUI : MonoBehaviour, IBeginDragHandler, IDragHandl
     
     [Tooltip("유효하지 않은 배치 위치에 있을 때 색상")]
     public Color invalidDropColor = new Color(1f, 0.5f, 0.5f, 1f);
+    
+    [Header("라인 변경 효과")]
+    [Tooltip("라인 변경 시 보여줄 화살표 프리팹")]
+    public GameObject lineChangeArrowPrefab;
+    
+    [Tooltip("드래그 중 현재 라인 하이라이트 색상")]
+    public Color currentLineHighlight = new Color(1f, 1f, 0f, 0.5f);
 
     private Canvas canvas;             // UI Raycast용 (같은 Canvas 찾아 사용)
     private CanvasGroup canvasGroup;   // 드래그 중 Raycast blocking 해제용
@@ -38,6 +45,11 @@ public class DraggableCharacterUI : MonoBehaviour, IBeginDragHandler, IDragHandl
     private Color originalColor;       // 원래 색상
     
     private Tile currentHoveredTile;   // 현재 마우스가 위치한 타일
+    private GameObject lineChangeIndicator; // 라인 변경 표시
+    
+    // 라인 변경 감지용
+    private RouteType? originalRoute;
+    private RouteType? targetRoute;
 
     private void Awake()
     {
@@ -97,6 +109,12 @@ public class DraggableCharacterUI : MonoBehaviour, IBeginDragHandler, IDragHandl
         originalPosition = rectTrans.anchoredPosition;
         originalScale = rectTrans.localScale;
         
+        // 현재 라인 저장 (walkable 캐릭터인 경우)
+        if (character != null && character.isCharAttack && character.selectedRoute != RouteType.Default)
+        {
+            originalRoute = character.selectedRoute;
+        }
+        
         // 드래그 시작 시 크기 확대
         rectTrans.localScale = originalScale * dragScale;
         
@@ -107,6 +125,13 @@ public class DraggableCharacterUI : MonoBehaviour, IBeginDragHandler, IDragHandl
         if (characterImage != null)
         {
             originalColor = characterImage.color;
+        }
+        
+        // 라인 변경 인디케이터 생성
+        if (lineChangeArrowPrefab != null && originalRoute.HasValue)
+        {
+            lineChangeIndicator = Instantiate(lineChangeArrowPrefab, transform);
+            lineChangeIndicator.SetActive(false);
         }
     }
 
@@ -131,6 +156,12 @@ public class DraggableCharacterUI : MonoBehaviour, IBeginDragHandler, IDragHandl
         // 현재 마우스 아래 타일 확인하고 시각적 피드백 제공
         Tile tile = GetTileUnderPointer(eventData);
         UpdateVisualFeedback(tile);
+        
+        // 라인 변경 감지 (walkable 타일 위에 있을 때)
+        if (character != null && character.isCharAttack && tile != null)
+        {
+            UpdateLineChangeIndicator(tile);
+        }
     }
 
     public void OnEndDrag(PointerEventData eventData)
@@ -149,17 +180,37 @@ public class DraggableCharacterUI : MonoBehaviour, IBeginDragHandler, IDragHandl
         {
             characterImage.color = originalColor;
         }
+        
+        // 라인 변경 인디케이터 제거
+        if (lineChangeIndicator != null)
+        {
+            Destroy(lineChangeIndicator);
+            lineChangeIndicator = null;
+        }
 
         // 드롭된 위치에 Tile이 있는지 Raycast
         Tile targetTile = GetTileUnderPointer(eventData);
 
-        if (targetTile != null && CanPlaceOnTile(targetTile))
+        if (targetTile != null)
         {
-            // 배치 성공 시 애니메이션 효과 (살짝 커졌다 원래대로)
-            StartSuccessAnimation();
-            
-            // PlacementManager에 드롭 처리 위임 (합성/이동 로직)
-            PlacementManager.Instance.OnDropCharacter(character, targetTile);
+            // walkable 캐릭터의 라인 변경 처리
+            if (character != null && character.isCharAttack && targetRoute.HasValue && targetRoute != originalRoute)
+            {
+                HandleLineChange(targetTile, targetRoute.Value);
+            }
+            else if (CanPlaceOnTile(targetTile))
+            {
+                // 배치 성공 시 애니메이션 효과 (살짝 커졌다 원래대로)
+                StartSuccessAnimation();
+                
+                // PlacementManager에 드롭 처리 위임 (합성/이동 로직)
+                PlacementManager.Instance.OnDropCharacter(character, targetTile);
+            }
+            else
+            {
+                // 원래 위치로 복귀
+                StartReturnAnimation();
+            }
         }
         else
         {
@@ -169,6 +220,7 @@ public class DraggableCharacterUI : MonoBehaviour, IBeginDragHandler, IDragHandl
         
         // 현재 호버 타일 초기화
         currentHoveredTile = null;
+        targetRoute = null;
     }
 
     /// <summary>
@@ -232,6 +284,138 @@ public class DraggableCharacterUI : MonoBehaviour, IBeginDragHandler, IDragHandl
     }
     
     /// <summary>
+    /// 라인 변경 가능 여부 확인 및 인디케이터 업데이트
+    /// </summary>
+    private void UpdateLineChangeIndicator(Tile tile)
+    {
+        if (character == null || !character.isCharAttack) return;
+        
+        RouteType? newRoute = null;
+        
+        // 타일 타입에 따른 루트 결정
+        if (tile.IsWalkableLeft() || tile.IsWalkable2Left())
+        {
+            newRoute = RouteType.Left;
+        }
+        else if (tile.IsWalkableCenter() || tile.IsWalkable2Center())
+        {
+            newRoute = RouteType.Center;
+        }
+        else if (tile.IsWalkableRight() || tile.IsWalkable2Right())
+        {
+            newRoute = RouteType.Right;
+        }
+        
+        targetRoute = newRoute;
+        
+        // 라인 변경 인디케이터 표시
+        if (lineChangeIndicator != null && newRoute.HasValue && newRoute != originalRoute)
+        {
+            lineChangeIndicator.SetActive(true);
+            
+            // 화살표 방향 설정 (예: 좌->우, 우->좌 등)
+            if (originalRoute == RouteType.Left && newRoute == RouteType.Right)
+            {
+                lineChangeIndicator.transform.rotation = Quaternion.Euler(0, 0, -90); // 오른쪽 화살표
+            }
+            else if (originalRoute == RouteType.Right && newRoute == RouteType.Left)
+            {
+                lineChangeIndicator.transform.rotation = Quaternion.Euler(0, 0, 90); // 왼쪽 화살표
+            }
+            else
+            {
+                lineChangeIndicator.transform.rotation = Quaternion.identity; // 기본
+            }
+        }
+        else if (lineChangeIndicator != null)
+        {
+            lineChangeIndicator.SetActive(false);
+        }
+    }
+    
+    /// <summary>
+    /// 라인 변경 처리
+    /// </summary>
+    private void HandleLineChange(Tile targetTile, RouteType newRoute)
+    {
+        if (character == null) return;
+        
+        Debug.Log($"[DraggableCharacterUI] {character.characterName} 라인 변경: {originalRoute} → {newRoute}");
+        
+        // 원래 위치로 돌아가기 (캐릭터 자체는 이동하지 않음)
+        rectTrans.anchoredPosition = originalPosition;
+        
+        // 라인 변경 적용
+        character.selectedRoute = newRoute;
+        
+        // 새로운 경로의 웨이포인트 설정
+        if (character.areaIndex == 1)
+        {
+            WaveSpawner spawner = FindFirstObjectByType<WaveSpawner>();
+            if (spawner != null)
+            {
+                Transform[] newWaypoints = RouteManager.Instance.GetWaypointsForRoute(spawner, newRoute);
+                if (newWaypoints != null && newWaypoints.Length > 0)
+                {
+                    // 현재 진행 상황에 맞는 가장 가까운 웨이포인트 찾기
+                    int closestIndex = FindClosestWaypointIndex(character.transform.position, newWaypoints);
+                    
+                    character.pathWaypoints = newWaypoints;
+                    character.currentWaypointIndex = closestIndex;
+                    character.maxWaypointIndex = newWaypoints.Length - 1;
+                    
+                    Debug.Log($"[DraggableCharacterUI] 새 경로 설정 완료. 웨이포인트 {closestIndex}/{newWaypoints.Length}");
+                }
+            }
+        }
+        else if (character.areaIndex == 2)
+        {
+            WaveSpawnerRegion2 spawner2 = FindFirstObjectByType<WaveSpawnerRegion2>();
+            if (spawner2 != null)
+            {
+                Transform[] newWaypoints = RouteManager.Instance.GetWaypointsForRoute(spawner2, newRoute);
+                if (newWaypoints != null && newWaypoints.Length > 0)
+                {
+                    int closestIndex = FindClosestWaypointIndex(character.transform.position, newWaypoints);
+                    
+                    character.pathWaypoints = newWaypoints;
+                    character.currentWaypointIndex = closestIndex;
+                    character.maxWaypointIndex = newWaypoints.Length - 1;
+                    
+                    Debug.Log($"[DraggableCharacterUI] 새 경로 설정 완료. 웨이포인트 {closestIndex}/{newWaypoints.Length}");
+                }
+            }
+        }
+        
+        // 라인 변경 성공 효과
+        StartSuccessAnimation();
+    }
+    
+    /// <summary>
+    /// 현재 위치에서 가장 가까운 웨이포인트 인덱스 찾기
+    /// </summary>
+    private int FindClosestWaypointIndex(Vector3 currentPos, Transform[] waypoints)
+    {
+        int closestIndex = 0;
+        float closestDistance = float.MaxValue;
+        
+        for (int i = 0; i < waypoints.Length; i++)
+        {
+            if (waypoints[i] != null)
+            {
+                float distance = Vector3.Distance(currentPos, waypoints[i].position);
+                if (distance < closestDistance)
+                {
+                    closestDistance = distance;
+                    closestIndex = i;
+                }
+            }
+        }
+        
+        return closestIndex;
+    }
+    
+    /// <summary>
     /// 배치 성공 시 애니메이션 재생
     /// </summary>
     private void StartSuccessAnimation()
@@ -239,6 +423,9 @@ public class DraggableCharacterUI : MonoBehaviour, IBeginDragHandler, IDragHandl
         // 여기서는 간단하게 처리하지만, 실제로는 코루틴이나 애니메이션 시스템을 활용하면 좋습니다
         // 배치 성공 효과음 재생 (구현 시)
         // AudioManager.Instance.PlaySound("place_success");
+        
+        // 간단한 펄스 효과를 위한 코루틴 시작
+        StartCoroutine(PulseEffect());
     }
     
     /// <summary>
@@ -251,5 +438,37 @@ public class DraggableCharacterUI : MonoBehaviour, IBeginDragHandler, IDragHandl
         
         // 실패 효과음 재생 (구현 시)
         // AudioManager.Instance.PlaySound("place_fail");
+    }
+    
+    /// <summary>
+    /// 성공 시 펄스 효과
+    /// </summary>
+    private System.Collections.IEnumerator PulseEffect()
+    {
+        float duration = 0.2f;
+        float elapsed = 0f;
+        Vector3 targetScale = originalScale * 1.2f;
+        
+        // 확대
+        while (elapsed < duration * 0.5f)
+        {
+            elapsed += Time.deltaTime;
+            float t = elapsed / (duration * 0.5f);
+            rectTrans.localScale = Vector3.Lerp(originalScale, targetScale, t);
+            yield return null;
+        }
+        
+        elapsed = 0f;
+        
+        // 축소
+        while (elapsed < duration * 0.5f)
+        {
+            elapsed += Time.deltaTime;
+            float t = elapsed / (duration * 0.5f);
+            rectTrans.localScale = Vector3.Lerp(targetScale, originalScale, t);
+            yield return null;
+        }
+        
+        rectTrans.localScale = originalScale;
     }
 }

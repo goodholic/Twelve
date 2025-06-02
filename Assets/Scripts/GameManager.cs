@@ -61,6 +61,21 @@ public class GameManager : MonoBehaviour
     [Header("지역1 성 체력")]
     [SerializeField] private TextMeshProUGUI region1LifeText;
     public int region1Life = 10;
+    
+    // =================== [새로 추가] 중간성 & 최종성 ===================
+    [Header("지역1 중간성 (3개 라인)")]
+    public MiddleCastle region1LeftMiddleCastle;
+    public MiddleCastle region1CenterMiddleCastle;
+    public MiddleCastle region1RightMiddleCastle;
+    
+    [Header("지역2 중간성 (3개 라인)")]
+    public MiddleCastle region2LeftMiddleCastle;
+    public MiddleCastle region2CenterMiddleCastle;
+    public MiddleCastle region2RightMiddleCastle;
+    
+    [Header("최종성")]
+    public FinalCastle region1FinalCastle;
+    public FinalCastle region2FinalCastle;
 
     private void Awake()
     {
@@ -130,6 +145,85 @@ public class GameManager : MonoBehaviour
         
         // 지역1 생명력 텍스트 초기화
         UpdateRegion1LifeText();
+        
+        // 중간성과 최종성 이벤트 연결
+        SetupCastleEvents();
+    }
+    
+    /// <summary>
+    /// 중간성과 최종성의 파괴 이벤트 연결
+    /// </summary>
+    private void SetupCastleEvents()
+    {
+        // 지역1 중간성
+        if (region1LeftMiddleCastle != null)
+        {
+            region1LeftMiddleCastle.OnMiddleCastleDestroyed += OnMiddleCastleDestroyed;
+        }
+        if (region1CenterMiddleCastle != null)
+        {
+            region1CenterMiddleCastle.OnMiddleCastleDestroyed += OnMiddleCastleDestroyed;
+        }
+        if (region1RightMiddleCastle != null)
+        {
+            region1RightMiddleCastle.OnMiddleCastleDestroyed += OnMiddleCastleDestroyed;
+        }
+        
+        // 지역2 중간성
+        if (region2LeftMiddleCastle != null)
+        {
+            region2LeftMiddleCastle.OnMiddleCastleDestroyed += OnMiddleCastleDestroyed;
+        }
+        if (region2CenterMiddleCastle != null)
+        {
+            region2CenterMiddleCastle.OnMiddleCastleDestroyed += OnMiddleCastleDestroyed;
+        }
+        if (region2RightMiddleCastle != null)
+        {
+            region2RightMiddleCastle.OnMiddleCastleDestroyed += OnMiddleCastleDestroyed;
+        }
+        
+        // 최종성
+        if (region1FinalCastle != null)
+        {
+            region1FinalCastle.OnFinalCastleDestroyed += OnFinalCastleDestroyed;
+        }
+        if (region2FinalCastle != null)
+        {
+            region2FinalCastle.OnFinalCastleDestroyed += OnFinalCastleDestroyed;
+        }
+    }
+    
+    /// <summary>
+    /// 중간성이 파괴되었을 때 호출
+    /// </summary>
+    private void OnMiddleCastleDestroyed(RouteType route, int areaIndex)
+    {
+        Debug.Log($"[GameManager] 지역{areaIndex} {route} 중간성 파괴됨!");
+        
+        // 해당 라인의 캐릭터들이 최종성으로 목표 변경하도록 알림
+        Character[] allCharacters = Object.FindObjectsByType<Character>(FindObjectsSortMode.None);
+        foreach (var character in allCharacters)
+        {
+            if (character != null && character.areaIndex == areaIndex && character.selectedRoute == route)
+            {
+                // 이미 CharacterCombat에서 자동으로 처리되므로 여기서는 로그만
+                Debug.Log($"[GameManager] {character.characterName}의 목표가 최종성으로 변경될 예정");
+            }
+        }
+    }
+    
+    /// <summary>
+    /// 최종성이 파괴되었을 때 호출 (게임 종료)
+    /// </summary>
+    private void OnFinalCastleDestroyed(int areaIndex)
+    {
+        Debug.Log($"[GameManager] 지역{areaIndex} 최종성 파괴됨! 게임 종료!");
+        
+        // 지역1 최종성 파괴 = 플레이어 패배
+        // 지역2 최종성 파괴 = 플레이어 승리
+        bool victory = (areaIndex == 2);
+        SetGameOver(victory);
     }
 
     private void Update()
@@ -425,5 +519,70 @@ public class GameManager : MonoBehaviour
         {
             region1LifeText.text = $"HP: {region1Life}";
         }
+    }
+    
+    /// <summary>
+    /// 라우트에 해당하는 중간성 반환
+    /// </summary>
+    public MiddleCastle GetMiddleCastle(int areaIndex, RouteType route)
+    {
+        if (areaIndex == 1)
+        {
+            switch (route)
+            {
+                case RouteType.Left:
+                    return region1LeftMiddleCastle;
+                case RouteType.Center:
+                    return region1CenterMiddleCastle;
+                case RouteType.Right:
+                    return region1RightMiddleCastle;
+            }
+        }
+        else if (areaIndex == 2)
+        {
+            switch (route)
+            {
+                case RouteType.Left:
+                    return region2LeftMiddleCastle;
+                case RouteType.Center:
+                    return region2CenterMiddleCastle;
+                case RouteType.Right:
+                    return region2RightMiddleCastle;
+            }
+        }
+        return null;
+    }
+    
+    /// <summary>
+    /// 지역에 해당하는 최종성 반환
+    /// </summary>
+    public FinalCastle GetFinalCastle(int areaIndex)
+    {
+        if (areaIndex == 1)
+            return region1FinalCastle;
+        else if (areaIndex == 2)
+            return region2FinalCastle;
+        return null;
+    }
+
+    /// <summary>
+    /// 게임 상태를 초기화합니다 (결과 화면에서 로비로 돌아갈 때 사용)
+    /// </summary>
+    public void ResetGameState()
+    {
+        isGameOver = false;
+        isVictory = false;
+        region1Life = 10;
+        
+        // 결과 패널 비활성화
+        if (resultPanel != null)
+        {
+            resultPanel.SetActive(false);
+        }
+        
+        // 지역1 생명력 텍스트 업데이트
+        UpdateRegion1LifeText();
+        
+        Debug.Log("[GameManager] 게임 상태가 초기화되었습니다.");
     }
 }

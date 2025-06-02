@@ -74,11 +74,6 @@ public class CSVDataSyncEditor : EditorWindow
 
         EditorGUILayout.Space();
 
-        if (GUILayout.Button("아이템 CSV 가져오기"))
-        {
-            ImportItemsFromCSV();
-        }
-
         if (GUILayout.Button("아군 1성 캐릭터 CSV 가져오기"))
         {
             ImportAllyOneStarFromCSV();
@@ -168,9 +163,6 @@ public class CSVDataSyncEditor : EditorWindow
     {
         switch (fileName)
         {
-            case "items.csv":
-                ImportItemsFromCSV();
-                break;
             case "ally_one_star_characters.csv":
                 ImportAllyOneStarFromCSV();
                 break;
@@ -190,7 +182,6 @@ public class CSVDataSyncEditor : EditorWindow
 
     private void ImportAllCSVFiles()
     {
-        ImportItemsFromCSV();
         ImportAllyOneStarFromCSV();
         ImportEnemyOneStarFromCSV();
         ImportAllyStarsFromCSV();
@@ -198,53 +189,6 @@ public class CSVDataSyncEditor : EditorWindow
         
         UpdateFileHashes();
         Debug.Log("모든 CSV 파일 가져오기 완료!");
-    }
-
-    private void ImportItemsFromCSV()
-    {
-        string csvPath = Path.Combine(csvFolderPath, "items.csv");
-        if (!File.Exists(csvPath))
-        {
-            Debug.LogError($"CSV 파일을 찾을 수 없습니다: {csvPath}");
-            return;
-        }
-
-        ItemDatabaseObject itemDB = AssetDatabase.LoadAssetAtPath<ItemDatabaseObject>("Assets/Prefabs/Data/NewItemDatabase.asset");
-        if (itemDB == null)
-        {
-            Debug.LogError("NewItemDatabase.asset을 찾을 수 없습니다!");
-            return;
-        }
-
-        List<ItemData> items = new List<ItemData>();
-        string[] lines = File.ReadAllLines(csvPath);
-
-        // 헤더 스킵
-        for (int i = 1; i < lines.Length; i++)
-        {
-            string[] values = ParseCSVLine(lines[i]);
-            if (values.Length < 9) continue;
-
-            ItemData item = new ItemData
-            {
-                itemName = values[0],
-                effectType = ParseEffectType(values[1]),
-                effectValue = float.Parse(values[2]),
-                description = values[3],
-                areaRadius = float.Parse(values[5]),
-                starMin = int.Parse(values[6]),
-                starMax = int.Parse(values[7]),
-                damageValue = float.Parse(values[8])
-            };
-
-            items.Add(item);
-        }
-
-        itemDB.items = items.ToArray();
-        EditorUtility.SetDirty(itemDB);
-        AssetDatabase.SaveAssets();
-
-        Debug.Log($"아이템 {items.Count}개 가져오기 완료!");
     }
 
     private void ImportAllyOneStarFromCSV()
@@ -486,30 +430,12 @@ public class CSVDataSyncEditor : EditorWindow
         }
 
         // DataExportEditor의 내보내기 메서드 직접 호출
-        ExportItemsDirectly();
         ExportOneStarsDirectly();
         ExportAllyStarsDirectly();
         ExportEnemyStarsDirectly();
 
         UpdateFileHashes();
         Debug.Log("모든 데이터 CSV 내보내기 완료!");
-    }
-
-    private void ExportItemsDirectly()
-    {
-        ItemDatabaseObject itemDB = AssetDatabase.LoadAssetAtPath<ItemDatabaseObject>("Assets/Prefabs/Data/NewItemDatabase.asset");
-        if (itemDB == null || itemDB.items == null) return;
-
-        using (StreamWriter writer = new StreamWriter(Path.Combine(csvFolderPath, "items.csv")))
-        {
-            writer.WriteLine("아이템명,효과 타입,효과 값,설명,아이콘,범위 반경,최소 별,최대 별,데미지 값");
-
-            foreach (var item in itemDB.items)
-            {
-                string effectTypeName = GetEffectTypeName(item.effectType);
-                writer.WriteLine($"{item.itemName},{effectTypeName},{item.effectValue},{item.description},있음,{item.areaRadius},{item.starMin},{item.starMax},{item.damageValue}");
-            }
-        }
     }
 
     private void ExportOneStarsDirectly()
@@ -667,7 +593,6 @@ public class CSVDataSyncEditor : EditorWindow
         // CSV 파일들의 상태 확인
         string[] csvFiles = new string[]
         {
-            "items.csv",
             "ally_one_star_characters.csv",
             "enemy_one_star_characters.csv",
             "ally_two_star_characters.csv",
@@ -749,20 +674,6 @@ public class CSVDataSyncEditor : EditorWindow
     }
 
     // 파싱 헬퍼 메서드들
-    private ItemEffectType ParseEffectType(string effectName)
-    {
-        switch (effectName)
-        {
-            case "공격력": return ItemEffectType.IncreaseAttack;
-            case "HP": return ItemEffectType.IncreaseHP;
-            case "사거리": return ItemEffectType.IncreaseRange;
-            case "텔레포트": return ItemEffectType.TeleportJumpedEnemies;
-            case "데미지": return ItemEffectType.DamageJumpedEnemies;
-            case "소환": return ItemEffectType.SummonRandom2Or3Star;
-            default: return ItemEffectType.IncreaseAttack;
-        }
-    }
-
     private CharacterStar ParseCharacterStar(string star)
     {
         switch (star)
@@ -797,20 +708,6 @@ public class CSVDataSyncEditor : EditorWindow
     }
 
     // 이름 변환 헬퍼 메서드들
-    private string GetEffectTypeName(ItemEffectType effectType)
-    {
-        switch (effectType)
-        {
-            case ItemEffectType.IncreaseAttack: return "공격력";
-            case ItemEffectType.IncreaseHP: return "HP";
-            case ItemEffectType.IncreaseRange: return "사거리";
-            case ItemEffectType.TeleportJumpedEnemies: return "텔레포트";
-            case ItemEffectType.DamageJumpedEnemies: return "데미지";
-            case ItemEffectType.SummonRandom2Or3Star: return "소환";
-            default: return "알 수 없음";
-        }
-    }
-
     private string GetRaceName(CharacterRace race)
     {
         switch (race)

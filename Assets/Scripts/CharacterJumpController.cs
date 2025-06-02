@@ -27,10 +27,10 @@ public class CharacterJumpController : MonoBehaviour
 {
     [Header("점프 애니메이션 설정값")]
     [Tooltip("점프하는 동안의 최고 높이(arc). 숫자가 클수록 포물선이 크게 보임.")]
-    public float jumpArcHeight = 80f;
+    public float jumpArcHeight = 120f; // 기획서: 3라인 간 이동을 위해 높이 증가
 
     [Tooltip("점프 이동 전체 소요 시간(초)")]
-    public float jumpDuration = 0.8f;
+    public float jumpDuration = 1.2f; // 기획서: 더 명확한 이동을 위해 시간 증가
 
     [Header("지역 1 캐릭터 점프 지점 (3개 루트)")]
     [Tooltip("지역 1 좌측 루트 점프 시작 지점 (지역1 내의 점프 시작 위치)")]
@@ -73,14 +73,6 @@ public class CharacterJumpController : MonoBehaviour
 
     [Tooltip("씬 시작 시 즉시 점프를 테스트하려면 true")]
     public bool autoJumpOnStart = false;
-
-    // 루트 타입 열거형
-    public enum RouteType
-    {
-        Left = 0,
-        Center = 1,
-        Right = 2
-    }
 
     // 이동 대상 캐릭터의 RectTransform
     private RectTransform charRect;
@@ -313,7 +305,6 @@ public class CharacterJumpController : MonoBehaviour
             return;
         }
 
-        // ▼▼ [수정] 점프 지점 설정 방식 변경
         // 지역1 → 지역2: region1의 Start에서 region1의 End로 (region1End가 실제로는 지역2 위치)
         // 지역2 → 지역1: region2의 Start에서 region2의 End로 (region2End가 실제로는 지역1 위치)
         RectTransform startPoint = GetJumpStartPoint(fromRegion, route);
@@ -343,8 +334,6 @@ public class CharacterJumpController : MonoBehaviour
         
         JumpToPosition(startPos, endPos, jumpArcHeight, jumpDuration);
     }
-
-
 
     /// <summary>
     /// 포물선(arc)을 그리며 점프하는 코루틴.

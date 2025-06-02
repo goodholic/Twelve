@@ -23,10 +23,20 @@ public class GameSceneManager : MonoBehaviour
     [Header("아이템 인벤토리 패널 (게임씬)")]
     [SerializeField] private GameObject itemInventoryPanel;
 
+    [Header("종족별 캐릭터 표시 (기획서: 각 종족 3명 + 자유 1명)")]
+    [SerializeField] private TextMeshProUGUI humanCountText;
+    [SerializeField] private TextMeshProUGUI orcCountText;
+    [SerializeField] private TextMeshProUGUI elfCountText;
+
     private CharacterData[] deckFromLobby = new CharacterData[9]; 
     private CharacterData heroCharacter = null; 
 
     private float elapsedTime = 0f;
+
+    // 종족별 카운트
+    private int humanCount = 0;
+    private int orcCount = 0;
+    private int elfCount = 0;
 
     private void OnEnable()
     {
@@ -60,6 +70,9 @@ public class GameSceneManager : MonoBehaviour
             Debug.LogWarning("[GameSceneManager] GameManager.currentRegisteredCharacters가 없거나 초기화되지 않음");
         }
 
+        // 종족별 카운트 계산
+        CountCharactersByRace();
+
         // 3) 1~9 -> UI 슬롯
         if (slotImages9 != null && slotTexts9 != null)
         {
@@ -76,7 +89,7 @@ public class GameSceneManager : MonoBehaviour
                         slotImages9[i].sprite = (c.buttonIcon != null) ? c.buttonIcon.sprite : null;
 
                         slotTexts9[i].gameObject.SetActive(true);
-                        slotTexts9[i].text = $"{c.characterName}\nLv.{c.level}";
+                        slotTexts9[i].text = $"{c.characterName}\nLv.{c.level}\n{GetRaceString(c.race)}";
                     }
                     else
                     {
@@ -86,6 +99,9 @@ public class GameSceneManager : MonoBehaviour
                 }
             }
         }
+
+        // 종족별 카운트 UI 업데이트
+        UpdateRaceCountUI();
 
         // 4) Hero(인덱스 9) 자동 소환
         if (heroCharacter != null && heroCharacter.spawnPrefab != null)
@@ -247,5 +263,85 @@ public class GameSceneManager : MonoBehaviour
         }
         
         return true;
+    }
+
+    // 종족별 캐릭터 카운트
+    private void CountCharactersByRace()
+    {
+        humanCount = 0;
+        orcCount = 0;
+        elfCount = 0;
+
+        // 1~9번 캐릭터 카운트
+        for (int i = 0; i < 9; i++)
+        {
+            if (deckFromLobby[i] != null)
+            {
+                switch (deckFromLobby[i].race)
+                {
+                    case CharacterRace.Human:
+                        humanCount++;
+                        break;
+                    case CharacterRace.Orc:
+                        orcCount++;
+                        break;
+                    case CharacterRace.Elf:
+                        elfCount++;
+                        break;
+                }
+            }
+        }
+
+        // 히어로(10번째) 카운트
+        if (heroCharacter != null)
+        {
+            switch (heroCharacter.race)
+            {
+                case CharacterRace.Human:
+                    humanCount++;
+                    break;
+                case CharacterRace.Orc:
+                    orcCount++;
+                    break;
+                case CharacterRace.Elf:
+                    elfCount++;
+                    break;
+            }
+        }
+
+        Debug.Log($"[GameSceneManager] 종족별 카운트 - 휴먼: {humanCount}, 오크: {orcCount}, 엘프: {elfCount}");
+
+        // 게임 기획서 검증: 각 종족 3명 + 자유 1명 = 10명
+        if (humanCount + orcCount + elfCount != 10)
+        {
+            Debug.LogWarning($"[GameSceneManager] 덱 구성이 10명이 아닙니다! 현재: {humanCount + orcCount + elfCount}명");
+        }
+    }
+
+    private void UpdateRaceCountUI()
+    {
+        if (humanCountText != null)
+            humanCountText.text = $"휴먼: {humanCount}";
+        
+        if (orcCountText != null)
+            orcCountText.text = $"오크: {orcCount}";
+        
+        if (elfCountText != null)
+            elfCountText.text = $"엘프: {elfCount}";
+    }
+
+    private string GetRaceString(CharacterRace race)
+    {
+        switch (race)
+        {
+            case CharacterRace.Human:
+                return "휴먼";
+            case CharacterRace.Orc:
+                return "오크";
+            case CharacterRace.Elf:
+                return "엘프";
+            default:
+                return "기타";
+        }
     }
 }

@@ -30,8 +30,6 @@ public class WaveSpawner : MonoBehaviour
     [Tooltip("우측 루트 스폰 위치")]
     public Transform rightSpawnPoint;
 
-
-
     [Header("웨이브/몬스터 설정")]
     public float timeBetweenWaves = 5f;
     public int monstersPerWave = 5;
@@ -46,11 +44,14 @@ public class WaveSpawner : MonoBehaviour
     [Header("아이템 패널(웨이브 보상용)")]
     [SerializeField] private GameObject itemPanel;
 
-    [Header("ItemRewardPanelManager")]
-    [SerializeField] private ItemRewardPanelManager itemRewardPanel;
-
     [Header("Wave Count Text")]
     [SerializeField] private TextMeshProUGUI waveCountText;
+    
+    [Header("5웨이브 보상 시스템")]
+    [SerializeField] private GameObject rewardSelectionPanel;
+    [SerializeField] private Transform rewardButtonParent;
+    [SerializeField] private GameObject rewardButtonPrefab;
+    [SerializeField] private StarMergeDatabaseObject starMergeDatabase;
 
     // =============================
     // [수정추가] 챕터별 몬스터 교체 로직
@@ -77,19 +78,16 @@ public class WaveSpawner : MonoBehaviour
     public GameObject[] chapterMonsters = new GameObject[101];
     // =========================================
 
-    // 루트 타입 열거형
-    public enum RouteType
-    {
-        Left,
-        Center,
-        Right
-    }
-
     private void Start()
     {
         if (itemPanel != null)
         {
             itemPanel.SetActive(false);
+        }
+        
+        if (rewardSelectionPanel != null)
+        {
+            rewardSelectionPanel.SetActive(false);
         }
 
         // 최초에 10초 딜레이 후 자동 웨이브 시작
@@ -343,8 +341,6 @@ public class WaveSpawner : MonoBehaviour
         return transform.position;
     }
 
-
-
     /// <summary>
     /// (수정) 몬스터 소환 로직에 indexInWave 추가 + 챕터별 로직 + 루트 선택
     /// </summary>
@@ -462,15 +458,118 @@ public class WaveSpawner : MonoBehaviour
         // 5웨이브마다 보상
         if (currentWave % 5 == 0)
         {
-            if (itemPanel != null)
+            ShowRewardSelection();
+        }
+    }
+    
+    /// <summary>
+    /// 5웨이브 보상 선택창 표시 - 랜덤 2성 캐릭터 3개 중 1개 선택
+    /// </summary>
+    private void ShowRewardSelection()
+    {
+        if (rewardSelectionPanel == null)
+        {
+            Debug.LogWarning("[WaveSpawner] 보상 선택 패널이 설정되지 않았습니다!");
+            return;
+        }
+        
+        if (starMergeDatabase == null)
+        {
+            Debug.LogWarning("[WaveSpawner] StarMergeDatabase가 설정되지 않았습니다!");
+            return;
+        }
+        
+        // 기존 보상 버튼들 제거
+        foreach (Transform child in rewardButtonParent)
+        {
+            Destroy(child.gameObject);
+        }
+        
+        // 랜덤 2성 캐릭터 3개 선택
+        List<CharacterData> twoStarCharacters = new List<CharacterData>();
+        
+        // 모든 종족의 2성 캐릭터 수집
+        RaceType[] allRaces = { RaceType.Human, RaceType.Orc, RaceType.Elf };
+        foreach (var race in allRaces)
+        {
+            var twoStarData = starMergeDatabase.GetRandom2Star(race);
+            if (twoStarData != null)
             {
-                itemPanel.SetActive(true);
-            }
-
-            if (itemRewardPanel != null)
-            {
-                itemRewardPanel.ShowRewardPanel();
+                twoStarCharacters.Add(twoStarData);
             }
         }
+        
+        // 중복 없이 3개 선택
+        List<CharacterData> selectedRewards = new List<CharacterData>();
+        while (selectedRewards.Count < 3 && twoStarCharacters.Count > 0)
+        {
+            int randomIndex = Random.Range(0, twoStarCharacters.Count);
+            selectedRewards.Add(twoStarCharacters[randomIndex]);
+            twoStarCharacters.RemoveAt(randomIndex);
+        }
+        
+        // 보상 버튼 생성
+        for (int i = 0; i < selectedRewards.Count; i++)
+        {
+            CharacterData reward = selectedRewards[i];
+            GameObject buttonObj = Instantiate(rewardButtonPrefab, rewardButtonParent);
+            
+            // 버튼 UI 설정
+            var button = buttonObj.GetComponent<UnityEngine.UI.Button>();
+            var image = buttonObj.GetComponentInChildren<UnityEngine.UI.Image>();
+            var text = buttonObj.GetComponentInChildren<TMPro.TextMeshProUGUI>();
+            
+            if (image != null && reward.buttonIcon != null)
+            {
+                image.sprite = reward.buttonIcon.sprite;
+            }
+            
+            if (text != null)
+            {
+                text.text = $"{reward.characterName}\n★★";
+            }
+            
+            // 버튼 클릭 이벤트
+            int copyIndex = i;
+            button.onClick.AddListener(() =>
+            {
+                OnRewardSelected(reward);
+            });
+        }
+        
+        // 패널 표시
+        rewardSelectionPanel.SetActive(true);
+        Time.timeScale = 0f; // 게임 일시정지
+    }
+    
+    /// <summary>
+    /// 보상 캐릭터 선택 시 처리
+    /// </summary>
+    private void OnRewardSelected(CharacterData selectedCharacter)
+    {
+        Debug.Log($"[WaveSpawner] 보상 캐릭터 선택: {selectedCharacter.characterName}");
+        
+        // 빈 타일 찾기
+        Tile emptyTile = TileManager.Instance.FindEmptyPlacedOrPlacableTile(false);
+        
+        if (emptyTile == null)
+        {
+            // placable 타일이 없으면 walkable 타일로
+            emptyTile = TileManager.Instance.FindEmptyWalkableTile(false);
+        }
+        
+        if (emptyTile != null && selectedCharacter.spawnPrefab != null)
+        {
+            // PlacementManager를 통해 보상 캐릭터 배치
+            PlacementManager.Instance.PlaceRewardCharacterOnTile(selectedCharacter, emptyTile);
+        }
+        else
+        {
+            Debug.LogWarning("[WaveSpawner] 보상 캐릭터를 배치할 타일이 없습니다!");
+        }
+        
+        // 패널 닫기
+        rewardSelectionPanel.SetActive(false);
+        Time.timeScale = 1f; // 게임 재개
     }
 }

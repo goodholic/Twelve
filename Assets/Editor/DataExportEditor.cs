@@ -19,7 +19,8 @@ public class DataExportEditor : EditorWindow
     private bool showAllySection = true;
     private bool showOneStarSection = true;
     
-    // 아이템 생성용 필드들
+    // 아이템 생성용 필드들 (아이템 시스템 비활성화로 주석 처리)
+    /*
     private string newItemName = "새로운 아이템";
     private ItemEffectType newItemEffect = ItemEffectType.IncreaseAttack;
     private float newItemValue = 1f;
@@ -28,6 +29,7 @@ public class DataExportEditor : EditorWindow
     private int newItemStarMin = 2;
     private int newItemStarMax = 3;
     private float newItemDamageValue = 30f;
+    */
 
     // 적 캐릭터 생성용 필드들
     private string newEnemyName = "새로운 적";
@@ -149,6 +151,8 @@ public class DataExportEditor : EditorWindow
         EditorGUILayout.BeginVertical("box");
         GUILayout.Label("새 아이템 생성", EditorStyles.boldLabel);
 
+        // 아이템 생성용 필드들 (아이템 시스템 비활성화로 주석 처리)
+        /*
         newItemName = EditorGUILayout.TextField("아이템명", newItemName);
         newItemEffect = (ItemEffectType)EditorGUILayout.EnumPopup("효과 타입", newItemEffect);
         newItemValue = EditorGUILayout.FloatField("효과 값", newItemValue);
@@ -157,7 +161,10 @@ public class DataExportEditor : EditorWindow
         newItemStarMin = EditorGUILayout.IntField("최소 별", newItemStarMin);
         newItemStarMax = EditorGUILayout.IntField("최대 별", newItemStarMax);
         newItemDamageValue = EditorGUILayout.FloatField("데미지 값", newItemDamageValue);
+        */
 
+        // 아이템 추가 버튼 (아이템 시스템 비활성화로 주석 처리)
+        /*
         if (GUILayout.Button("아이템 추가"))
         {
             AddNewItem();
@@ -175,6 +182,9 @@ public class DataExportEditor : EditorWindow
                 EditorGUILayout.LabelField($"{i + 1}. {itemDB.items[i].itemName} - {itemDB.items[i].description}");
             }
         }
+        */
+        
+        GUILayout.Label("아이템 시스템이 비활성화되었습니다.", EditorStyles.helpBox);
 
         EditorGUILayout.EndVertical();
     }
@@ -348,6 +358,8 @@ public class DataExportEditor : EditorWindow
         EditorGUILayout.EndVertical();
     }
 
+    // 아이템 시스템이 비활성화되어 주석 처리
+    /*
     private void AddNewItem()
     {
         ItemDatabaseObject itemDB = AssetDatabase.LoadAssetAtPath<ItemDatabaseObject>("Assets/Prefabs/Data/NewItemDatabase.asset");
@@ -381,6 +393,7 @@ public class DataExportEditor : EditorWindow
 
         Debug.Log($"새 아이템 '{newItemName}' 추가 완료!");
     }
+    */
 
     private void AddNewEnemyCharacter()
     {
@@ -570,26 +583,7 @@ public class DataExportEditor : EditorWindow
 
     private void ExportItemsToCSV()
     {
-        ItemDatabaseObject itemDB = AssetDatabase.LoadAssetAtPath<ItemDatabaseObject>("Assets/Prefabs/Data/NewItemDatabase.asset");
-        if (itemDB == null || itemDB.items == null)
-        {
-            Debug.LogError("아이템 데이터베이스를 찾을 수 없습니다!");
-            return;
-        }
-
-        StringBuilder csv = new StringBuilder();
-        csv.AppendLine("아이템명,효과 타입,효과 값,설명,아이콘,범위 반경,최소 별,최대 별,데미지 값");
-
-        foreach (var item in itemDB.items)
-        {
-            string effectTypeName = GetEffectTypeName(item.effectType);
-            csv.AppendLine($"{item.itemName},{effectTypeName},{item.effectValue},{item.description},있음,{item.areaRadius},{item.starMin},{item.starMax},{item.damageValue}");
-        }
-
-        string filePath = Path.Combine(Application.dataPath, "../items_new.csv");
-        File.WriteAllText(filePath, csv.ToString(), Encoding.UTF8);
-        
-        Debug.Log($"아이템 CSV 파일 생성 완료: {filePath}");
+        Debug.LogWarning("아이템 시스템이 비활성화되어 있습니다.");
     }
 
     private void ExportEnemyStarsToCSV()
@@ -777,6 +771,8 @@ public class DataExportEditor : EditorWindow
         Debug.Log($"적 1성 캐릭터 CSV 파일 생성 완료: {enemyOneStarPath}");
     }
 
+    // 아이템 시스템이 비활성화되어 주석 처리
+    /*
     private string GetEffectTypeName(ItemEffectType effectType)
     {
         switch (effectType)
@@ -790,6 +786,7 @@ public class DataExportEditor : EditorWindow
             default: return "알 수 없음";
         }
     }
+    */
 
     private string GetRaceName(CharacterRace race)
     {

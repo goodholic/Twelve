@@ -1,3 +1,4 @@
+// ===== Tile.cs =====
 using UnityEngine;
 using UnityEngine.UI;
 using System;
@@ -17,29 +18,37 @@ public class Tile : MonoBehaviour
     [SerializeField] private Color defaultColor = Color.white;
     [SerializeField] private Color highlightColor = Color.yellow;
     [SerializeField] private Color blockedColor = Color.red;
+    [SerializeField] private Color summonableColor = Color.green;  // 소환 가능 타일 색상
 
     [Header("Tile Prefabs (시각용)")]
     public GameObject walkablePrefab;
     public GameObject walkable2Prefab;
-    public GameObject walkableLeftPrefab;
-    public GameObject walkableCenterPrefab;
-    public GameObject walkableRightPrefab;
+    public GameObject walkableLeftPrefab;      // 왼쪽 라인
+    public GameObject walkableCenterPrefab;    // 중앙 라인
+    public GameObject walkableRightPrefab;     // 오른쪽 라인
     public GameObject walkable2LeftPrefab;
     public GameObject walkable2CenterPrefab;
     public GameObject walkable2RightPrefab;
     public GameObject placablePrefab;
     public GameObject placable2Prefab;
-    public GameObject placeTilePrefab; // 원래 occupiedPrefab → placeTilePrefab
-    public GameObject placed2Prefab;   // 원래 occupied2Prefab → placed2Prefab
+    public GameObject placeTilePrefab;
+    public GameObject placed2Prefab;
 
     [SerializeField] private GameObject currentVisual;
 
     [Header("Optional: Button for OnClick")]
     public Button tileButton;
 
+    [Header("게임 기획서 - 3라인 시스템")]
+    [Tooltip("이 타일이 속한 라인 (Left/Center/Right)")]
+    public RouteType belongingRoute = RouteType.Center;
+
     [HideInInspector] public int row;
     [HideInInspector] public int column;
     [HideInInspector] public int tileIndex;
+
+    // 타일 위의 캐릭터 참조 (게임 기획서: 타일 기반 소환)
+    private Character occupyingCharacter;
 
     private void Start()
     {
@@ -67,10 +76,32 @@ public class Tile : MonoBehaviour
         {
             UpdateTileVisual_Runtime();
         }
+        
+        // 타일 타입에 따른 라인 자동 설정
+        UpdateBelongingRoute();
     }
 
     /// <summary>
-    /// 이 타일이 'Placable' 형태인지 체크
+    /// 타일 타입에 따라 속한 라인을 자동으로 설정
+    /// </summary>
+    private void UpdateBelongingRoute()
+    {
+        if (IsWalkableLeft() || IsWalkable2Left())
+        {
+            belongingRoute = RouteType.Left;
+        }
+        else if (IsWalkableCenter() || IsWalkable2Center())
+        {
+            belongingRoute = RouteType.Center;
+        }
+        else if (IsWalkableRight() || IsWalkable2Right())
+        {
+            belongingRoute = RouteType.Right;
+        }
+    }
+
+    /// <summary>
+    /// 이 타일이 'Placable' 형태인지 체크 (소환 가능 타일)
     /// </summary>
     public bool IsPlacable()
     {
@@ -94,7 +125,7 @@ public class Tile : MonoBehaviour
     }
 
     /// <summary>
-    /// 이 타일이 'PlaceTile' 형태인지 (원래 Occupied)
+    /// 이 타일이 'PlaceTile' 형태인지 (캐릭터가 배치된 타일)
     /// </summary>
     public bool IsPlaceTile()
     {
@@ -117,7 +148,7 @@ public class Tile : MonoBehaviour
     }
 
     /// <summary>
-    /// 이 타일이 'Placed2' 형태인지 (원래 Occupied2)
+    /// 이 타일이 'Placed2' 형태인지
     /// </summary>
     public bool IsPlaced2()
     {
@@ -140,7 +171,7 @@ public class Tile : MonoBehaviour
     }
 
     /// <summary>
-    /// 이 타일이 'Walkable' 형태인지
+    /// 이 타일이 'Walkable' 형태인지 (몬스터 이동 경로)
     /// </summary>
     public bool IsWalkable()
     {
@@ -164,7 +195,7 @@ public class Tile : MonoBehaviour
     }
 
     /// <summary>
-    /// 이 타일이 'WalkableLeft' 형태인지
+    /// 이 타일이 'WalkableLeft' 형태인지 (왼쪽 라인)
     /// </summary>
     public bool IsWalkableLeft()
     {
@@ -180,7 +211,7 @@ public class Tile : MonoBehaviour
     }
 
     /// <summary>
-    /// 이 타일이 'WalkableCenter' 형태인지
+    /// 이 타일이 'WalkableCenter' 형태인지 (중앙 라인)
     /// </summary>
     public bool IsWalkableCenter()
     {
@@ -196,7 +227,7 @@ public class Tile : MonoBehaviour
     }
 
     /// <summary>
-    /// 이 타일이 'WalkableRight' 형태인지
+    /// 이 타일이 'WalkableRight' 형태인지 (오른쪽 라인)
     /// </summary>
     public bool IsWalkableRight()
     {
@@ -260,51 +291,44 @@ public class Tile : MonoBehaviour
     }
 
     /// <summary>
-    /// 이 타일이 캐릭터 배치 가능한 상태인지 (Walkable/Placable/PlaceTile/등등)
+    /// 이 타일이 캐릭터 배치 가능한 상태인지 (게임 기획서: 타일 기반 소환)
     /// </summary>
     public bool CanPlaceCharacter()
     {
-        bool hasAnyType =
-            IsWalkable() || IsWalkable2() ||
-            IsWalkableLeft() || IsWalkableCenter() || IsWalkableRight() ||
-            IsWalkable2Left() || IsWalkable2Center() || IsWalkable2Right() ||
-            IsPlacable() || IsPlacable2() ||
-            IsPlaceTile() || IsPlaced2();
+        // 이미 캐릭터가 있으면 배치 불가
+        if (occupyingCharacter != null) return false;
 
-        return hasAnyType;
+        // Placable 타일이거나 빈 PlaceTile만 배치 가능
+        bool isPlacableType = IsPlacable() || IsPlacable2();
+        bool isEmptyPlacedType = (IsPlaceTile() || IsPlaced2()) && occupyingCharacter == null;
+
+        return isPlacableType || isEmptyPlacedType;
     }
 
     /// <summary>
-    /// 타일 클릭 시 로직
-    /// - removeMode가 true면 캐릭터 제거 시도
-    /// - 아니면 PlacementManager 통해 캐릭터 배치
+    /// 타일 클릭 시 로직 (게임 기획서: 원 버튼 소환)
     /// </summary>
     public void OnClickPlacableTile()
     {
-        Debug.Log($"[Tile] 클릭됨: {name} (Index={tileIndex}, row={row}, col={column})");
+        Debug.Log($"[Tile] 클릭됨: {name} (Index={tileIndex}, row={row}, col={column}, Route={belongingRoute})");
         
-        // ▼▼ [추가] 타일 상태 디버그 정보 ▼▼
-        Debug.Log($"[Tile] 타일 상태 - Walkable:{IsWalkable()}, Walkable2:{IsWalkable2()}, " +
-                  $"WalkableLeft:{IsWalkableLeft()}, WalkableCenter:{IsWalkableCenter()}, WalkableRight:{IsWalkableRight()}, " +
-                  $"Walkable2Left:{IsWalkable2Left()}, Walkable2Center:{IsWalkable2Center()}, Walkable2Right:{IsWalkable2Right()}, " +
-                  $"Placable:{IsPlacable()}, Placable2:{IsPlacable2()}, " +
-                  $"PlaceTile:{IsPlaceTile()}, Placed2:{IsPlaced2()}");
+        // 타일 상태 디버그 정보
+        Debug.Log($"[Tile] 타일 상태 - CanPlace:{CanPlaceCharacter()}, HasCharacter:{occupyingCharacter != null}");
 
         // 추가: 만약 removeMode가 true라면 제거 로직
         if (PlacementManager.Instance != null && PlacementManager.Instance.removeMode)
         {
             PlacementManager.Instance.RemoveCharacterOnTile(this);
-            return; // 여기서 종료
+            return;
         }
 
-        // 기존 로직: 캐릭터 배치 시도
+        // 소환 가능한 타일인지 확인
         if (CanPlaceCharacter())
         {
             var mgr = PlacementManager.Instance;
             if (mgr != null)
             {
-                // ▼▼ [추가] PlacementManager의 현재 상태 확인 ▼▼
-                Debug.Log($"[Tile] PlacementManager 상태 - currentCharacterIndex: {mgr.GetCurrentCharacterIndex()}");
+                // 랜덤 캐릭터 소환 시도
                 mgr.PlaceCharacterOnTile(this);
             }
             else
@@ -314,11 +338,57 @@ public class Tile : MonoBehaviour
         }
         else
         {
-            Debug.Log(
-                $"[Tile] 배치 불가 상태. (IsWalkable={IsWalkable()}, IsWalkable2={IsWalkable2()}, " +
-                $"IsPlacable={IsPlacable()}, IsPlacable2={IsPlacable2()}, " +
-                $"IsPlaceTile={IsPlaceTile()}, IsPlaced2={IsPlaced2()})"
-            );
+            Debug.Log($"[Tile] 배치 불가 상태. (이미 캐릭터가 있거나 소환 불가능한 타일)");
+        }
+    }
+
+    /// <summary>
+    /// 타일에 캐릭터 설정
+    /// </summary>
+    public void SetOccupyingCharacter(Character character)
+    {
+        occupyingCharacter = character;
+        UpdateTileColor();
+    }
+
+    /// <summary>
+    /// 타일의 캐릭터 제거
+    /// </summary>
+    public void RemoveOccupyingCharacter()
+    {
+        occupyingCharacter = null;
+        UpdateTileColor();
+    }
+
+    /// <summary>
+    /// 타일에 있는 캐릭터 반환
+    /// </summary>
+    public Character GetOccupyingCharacter()
+    {
+        return occupyingCharacter;
+    }
+
+    /// <summary>
+    /// 타일 색상 업데이트
+    /// </summary>
+    private void UpdateTileColor()
+    {
+        if (tileImage == null) return;
+
+        if (occupyingCharacter != null)
+        {
+            // 캐릭터가 있는 타일
+            tileImage.color = blockedColor;
+        }
+        else if (CanPlaceCharacter())
+        {
+            // 소환 가능한 타일
+            tileImage.color = summonableColor;
+        }
+        else
+        {
+            // 일반 타일
+            tileImage.color = defaultColor;
         }
     }
 
@@ -441,13 +511,13 @@ public class Tile : MonoBehaviour
         bool pTile = IsPlaceTile();
         bool p2Tile = IsPlaced2();
 
-        // Walkable2 타입들 우선 체크
+        // Walkable2 타입들 우선 체크 (3라인 시스템)
         if (w2Left && walkable2LeftPrefab != null) return walkable2LeftPrefab;
         if (w2Center && walkable2CenterPrefab != null) return walkable2CenterPrefab;
         if (w2Right && walkable2RightPrefab != null) return walkable2RightPrefab;
         if (w2 && walkable2Prefab != null) return walkable2Prefab;
         
-        // Walkable 타입들 체크
+        // Walkable 타입들 체크 (3라인 시스템)
         if (wLeft && walkableLeftPrefab != null) return walkableLeftPrefab;
         if (wCenter && walkableCenterPrefab != null) return walkableCenterPrefab;
         if (wRight && walkableRightPrefab != null) return walkableRightPrefab;
@@ -486,7 +556,79 @@ public class Tile : MonoBehaviour
     {
         if (tileImage != null)
         {
-            tileImage.color = defaultColor;
+            UpdateTileColor();
+        }
+    }
+
+    /// <summary>
+    /// 타일을 Placable 상태로 변경
+    /// </summary>
+    public void SetPlacable()
+    {
+        // 기존 자식 제거
+        ClearCurrentVisual();
+        
+        // Placable 프리팹 생성
+        if (placablePrefab != null)
+        {
+            currentVisual = Instantiate(placablePrefab, transform);
+            RemoveTileScriptsAtRuntime(currentVisual);
+        }
+        
+        Debug.Log($"[Tile] {name}을 Placable 상태로 변경");
+    }
+    
+    /// <summary>
+    /// 타일을 Placable2 상태로 변경
+    /// </summary>
+    public void SetPlacable2()
+    {
+        // 기존 자식 제거
+        ClearCurrentVisual();
+        
+        // Placable2 프리팹 생성
+        if (placable2Prefab != null)
+        {
+            currentVisual = Instantiate(placable2Prefab, transform);
+            RemoveTileScriptsAtRuntime(currentVisual);
+        }
+        
+        Debug.Log($"[Tile] {name}을 Placable2 상태로 변경");
+    }
+    
+    /// <summary>
+    /// 현재 비주얼을 제거
+    /// </summary>
+    private void ClearCurrentVisual()
+    {
+        if (currentVisual != null)
+        {
+            if (Application.isPlaying)
+            {
+                Destroy(currentVisual);
+            }
+            else
+            {
+                DestroyImmediate(currentVisual);
+            }
+            currentVisual = null;
+        }
+        
+        // 모든 자식 프리팹 제거 (Placable, PlaceTile 등)
+        for (int i = transform.childCount - 1; i >= 0; i--)
+        {
+            Transform child = transform.GetChild(i);
+            if (child.gameObject != currentVisual)
+            {
+                if (Application.isPlaying)
+                {
+                    Destroy(child.gameObject);
+                }
+                else
+                {
+                    DestroyImmediate(child.gameObject);
+                }
+            }
         }
     }
 }

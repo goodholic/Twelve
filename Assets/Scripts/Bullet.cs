@@ -43,7 +43,7 @@ public class Bullet : MonoBehaviour
     [Header("타겟 / 기타")]
     public GameObject target;        // 몬스터나 캐릭터 모두 사용 가능하도록 GameObject로 변경
     private float aliveTime = 0f;    // 사용 중인 시간 체크
-    private IDamageable damageableTarget;  // 인터페이스 사용 (Monster/Character 등)
+    private IDamageable damageableTarget;  // 인터페이스 사용 (Monster/Character/Castle 등)
 
     // -------------------------------------------------------
     // [탄환별 추가 옵션들]
@@ -124,7 +124,7 @@ public class Bullet : MonoBehaviour
     }
 
     /// <summary>
-    /// 탄환 초기화 (몬스터/캐릭터 등 IDamageable 대상)
+    /// 탄환 초기화 (몬스터/캐릭터/성 등 IDamageable 대상)
     /// </summary>
     public void Init(IDamageable targetObject, float baseDamage, float baseSpeed,
                      bool areaAtk, float areaAtkRadius, int areaIndex)
@@ -140,6 +140,16 @@ public class Bullet : MonoBehaviour
             {
                 this.target = targetChar.gameObject;
                 this.damageableTarget = targetChar;
+            }
+            else if (targetObject is MiddleCastle targetMiddleCastle)
+            {
+                this.target = targetMiddleCastle.gameObject;
+                this.damageableTarget = targetMiddleCastle;
+            }
+            else if (targetObject is FinalCastle targetFinalCastle)
+            {
+                this.target = targetFinalCastle.gameObject;
+                this.damageableTarget = targetFinalCastle;
             }
 
             this.damage = baseDamage;
@@ -430,6 +440,36 @@ public class Bullet : MonoBehaviour
                 }
             }
         }
+        
+        // 중간성 광역 데미지
+        MiddleCastle[] allMiddleCastles = Object.FindObjectsByType<MiddleCastle>(FindObjectsSortMode.None);
+        foreach (var castle in allMiddleCastles)
+        {
+            if (castle == null) continue;
+            if (castle.gameObject == target) continue;
+            if (castle.areaIndex == this.areaIndex) continue;
+            
+            float dist = Vector2.Distance(center, castle.transform.position);
+            if (dist <= areaRadius)
+            {
+                castle.TakeDamage(damage);
+            }
+        }
+        
+        // 최종성 광역 데미지
+        FinalCastle[] allFinalCastles = Object.FindObjectsByType<FinalCastle>(FindObjectsSortMode.None);
+        foreach (var castle in allFinalCastles)
+        {
+            if (castle == null) continue;
+            if (castle.gameObject == target) continue;
+            if (castle.areaIndex == this.areaIndex) continue;
+            
+            float dist = Vector2.Distance(center, castle.transform.position);
+            if (dist <= areaRadius)
+            {
+                castle.TakeDamage(damage);
+            }
+        }
     }
 
     private void FindNextUnifiedTarget(Vector3 position)
@@ -469,6 +509,40 @@ public class Bullet : MonoBehaviour
                     bestTarget = c.gameObject;
                     bestDamageable = c;
                 }
+            }
+        }
+        
+        // 중간성 체크
+        MiddleCastle[] middleCastles = Object.FindObjectsByType<MiddleCastle>(FindObjectsSortMode.None);
+        foreach (var castle in middleCastles)
+        {
+            if (castle == null) continue;
+            if (castle.gameObject == target) continue;
+            if (castle.areaIndex == this.areaIndex) continue;
+            
+            float dist = Vector2.Distance(position, castle.transform.position);
+            if (dist < chainBounceRange && dist < minDist)
+            {
+                minDist = dist;
+                bestTarget = castle.gameObject;
+                bestDamageable = castle;
+            }
+        }
+        
+        // 최종성 체크
+        FinalCastle[] finalCastles = Object.FindObjectsByType<FinalCastle>(FindObjectsSortMode.None);
+        foreach (var castle in finalCastles)
+        {
+            if (castle == null) continue;
+            if (castle.gameObject == target) continue;
+            if (castle.areaIndex == this.areaIndex) continue;
+            
+            float dist = Vector2.Distance(position, castle.transform.position);
+            if (dist < chainBounceRange && dist < minDist)
+            {
+                minDist = dist;
+                bestTarget = castle.gameObject;
+                bestDamageable = castle;
             }
         }
 

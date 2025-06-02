@@ -43,10 +43,12 @@ public class Monster : NetworkBehaviour, IDamageable
 
     [Header("Area 구분 (1 or 2)")]
     public int areaIndex = 1;
-
-
-
-
+    
+    // [추가] 중간성과 최종성 타겟팅을 위한 변수
+    private bool isTargetingCastle = false;
+    private MiddleCastle targetMiddleCastle;
+    private FinalCastle targetFinalCastle;
+    private RouteType monsterRoute = RouteType.Center;  // 몬스터가 속한 라인
 
     private void Awake()
     {
@@ -70,7 +72,14 @@ public class Monster : NetworkBehaviour, IDamageable
         }
     }
 
-
+    /// <summary>
+    /// 몬스터가 어느 라인을 따라가는지 설정
+    /// </summary>
+    public void SetMonsterRoute(RouteType route)
+    {
+        monsterRoute = route;
+        Debug.Log($"[Monster] {gameObject.name} 라인 설정: {route}");
+    }
 
     /// <summary>
     /// 챕터에 따라 몬스터 스탯을 강화합니다 (1.1배씩 증가)
@@ -102,7 +111,14 @@ public class Monster : NetworkBehaviour, IDamageable
 
         if (!isStunned)
         {
-            MoveAlongPath2D();
+            if (isTargetingCastle)
+            {
+                MoveTowardsCastle();
+            }
+            else
+            {
+                MoveAlongPath2D();
+            }
         }
     }
 
@@ -155,12 +171,14 @@ public class Monster : NetworkBehaviour, IDamageable
         }
     }
 
-
-
     private void MoveAlongPath2D()
     {
         if (pathWaypoints == null || pathWaypoints.Length == 0 || currentWaypointIndex >= pathWaypoints.Length)
+        {
+            // 웨이포인트가 끝났으면 해당 라인의 중간성으로 이동
+            SwitchToMiddleCastleTarget();
             return;
+        }
 
         Transform target = pathWaypoints[currentWaypointIndex];
         if (target == null)
@@ -181,16 +199,117 @@ public class Monster : NetworkBehaviour, IDamageable
             currentWaypointIndex++;
             if (currentWaypointIndex >= pathWaypoints.Length)
             {
-                OnReachEndPoint();
+                // 웨이포인트 끝 -> 중간성으로 전환
+                SwitchToMiddleCastleTarget();
             }
         }
     }
 
+    /// <summary>
+    /// 웨이포인트가 끝나면 해당 라인의 중간성을 타겟으로 설정
+    /// </summary>
+    private void SwitchToMiddleCastleTarget()
+    {
+        if (isTargetingCastle) return;
+        
+        // 해당 라인의 중간성 찾기
+        MiddleCastle[] middleCastles = UnityEngine.Object.FindObjectsByType<MiddleCastle>(FindObjectsSortMode.None);
+        foreach (var castle in middleCastles)
+        {
+            if (castle != null && castle.areaIndex == areaIndex && castle.routeType == monsterRoute)
+            {
+                if (!castle.IsDestroyed())
+                {
+                    targetMiddleCastle = castle;
+                    isTargetingCastle = true;
+                    Debug.Log($"[Monster] {gameObject.name} 중간성 타겟팅 시작: {castle.gameObject.name}");
+                    return;
+                }
+            }
+        }
+        
+        // 중간성이 이미 파괴되었거나 없으면 최종성으로
+        SwitchToFinalCastleTarget();
+    }
 
+    /// <summary>
+    /// 중간성이 파괴되면 최종성을 타겟으로 설정
+    /// </summary>
+    private void SwitchToFinalCastleTarget()
+    {
+        if (targetFinalCastle != null) return;
+        
+        FinalCastle[] finalCastles = UnityEngine.Object.FindObjectsByType<FinalCastle>(FindObjectsSortMode.None);
+        foreach (var castle in finalCastles)
+        {
+            if (castle != null && castle.areaIndex == areaIndex && !castle.IsDestroyed())
+            {
+                targetFinalCastle = castle;
+                targetMiddleCastle = null;
+                isTargetingCastle = true;
+                Debug.Log($"[Monster] {gameObject.name} 최종성 타겟팅 시작: {castle.gameObject.name}");
+                return;
+            }
+        }
+    }
+
+    /// <summary>
+    /// 성을 향해 이동
+    /// </summary>
+    private void MoveTowardsCastle()
+    {
+        GameObject targetCastle = null;
+        
+        if (targetMiddleCastle != null && !targetMiddleCastle.IsDestroyed())
+        {
+            targetCastle = targetMiddleCastle.gameObject;
+        }
+        else if (targetFinalCastle != null && !targetFinalCastle.IsDestroyed())
+        {
+            targetCastle = targetFinalCastle.gameObject;
+        }
+        else
+        {
+            // 타겟이 없으면 다시 찾기
+            if (targetMiddleCastle != null && targetMiddleCastle.IsDestroyed())
+            {
+                SwitchToFinalCastleTarget();
+            }
+            return;
+        }
+        
+        Vector2 currentPos = transform.position;
+        Vector2 targetPos = targetCastle.transform.position;
+        Vector2 dir = (targetPos - currentPos).normalized;
+        
+        transform.position += (Vector3)(dir * moveSpeed * Time.deltaTime);
+        
+        float dist = Vector2.Distance(currentPos, targetPos);
+        if (dist < 0.5f)  // 성에 도달
+        {
+            OnReachCastle();
+        }
+    }
+
+    private void OnReachCastle()
+    {
+        if (targetMiddleCastle != null && !targetMiddleCastle.IsDestroyed())
+        {
+            targetMiddleCastle.TakeDamage(damageToCastle);
+            Debug.Log($"[Monster] {gameObject.name}이 중간성 공격! 데미지: {damageToCastle}");
+        }
+        else if (targetFinalCastle != null && !targetFinalCastle.IsDestroyed())
+        {
+            targetFinalCastle.TakeDamage(damageToCastle);
+            Debug.Log($"[Monster] {gameObject.name}이 최종성 공격! 데미지: {damageToCastle}");
+        }
+        
+        Die();
+    }
 
     private void OnReachEndPoint()
     {
-        // 끝 지점 도달 시
+        // 기존 코드 유지 (웨이포인트 끝 도달 시)
         OnReachedCastle?.Invoke(this);
         OnDeath?.Invoke();
 

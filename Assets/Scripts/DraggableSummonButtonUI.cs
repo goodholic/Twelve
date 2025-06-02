@@ -15,9 +15,16 @@ using TMPro;
 /// next unit 로직을 동일하게 유지함.
 ///
 /// (추가) 드래그 중 크기를 축소하여 버튼이 작게 보이도록 처리.
+/// 
+/// [게임 기획서 주석]
+/// 기획서에는 "원 버튼 소환: 미네랄 소모하여 랜덤 캐릭터, 랜덤 위치 소환"이 명시되어 있음.
+/// 현재는 드래그 소환 방식으로 구현되어 있으나, 원 버튼 소환을 추가하려면:
+/// 1. 버튼 클릭 이벤트 추가 (OnPointerClick 구현)
+/// 2. 클릭 시 SummonManager의 랜덤 소환 메서드 호출
+/// 3. 랜덤으로 빈 타일 선택하여 캐릭터 배치
 /// </summary>
 [RequireComponent(typeof(RectTransform))]
-public class DraggableSummonButtonUI : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler
+public class DraggableSummonButtonUI : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler, IPointerClickHandler
 {
     [Header("드래그로 소환할 캐릭터 인덱스")]
     public int summonCharacterIndex = -1;
@@ -41,7 +48,11 @@ public class DraggableSummonButtonUI : MonoBehaviour, IBeginDragHandler, IDragHa
     [Tooltip("dragInfoPanel 안에 있는 TextMeshProUGUI")]
     public TextMeshProUGUI dragInfoText;
 
-    // 드래그 중 “버튼”을 축소/복원하기 위한 설정
+    [Header("[게임 기획서] 원 버튼 소환 설정")]
+    [Tooltip("true면 클릭 시 랜덤 위치에 소환, false면 드래그로만 소환")]
+    public bool enableOneClickSummon = false;
+
+    // 드래그 중 "버튼"을 축소/복원하기 위한 설정
     [SerializeField] private float dragScaleFactor = 0.5f; // 드래그 시 축소 비율 (0.5=절반크기 등)
     private Vector3 originalScale;     // 드래그 시작 전에 버튼의 원래 스케일
 
@@ -54,6 +65,9 @@ public class DraggableSummonButtonUI : MonoBehaviour, IBeginDragHandler, IDragHa
 
     // 드래그 시작 시점의 anchoredPosition(복귀용)
     private Vector2 originalPos;
+
+    // 드래그 진행 중인지 체크
+    private bool isDragging = false;
 
     private void Awake()
     {
@@ -87,6 +101,47 @@ public class DraggableSummonButtonUI : MonoBehaviour, IBeginDragHandler, IDragHa
         summonCharacterIndex = index;
     }
 
+    /// <summary>
+    /// [게임 기획서] 원 버튼 소환 구현
+    /// 클릭 시 랜덤 위치에 캐릭터 소환
+    /// </summary>
+    public void OnPointerClick(PointerEventData eventData)
+    {
+        // 드래그 중이었다면 클릭 이벤트 무시
+        if (isDragging)
+        {
+            isDragging = false;
+            return;
+        }
+
+        // 원 버튼 소환이 활성화되어 있고, 유효한 캐릭터 인덱스인 경우
+        if (enableOneClickSummon && summonCharacterIndex >= 0)
+        {
+            Debug.Log($"[DraggableSummonButtonUI] 원 버튼 소환 시도: 캐릭터 인덱스 {summonCharacterIndex}");
+            
+            // PlacementManager를 통해 랜덤 위치에 소환
+            if (PlacementManager.Instance != null)
+            {
+                // 랜덤 타일 찾기
+                Tile randomTile = FindRandomEmptyTile();
+                if (randomTile != null)
+                {
+                    PlacementManager.Instance.SummonCharacterOnTile(summonCharacterIndex, randomTile);
+                    
+                    // next unit 로직
+                    if (parentSelectUI != null)
+                    {
+                        parentSelectUI.OnDragUseCard(summonCharacterIndex);
+                    }
+                }
+                else
+                {
+                    Debug.LogWarning("[DraggableSummonButtonUI] 빈 타일을 찾을 수 없습니다!");
+                }
+            }
+        }
+    }
+
     public void OnBeginDrag(PointerEventData eventData)
     {
         // (1) 만약 인덱스가 -1이면 "빈 버튼" 취급 → 드래그 취소
@@ -96,6 +151,8 @@ public class DraggableSummonButtonUI : MonoBehaviour, IBeginDragHandler, IDragHa
             eventData.Use();
             return;
         }
+
+        isDragging = true;
 
         // (2) 드래그 시작 시 위치 기억
         originalPos = rectTrans.anchoredPosition;
@@ -226,6 +283,50 @@ public class DraggableSummonButtonUI : MonoBehaviour, IBeginDragHandler, IDragHa
                 return t;
             }
         }
+        return null;
+    }
+
+    /// <summary>
+    /// [게임 기획서] 랜덤 빈 타일 찾기
+    /// 원 버튼 소환 시 사용
+    /// </summary>
+    private Tile FindRandomEmptyTile()
+    {
+        // TileManager를 통해 빈 타일 찾기
+        if (TileManager.Instance != null)
+        {
+            // 지역1의 빈 placed/placable 타일 찾기
+            Tile emptyTile = TileManager.Instance.FindEmptyPlacedOrPlacableTile(false);
+            if (emptyTile != null)
+            {
+                return emptyTile;
+            }
+            
+            // placed/placable이 꽉 찼다면 walkable 타일 찾기
+            emptyTile = TileManager.Instance.FindEmptyWalkableTile(false);
+            if (emptyTile != null)
+            {
+                return emptyTile;
+            }
+        }
+        
+        // 대체 방법: 모든 타일 중에서 배치 가능한 빈 타일 찾기
+        Tile[] allTiles = FindObjectsByType<Tile>(FindObjectsSortMode.None);
+        List<Tile> availableTiles = new List<Tile>();
+        
+        foreach (var tile in allTiles)
+        {
+            if (tile.CanPlaceCharacter() && !TileManager.Instance.CheckAnyCharacterHasCurrentTile(tile))
+            {
+                availableTiles.Add(tile);
+            }
+        }
+        
+        if (availableTiles.Count > 0)
+        {
+            return availableTiles[Random.Range(0, availableTiles.Count)];
+        }
+        
         return null;
     }
 }

@@ -1,13 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
 
-public enum RangeType
-{
-    Melee,      // 근거리
-    Ranged,     // 원거리
-    LongRange   // 장거리
-}
-
 [System.Serializable]
 public class CharacterData
 {
@@ -21,6 +14,10 @@ public class CharacterData
     // [추가] 종족 정보
     [Header("Race Info")]
     public CharacterRace race = CharacterRace.Human;
+
+    // [추가] 덱 구성 시 자유 슬롯 캐릭터인지 여부
+    [Tooltip("자유 슬롯(10번째)에만 배치 가능한 캐릭터인지")]
+    public bool isFreeSlotOnly = false;
 
     // ========================
     // (1) 새로 추가된 스탯들
@@ -54,14 +51,14 @@ public class CharacterData
     public bool isBuffSupport = false;
 
     [Header("레벨/경험치")] 
-    [Tooltip("캐릭터 레벨(1~N)")]
+    [Tooltip("캐릭터 레벨(1~30)")] // 기획서: 최대 30레벨
     public int level = 1;
 
-    [Tooltip("현재 경험치")]
+    [Tooltip("현재 경험치 (0~99)")]
     public int currentExp = 0;
 
     [Tooltip("다음 레벨업까지 필요한 경험치")]
-    public int expToNextLevel = 5;  // 예시로 5
+    public int expToNextLevel = 100;  // 기획서: 100% = 1레벨업
 
     [Header("Prefab")]
     [Tooltip("실제로 소환/배치할 때 Instantiate할 프리팹 (소환 완료시 보여질 오브젝트)")]
@@ -95,13 +92,35 @@ public class CharacterData
     /// </summary>
     public void CheckLevelUp()
     {
-        if (currentExp >= expToNextLevel)
+        // 최대 레벨 체크 (기획서: 최대 30레벨)
+        if (level >= 30)
+        {
+            currentExp = 0; // 최대 레벨이면 경험치 초기화
+            Debug.Log($"[CharacterData] {characterName}은 최대 레벨(30)입니다.");
+            return;
+        }
+
+        while (currentExp >= expToNextLevel && level < 30)
         {
             currentExp -= expToNextLevel;
             level++;
 
-            expToNextLevel += 5; // 예: 레벨업마다 +5씩 증가
+            // 레벨업 시 스탯 증가 (레벨당 2% 증가)
+            float statIncreaseRate = 1.02f;
+            attackPower *= statIncreaseRate;
+            attackSpeed *= statIncreaseRate;
+            maxHP *= statIncreaseRate;
+            moveSpeed *= statIncreaseRate;
+            attackRange *= statIncreaseRate;
+
             Debug.Log($"[CharacterData] {characterName} 레벨업! => Lv.{level}, 남은Exp={currentExp}");
+            
+            // 최대 레벨 도달 시 경험치 초기화
+            if (level >= 30)
+            {
+                currentExp = 0;
+                break;
+            }
         }
     }
 
@@ -137,91 +156,21 @@ public class CharacterData
         Debug.Log($"[CharacterData] {upgradeResult}");
         return upgradeResult;
     }
+
+    /// <summary>
+    /// 같은 종족/등급 캐릭터를 재료로 경험치를 획득합니다 (기획서: 1% 경험치)
+    /// </summary>
+    public void AddExperienceFromSameCharacter()
+    {
+        if (level >= 30)
+        {
+            Debug.Log($"[CharacterData] {characterName}은 최대 레벨이라 경험치를 획득할 수 없습니다.");
+            return;
+        }
+
+        currentExp += 1; // 1% 경험치 추가
+        Debug.Log($"[CharacterData] {characterName} 경험치 +1% (현재: {currentExp}%)");
+        
+        CheckLevelUp();
+    }
 }
-
-
-/* =======================================
-   [예시] 10개 유닛(1성 기준) 밸런스 수치
-   =======================================
-
-1) 검(=Swordsman)
-   - attackPower = 12
-   - attackSpeed = 1.3  // 초당 1.3회 공격
-   - attackRange = 1.1  // 근접
-   - maxHP = 200
-   - isAreaAttack = false
-   - rangeType = Melee
-
-2) 남 법사(=Male Wizard)
-   - attackPower = 15
-   - attackSpeed = 1.0
-   - attackRange = 3.0
-   - maxHP = 120
-   - isAreaAttack = true
-   - rangeType = Ranged
-
-3) 캐논병
-   - attackPower = 20
-   - attackSpeed = 0.8
-   - attackRange = 3.5
-   - maxHP = 150
-   - isAreaAttack = true
-   - rangeType = Ranged
-
-4) 쉴드병
-   - attackPower = 8
-   - attackSpeed = 0.9
-   - attackRange = 1.0
-   - maxHP = 300
-   - isAreaAttack = false
-   - rangeType = Melee
-
-5) 여법사1
-   - attackPower = 13
-   - attackSpeed = 1.1
-   - attackRange = 2.5
-   - maxHP = 100
-   - isAreaAttack = false
-   - rangeType = Ranged
-
-6) 여법사2
-   - attackPower = 18
-   - attackSpeed = 0.9
-   - attackRange = 3.0
-   - maxHP = 100
-   - isAreaAttack = true
-   - rangeType = Ranged
-
-7) 거중기병
-   - attackPower = 25
-   - attackSpeed = 0.7
-   - attackRange = 1.5
-   - maxHP = 250
-   - isAreaAttack = false
-   - rangeType = Melee
-
-8) 완드법사
-   - attackPower = 16
-   - attackSpeed = 1.0
-   - attackRange = 2.8
-   - maxHP = 120
-   - isAreaAttack = false
-   - rangeType = Ranged
-
-9) 우는 병사
-   - attackPower = 9
-   - attackSpeed = 1.5
-   - attackRange = 1.1
-   - maxHP = 180
-   - isAreaAttack = false
-   - rangeType = Melee
-
-10) 레이저 병사
-   - attackPower = 22
-   - attackSpeed = 0.6
-   - attackRange = 4.0
-   - maxHP = 130
-   - isAreaAttack = true
-   - rangeType = LongRange
-
-*/

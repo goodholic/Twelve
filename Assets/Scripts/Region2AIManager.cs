@@ -36,15 +36,20 @@ public class Region2AIManager : MonoBehaviour
     [Header("Opponent Hero Panel (10번째 캐릭터 전용)")]
     public RectTransform opponentHeroPanel;
 
+    [Header("AI 합성 설정")]
+    [Tooltip("AI가 자동으로 합성을 시도할 확률 (0~1)")]
+    public float autoMergeChance = 0.3f;
+    [Tooltip("AI 합성 시도 간격(초)")]
+    public float mergeCheckInterval = 5f;
+
     private bool isRunning = false;
 
     private void Start()
     {
-        // (A) PlacementManager에 적 DB 연결(있다면)
-        if (PlacementManager.Instance != null && opponentCharacterDatabase != null)
+        // (A) PlacementManager 연결 확인
+        if (PlacementManager.Instance != null)
         {
-            PlacementManager.Instance.enemyDatabase = opponentCharacterDatabase;
-            Debug.Log("[Region2AIManager] PlacementManager.enemyDatabase에 opponentCharacterDatabase를 연결했습니다.");
+            Debug.Log("[Region2AIManager] PlacementManager 연결 확인 완료.");
             
             // UI 패널 상태 확인
             RectTransform opponentCharPanel = PlacementManager.Instance.opponentCharacterPanel;
@@ -74,6 +79,9 @@ public class Region2AIManager : MonoBehaviour
 
         // (C) 일반 AI 루틴(0~8번) 시작
         StartCoroutine(AIRoutine());
+        
+        // (D) AI 합성 루틴 시작
+        StartCoroutine(AIMergeRoutine());
     }
 
     /// <summary>
@@ -184,6 +192,168 @@ public class Region2AIManager : MonoBehaviour
             }
             yield return new WaitForSeconds(spawnInterval);
         }
+    }
+
+    /// <summary>
+    /// AI 자동 합성 루틴
+    /// 기획서: 1성×3 → 2성, 2성×3 → 3성
+    /// </summary>
+    private IEnumerator AIMergeRoutine()
+    {
+        while (isRunning)
+        {
+            yield return new WaitForSeconds(mergeCheckInterval);
+            
+            if (Random.value < autoMergeChance)
+            {
+                TryAutoMergeArea2Characters();
+            }
+        }
+    }
+
+    /// <summary>
+    /// 지역2의 캐릭터들을 자동으로 합성 시도
+    /// </summary>
+    private void TryAutoMergeArea2Characters()
+    {
+        Character[] allCharacters = Object.FindObjectsByType<Character>(FindObjectsSortMode.None);
+        
+        // 지역2 캐릭터만 필터링
+        List<Character> area2Characters = new List<Character>();
+        foreach (var character in allCharacters)
+        {
+            if (character != null && character.areaIndex == 2 && !character.isHero)
+            {
+                area2Characters.Add(character);
+            }
+        }
+        
+        // 1성 캐릭터 우선 합성 시도
+        if (TryMergeByStarLevel(area2Characters, CharacterStar.OneStar))
+        {
+            Debug.Log("[Region2AIManager] AI가 1성 캐릭터 3개를 합성했습니다!");
+            return;
+        }
+        
+        // 2성 캐릭터 합성 시도
+        if (TryMergeByStarLevel(area2Characters, CharacterStar.TwoStar))
+        {
+            Debug.Log("[Region2AIManager] AI가 2성 캐릭터 3개를 합성했습니다!");
+            return;
+        }
+    }
+
+    /// <summary>
+    /// 특정 별 등급의 캐릭터 3개를 찾아서 합성 시도
+    /// </summary>
+    private bool TryMergeByStarLevel(List<Character> characters, CharacterStar starLevel)
+    {
+        // 같은 별 등급의 캐릭터들을 그룹핑
+        Dictionary<string, List<Character>> characterGroups = new Dictionary<string, List<Character>>();
+        
+        foreach (var character in characters)
+        {
+            if (character.star == starLevel)
+            {
+                string key = character.characterName;
+                if (!characterGroups.ContainsKey(key))
+                {
+                    characterGroups[key] = new List<Character>();
+                }
+                characterGroups[key].Add(character);
+            }
+        }
+        
+        // 3개 이상인 그룹 찾기
+        foreach (var group in characterGroups)
+        {
+            if (group.Value.Count >= 3)
+            {
+                // 3개만 선택
+                List<Character> toMerge = group.Value.GetRange(0, 3);
+                
+                // 가장 뒤쪽(Y좌표가 높은) 캐릭터 위치에 합성
+                Character topMostChar = null;
+                float highestY = float.MinValue;
+                
+                foreach (var character in toMerge)
+                {
+                    RectTransform rect = character.GetComponent<RectTransform>();
+                    float y = rect != null ? rect.anchoredPosition.y : character.transform.position.y;
+                    
+                    if (y > highestY)
+                    {
+                        highestY = y;
+                        topMostChar = character;
+                    }
+                }
+                
+                if (topMostChar != null && topMostChar.currentTile != null)
+                {
+                    // MergeManager를 통해 합성 실행
+                    ExecuteAIMerge(toMerge, topMostChar.currentTile);
+                    return true;
+                }
+            }
+        }
+        
+        return false;
+    }
+
+    /// <summary>
+    /// AI 합성 실행
+    /// </summary>
+    private void ExecuteAIMerge(List<Character> charactersToMerge, Tile targetTile)
+    {
+        // MergeManager의 로직을 재사용
+        CharacterStar currentStar = charactersToMerge[0].star;
+        CharacterStar targetStar = CharacterStar.OneStar;
+        
+        switch (currentStar)
+        {
+            case CharacterStar.OneStar:
+                targetStar = CharacterStar.TwoStar;
+                break;
+            case CharacterStar.TwoStar:
+                targetStar = CharacterStar.ThreeStar;
+                break;
+            default:
+                return;
+        }
+        
+        // 첫 번째 캐릭터를 업그레이드
+        Character baseChar = charactersToMerge[0];
+        baseChar.star = targetStar;
+        
+        // 스탯 업그레이드
+        switch (targetStar)
+        {
+            case CharacterStar.TwoStar:
+                baseChar.attackPower *= 1.3f;
+                baseChar.attackSpeed *= 1.1f;
+                baseChar.attackRange *= 1.1f;
+                baseChar.currentHP *= 1.2f;
+                break;
+            case CharacterStar.ThreeStar:
+                baseChar.attackPower *= 1.6f;
+                baseChar.attackSpeed *= 1.2f;
+                baseChar.attackRange *= 1.2f;
+                baseChar.currentHP *= 1.4f;
+                break;
+        }
+        
+        baseChar.ApplyStarVisual();
+        
+        // 나머지 캐릭터 제거
+        for (int i = 1; i < charactersToMerge.Count; i++)
+        {
+            if (charactersToMerge[i] != null && charactersToMerge[i].gameObject != null)
+            {
+                Destroy(charactersToMerge[i].gameObject);
+            }
+        }
+        
+        Debug.Log($"[Region2AIManager] AI 합성 완료! {baseChar.characterName}이(가) {targetStar}로 업그레이드됨");
     }
 
     /// <summary>
@@ -414,23 +584,7 @@ public class Region2AIManager : MonoBehaviour
                 && (int)occupantChar.star < 3
                 && occupantChar.star == chosen.initialStar)
             {
-                // === [수정] 합성 조건 충족 시에만 비용 지불 ===
-                if (PlacementManager.Instance.region2MineralBar != null)
-                {
-                    bool canSpend = PlacementManager.Instance.region2MineralBar.TrySpend(chosen.cost);
-                    if (!canSpend)
-                    {
-                        Debug.LogWarning($"[Region2AIManager] 미네랄 부족 => {chosen.characterName} 합성 불가");
-                        return false;
-                    }
-                }
-                else
-                {
-                    Debug.LogWarning("[Region2AIManager] region2MineralBar가 존재하지 않습니다");
-                    return false;
-                }
-                
-                // 합성 처리
+                // 합성 처리 (미네랄 체크는 별도 시스템에서 처리)
                 occupantChar.star++;
                 occupantChar.currentHP = chosen.maxHP;
                 occupantChar.ApplyStarVisual();
@@ -446,7 +600,6 @@ public class Region2AIManager : MonoBehaviour
         else
         {
             // occupant가 없는 타일 => 새로 소환
-            // === [수정] 소환 가능성 확인 후 TrySpend ===
             if (!tile.CanPlaceCharacter())
             {
                 Debug.LogWarning($"[Region2AIManager] {tile.name}에 배치 불가 => 소환 취소");
@@ -464,10 +617,6 @@ public class Region2AIManager : MonoBehaviour
                 return false;
             }
 
-            // [수정] PlacementManager.SummonCharacterOnTile 메서드에서 다시 미네랄을 차감하므로
-            // 여기서는 미네랄을 미리 차감하지 않고, forceEnemyArea2=true로 설정해 소환합니다.
-            // PlacementManager에서 미네랄 체크 및 차감 처리를 수행합니다.
-            
             // 소환 직전에 재확인
             bool isValidTile = tile.CanPlaceCharacter() && 
                               (tile.IsWalkable2() || tile.IsPlacable2() || tile.IsPlaced2());
@@ -479,10 +628,9 @@ public class Region2AIManager : MonoBehaviour
             }
 
             // 이제 실제 소환
-            // (PlacementManager에서 forceEnemyArea2=true로 SummonCharacterOnTile 호출)
             Debug.Log($"[Region2AIManager] (소환) => PlacementManager.SummonCharacterOnTile({chosen.characterName}), tile={tile.name}");
             
-            PlacementManager.Instance.SummonCharacterOnTile(foundIndex, tile, forceEnemyArea2: true);
+            PlacementManager.Instance.SummonCharacterOnTile(foundIndex, tile);
             Debug.Log($"[Region2AIManager] <color=magenta>AI 소환 성공</color> => {chosen.characterName}, tile={tile.name}, cost={chosen.cost}");
             return true;
         }
