@@ -6,8 +6,12 @@ using UnityEngine.UI;
 public class Monster : NetworkBehaviour, IDamageable
 {
     [Header("Monster Stats")]
-    public float moveSpeed = 3f;
+    public float moveSpeed = 1.5f;  // 기존 3f → 1.5f로 속도 감소
     public float health = 50f;
+
+    [Header("Monster Size")]
+    [Tooltip("몬스터 크기 배율 (0.3 = 30% 크기)")]
+    public float sizeScale = 0.3f;  // 30% 크기로 축소
 
     [Header("Waypoint Path (2D)")]
     public Transform[] pathWaypoints;
@@ -18,8 +22,8 @@ public class Monster : NetworkBehaviour, IDamageable
     [Header("챕터 설정")]
     [Tooltip("몬스터의 현재 챕터 (기본값: 1)")]
     public int currentChapter = 1;
-    [Tooltip("챕터당 스탯 증가 비율 (1.1 = 10% 증가)")]
-    public float chapterStatMultiplier = 1.1f;
+    [Tooltip("챕터당 스탯 증가 비율 (1.05 = 5% 증가)")]
+    public float chapterStatMultiplier = 1.05f;  // 기존 1.1f → 1.05f로 감소
 
     public event Action OnDeath;
     public event Action<Monster> OnReachedCastle;
@@ -52,6 +56,10 @@ public class Monster : NetworkBehaviour, IDamageable
 
     private void Awake()
     {
+        // 몬스터 크기 조정
+        transform.localScale = Vector3.one * sizeScale;
+        Debug.Log($"[Monster] {gameObject.name} 크기 설정: {sizeScale * 100}%");
+
         // 챕터에 따른 스탯 증가 적용
         if (currentChapter > 1)
         {
@@ -69,6 +77,12 @@ public class Monster : NetworkBehaviour, IDamageable
         {
             hpBarCanvas.gameObject.SetActive(true);
             UpdateHpBar();
+            
+            // HP바도 몬스터 크기에 맞춰 조정
+            if (hpBarCanvas != null)
+            {
+                hpBarCanvas.transform.localScale = Vector3.one * (1f / sizeScale);  // 역배율로 보정
+            }
         }
     }
 
@@ -82,7 +96,7 @@ public class Monster : NetworkBehaviour, IDamageable
     }
 
     /// <summary>
-    /// 챕터에 따라 몬스터 스탯을 강화합니다 (1.1배씩 증가)
+    /// 챕터에 따라 몬스터 스탯을 강화합니다 (1.05배씩 증가)
     /// </summary>
     private void ApplyChapterStatBonus()
     {
@@ -99,6 +113,9 @@ public class Monster : NetworkBehaviour, IDamageable
         health *= multiplier;
         moveSpeed *= multiplier;
         damageToCastle = Mathf.RoundToInt(damageToCastle * multiplier);
+        
+        // 속도는 너무 빨라지지 않도록 제한
+        moveSpeed = Mathf.Min(moveSpeed, 3f);  // 최대 속도 3f로 제한
         
         Debug.Log($"[Monster] 챕터 {currentChapter}에 따른 스탯 증가: 배율 {multiplier:F2}배 " +
                  $"(체력: {health:F1}, 이동속도: {moveSpeed:F2}, 성 공격력: {damageToCastle})");
@@ -127,7 +144,7 @@ public class Monster : NetworkBehaviour, IDamageable
         // HP 바 위치 보정(머리 위)
         if (hpBarCanvas != null && hpBarCanvas.transform.parent == null)
         {
-            Vector3 offset = new Vector3(0f, 1.2f, 0f);
+            Vector3 offset = new Vector3(0f, 0.4f * sizeScale, 0f);  // 크기에 맞춰 오프셋 조정
             hpBarCanvas.transform.position = transform.position + offset;
         }
     }

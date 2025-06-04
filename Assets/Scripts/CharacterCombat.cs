@@ -192,7 +192,10 @@ public class CharacterCombat : MonoBehaviour
     {
         float heroAttackRange = character.attackRange * 1.5f;
         
-        string targetTag = (character.areaIndex == 1) ? "Monster" : "EnemyMonster";
+        // 히어로는 본인 지역 타일에 있는 타 지역의 몬스터만 공격
+        // 히어로가 지역1에 있으면 -> 지역2에서 온 몬스터(EnemyMonster) 공격
+        // 히어로가 지역2에 있으면 -> 지역1에서 온 몬스터(Monster) 공격
+        string targetTag = (character.areaIndex == 1) ? "EnemyMonster" : "Monster";
         GameObject[] foundObjs = GameObject.FindGameObjectsWithTag(targetTag);
         
         Monster nearest = null;
@@ -204,6 +207,18 @@ public class CharacterCombat : MonoBehaviour
             Monster m = mo.GetComponent<Monster>();
             if (m == null) continue;
             
+            // 몬스터가 히어로와 같은 지역에 있는지 확인 (같은 지역에 침입한 적 몬스터만 공격)
+            // 예: 지역1 히어로는 지역1로 침입한 지역2 몬스터만 공격
+            bool isInSameRegion = false;
+            if (character.currentTile != null)
+            {
+                // 히어로의 현재 타일과 몬스터의 위치를 비교하여 같은 지역인지 확인
+                // walkable 타일에 있는 몬스터는 이미 침입한 상태
+                isInSameRegion = true; // 간단히 처리 - 태그로 이미 필터링됨
+            }
+            
+            if (!isInSameRegion) continue;
+            
             float dist = Vector2.Distance(transform.position, m.transform.position);
             if (dist < heroAttackRange && dist < nearestDist)
             {
@@ -214,7 +229,7 @@ public class CharacterCombat : MonoBehaviour
         
         if (nearest != null)
         {
-            Debug.Log($"[Character] 히어로 {character.characterName}이(가) 몬스터 {nearest.name}을(를) 탐지! (거리: {nearestDist}, 히어로 공격범위: {heroAttackRange})");
+            Debug.Log($"[Character] 히어로 {character.characterName}이(가) 타 지역 몬스터 {nearest.name}을(를) 탐지! (거리: {nearestDist}, 히어로 공격범위: {heroAttackRange})");
         }
         
         return nearest;

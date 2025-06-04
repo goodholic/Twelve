@@ -150,7 +150,9 @@ public class Region2AIManager : MonoBehaviour
             heroComp.attackRange = heroCandidate.attackRange;
             heroComp.currentHP   = heroCandidate.maxHP;
             heroComp.star        = heroCandidate.initialStar;
-            heroComp.ApplyStarVisual();
+            
+            // visual 컴포넌트가 초기화될 때까지 잠시 대기 후 ApplyStarVisual 호출
+            StartCoroutine(ApplyStarVisualDelayed(heroComp));
 
             // 지역2 히어로 탄환 패널 설정
             if (PlacementManager.Instance != null && PlacementManager.Instance.opponentBulletPanel != null)
@@ -342,7 +344,8 @@ public class Region2AIManager : MonoBehaviour
                 break;
         }
         
-        baseChar.ApplyStarVisual();
+        // visual 컴포넌트가 초기화될 때까지 잠시 대기 후 ApplyStarVisual 호출
+        StartCoroutine(ApplyStarVisualDelayed(baseChar));
         
         // 나머지 캐릭터 제거
         for (int i = 1; i < charactersToMerge.Count; i++)
@@ -642,5 +645,11 @@ public class Region2AIManager : MonoBehaviour
     private void OnDisable()
     {
         isRunning = false;
+    }
+
+    private IEnumerator ApplyStarVisualDelayed(Character character)
+    {
+        yield return new WaitForSeconds(0.1f); // 잠시 대기
+        character.ApplyStarVisual();
     }
 }

@@ -271,6 +271,9 @@ GameObject:
   - component: {fileID: 9100597053755944128}
   - component: {fileID: 9200795065176830848}
   - component: {fileID: 7055068577785191597}
+  - component: {fileID: -8280780794037271626}
+  - component: {fileID: 4690301063694927225}
+  - component: {fileID: -4294572219711846786}
   m_Layer: 5
   m_Name: 6_Catapult_Character (5)
   m_TagString: Player
@@ -374,24 +377,16 @@ MonoBehaviour:
   currentTile: {fileID: 0}
   currentTarget: {fileID: 0}
   currentCharTarget: {fileID: 0}
+  currentMiddleCastleTarget: {fileID: 0}
+  currentFinalCastleTarget: {fileID: 0}
   isAreaAttack: 1
   areaAttackRadius: 1.5
   isHero: 0
-  rangeIndicatorPrefab: {fileID: 3037178901491863121, guid: 70e5c5e981d70c247a317a909d42c752, type: 3}
-  showRangeIndicator: 0
-  bulletPrefab: {fileID: 5551608312065288178, guid: 5515c643e8238de4da77768fb9f8aa19, type: 3}
-  bulletSpeed: 5
-  bulletUpDirectionSprite: {fileID: -7922221060769593201, guid: 830b3869bd053d845b7250e30880a1db, type: 3}
-  bulletDownDirectionSprite: {fileID: 8678411644216656495, guid: 663b15b0e2a472344b326404a188a6ee, type: 3}
-  opponentBulletPanel: {fileID: 8293515601833126614, guid: 442d773c6cac9b34e88e19f932f717e8, type: 3}
-  twoStarOutlineColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
-  twoStarOutlineWidth: 10
-  threeStarOutlineColor: {r: 1, g: 0.31569973, b: 0, a: 1}
-  threeStarOutlineWidth: 10
+  isDraggable: 1
   areaIndex: 1
-  hpBarCanvas: {fileID: 2026676131686815302}
-  hpFillImage: {fileID: 440120406342082339}
   selectedRoute: 0
+  rangeType: 0
+  isCharAttack: 0
   pathWaypoints:
   - {fileID: 7533954594709166238, guid: 2c7af040127463842bb538e73144355c, type: 3}
   - {fileID: 375125270241151848, guid: 8210aa4d54b99484ab283b8e5a075126, type: 3}
@@ -401,15 +396,10 @@ MonoBehaviour:
   - {fileID: 8360226188534919249, guid: 975390a5ef2c9ba45a77f5afca985383, type: 3}
   currentWaypointIndex: -1
   maxWaypointIndex: 6
-  newAttackRangeOnClick: 4
-  star2Prefab: {fileID: 0}
-  star3Prefab: {fileID: 0}
-  rangeType: 0
-  attackInfoText: {fileID: 0}
-  attackInfoOffset: {x: 1, y: 0, z: 0}
-  isCharAttack: 0
-  characterUpDirectionSprite: {fileID: -7922221060769593201, guid: 830b3869bd053d845b7250e30880a1db, type: 3}
-  characterDownDirectionSprite: {fileID: 8678411644216656495, guid: 663b15b0e2a472344b326404a188a6ee, type: 3}
+  bulletPanel: {fileID: 0}
+  opponentBulletPanel: {fileID: 8293515601833126614, guid: 442d773c6cac9b34e88e19f932f717e8, type: 3}
+  vfxPanel: {fileID: 0}
+  hpBarCanvas: {fileID: 2026676131686815302}
 --- !u!114 &2320937138262006431
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -427,6 +417,8 @@ MonoBehaviour:
   dragYOffset: 30
   validDropColor: {r: 0.5, g: 1, b: 0.5, a: 1}
   invalidDropColor: {r: 1, g: 0.5, b: 0.5, a: 1}
+  lineChangeArrowPrefab: {fileID: 0}
+  currentLineHighlight: {r: 1, g: 1, b: 0, a: 0.5}
 --- !u!58 &6839683835512572273
 CircleCollider2D:
   m_ObjectHideFlags: 0
@@ -558,3 +550,68 @@ MonoBehaviour:
   endTileRect: {fileID: 0}
   autoJumpOnStart: 0
   isJumping: 0
+--- !u!114 &-8280780794037271626
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9146468120310428533}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 08c567e188f335f4493f6b5c95446e55, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  bulletPrefab: {fileID: 0}
+  bulletSpeed: 5
+  bulletUpDirectionSprite: {fileID: 0}
+  bulletDownDirectionSprite: {fileID: 0}
+  opponentBulletPanel: {fileID: 0}
+  newAttackRangeOnClick: 4
+  attackInfoText: {fileID: 0}
+  attackInfoOffset: {x: 1, y: 0, z: 0}
+--- !u!114 &4690301063694927225
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9146468120310428533}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6a4e05b4e9203cd4fa3445e56df391e2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!114 &-4294572219711846786
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9146468120310428533}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a912782ca88664f41867d2ab4120b9c4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  rangeIndicatorPrefab: {fileID: 0}
+  showRangeIndicator: 1
+  twoStarOutlineColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
+  twoStarOutlineWidth: 1
+  twoStarEffectPrefab: {fileID: 0}
+  threeStarOutlineColor: {r: 0, g: 1, b: 1, a: 1}
+  threeStarOutlineWidth: 1.5
+  threeStarEffectPrefab: {fileID: 0}
+  star2Prefab: {fileID: 0}
+  star3Prefab: {fileID: 0}
+  hpBarCanvas: {fileID: 0}
+  hpFillImage: {fileID: 0}
+  hpText: {fileID: 0}
+  characterUpDirectionSprite: {fileID: 0}
+  characterDownDirectionSprite: {fileID: 0}
+  characterLeftDirectionSprite: {fileID: 0}
+  characterRightDirectionSprite: {fileID: 0}
+  humanEffectPrefab: {fileID: 0}
+  orcEffectPrefab: {fileID: 0}
+  elfEffectPrefab: {fileID: 0}
+  draggableIndicatorPrefab: {fileID: 0}

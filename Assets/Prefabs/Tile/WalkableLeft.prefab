@@ -67,7 +67,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 0}
+  m_Sprite: {fileID: -5530781715760837572, guid: a528957d05e2e60468227ce0004a9fde, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -94,6 +94,7 @@ MonoBehaviour:
   defaultColor: {r: 1, g: 1, b: 1, a: 1}
   highlightColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
   blockedColor: {r: 1, g: 0, b: 0, a: 1}
+  summonableColor: {r: 0, g: 1, b: 0, a: 1}
   walkablePrefab: {fileID: 0}
   walkable2Prefab: {fileID: 0}
   walkableLeftPrefab: {fileID: 3021528759696385224}
@@ -108,6 +109,7 @@ MonoBehaviour:
   placed2Prefab: {fileID: 0}
   currentVisual: {fileID: 0}
   tileButton: {fileID: 8297781879647861321, guid: d988006bd53f4b0468d4fcedc810ac64, type: 3}
+  belongingRoute: 2
   row: 0
   column: 0
   tileIndex: 0

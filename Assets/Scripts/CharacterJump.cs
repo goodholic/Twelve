@@ -26,6 +26,12 @@ public class CharacterJump : MonoBehaviour
     
     public bool CheckIfAtJumpPoint(RouteType selectedRoute, bool hasJumped)
     {
+        // 히어로는 점프 불가
+        if (character.isHero)
+        {
+            return false;
+        }
+        
         // 이미 점프를 완료했으면 더 이상 체크하지 않음
         if (hasJumped)
         {
@@ -90,6 +96,13 @@ public class CharacterJump : MonoBehaviour
     public void StartJumpToOtherRegion(System.Action<int> onComplete)
     {
         if (movement.IsJumpingAcross()) return;
+        
+        // 히어로는 점프 불가
+        if (character.isHero)
+        {
+            Debug.Log($"[Character] 히어로 {character.characterName}은(는) 타 지역으로 점프할 수 없습니다!");
+            return;
+        }
         
         // CharacterJumpController 사용
         if (jumpController != null)

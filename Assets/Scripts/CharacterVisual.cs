@@ -132,6 +132,14 @@ public class CharacterVisual : MonoBehaviour
     
     public void ApplyStarVisual()
     {
+        // character가 null인지 확인
+        if (character == null)
+        {
+            Debug.LogWarning("[CharacterVisual] ApplyStarVisual: character가 null입니다.");
+            return;
+        }
+        
+        // 기존 별 시각 효과 제거
         if (starVisualInstance != null)
         {
             Destroy(starVisualInstance);

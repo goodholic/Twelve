@@ -44,6 +44,38 @@ public class CharacterMovementManager : MonoBehaviour
             return;
         }
 
+        // 히어로는 타 지역으로 이동할 수 없음
+        if (movingChar.isHero)
+        {
+            // 이동하려는 타일이 다른 지역인지 확인
+            bool isMovingToDifferentRegion = false;
+            
+            if (movingChar.areaIndex == 1 && (newTile.isRegion2 || newTile.IsWalkable2() || newTile.IsWalkable2Left() || 
+                newTile.IsWalkable2Center() || newTile.IsWalkable2Right() || newTile.IsPlacable2() || newTile.IsPlaced2()))
+            {
+                isMovingToDifferentRegion = true;
+            }
+            else if (movingChar.areaIndex == 2 && (!newTile.isRegion2 && (newTile.IsWalkable() || newTile.IsWalkableLeft() || 
+                newTile.IsWalkableCenter() || newTile.IsWalkableRight() || newTile.IsPlacable() || newTile.IsPlaceTile())))
+            {
+                isMovingToDifferentRegion = true;
+            }
+            
+            if (isMovingToDifferentRegion)
+            {
+                Debug.LogWarning($"[CharacterMovementManager] 히어로 {movingChar.characterName}은(는) 타 지역으로 이동할 수 없습니다!");
+                
+                // 원래 타일로 되돌리기
+                Tile originalTile = movingChar.currentTile;
+                if (originalTile != null)
+                {
+                    MoveCharacterToTile(movingChar, originalTile);
+                    TileManager.Instance.CreatePlaceTileChild(originalTile);
+                }
+                return;
+            }
+        }
+
         Debug.Log($"[CharacterMovementManager] 드래그 드롭: {movingChar.characterName} -> {newTile.name}");
 
         Tile oldTile = movingChar.currentTile;
@@ -107,6 +139,18 @@ public class CharacterMovementManager : MonoBehaviour
             // 기획서: 드래그로 3라인(좌/중/우) 변경 가능
             if (newTile.IsWalkable() || newTile.IsWalkableLeft() || newTile.IsWalkableCenter() || newTile.IsWalkableRight())
             {
+                // 히어로는 walkable 타일로 이동 불가
+                if (movingChar.isHero)
+                {
+                    Debug.LogWarning($"[CharacterMovementManager] 히어로 {movingChar.characterName}은(는) walkable 타일로 이동할 수 없습니다!");
+                    if (oldTile != null)
+                    {
+                        MoveCharacterToTile(movingChar, oldTile);
+                        TileManager.Instance.CreatePlaceTileChild(oldTile);
+                    }
+                    return;
+                }
+                
                 WaveSpawner spawner = FindFirstObjectByType<WaveSpawner>();
                 if (spawner != null && CoreDataManager.Instance.ourMonsterPanel != null)
                 {
@@ -163,6 +207,18 @@ public class CharacterMovementManager : MonoBehaviour
             }
             else if (newTile.IsWalkable2() || newTile.IsWalkable2Left() || newTile.IsWalkable2Center() || newTile.IsWalkable2Right())
             {
+                // 히어로는 walkable2 타일로 이동 불가
+                if (movingChar.isHero)
+                {
+                    Debug.LogWarning($"[CharacterMovementManager] 히어로 {movingChar.characterName}은(는) walkable2 타일로 이동할 수 없습니다!");
+                    if (oldTile != null)
+                    {
+                        MoveCharacterToTile(movingChar, oldTile);
+                        TileManager.Instance.CreatePlaceTileChild(oldTile);
+                    }
+                    return;
+                }
+                
                 WaveSpawnerRegion2 spawner2 = FindFirstObjectByType<WaveSpawnerRegion2>();
                 if (spawner2 != null && CoreDataManager.Instance.opponentOurMonsterPanel != null)
                 {

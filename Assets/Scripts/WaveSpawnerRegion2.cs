@@ -15,9 +15,21 @@ public class WaveSpawnerRegion2 : MonoBehaviour
     [Header("몬스터 부모 오브젝트(Region2)")]
     public Transform enemyMonsterParent;
 
-    [Header("몬스터 이동 경로 - Region2")]
-    [Tooltip("몬스터가 따라갈 웨이포인트")]
-    public Transform[] monsterWaypoints2;
+    [Header("몬스터 이동 경로 (3라인) - Region2")]
+    [Tooltip("좌측 루트 몬스터 웨이포인트")]
+    public Transform[] monsterWaypoints2Left;
+    [Tooltip("중앙 루트 몬스터 웨이포인트")]
+    public Transform[] monsterWaypoints2Center;
+    [Tooltip("우측 루트 몬스터 웨이포인트")]
+    public Transform[] monsterWaypoints2Right;
+    
+    [Header("몬스터 루트별 스폰 위치 - Region2")]
+    [Tooltip("좌측 루트 몬스터 스폰 위치")]
+    public Transform monsterLeftSpawnPoint2;
+    [Tooltip("중앙 루트 몬스터 스폰 위치")]
+    public Transform monsterCenterSpawnPoint2;
+    [Tooltip("우측 루트 몬스터 스폰 위치")]
+    public Transform monsterRightSpawnPoint2;
     
     [Header("캐릭터 공격 루트 설정 (좌/중/우) - Region2")]
     [Tooltip("좌측 루트 웨이포인트")]
@@ -47,9 +59,6 @@ public class WaveSpawnerRegion2 : MonoBehaviour
     private bool isSpawning2 = false;
     private bool autoStarted2 = false;
 
-    [Header("UI: 지역2 웨이브번호 표시용")]
-    [SerializeField] private TextMeshProUGUI waveCountText2;
-
     [Header("챕터별 몬스터 교체 옵션")]    
     [Tooltip("true면 2챕터일 때 5마리 중 3번째는 '3챕터 몬스터'로 소환")]    
     public bool useChapterMonsterLogic = true;
@@ -69,10 +78,14 @@ public class WaveSpawnerRegion2 : MonoBehaviour
     public int region2Life = 10;
 
     [Header("중간성/최종성 참조")]
-    [Tooltip("중간성(체력 500)")]
-    public GameObject[] middleCastles;
+    [Tooltip("좌측 중간성(체력 500)")]
+    public GameObject leftMiddleCastle2;
+    [Tooltip("중앙 중간성(체력 500)")]
+    public GameObject centerMiddleCastle2;
+    [Tooltip("우측 중간성(체력 500)")]
+    public GameObject rightMiddleCastle2;
     [Tooltip("최종성(체력 1000)")]
-    public GameObject finalCastle;
+    public GameObject finalCastle2;
 
     private void Start()
     {
@@ -89,27 +102,43 @@ public class WaveSpawnerRegion2 : MonoBehaviour
     private void SetupCastleHealth()
     {
         // 중간성 체력 설정
-        if (middleCastles != null)
+        if (leftMiddleCastle2 != null)
         {
-            foreach (var castle in middleCastles)
+            var middleCastle = leftMiddleCastle2.GetComponent<MiddleCastle>();
+            if (middleCastle != null)
             {
-                if (castle != null)
-                {
-                    var middleCastle = castle.GetComponent<MiddleCastle>();
-                    if (middleCastle != null)
-                    {
-                        middleCastle.maxHealth = 500;
-                        middleCastle.currentHealth = 500;
-                        Debug.Log($"[WaveSpawnerRegion2] 중간성 {castle.name} 체력 500으로 설정");
-                    }
-                }
+                middleCastle.maxHealth = 500;
+                middleCastle.currentHealth = 500;
+                Debug.Log($"[WaveSpawnerRegion2] 좌측 중간성 체력 500으로 설정");
+            }
+        }
+        
+        if (centerMiddleCastle2 != null)
+        {
+            var middleCastle = centerMiddleCastle2.GetComponent<MiddleCastle>();
+            if (middleCastle != null)
+            {
+                middleCastle.maxHealth = 500;
+                middleCastle.currentHealth = 500;
+                Debug.Log($"[WaveSpawnerRegion2] 중앙 중간성 체력 500으로 설정");
+            }
+        }
+        
+        if (rightMiddleCastle2 != null)
+        {
+            var middleCastle = rightMiddleCastle2.GetComponent<MiddleCastle>();
+            if (middleCastle != null)
+            {
+                middleCastle.maxHealth = 500;
+                middleCastle.currentHealth = 500;
+                Debug.Log($"[WaveSpawnerRegion2] 우측 중간성 체력 500으로 설정");
             }
         }
         
         // 최종성 체력 설정
-        if (finalCastle != null)
+        if (finalCastle2 != null)
         {
-            var finalCastleComp = finalCastle.GetComponent<FinalCastle>();
+            var finalCastleComp = finalCastle2.GetComponent<FinalCastle>();
             if (finalCastleComp != null)
             {
                 finalCastleComp.maxHealth = 1000;
@@ -162,11 +191,6 @@ public class WaveSpawnerRegion2 : MonoBehaviour
         isSpawning2 = true;
         currentWave2++;
 
-        if (waveCountText2 != null)
-        {
-            waveCountText2.text = $"{currentWave2} 웨이브";
-        }
-
         aliveMonsters2 = monstersPerWave2;
         
         // 기획서: 5마리 동시 생성을 위해 3라인에 분배
@@ -218,16 +242,87 @@ public class WaveSpawnerRegion2 : MonoBehaviour
     }
 
     /// <summary>
-    /// 랜덤 루트 선택
+    /// 몬스터용 루트에 따른 웨이포인트 배열 반환
     /// </summary>
-    private int GetRandomRoute()
+    private Transform[] GetMonsterWaypointsForRoute(int route)
     {
-        int randomIndex = Random.Range(0, 3);
-        return randomIndex;
+        Transform[] waypoints = null;
+        
+        switch (route)
+        {
+            case 0:
+                waypoints = monsterWaypoints2Left;
+                break;
+            case 1:
+                waypoints = monsterWaypoints2Center;
+                break;
+            case 2:
+                waypoints = monsterWaypoints2Right;
+                break;
+            default:
+                waypoints = monsterWaypoints2Center;
+                break;
+        }
+        
+        if (waypoints != null && waypoints.Length > 0)
+        {
+            List<Transform> validWaypoints = new List<Transform>();
+            
+            for (int i = 0; i < waypoints.Length; i++)
+            {
+                if (waypoints[i] != null)
+                {
+                    validWaypoints.Add(waypoints[i]);
+                }
+            }
+            
+            if (validWaypoints.Count > 0)
+            {
+                return validWaypoints.ToArray();
+            }
+        }
+        
+        Debug.LogWarning($"[WaveSpawnerRegion2] 몬스터 {route} 루트의 웨이포인트가 없습니다!");
+        return null;
     }
 
     /// <summary>
-    /// 선택된 루트에 따른 웨이포인트 배열 반환
+    /// 몬스터용 스폰 위치 반환
+    /// </summary>
+    private Vector3 GetMonsterSpawnPosition(int route)
+    {
+        Transform spawnPoint = null;
+        
+        switch (route)
+        {
+            case 0:
+                spawnPoint = monsterLeftSpawnPoint2;
+                break;
+            case 1:
+                spawnPoint = monsterCenterSpawnPoint2;
+                break;
+            case 2:
+                spawnPoint = monsterRightSpawnPoint2;
+                break;
+        }
+
+        if (spawnPoint != null)
+        {
+            return spawnPoint.position;
+        }
+        
+        // 스폰 포인트가 없으면 해당 루트의 첫 웨이포인트 사용
+        Transform[] waypoints = GetMonsterWaypointsForRoute(route);
+        if (waypoints != null && waypoints.Length > 0)
+        {
+            return waypoints[0].position;
+        }
+
+        return transform.position;
+    }
+
+    /// <summary>
+    /// 선택된 루트에 따른 웨이포인트 배열 반환 (캐릭터용)
     /// </summary>
     private Transform[] GetWaypointsForRoute(int route)
     {
@@ -245,7 +340,7 @@ public class WaveSpawnerRegion2 : MonoBehaviour
                 waypoints = walkableRight2;
                 break;
             default:
-                waypoints = walkableCenter2; // 기본값은 중앙 루트
+                waypoints = walkableCenter2;
                 break;
         }
         
@@ -270,7 +365,7 @@ public class WaveSpawnerRegion2 : MonoBehaviour
                 for (int i = 0; i < validWaypoints.Count - 1; i++)
                 {
                     float distance = Vector2.Distance(validWaypoints[i].position, validWaypoints[i + 1].position);
-                    if (distance > 15f) // 3라인 시스템에 맞게 거리 조정
+                    if (distance > 15f)
                     {
                         Debug.LogWarning($"[WaveSpawnerRegion2] {route} 루트 웨이포인트[{i}]→[{i+1}] 거리가 너무 멉니다: {distance:F2}");
                     }
@@ -289,50 +384,9 @@ public class WaveSpawnerRegion2 : MonoBehaviour
         Debug.LogWarning($"[WaveSpawnerRegion2] {route} 루트의 웨이포인트 배열이 null이거나 비어있습니다!");
         return null;
     }
-    
-    /// <summary>
-    /// 모든 walkable2 타일의 웨이포인트를 하나의 배열로 반환
-    /// </summary>
-    private Transform[] GetAllWalkableWaypoints()
-    {
-        List<Transform> allWaypoints = new List<Transform>();
-        
-        // 좌측 경로 추가
-        if (walkableLeft2 != null)
-        {
-            allWaypoints.AddRange(walkableLeft2);
-        }
-        
-        // 중앙 경로 추가
-        if (walkableCenter2 != null)
-        {
-            allWaypoints.AddRange(walkableCenter2);
-        }
-        
-        // 우측 경로 추가
-        if (walkableRight2 != null)
-        {
-            allWaypoints.AddRange(walkableRight2);
-        }
-        
-        // 중복 제거 및 거리 기준 정렬
-        List<Transform> uniqueWaypoints = new List<Transform>();
-        foreach (var waypoint in allWaypoints)
-        {
-            if (waypoint != null && !uniqueWaypoints.Contains(waypoint))
-            {
-                uniqueWaypoints.Add(waypoint);
-            }
-        }
-        
-        // Y 좌표 기준으로 정렬 (위에서 아래로 - 지역2는 반대)
-        uniqueWaypoints.Sort((a, b) => b.position.y.CompareTo(a.position.y));
-        
-        return uniqueWaypoints.ToArray();
-    }
 
     /// <summary>
-    /// 선택된 루트에 따른 스폰 위치 반환
+    /// 선택된 루트에 따른 스폰 위치 반환 (캐릭터용)
     /// </summary>
     private Vector3 GetSpawnPositionForRoute(int route)
     {
@@ -350,18 +404,16 @@ public class WaveSpawnerRegion2 : MonoBehaviour
                 spawnPoint = rightSpawnPoint2;
                 break;
             default:
-                spawnPoint = centerSpawnPoint2; // 기본값은 중앙 스폰 포인트
+                spawnPoint = centerSpawnPoint2;
                 break;
         }
 
-        // 스폰 포인트가 설정되어 있으면 그 위치 사용
         if (spawnPoint != null)
         {
             Debug.Log($"[WaveSpawnerRegion2] {route} 루트 스폰 포인트 사용: {spawnPoint.position}");
             return spawnPoint.position;
         }
         
-        // 스폰 포인트가 없으면 해당 루트의 첫 번째 웨이포인트 위치 사용
         Transform[] waypoints = GetWaypointsForRoute(route);
         if (waypoints != null && waypoints.Length > 0 && waypoints[0] != null)
         {
@@ -369,7 +421,6 @@ public class WaveSpawnerRegion2 : MonoBehaviour
             return waypoints[0].position;
         }
 
-        // 모두 실패하면 기본 위치 사용
         Debug.LogWarning($"[WaveSpawnerRegion2] {route} 루트의 스폰 위치를 찾을 수 없어 기본 위치 사용");
         return transform.position;
     }
@@ -385,35 +436,30 @@ public class WaveSpawnerRegion2 : MonoBehaviour
             return;
         }
 
-        // 라우트 결정
-        int route = routeIndex;
-        Transform[] selectedWaypoints = GetWaypointsForRoute(route);
-        
+        // 몬스터용 웨이포인트 가져오기
+        Transform[] selectedWaypoints = GetMonsterWaypointsForRoute(routeIndex);
         if (selectedWaypoints == null || selectedWaypoints.Length == 0)
         {
-            Debug.LogError($"[WaveSpawnerRegion2] {route} 루트의 웨이포인트가 설정되지 않았습니다!");
+            Debug.LogError($"[WaveSpawnerRegion2] 몬스터 {routeIndex} 루트의 웨이포인트가 없습니다!");
             return;
         }
 
-        // 스폰 위치는 해당 루트의 시작점
-        Vector3 spawnPos = GetSpawnPositionForRoute(route);
+        // 스폰 위치
+        Vector3 spawnPos = GetMonsterSpawnPosition(routeIndex);
 
         // 챕터별 몬스터 선택 로직
-        GameObject prefabToSpawn = enemyMonsterPrefab; // 기본값
-        int monsterChapter = currentChapter; // 기본적으로는 현재 챕터 적용
+        GameObject prefabToSpawn = enemyMonsterPrefab;
+        int monsterChapter = currentChapter;
 
         if (useChapterMonsterLogic)
         {
-            // 1) 배열이 101개 세팅되어 있는 경우 => 배열 기반 로직 우선
             if (allChapterMonsterPrefabsRegion2 != null && allChapterMonsterPrefabsRegion2.Length >= 101)
             {
-                // (1) indexInWave == 2 -> 다음 챕터 몬스터
                 if (indexInWave == 2 && currentChapter < 101 && allChapterMonsterPrefabsRegion2[currentChapter] != null)
                 {
                     prefabToSpawn = allChapterMonsterPrefabsRegion2[currentChapter];
-                    monsterChapter = currentChapter + 1; // 다음 챕터 스탯 적용
+                    monsterChapter = currentChapter + 1;
                 }
-                // (2) 나머지는 현재 챕터 몬스터
                 else
                 {
                     int curIdx = currentChapter - 1;
@@ -426,7 +472,6 @@ public class WaveSpawnerRegion2 : MonoBehaviour
             }
             else
             {
-                // 2) 배열이 제대로 설정되지 않은 경우: 챕터별 개별 로직 사용
                 if (indexInWave == 2)
                 {
                     if (currentChapter == 2 && chapter3MonsterPrefab != null)
@@ -450,15 +495,26 @@ public class WaveSpawnerRegion2 : MonoBehaviour
         Monster enemyComp = enemyObj.GetComponent<Monster>();
         if (enemyComp != null)
         {
-            enemyComp.pathWaypoints = selectedWaypoints; // 선택된 루트의 웨이포인트 설정
+            enemyComp.pathWaypoints = selectedWaypoints;
             enemyComp.areaIndex = 2;
             enemyComp.OnDeath += HandleEnemyMonsterDeath;
-            
-            // 챕터에 따른 몬스터 스탯 설정
             enemyComp.currentChapter = monsterChapter;
             
-            // 몬스터 정보 로그 출력
-            Debug.Log($"[WaveSpawnerRegion2] Spawned Monster on {route} route, indexInWave={indexInWave}, chapter={monsterChapter}, Wave={currentWave2}");
+            // 몬스터가 어느 루트인지 설정
+            switch (routeIndex)
+            {
+                case 0:
+                    enemyComp.SetMonsterRoute(RouteType.Left);
+                    break;
+                case 1:
+                    enemyComp.SetMonsterRoute(RouteType.Center);
+                    break;
+                case 2:
+                    enemyComp.SetMonsterRoute(RouteType.Right);
+                    break;
+            }
+            
+            Debug.Log($"[WaveSpawnerRegion2] Spawned Monster on route {routeIndex}, indexInWave={indexInWave}, chapter={monsterChapter}, Wave={currentWave2}");
         }
     }
 

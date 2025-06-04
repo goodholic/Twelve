@@ -233,6 +233,10 @@ public class Character : NetworkBehaviour, IDamageable
         {
             visual.ApplyStarVisual();
         }
+        else
+        {
+            Debug.LogWarning($"[Character] {characterName} ApplyStarVisual: visual 컴포넌트가 null입니다.");
+        }
     }
     
     // [추가] 현재 타겟이 있는지 확인

@@ -48,15 +48,20 @@ public class CharacterMovement : MonoBehaviour
         waveSpawner = FindFirstObjectByType<WaveSpawner>();
         waveSpawnerRegion = FindFirstObjectByType<WaveSpawnerRegion2>();
         
-        // 중간성/최종성 오브젝트 찾기
-        GameObject[] castles = GameObject.FindGameObjectsWithTag("Castle");
-        foreach (var castle in castles)
+        // 중간성/최종성 오브젝트 찾기 (태그 대신 컴포넌트로 찾기)
+        MiddleCastle[] middleCastles = Object.FindObjectsByType<MiddleCastle>(FindObjectsSortMode.None);
+        foreach (var castle in middleCastles)
         {
-            if (castle.name.Contains("MiddleLeft"))
+            if (castle.gameObject.name.Contains("MiddleLeft") || castle.gameObject.name.Contains("Left"))
                 middleLeftCastle = castle.transform;
-            else if (castle.name.Contains("MiddleRight"))
+            else if (castle.gameObject.name.Contains("MiddleRight") || castle.gameObject.name.Contains("Right"))
                 middleRightCastle = castle.transform;
-            else if (castle.name.Contains("Final"))
+        }
+        
+        FinalCastle[] finalCastles = Object.FindObjectsByType<FinalCastle>(FindObjectsSortMode.None);
+        foreach (var castle in finalCastles)
+        {
+            if (castle.gameObject.name.Contains("Final"))
                 finalCastle = castle.transform;
         }
         

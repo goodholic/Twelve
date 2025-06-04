@@ -79,17 +79,19 @@ public class GameManager : MonoBehaviour
 
     private void Awake()
     {
-        // 싱글톤 중복 방지
-        if (instance == null)
-        {
-            instance = this;
-        }
-        else if (instance != this)
+        if (instance != null && instance != this)
         {
             Destroy(gameObject);
             return;
         }
 
+        instance = this;
+        
+        // DontDestroyOnLoad는 root GameObject에만 적용 가능
+        if (transform.parent != null)
+        {
+            transform.SetParent(null);
+        }
         DontDestroyOnLoad(gameObject);
 
         // 네트워크 런너 찾기
