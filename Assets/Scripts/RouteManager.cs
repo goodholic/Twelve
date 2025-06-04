@@ -24,13 +24,25 @@ public class RouteManager : MonoBehaviour
         }
     }
 
-    [Header("중간성/최종성 참조")]
-    [Tooltip("왼쪽 중간성 (체력 500)")]
-    public GameObject leftMiddleCastle;
-    [Tooltip("오른쪽 중간성 (체력 500)")]
-    public GameObject rightMiddleCastle;
-    [Tooltip("최종성 (체력 1000)")]
-    public GameObject finalCastle;
+    [Header("지역1 중간성/최종성 참조")]
+    [Tooltip("지역1 왼쪽 중간성 (체력 500)")]
+    public GameObject region1LeftMiddleCastle;
+    [Tooltip("지역1 중앙 중간성 (체력 500)")]
+    public GameObject region1CenterMiddleCastle;
+    [Tooltip("지역1 오른쪽 중간성 (체력 500)")]
+    public GameObject region1RightMiddleCastle;
+    [Tooltip("지역1 최종성 (체력 1000)")]
+    public GameObject region1FinalCastle;
+    
+    [Header("지역2 중간성/최종성 참조")]
+    [Tooltip("지역2 왼쪽 중간성 (체력 500)")]
+    public GameObject region2LeftMiddleCastle;
+    [Tooltip("지역2 중앙 중간성 (체력 500)")]
+    public GameObject region2CenterMiddleCastle;
+    [Tooltip("지역2 오른쪽 중간성 (체력 500)")]
+    public GameObject region2RightMiddleCastle;
+    [Tooltip("지역2 최종성 (체력 1000)")]
+    public GameObject region2FinalCastle;
 
     private void Awake()
     {
@@ -322,53 +334,90 @@ public class RouteManager : MonoBehaviour
             else
             {
                 Debug.LogError($"[RouteManager] {route} 루트에 유효한 웨이포인트가 없습니다!");
-                return GetFallbackWaypoints(route);
+                return GetFallbackWaypoints(route, 1); // 지역1용 fallback
             }
         }
         
         Debug.LogWarning($"[RouteManager] {route} 루트의 웨이포인트 배열이 null이거나 비어있습니다!");
-        return GetFallbackWaypoints(route);
+        return GetFallbackWaypoints(route, 1); // 지역1용 fallback
     }
 
     /// <summary>
     /// 웨이포인트 상실 시 중간성/최종성으로 가는 경로 반환
     /// </summary>
-    private Transform[] GetFallbackWaypoints(RouteType route)
+    private Transform[] GetFallbackWaypoints(RouteType route, int areaIndex)
     {
         List<Transform> fallbackWaypoints = new List<Transform>();
         
-        // 게임 기획서: 웨이포인트 상실 시 중간성 목표
-        switch (route)
+        if (areaIndex == 1)
         {
-            case RouteType.Left:
-                if (leftMiddleCastle != null)
-                {
-                    fallbackWaypoints.Add(leftMiddleCastle.transform);
-                    Debug.Log("[RouteManager] 왼쪽 루트 웨이포인트 상실 → 왼쪽 중간성(체력 500) 목표");
-                }
-                break;
-            case RouteType.Right:
-                if (rightMiddleCastle != null)
-                {
-                    fallbackWaypoints.Add(rightMiddleCastle.transform);
-                    Debug.Log("[RouteManager] 오른쪽 루트 웨이포인트 상실 → 오른쪽 중간성(체력 500) 목표");
-                }
-                break;
-            case RouteType.Center:
-                // 중앙 루트는 바로 최종성으로
-                if (finalCastle != null)
-                {
-                    fallbackWaypoints.Add(finalCastle.transform);
-                    Debug.Log("[RouteManager] 중앙 루트 웨이포인트 상실 → 최종성(체력 1000) 목표");
-                }
-                break;
+            // 게임 기획서: 웨이포인트 상실 시 중간성 목표
+            switch (route)
+            {
+                case RouteType.Left:
+                    if (region1LeftMiddleCastle != null)
+                    {
+                        fallbackWaypoints.Add(region1LeftMiddleCastle.transform);
+                        Debug.Log("[RouteManager] 지역1 왼쪽 루트 웨이포인트 상실 → 왼쪽 중간성(체력 500) 목표");
+                    }
+                    break;
+                case RouteType.Right:
+                    if (region1RightMiddleCastle != null)
+                    {
+                        fallbackWaypoints.Add(region1RightMiddleCastle.transform);
+                        Debug.Log("[RouteManager] 지역1 오른쪽 루트 웨이포인트 상실 → 오른쪽 중간성(체력 500) 목표");
+                    }
+                    break;
+                case RouteType.Center:
+                    if (region1CenterMiddleCastle != null)
+                    {
+                        fallbackWaypoints.Add(region1CenterMiddleCastle.transform);
+                        Debug.Log("[RouteManager] 지역1 중앙 루트 웨이포인트 상실 → 중앙 중간성(체력 500) 목표");
+                    }
+                    break;
+            }
+            
+            // 중간성이 파괴되었거나 없으면 최종성으로
+            if (fallbackWaypoints.Count == 0 && region1FinalCastle != null)
+            {
+                fallbackWaypoints.Add(region1FinalCastle.transform);
+                Debug.Log("[RouteManager] 지역1 중간성이 파괴됨 → 최종성(체력 1000) 목표");
+            }
         }
-        
-        // 중간성이 파괴되었거나 없으면 최종성으로
-        if (fallbackWaypoints.Count == 0 && finalCastle != null)
+        else if (areaIndex == 2)
         {
-            fallbackWaypoints.Add(finalCastle.transform);
-            Debug.Log("[RouteManager] 중간성이 파괴됨 → 최종성(체력 1000) 목표");
+            // 지역2용 fallback
+            switch (route)
+            {
+                case RouteType.Left:
+                    if (region2LeftMiddleCastle != null)
+                    {
+                        fallbackWaypoints.Add(region2LeftMiddleCastle.transform);
+                        Debug.Log("[RouteManager] 지역2 왼쪽 루트 웨이포인트 상실 → 왼쪽 중간성(체력 500) 목표");
+                    }
+                    break;
+                case RouteType.Right:
+                    if (region2RightMiddleCastle != null)
+                    {
+                        fallbackWaypoints.Add(region2RightMiddleCastle.transform);
+                        Debug.Log("[RouteManager] 지역2 오른쪽 루트 웨이포인트 상실 → 오른쪽 중간성(체력 500) 목표");
+                    }
+                    break;
+                case RouteType.Center:
+                    if (region2CenterMiddleCastle != null)
+                    {
+                        fallbackWaypoints.Add(region2CenterMiddleCastle.transform);
+                        Debug.Log("[RouteManager] 지역2 중앙 루트 웨이포인트 상실 → 중앙 중간성(체력 500) 목표");
+                    }
+                    break;
+            }
+            
+            // 중간성이 파괴되었거나 없으면 최종성으로
+            if (fallbackWaypoints.Count == 0 && region2FinalCastle != null)
+            {
+                fallbackWaypoints.Add(region2FinalCastle.transform);
+                Debug.Log("[RouteManager] 지역2 중간성이 파괴됨 → 최종성(체력 1000) 목표");
+            }
         }
         
         return fallbackWaypoints.ToArray();
@@ -427,12 +476,12 @@ public class RouteManager : MonoBehaviour
             else
             {
                 Debug.LogError($"[RouteManager] 지역2 {route} 루트에 유효한 웨이포인트가 없습니다!");
-                return null;
+                return GetFallbackWaypoints(route, 2); // 지역2용 fallback
             }
         }
         
         Debug.LogWarning($"[RouteManager] 지역2 {route} 루트의 웨이포인트 배열이 null이거나 비어있습니다!");
-        return null;
+        return GetFallbackWaypoints(route, 2); // 지역2용 fallback
     }
 
     public Vector3 GetSpawnPositionForRoute(WaveSpawner spawner, RouteType route)
@@ -567,5 +616,49 @@ public class RouteManager : MonoBehaviour
         character.selectedRoute = selectedRoute;
         
         Debug.Log($"[RouteManager] 캐릭터 {character.characterName}에게 {selectedRoute} 루트 설정 완료. 웨이포인트 개수: {waypoints.Length}");
+    }
+    
+    /// <summary>
+    /// 지역별 중간성 반환
+    /// </summary>
+    public GameObject GetMiddleCastle(int areaIndex, RouteType route)
+    {
+        if (areaIndex == 1)
+        {
+            switch (route)
+            {
+                case RouteType.Left:
+                    return region1LeftMiddleCastle;
+                case RouteType.Center:
+                    return region1CenterMiddleCastle;
+                case RouteType.Right:
+                    return region1RightMiddleCastle;
+            }
+        }
+        else if (areaIndex == 2)
+        {
+            switch (route)
+            {
+                case RouteType.Left:
+                    return region2LeftMiddleCastle;
+                case RouteType.Center:
+                    return region2CenterMiddleCastle;
+                case RouteType.Right:
+                    return region2RightMiddleCastle;
+            }
+        }
+        return null;
+    }
+    
+    /// <summary>
+    /// 지역별 최종성 반환
+    /// </summary>
+    public GameObject GetFinalCastle(int areaIndex)
+    {
+        if (areaIndex == 1)
+            return region1FinalCastle;
+        else if (areaIndex == 2)
+            return region2FinalCastle;
+        return null;
     }
 }

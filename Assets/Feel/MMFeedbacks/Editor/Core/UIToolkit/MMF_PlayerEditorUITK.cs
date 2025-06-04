@@ -262,7 +262,7 @@ namespace MoreMountains.Feedbacks
 
 		private void OnDisable()
 		{
-			Undo.undoRedoPerformed += OnUndoRedo;
+			Undo.undoRedoPerformed -= OnUndoRedo;
 			EditorApplication.update -= OnEditorUpdate;
 		}
 
@@ -378,6 +378,11 @@ namespace MoreMountains.Feedbacks
 			}
 
 			if (serializedObject.targetObject == null)
+			{
+				return;
+			}
+
+			if (!_initialized)
 			{
 				return;
 			}
@@ -1300,12 +1305,23 @@ namespace MoreMountains.Feedbacks
 			{
 				return;
 			}
+			
+			if (!_initialized)
+			{
+				return;
+			}
+			
 			serializedObject.Update();
 			ClearDictionaries();
 			DrawEmptyListState();
 			BindListViewToData();
 			DrawAutomaticShakerSetupButton(); 
-			_feedbacksListView.Rebuild();
+			
+			if (_feedbacksListView != null)
+			{
+				_feedbacksListView.Rebuild();
+			}
+			
 			UpdateFeedbacksListLabel();
 		}
 
@@ -1551,6 +1567,10 @@ namespace MoreMountains.Feedbacks
 		
 		protected virtual void BindListViewToData()
 		{
+			if (_feedbacksListView == null || TargetMmfPlayer == null || TargetMmfPlayer.FeedbacksList == null)
+			{
+				return;
+			}
 			_feedbacksListView.itemsSource = TargetMmfPlayer.FeedbacksList;
 		}
 

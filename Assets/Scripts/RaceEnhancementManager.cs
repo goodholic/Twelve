@@ -27,21 +27,37 @@ public class RaceEnhancementManager : MonoBehaviour
         }
     }
     
-    [Header("종족별 강화 버튼")]
-    [SerializeField] private Button humanEnhanceButton;
-    [SerializeField] private Button orcEnhanceButton;
-    [SerializeField] private Button elfEnhanceButton;
+    [Header("종족 선택 버튼")]
+    [SerializeField] private Button humanSelectButton;
+    [SerializeField] private Button orcSelectButton;
+    [SerializeField] private Button elfSelectButton;
+    
+    [Header("강화 실행 버튼")]
+    [SerializeField] private Button enhanceButton;
     
     [Header("종족별 강화 레벨 텍스트")]
     [SerializeField] private TextMeshProUGUI humanLevelText;
     [SerializeField] private TextMeshProUGUI orcLevelText;
     [SerializeField] private TextMeshProUGUI elfLevelText;
     
+    [Header("강화 비용 텍스트")]
+    [SerializeField] private TextMeshProUGUI enhanceCostText;
+    
+    [Header("선택 표시 아웃라인")]
+    [SerializeField] private Outline humanOutline;
+    [SerializeField] private Outline orcOutline;
+    [SerializeField] private Outline elfOutline;
+    [SerializeField] private Color selectedOutlineColor = new Color(1f, 0.8f, 0f, 1f); // 금색
+    [SerializeField] private float outlineWidth = 3f;
+    
     [Header("강화 비용")]
     [SerializeField] private float costMultiplier = 1.5f;
     
     [Header("강화 수치")]
     [SerializeField] private float enhancePercentage = 0.05f; // 5% 증가
+    
+    // 현재 선택된 종족
+    private CharacterRace selectedRace = CharacterRace.Human;
     
     // 종족별 강화 레벨
     private Dictionary<CharacterRace, int> raceEnhancementLevels = new Dictionary<CharacterRace, int>()
@@ -71,30 +87,138 @@ public class RaceEnhancementManager : MonoBehaviour
     
     private void Start()
     {
-        // 버튼 리스너 등록
-        if (humanEnhanceButton != null)
+        // 종족 선택 버튼 리스너 등록
+        if (humanSelectButton != null)
         {
-            humanEnhanceButton.onClick.RemoveAllListeners();
-            humanEnhanceButton.onClick.AddListener(() => OnEnhanceRace(CharacterRace.Human));
+            humanSelectButton.onClick.RemoveAllListeners();
+            humanSelectButton.onClick.AddListener(() => OnSelectRace(CharacterRace.Human));
         }
         
-        if (orcEnhanceButton != null)
+        if (orcSelectButton != null)
         {
-            orcEnhanceButton.onClick.RemoveAllListeners();
-            orcEnhanceButton.onClick.AddListener(() => OnEnhanceRace(CharacterRace.Orc));
+            orcSelectButton.onClick.RemoveAllListeners();
+            orcSelectButton.onClick.AddListener(() => OnSelectRace(CharacterRace.Orc));
         }
         
-        if (elfEnhanceButton != null)
+        if (elfSelectButton != null)
         {
-            elfEnhanceButton.onClick.RemoveAllListeners();
-            elfEnhanceButton.onClick.AddListener(() => OnEnhanceRace(CharacterRace.Elf));
+            elfSelectButton.onClick.RemoveAllListeners();
+            elfSelectButton.onClick.AddListener(() => OnSelectRace(CharacterRace.Elf));
         }
+        
+        // 강화 버튼 리스너 등록
+        if (enhanceButton != null)
+        {
+            enhanceButton.onClick.RemoveAllListeners();
+            enhanceButton.onClick.AddListener(OnEnhanceSelectedRace);
+        }
+        
+        // 아웃라인 컴포넌트가 없으면 추가
+        EnsureOutlineComponents();
+        
+        // 초기 선택 상태 설정 (Human)
+        OnSelectRace(CharacterRace.Human);
         
         UpdateUI();
     }
     
     /// <summary>
-    /// 종족 강화 버튼 클릭 시 호출
+    /// 아웃라인 컴포넌트 확인 및 추가
+    /// </summary>
+    private void EnsureOutlineComponents()
+    {
+        if (humanSelectButton != null && humanOutline == null)
+        {
+            humanOutline = humanSelectButton.GetComponent<Outline>();
+            if (humanOutline == null)
+            {
+                humanOutline = humanSelectButton.gameObject.AddComponent<Outline>();
+            }
+        }
+        
+        if (orcSelectButton != null && orcOutline == null)
+        {
+            orcOutline = orcSelectButton.GetComponent<Outline>();
+            if (orcOutline == null)
+            {
+                orcOutline = orcSelectButton.gameObject.AddComponent<Outline>();
+            }
+        }
+        
+        if (elfSelectButton != null && elfOutline == null)
+        {
+            elfOutline = elfSelectButton.GetComponent<Outline>();
+            if (elfOutline == null)
+            {
+                elfOutline = elfSelectButton.gameObject.AddComponent<Outline>();
+            }
+        }
+        
+        // 모든 아웃라인 초기 설정
+        if (humanOutline != null)
+        {
+            humanOutline.effectColor = selectedOutlineColor;
+            humanOutline.effectDistance = new Vector2(outlineWidth, outlineWidth);
+            humanOutline.enabled = false;
+        }
+        
+        if (orcOutline != null)
+        {
+            orcOutline.effectColor = selectedOutlineColor;
+            orcOutline.effectDistance = new Vector2(outlineWidth, outlineWidth);
+            orcOutline.enabled = false;
+        }
+        
+        if (elfOutline != null)
+        {
+            elfOutline.effectColor = selectedOutlineColor;
+            elfOutline.effectDistance = new Vector2(outlineWidth, outlineWidth);
+            elfOutline.enabled = false;
+        }
+    }
+    
+    /// <summary>
+    /// 종족 선택 시 호출
+    /// </summary>
+    private void OnSelectRace(CharacterRace race)
+    {
+        selectedRace = race;
+        
+        // 모든 아웃라인 비활성화
+        if (humanOutline != null) humanOutline.enabled = false;
+        if (orcOutline != null) orcOutline.enabled = false;
+        if (elfOutline != null) elfOutline.enabled = false;
+        
+        // 선택된 종족의 아웃라인 활성화
+        switch (race)
+        {
+            case CharacterRace.Human:
+                if (humanOutline != null) humanOutline.enabled = true;
+                break;
+            case CharacterRace.Orc:
+                if (orcOutline != null) orcOutline.enabled = true;
+                break;
+            case CharacterRace.Elf:
+                if (elfOutline != null) elfOutline.enabled = true;
+                break;
+        }
+        
+        // 강화 비용 표시 업데이트
+        UpdateEnhanceCostText();
+        
+        Debug.Log($"[RaceEnhancementManager] {race} 종족 선택됨");
+    }
+    
+    /// <summary>
+    /// 선택된 종족 강화 실행
+    /// </summary>
+    private void OnEnhanceSelectedRace()
+    {
+        OnEnhanceRace(selectedRace);
+    }
+    
+    /// <summary>
+    /// 종족 강화 실행
     /// </summary>
     private void OnEnhanceRace(CharacterRace race)
     {
@@ -174,23 +298,38 @@ public class RaceEnhancementManager : MonoBehaviour
         // 휴먼
         if (humanLevelText != null)
         {
-            humanLevelText.text = $"Lv.{raceEnhancementLevels[CharacterRace.Human]} (비용: {raceEnhancementCosts[CharacterRace.Human]})";
+            humanLevelText.text = $"Lv.{raceEnhancementLevels[CharacterRace.Human]}";
         }
         
         // 오크
         if (orcLevelText != null)
         {
-            orcLevelText.text = $"Lv.{raceEnhancementLevels[CharacterRace.Orc]} (비용: {raceEnhancementCosts[CharacterRace.Orc]})";
+            orcLevelText.text = $"Lv.{raceEnhancementLevels[CharacterRace.Orc]}";
         }
         
         // 엘프
         if (elfLevelText != null)
         {
-            elfLevelText.text = $"Lv.{raceEnhancementLevels[CharacterRace.Elf]} (비용: {raceEnhancementCosts[CharacterRace.Elf]})";
+            elfLevelText.text = $"Lv.{raceEnhancementLevels[CharacterRace.Elf]}";
         }
+        
+        // 강화 비용 텍스트 업데이트
+        UpdateEnhanceCostText();
         
         // 버튼 활성화 여부 체크
         UpdateButtonStates();
+    }
+    
+    /// <summary>
+    /// 강화 비용 텍스트 업데이트
+    /// </summary>
+    private void UpdateEnhanceCostText()
+    {
+        if (enhanceCostText != null)
+        {
+            int cost = raceEnhancementCosts[selectedRace];
+            enhanceCostText.text = $"{selectedRace} 강화 비용: {cost}";
+        }
     }
     
     /// <summary>
@@ -202,20 +341,12 @@ public class RaceEnhancementManager : MonoBehaviour
         if (mineralBar == null) return;
         
         int currentMinerals = mineralBar.GetCurrentMinerals();
+        int selectedRaceCost = raceEnhancementCosts[selectedRace];
         
-        if (humanEnhanceButton != null)
+        // 강화 버튼 활성화 여부
+        if (enhanceButton != null)
         {
-            humanEnhanceButton.interactable = (currentMinerals >= raceEnhancementCosts[CharacterRace.Human]);
-        }
-        
-        if (orcEnhanceButton != null)
-        {
-            orcEnhanceButton.interactable = (currentMinerals >= raceEnhancementCosts[CharacterRace.Orc]);
-        }
-        
-        if (elfEnhanceButton != null)
-        {
-            elfEnhanceButton.interactable = (currentMinerals >= raceEnhancementCosts[CharacterRace.Elf]);
+            enhanceButton.interactable = (currentMinerals >= selectedRaceCost);
         }
     }
     

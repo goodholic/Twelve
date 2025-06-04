@@ -28,6 +28,15 @@ public class GameSceneManager : MonoBehaviour
     [SerializeField] private TextMeshProUGUI orcCountText;
     [SerializeField] private TextMeshProUGUI elfCountText;
 
+    [Header("종족 버튼 (리사이클용)")]
+    [SerializeField] private Button humanRaceButton;
+    [SerializeField] private Button orcRaceButton;
+    [SerializeField] private Button elfRaceButton;
+    [SerializeField] private Button recycleButton;
+
+    [Header("리사이클 매니저")]
+    [SerializeField] private RaceRecycleManager raceRecycleManager;
+
     private CharacterData[] deckFromLobby = new CharacterData[9]; 
     private CharacterData heroCharacter = null; 
 
@@ -216,6 +225,9 @@ public class GameSceneManager : MonoBehaviour
         {
             itemInventoryPanel.SetActive(true);
         }
+
+        // 리사이클 매니저 초기화
+        InitializeRaceRecycleManager();
     }
 
     private void Update()
@@ -224,6 +236,36 @@ public class GameSceneManager : MonoBehaviour
         if (gameTimeText != null)
         {
             gameTimeText.text = $"{elapsedTime:F1}s";
+        }
+    }
+
+    /// <summary>
+    /// 리사이클 매니저 초기화
+    /// </summary>
+    private void InitializeRaceRecycleManager()
+    {
+        // RaceRecycleManager가 없으면 자동 생성
+        if (raceRecycleManager == null)
+        {
+            raceRecycleManager = FindFirstObjectByType<RaceRecycleManager>();
+            
+            if (raceRecycleManager == null)
+            {
+                GameObject recycleManagerObj = new GameObject("RaceRecycleManager");
+                raceRecycleManager = recycleManagerObj.AddComponent<RaceRecycleManager>();
+                Debug.Log("[GameSceneManager] RaceRecycleManager 자동 생성");
+            }
+        }
+
+        // 종족 버튼들이 설정되어 있는지 확인
+        if (humanRaceButton == null || orcRaceButton == null || elfRaceButton == null)
+        {
+            Debug.LogWarning("[GameSceneManager] 종족 버튼들이 설정되지 않았습니다. Inspector에서 설정해주세요.");
+        }
+        
+        if (recycleButton == null)
+        {
+            Debug.LogWarning("[GameSceneManager] 리사이클 버튼이 설정되지 않았습니다. Inspector에서 설정해주세요.");
         }
     }
 
