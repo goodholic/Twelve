@@ -1,9 +1,8 @@
 using System;
 using UnityEngine;
-using Fusion;
 using UnityEngine.UI;
 
-public class Monster : NetworkBehaviour, IDamageable
+public class Monster : MonoBehaviour, IDamageable
 {
     [Header("Monster Stats")]
     public float moveSpeed = 1.5f;  // 기존 3f → 1.5f로 속도 감소
@@ -345,14 +344,8 @@ public class Monster : NetworkBehaviour, IDamageable
             }
         }
 
-        if (Object != null && Object.IsValid)
-        {
-            Runner.Despawn(Object);
-        }
-        else
-        {
-            Destroy(gameObject);
-        }
+        // Fusion 네트워킹 코드 제거 - 일반 Unity 오브젝트 파괴로 변경
+        Destroy(gameObject);
     }
 
     public void TakeDamage(float damageAmount)
@@ -384,14 +377,8 @@ public class Monster : NetworkBehaviour, IDamageable
 
         OnDeath?.Invoke();
 
-        if (Object != null && Object.IsValid)
-        {
-            Runner.Despawn(Object);
-        }
-        else
-        {
-            Destroy(gameObject);
-        }
+        // Fusion 네트워킹 코드 제거 - 일반 Unity 오브젝트 파괴로 변경
+        Destroy(gameObject);
     }
 
     public void ApplySlow(float amount, float duration)

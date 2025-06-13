@@ -4,7 +4,7 @@ using UnityEngine;
 using System;
 
 [CustomEditor(typeof(CharacterDatabase))]
-public class CharacterDatabaseEditor : Editor
+public class CharacterDatabaseEditor : UnityEditor.Editor
 {
     // -------------------------
     // CSV 입력용 멀티라인 문자열

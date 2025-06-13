@@ -1,0 +1,14 @@
+# 모든 파일을 먼저 무시
+*
+
+# Assets 폴더만 포함
+!Assets/
+!Assets/**
+
+# Unity 관련 제외 파일들
+Library/
+Temp/
+Logs/
+UserSettings/
+*.meta
+

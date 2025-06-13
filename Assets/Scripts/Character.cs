@@ -1,7 +1,7 @@
 using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
-using Fusion;
+// using Fusion; // 임시로 주석처리
 
 /// <summary>
 /// 데미지를 받을 수 있는 모든 오브젝트(몬스터, 캐릭터)가 구현해야 하는 인터페이스
@@ -53,7 +53,7 @@ public enum RangeType
     LongRange  // 장거리 타입 추가
 }
 
-public class Character : NetworkBehaviour, IDamageable
+public class Character : MonoBehaviour, IDamageable // 임시로 MonoBehaviour 사용
 {
     [Header("Character Star Info (별)")]
     public CharacterStar star = CharacterStar.OneStar;

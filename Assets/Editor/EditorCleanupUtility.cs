@@ -398,7 +398,7 @@ public static class EditorCleanupUtility
         Selection.activeGameObject = null;
 
         // 인스펙터 창들 새로고침
-        System.Type inspectorWindowType = typeof(Editor).Assembly.GetType("UnityEditor.InspectorWindow");
+        System.Type inspectorWindowType = typeof(UnityEditor.Editor).Assembly.GetType("UnityEditor.InspectorWindow");
         if (inspectorWindowType != null)
         {
             Object[] inspectorWindows = Resources.FindObjectsOfTypeAll(inspectorWindowType);

@@ -1,6 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
-using Fusion;
+// using Fusion; // 임시로 주석처리
 // ▼ 아래 2줄은 필요하다면 제거하거나 주석처리 가능합니다.
 // using UnityEngine.SceneManagement; // (씬 전환 미사용 시 주석처리 가능)
 using TMPro;
@@ -42,7 +42,7 @@ public class GameManager : MonoBehaviour
     [Tooltip("인덱스 0~8: 일반, 인덱스 9: 히어로 (옵션)")]
     public CharacterData[] currentRegisteredCharacters = new CharacterData[10];
 
-    private NetworkRunner runner;
+    // private NetworkRunner runner; // 임시로 주석처리
 
     // =======================================================================
     // == 기존에는 resultSceneName 필드 + 씬 이동 로직이 있었으나 제거했습니다. ==
@@ -94,7 +94,8 @@ public class GameManager : MonoBehaviour
         }
         DontDestroyOnLoad(gameObject);
 
-        // 네트워크 런너 찾기
+        // 네트워크 런너 찾기 (임시로 주석처리)
+        /*
         runner = FindFirstObjectByType<NetworkRunner>();
         if (runner != null)
         {
@@ -123,6 +124,7 @@ public class GameManager : MonoBehaviour
         }
         else
         {
+        */
             // 싱글플레이(네트워크 없음) => 호스트 덱 사용
             for (int i = 0; i < 9; i++)
             {
@@ -130,8 +132,8 @@ public class GameManager : MonoBehaviour
                     ? hostDeck[i]
                     : null;
             }
-            Debug.Log("[GameManager] 싱글플레이 => hostDeck 사용");
-        }
+            Debug.Log("[GameManager] 싱글플레이 => hostDeck 사용 (임시)");
+        // }
     }
 
     private void Start()

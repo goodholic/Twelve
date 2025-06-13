@@ -2,7 +2,7 @@
 using UnityEditor;
 
 [CustomEditor(typeof(AllIn1Lighting)), CanEditMultipleObjects]
-public class AllIn1LightingEditor : Editor
+public class AllIn1LightingEditor : UnityEditor.Editor
 {
     SerializedProperty m_NormalStrength, m_NormalSmoothing;
     private GUIStyle guiStyle = new GUIStyle();

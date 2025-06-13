@@ -11,7 +11,7 @@ using System;
 /// 새 ScriptableObject를 자동으로 만들 수도 있음.
 /// </summary>
 [CustomEditor(typeof(CharacterDatabaseObject))]
-public class CharacterDatabaseObjectEditor : Editor
+public class CharacterDatabaseObjectEditor : UnityEditor.Editor
 {
     private bool showCsvPanel = false;
     private string csvInput =

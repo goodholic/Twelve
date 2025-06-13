@@ -1,8 +1,8 @@
+using UnityEngine;
+using System;
 #if UNITY_EDITOR
 using UnityEditor;
 #endif
-using UnityEngine;
-using System;
 
 public enum GridTileType
 {
@@ -252,7 +252,7 @@ public class TileGridEditor : MonoBehaviour
 
 #if UNITY_EDITOR
 [CustomEditor(typeof(TileGridEditor))]
-public class TileGridEditorInspector : Editor
+public class TileGridEditorInspector : UnityEditor.Editor
 {
     private const float CellWidth = 45f;
     private const float CellHeight = 24f;
