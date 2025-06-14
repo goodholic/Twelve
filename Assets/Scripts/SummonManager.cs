@@ -47,11 +47,53 @@ public class SummonManager : MonoBehaviour
 
     private void Start()
     {
+        // CoreDataManager 초기화 확인
+        StartCoroutine(InitializeDelayed());
+    }
+
+    private System.Collections.IEnumerator InitializeDelayed()
+    {
+        // CoreDataManager가 초기화될 때까지 대기
+        int waitCount = 0;
+        while (CoreDataManager.Instance == null && waitCount < 30)
+        {
+            yield return null;
+            waitCount++;
+        }
+
+        if (CoreDataManager.Instance == null)
+        {
+            Debug.LogError("[SummonManager] CoreDataManager를 찾을 수 없습니다!");
+            yield break;
+        }
+
+        var coreData = CoreDataManager.Instance;
+        
+        // characterDatabase 확인
+        if (coreData.characterDatabase == null)
+        {
+            Debug.LogError("[SummonManager] CoreDataManager.characterDatabase가 null입니다!");
+            Debug.LogError("[SummonManager] CoreDataManager Inspector에서 characterDatabase를 설정하거나, 씬에 CharacterDatabase 프리팹을 배치해주세요.");
+            
+            // 추가 디버그 정보
+            CharacterDatabase foundDB = FindFirstObjectByType<CharacterDatabase>();
+            if (foundDB != null)
+            {
+                Debug.Log("[SummonManager] 씬에서 CharacterDatabase를 찾았지만 CoreDataManager에 연결되지 않았습니다.");
+                Debug.Log("[SummonManager] CoreDataManager.Start()가 실행되면 자동으로 연결될 예정입니다.");
+            }
+            else
+            {
+                Debug.LogError("[SummonManager] 씬에 CharacterDatabase가 없습니다! CharacterDatabase 프리팹을 씬에 배치해주세요.");
+            }
+            
+            yield break;
+        }
+
         // 원 버튼 소환 풀이 비어있으면 기본 캐릭터들로 채우기
         if (oneButtonSummonPool == null || oneButtonSummonPool.Length == 0)
         {
-            var coreData = CoreDataManager.Instance;
-            if (coreData != null && coreData.characterDatabase != null)
+            if (coreData.characterDatabase.currentRegisteredCharacters != null)
             {
                 List<CharacterData> oneStarChars = new List<CharacterData>();
                 foreach (var charData in coreData.characterDatabase.currentRegisteredCharacters)
@@ -62,6 +104,7 @@ public class SummonManager : MonoBehaviour
                     }
                 }
                 oneButtonSummonPool = oneStarChars.ToArray();
+                Debug.Log($"[SummonManager] 원 버튼 소환 풀 초기화 완료: {oneButtonSummonPool.Length}개 캐릭터");
             }
         }
     }
@@ -69,16 +112,25 @@ public class SummonManager : MonoBehaviour
     private void Update()
     {
         // 숫자키로 캐릭터 인덱스 바꾸기
-        if (Input.GetKeyDown(KeyCode.Alpha1)) CoreDataManager.Instance.currentCharacterIndex = 0;
-        if (Input.GetKeyDown(KeyCode.Alpha2)) CoreDataManager.Instance.currentCharacterIndex = 1;
-        if (Input.GetKeyDown(KeyCode.Alpha3)) CoreDataManager.Instance.currentCharacterIndex = 2;
-        if (Input.GetKeyDown(KeyCode.Alpha4)) CoreDataManager.Instance.currentCharacterIndex = 3;
-        if (Input.GetKeyDown(KeyCode.Alpha5)) CoreDataManager.Instance.currentCharacterIndex = 4;
-        if (Input.GetKeyDown(KeyCode.Alpha6)) CoreDataManager.Instance.currentCharacterIndex = 5;
-        if (Input.GetKeyDown(KeyCode.Alpha7)) CoreDataManager.Instance.currentCharacterIndex = 6;
-        if (Input.GetKeyDown(KeyCode.Alpha8)) CoreDataManager.Instance.currentCharacterIndex = 7;
-        if (Input.GetKeyDown(KeyCode.Alpha9)) CoreDataManager.Instance.currentCharacterIndex = 8;
-        if (Input.GetKeyDown(KeyCode.Alpha0)) CoreDataManager.Instance.currentCharacterIndex = 9;
+        if (Input.GetKeyDown(KeyCode.Alpha1)) SetCharacterIndex(0);
+        if (Input.GetKeyDown(KeyCode.Alpha2)) SetCharacterIndex(1);
+        if (Input.GetKeyDown(KeyCode.Alpha3)) SetCharacterIndex(2);
+        if (Input.GetKeyDown(KeyCode.Alpha4)) SetCharacterIndex(3);
+        if (Input.GetKeyDown(KeyCode.Alpha5)) SetCharacterIndex(4);
+        if (Input.GetKeyDown(KeyCode.Alpha6)) SetCharacterIndex(5);
+        if (Input.GetKeyDown(KeyCode.Alpha7)) SetCharacterIndex(6);
+        if (Input.GetKeyDown(KeyCode.Alpha8)) SetCharacterIndex(7);
+        if (Input.GetKeyDown(KeyCode.Alpha9)) SetCharacterIndex(8);
+        if (Input.GetKeyDown(KeyCode.Alpha0)) SetCharacterIndex(9);
+    }
+
+    private void SetCharacterIndex(int index)
+    {
+        if (CoreDataManager.Instance != null)
+        {
+            CoreDataManager.Instance.currentCharacterIndex = index;
+            Debug.Log($"[SummonManager] 캐릭터 인덱스 {index}로 설정");
+        }
     }
 
     /// <summary>
@@ -87,6 +139,11 @@ public class SummonManager : MonoBehaviour
     public void OnClickOneButtonSummon(bool isRegion2 = false)
     {
         var coreData = CoreDataManager.Instance;
+        if (coreData == null)
+        {
+            Debug.LogError("[SummonManager] CoreDataManager가 없습니다!");
+            return;
+        }
         
         // 소환 풀 확인
         if (oneButtonSummonPool == null || oneButtonSummonPool.Length == 0)
@@ -176,7 +233,7 @@ public class SummonManager : MonoBehaviour
             }
             else
             {
-                occupied = TileManager.Instance.CheckAnyCharacterHasCurrentTile(tile);
+                occupied = TileManager.Instance != null && TileManager.Instance.CheckAnyCharacterHasCurrentTile(tile);
             }
             
             if (!occupied)
@@ -199,6 +256,11 @@ public class SummonManager : MonoBehaviour
     private bool ActualSummonOneButton(CharacterData data, Tile tile, bool isRegion2)
     {
         var coreData = CoreDataManager.Instance;
+        if (coreData == null)
+        {
+            Debug.LogError("[SummonManager] CoreDataManager가 없습니다!");
+            return false;
+        }
         
         try
         {
@@ -258,7 +320,10 @@ public class SummonManager : MonoBehaviour
                     PositionCharacterOnTile(charObj, tile, targetParent);
                     ConfigureCharacterForTower(charObj.GetComponent<Character>(), data, tile, isArea2Tile);
                     
-                    TileManager.Instance.CreatePlaceTileChild(tile);
+                    if (TileManager.Instance != null)
+                    {
+                        TileManager.Instance.CreatePlaceTileChild(tile);
+                    }
                     return true;
                 }
             }
@@ -277,6 +342,8 @@ public class SummonManager : MonoBehaviour
     /// </summary>
     private void ConfigureCharacterForWalkable(Character character, CharacterData data, Tile tile, WaveSpawner spawner, int areaIndex)
     {
+        if (character == null || data == null) return;
+        
         character.currentTile = null;
         character.isHero = false;
         character.isCharAttack = true;
@@ -290,8 +357,11 @@ public class SummonManager : MonoBehaviour
         character.ApplyStarVisual();
         character.moveSpeed = data.moveSpeed;
         
-        RouteType selectedRoute = RouteManager.Instance.DetermineRouteFromTile(tile, spawner);
-        RouteManager.Instance.OnRouteSelected(character, tile, selectedRoute, spawner);
+        if (RouteManager.Instance != null)
+        {
+            RouteType selectedRoute = RouteManager.Instance.DetermineRouteFromTile(tile, spawner);
+            RouteManager.Instance.OnRouteSelected(character, tile, selectedRoute, spawner);
+        }
     }
 
     /// <summary>
@@ -299,6 +369,8 @@ public class SummonManager : MonoBehaviour
     /// </summary>
     private void ConfigureCharacterForWalkable2(Character character, CharacterData data, Tile tile, WaveSpawnerRegion2 spawner2, int areaIndex)
     {
+        if (character == null || data == null) return;
+        
         character.currentTile = null;
         character.isHero = false;
         character.isCharAttack = true;
@@ -312,8 +384,11 @@ public class SummonManager : MonoBehaviour
         character.ApplyStarVisual();
         character.moveSpeed = data.moveSpeed;
         
-        RouteType selectedRoute = RouteManager.Instance.DetermineRouteFromTile(tile, spawner2);
-        RouteManager.Instance.OnRouteSelectedRegion2(character, tile, selectedRoute, spawner2);
+        if (RouteManager.Instance != null)
+        {
+            RouteType selectedRoute = RouteManager.Instance.DetermineRouteFromTile(tile, spawner2);
+            RouteManager.Instance.OnRouteSelectedRegion2(character, tile, selectedRoute, spawner2);
+        }
     }
 
     /// <summary>
@@ -321,6 +396,8 @@ public class SummonManager : MonoBehaviour
     /// </summary>
     private void ConfigureCharacterForTower(Character character, CharacterData data, Tile tile, bool isArea2)
     {
+        if (character == null || data == null) return;
+        
         var coreData = CoreDataManager.Instance;
         
         character.currentTile = tile;
@@ -369,65 +446,24 @@ public class SummonManager : MonoBehaviour
         }
     }
 
-    // 기존 메서드들은 그대로 유지
+    // 기존 메서드들도 수정
     public void OnClickSelectUnit(int index)
     {
-        CoreDataManager.Instance.currentCharacterIndex = index;
-        Debug.Log($"[SummonManager] 선택된 유닛 인덱스: {index}");
-    }
-
-    public void ToggleRemoveMode()
-    {
-        removeMode = !removeMode;
-        Debug.Log($"[SummonManager] removeMode = {removeMode}");
-
-        if (removeMode)
+        if (CoreDataManager.Instance != null)
         {
-            RemoveRandomCharacter();
+            CoreDataManager.Instance.currentCharacterIndex = index;
+            Debug.Log($"[SummonManager] 선택된 유닛 인덱스: {index}");
         }
-    }
-
-    private void RemoveRandomCharacter()
-    {
-        List<Character> placedCharacters = new List<Character>();
-        Character[] allCharacters = FindObjectsByType<Character>(FindObjectsSortMode.None);
-
-        foreach (var c in allCharacters)
-        {
-            if (c != null && c.currentTile != null)
-            {
-                Tile t = c.currentTile;
-                if (t.IsPlaceTile() || t.IsPlaced2() || t.IsPlacable() || t.IsPlacable2())
-                {
-                    placedCharacters.Add(c);
-                }
-            }
-        }
-
-        if (placedCharacters.Count == 0)
-        {
-            Debug.Log("[SummonManager] 제거할 캐릭터가 없습니다.");
-            return;
-        }
-
-        int randomIndex = Random.Range(0, placedCharacters.Count);
-        Character targetCharacter = placedCharacters[randomIndex];
-        Tile targetTile = targetCharacter.currentTile;
-
-        if (targetTile == null)
-        {
-            Debug.LogWarning("[SummonManager] 선택된 캐릭터의 타일이 null입니다.");
-            return;
-        }
-
-        Debug.Log($"[SummonManager] 랜덤 제거 대상: {targetCharacter.characterName} (별:{targetCharacter.star}, 타일:{targetTile.name})");
-        RemoveCharacterOnTile(targetTile);
-        removeMode = false;
     }
 
     public void PlaceCharacterOnTile(Tile tile)
     {
         var coreData = CoreDataManager.Instance;
+        if (coreData == null)
+        {
+            Debug.LogError("[SummonManager] CoreDataManager가 없습니다!");
+            return;
+        }
         
         Debug.Log($"[SummonManager] PlaceCharacterOnTile 호출 - tile: {tile.name}, currentCharacterIndex: {coreData.currentCharacterIndex}, removeMode: {removeMode}");
         
@@ -482,14 +518,22 @@ public class SummonManager : MonoBehaviour
             }
             else
             {
-                currentTileOccupied = TileManager.Instance.CheckAnyCharacterHasCurrentTile(tile);
+                if (TileManager.Instance != null)
+                {
+                    currentTileOccupied = TileManager.Instance.CheckAnyCharacterHasCurrentTile(tile);
+                }
             }
             
             if (currentTileOccupied)
             {
                 Debug.Log($"[SummonManager] {tile.name}에 이미 캐릭터가 있음. 빈 타일을 찾거나 walkable로 전환합니다.");
                 
-                Tile emptyTile = TileManager.Instance.FindEmptyPlacedOrPlacableTile(tile.isRegion2);
+                Tile emptyTile = null;
+                if (TileManager.Instance != null)
+                {
+                    emptyTile = TileManager.Instance.FindEmptyPlacedOrPlacableTile(tile.isRegion2);
+                }
+                
                 if (emptyTile != null)
                 {
                     Debug.Log($"[SummonManager] 빈 타일 {emptyTile.name}을 찾았습니다. 해당 타일에 배치합니다.");
@@ -498,7 +542,12 @@ public class SummonManager : MonoBehaviour
                 else
                 {
                     Debug.Log($"[SummonManager] 빈 placed/placable 타일이 없습니다. walkable 타일로 전환합니다.");
-                    Tile walkableTile = TileManager.Instance.FindEmptyWalkableTile(tile.isRegion2);
+                    Tile walkableTile = null;
+                    if (TileManager.Instance != null)
+                    {
+                        walkableTile = TileManager.Instance.FindEmptyWalkableTile(tile.isRegion2);
+                    }
+                    
                     if (walkableTile != null)
                     {
                         tile = walkableTile;
@@ -543,67 +592,10 @@ public class SummonManager : MonoBehaviour
         }
         else
         {
-            if (TileManager.Instance.CheckAnyCharacterHasCurrentTile(tile))
+            if (TileManager.Instance != null && TileManager.Instance.CheckAnyCharacterHasCurrentTile(tile))
             {
                 Debug.LogWarning($"[SummonManager] {tile.name} 타일은 이미 캐릭터가 점유 중입니다. 배치 불가!");
                 return;
-            }
-        }
-
-        // 모든 placed/placable 타일이 차있으면 walkable 타일로 전환
-        if (tile.IsPlaceTile() || tile.IsPlaced2() || tile.IsPlacable() || tile.IsPlacable2())
-        {
-            bool allPlacedTilesFull = true;
-            Tile[] allTiles = Object.FindObjectsByType<Tile>(FindObjectsSortMode.None);
-            Character[] allChars = Object.FindObjectsByType<Character>(FindObjectsSortMode.None);
-            
-            foreach (var t in allTiles)
-            {
-                if (t == null) continue;
-                if (t.isRegion2 != tile.isRegion2) continue;
-                
-                if (t.IsPlaceTile() || t.IsPlaced2() || t.IsPlacable() || t.IsPlacable2())
-                {
-                    bool isEmpty = true;
-                    
-                    if (t.IsPlaceTile() || t.IsPlaced2())
-                    {
-                        foreach (var c in allChars)
-                        {
-                            if (c != null && c.currentTile == t)
-                            {
-                                isEmpty = false;
-                                break;
-                            }
-                        }
-                    }
-                    else
-                    {
-                        isEmpty = !TileManager.Instance.CheckAnyCharacterHasCurrentTile(t);
-                    }
-                    
-                    if (isEmpty)
-                    {
-                        allPlacedTilesFull = false;
-                        break;
-                    }
-                }
-            }
-            
-            if (allPlacedTilesFull)
-            {
-                Debug.Log($"[SummonManager] 모든 placed/placable 타일이 가득 참. walkable 타일로 자동 전환합니다.");
-                Tile walkableTile = TileManager.Instance.FindEmptyWalkableTile(tile.isRegion2);
-                if (walkableTile != null)
-                {
-                    tile = walkableTile;
-                    Debug.Log($"[SummonManager] walkable 타일 {tile.name}으로 배치 변경");
-                }
-                else
-                {
-                    Debug.LogWarning("[SummonManager] walkable 타일도 없습니다!");
-                    return;
-                }
             }
         }
         
@@ -665,6 +657,7 @@ public class SummonManager : MonoBehaviour
     private void ActualSummon(CharacterData data, Tile tile, int characterIndex, bool isArea2)
     {
         var coreData = CoreDataManager.Instance;
+        if (coreData == null) return;
         
         if (tile.IsWalkable() || tile.IsWalkableLeft() || tile.IsWalkableCenter() || tile.IsWalkableRight())
         {
@@ -677,21 +670,9 @@ public class SummonManager : MonoBehaviour
                     allyObj.transform.position = new Vector3(-1000, -1000, 0);
                     
                     Character allyCharacter = allyObj.GetComponent<Character>();
-                    allyCharacter.currentTile = null;
-                    allyCharacter.isHero = (characterIndex == 9);
-                    allyCharacter.isCharAttack = !allyCharacter.isHero;
-                    allyCharacter.areaIndex = 1;
+                    ConfigureCharacterForWalkable(allyCharacter, data, tile, spawner, 1);
                     
-                    allyCharacter.attackPower = data.attackPower;
-                    allyCharacter.attackSpeed = data.attackSpeed;
-                    allyCharacter.attackRange = data.attackRange;
-                    allyCharacter.currentHP = data.maxHP;
-                    allyCharacter.star = data.initialStar;
-                    allyCharacter.ApplyStarVisual();
-                    allyCharacter.moveSpeed = data.moveSpeed;
-                    
-                    RouteType selectedRoute = RouteManager.Instance.DetermineRouteFromTile(tile, spawner);
-                    RouteManager.Instance.OnRouteSelected(allyCharacter, tile, selectedRoute, spawner);
+                    Debug.Log($"[SummonManager] [{data.characterName}] (지역1) 몬스터 소환 완료 (cost={data.cost})");
                     
                     var selectUI = FindFirstObjectByType<CharacterSelectUI>();
                     if (selectUI != null)
@@ -700,220 +681,69 @@ public class SummonManager : MonoBehaviour
                     }
                 }
             }
-            else
-            {
-                Debug.LogWarning("[SummonManager] WaveSpawner/ourMonsterPanel이 없어 소환 실패");
-            }
         }
         else if (tile.IsWalkable2() || tile.IsWalkable2Left() || tile.IsWalkable2Center() || tile.IsWalkable2Right())
         {
             WaveSpawnerRegion2 spawner2 = FindFirstObjectByType<WaveSpawnerRegion2>();
             if (spawner2 != null && coreData.opponentOurMonsterPanel != null)
             {
-                RouteType selectedRoute = RouteManager.Instance.DetermineRouteFromTile(tile, spawner2);
-                Transform[] waypoints = RouteManager.Instance.GetWaypointsForRoute(spawner2, selectedRoute);
-                
-                if (waypoints == null || waypoints.Length == 0)
-                {
-                    Debug.LogWarning($"[SummonManager] {selectedRoute} 루트의 웨이포인트가 없습니다.");
-                    return;
-                }
-                
-                Vector3 spawnPos = RouteManager.Instance.GetSpawnPositionForRoute(spawner2, selectedRoute);
                 GameObject enemyObj = Instantiate(data.spawnPrefab, coreData.opponentOurMonsterPanel);
                 if (enemyObj != null)
                 {
-                    enemyObj.SetActive(true);
-                    RectTransform enemyRect = enemyObj.GetComponent<RectTransform>();
-                    if (enemyRect != null)
-                    {
-                        Vector2 localPos = coreData.opponentOurMonsterPanel.InverseTransformPoint(spawnPos);
-                        enemyRect.SetParent(coreData.opponentOurMonsterPanel, false);
-                        enemyRect.anchoredPosition = localPos;
-                        enemyRect.localRotation = Quaternion.identity;
-                    }
-                    else
-                    {
-                        enemyObj.transform.SetParent(null);
-                        enemyObj.transform.position = spawnPos;
-                        enemyObj.transform.localRotation = Quaternion.identity;
-                    }
-
+                    enemyObj.transform.position = new Vector3(-1000, -1000, 0);
+                    
                     Character enemyCharacter = enemyObj.GetComponent<Character>();
-                    enemyCharacter.currentTile = null;
-                    enemyCharacter.isHero = false;
-                    enemyCharacter.isCharAttack = true;
-
-                    enemyCharacter.currentWaypointIndex = 0;
-                    enemyCharacter.pathWaypoints = waypoints;
-                    enemyCharacter.maxWaypointIndex = waypoints.Length - 1;
-                    enemyCharacter.areaIndex = 2;
-                    enemyCharacter.selectedRoute = selectedRoute;
-
-                    enemyCharacter.attackPower = data.attackPower;
-                    enemyCharacter.attackSpeed = data.attackSpeed;
-                    enemyCharacter.attackRange = data.attackRange;
-                    enemyCharacter.currentHP = data.maxHP;
-                    enemyCharacter.star = data.initialStar;
-                    enemyCharacter.ApplyStarVisual();
-                    enemyCharacter.moveSpeed = data.moveSpeed;
-
-                    Debug.Log($"[SummonManager] [{data.characterName}] (지역2) 몬스터 소환 - {selectedRoute} 루트 선택 (cost={data.cost})");
-
+                    ConfigureCharacterForWalkable2(enemyCharacter, data, tile, spawner2, 2);
+                    
+                    Debug.Log($"[SummonManager] [{data.characterName}] (지역2) 몬스터 소환 완료 (cost={data.cost})");
+                    
                     var selectUI = FindFirstObjectByType<CharacterSelectUI>();
                     if (selectUI != null)
                     {
-                        selectUI.MarkCardAsUsed(coreData.currentCharacterIndex);
+                        selectUI.MarkCardAsUsed(characterIndex);
                     }
-                    return;
                 }
-                else
-                {
-                    Debug.LogError("[SummonManager] Walkable2 => Instantiate 실패");
-                    return;
-                }
-            }
-            else
-            {
-                Debug.LogWarning("[SummonManager] WaveSpawnerRegion2/enemyMonsterPanel이 없어 소환 실패");
-                return;
             }
         }
-        else if (tile.IsPlacable() || tile.IsPlacable2())
+        else if (tile.IsPlacable() || tile.IsPlacable2() || tile.IsPlaceTile() || tile.IsPlaced2())
         {
-            RectTransform targetParent = tile.IsPlacable2() && (coreData.opponentCharacterPanel != null)
-                ? coreData.opponentCharacterPanel
+            RectTransform targetParent = isArea2 
+                ? (coreData.opponentCharacterPanel != null ? coreData.opponentCharacterPanel : coreData.characterPanel)
                 : coreData.characterPanel;
 
             GameObject charObj = Instantiate(data.spawnPrefab, targetParent);
             if (charObj != null)
             {
-                RectTransform tileRect = tile.GetComponent<RectTransform>();
-                RectTransform charRect = charObj.GetComponent<RectTransform>();
-                if (tileRect != null && charRect != null)
-                {
-                    Vector2 localPos = targetParent.InverseTransformPoint(tileRect.transform.position);
-                    charRect.anchoredPosition = localPos;
-                    charRect.localRotation = Quaternion.identity;
-                }
-                else
-                {
-                    charObj.transform.position = tile.transform.position;
-                    charObj.transform.localRotation = Quaternion.identity;
-                }
-
+                PositionCharacterOnTile(charObj, tile, targetParent);
+                
                 Character characterComp = charObj.GetComponent<Character>();
-                if (characterComp != null)
+                ConfigureCharacterForTower(characterComp, data, tile, isArea2);
+                
+                if (TileManager.Instance != null)
                 {
-                    characterComp.currentTile = tile;
-                    characterComp.isHero = (characterIndex == 9);
-                    characterComp.isCharAttack = false;
-
-                    characterComp.currentWaypointIndex = -1;
-                    characterComp.maxWaypointIndex = 6;
-
-                    characterComp.attackPower = data.attackPower;
-                    characterComp.attackSpeed = data.attackSpeed;
-                    characterComp.attackRange = data.attackRange;
-                    characterComp.currentHP = data.maxHP;
-                    characterComp.star = data.initialStar;
-                    characterComp.ApplyStarVisual();
-
-                    characterComp.areaIndex = tile.IsPlacable2() ? 2 : 1;
-
-                    if (tile.IsPlacable2() && coreData.opponentBulletPanel != null)
-                    {
-                        characterComp.opponentBulletPanel = coreData.opponentBulletPanel;
-                    }
-                    else
-                    {
-                        characterComp.SetBulletPanel(coreData.bulletPanel);
-                    }
+                    TileManager.Instance.CreatePlaceTileChild(tile);
                 }
-
-                TileManager.Instance.CreatePlaceTileChild(tile);
-
+                
+                Debug.Log($"[SummonManager] [{data.characterName}] 타워형 배치 완료 (cost={data.cost})");
+                
                 var selectUI = FindFirstObjectByType<CharacterSelectUI>();
                 if (selectUI != null)
                 {
                     selectUI.MarkCardAsUsed(characterIndex);
                 }
-
-                Debug.Log($"[SummonManager] [{data.characterName}] 배치 완료 (cost={data.cost})");
             }
-        }
-        else if (tile.IsPlaceTile() || tile.IsPlaced2())
-        {
-            RectTransform targetParent = tile.IsPlaced2() && (coreData.opponentCharacterPanel != null)
-                ? coreData.opponentCharacterPanel
-                : coreData.characterPanel;
-
-            GameObject charObj = Instantiate(data.spawnPrefab, targetParent);
-            if (charObj != null)
-            {
-                RectTransform tileRect = tile.GetComponent<RectTransform>();
-                RectTransform charRect = charObj.GetComponent<RectTransform>();
-                if (tileRect != null && charRect != null)
-                {
-                    Vector2 localPos = targetParent.InverseTransformPoint(tileRect.transform.position);
-                    charRect.anchoredPosition = localPos;
-                    charRect.localRotation = Quaternion.identity;
-                }
-                else
-                {
-                    charObj.transform.position = tile.transform.position;
-                    charObj.transform.localRotation = Quaternion.identity;
-                }
-
-                Character characterComp = charObj.GetComponent<Character>();
-                if (characterComp != null)
-                {
-                    characterComp.currentTile = tile;
-                    characterComp.isHero = (characterIndex == 9);
-                    characterComp.isCharAttack = false;
-
-                    characterComp.currentWaypointIndex = -1;
-                    characterComp.maxWaypointIndex = 6;
-
-                    characterComp.attackPower = data.attackPower;
-                    characterComp.attackSpeed = data.attackSpeed;
-                    characterComp.attackRange = data.attackRange;
-                    characterComp.currentHP = data.maxHP;
-                    characterComp.star = data.initialStar;
-                    characterComp.ApplyStarVisual();
-
-                    characterComp.areaIndex = tile.IsPlaced2() ? 2 : 1;
-
-                    if (tile.IsPlaced2() && coreData.opponentBulletPanel != null)
-                    {
-                        characterComp.opponentBulletPanel = coreData.opponentBulletPanel;
-                    }
-                    else
-                    {
-                        characterComp.SetBulletPanel(coreData.bulletPanel);
-                    }
-                }
-
-                TileManager.Instance.CreatePlaceTileChild(tile);
-
-                var selectUI = FindFirstObjectByType<CharacterSelectUI>();
-                if (selectUI != null)
-                {
-                    selectUI.MarkCardAsUsed(characterIndex);
-                }
-
-                Debug.Log($"[SummonManager] [{data.characterName}] 배치 완료 (on PlaceTile/Placed2, cost={data.cost})");
-            }
-        }
-        else
-        {
-            Debug.LogWarning($"[SummonManager] {tile.name} 상태를 처리할 수 없습니다.");
         }
     }
 
+    // SummonCharacterOnTile 메서드도 수정
     public bool SummonCharacterOnTile(int summonIndex, Tile tile, bool forceEnemyArea2 = false)
     {
         var coreData = CoreDataManager.Instance;
+        if (coreData == null)
+        {
+            Debug.LogError("[SummonManager] CoreDataManager가 없습니다!");
+            return false;
+        }
         
         Debug.Log($"[SummonManager] SummonCharacterOnTile: 인덱스={summonIndex}, tile={tile.name}, forceEnemyArea2={forceEnemyArea2}");
 
@@ -1030,7 +860,7 @@ public class SummonManager : MonoBehaviour
             }
             else
             {
-                if (TileManager.Instance.CheckAnyCharacterHasCurrentTile(tile))
+                if (TileManager.Instance != null && TileManager.Instance.CheckAnyCharacterHasCurrentTile(tile))
                 {
                     Debug.LogWarning($"[SummonManager] {tile.name}는 이미 캐릭터가 있어 소환 불가!");
                     if (mineralsSpent && targetMineralBar != null)
@@ -1063,6 +893,7 @@ public class SummonManager : MonoBehaviour
     private bool ActualSummonDrag(CharacterData data, Tile tile, int summonIndex, bool tileIsArea2, bool forceEnemyArea2)
     {
         var coreData = CoreDataManager.Instance;
+        if (coreData == null) return false;
         
         if (tile.IsWalkable() || tile.IsWalkableLeft() || tile.IsWalkableCenter() || tile.IsWalkableRight())
         {
@@ -1081,8 +912,17 @@ public class SummonManager : MonoBehaviour
                 return false;
             }
 
-            RouteType selectedRoute = RouteManager.Instance.DetermineRouteFromTile(tile, spawner);
-            Transform[] waypoints = RouteManager.Instance.GetWaypointsForRoute(spawner, selectedRoute);
+            RouteType selectedRoute = RouteType.Center;
+            if (RouteManager.Instance != null)
+            {
+                selectedRoute = RouteManager.Instance.DetermineRouteFromTile(tile, spawner);
+            }
+            
+            Transform[] waypoints = null;
+            if (RouteManager.Instance != null)
+            {
+                waypoints = RouteManager.Instance.GetWaypointsForRoute(spawner, selectedRoute);
+            }
             
             if (waypoints == null || waypoints.Length == 0)
             {
@@ -1090,45 +930,21 @@ public class SummonManager : MonoBehaviour
                 return false;
             }
 
-            Vector3 spawnPos = RouteManager.Instance.GetSpawnPositionForRoute(spawner, selectedRoute);
-            GameObject allyMonsterObj = Instantiate(prefabToSpawn, coreData.ourMonsterPanel);
-            if (allyMonsterObj != null)
+            GameObject allyObj = Instantiate(data.spawnPrefab, coreData.ourMonsterPanel);
+            if (allyObj != null)
             {
-                RectTransform allyRect = allyMonsterObj.GetComponent<RectTransform>();
-                if (allyRect != null)
+                allyObj.transform.position = new Vector3(-1000, -1000, 0);
+                
+                Character allyCharacter = allyObj.GetComponent<Character>();
+                ConfigureCharacterForWalkable(allyCharacter, data, tile, spawner, 1);
+                
+                Debug.Log($"[SummonManager] [{data.characterName}] (지역1) 몬스터 소환 - {selectedRoute} 루트 선택 (cost={data.cost})");
+
+                var selectUI = FindFirstObjectByType<CharacterSelectUI>();
+                if (selectUI != null)
                 {
-                    Vector2 localPos = coreData.ourMonsterPanel.InverseTransformPoint(spawnPos);
-                    allyRect.SetParent(coreData.ourMonsterPanel, false);
-                    allyRect.anchoredPosition = localPos;
-                    allyRect.localRotation = Quaternion.identity;
+                    selectUI.MarkCardAsUsed(summonIndex);
                 }
-                else
-                {
-                    allyMonsterObj.transform.SetParent(null);
-                    allyMonsterObj.transform.position = spawnPos;
-                    allyMonsterObj.transform.localRotation = Quaternion.identity;
-                }
-
-                Character allyChar = allyMonsterObj.GetComponent<Character>();
-                allyChar.currentTile = null;
-                allyChar.isHero = (summonIndex == 9);
-                allyChar.isCharAttack = !allyChar.isHero;
-
-                allyChar.currentWaypointIndex = 0;
-                allyChar.pathWaypoints = waypoints;
-                allyChar.maxWaypointIndex = waypoints.Length - 1;
-                allyChar.areaIndex = 1;
-                allyChar.selectedRoute = selectedRoute;
-
-                allyChar.attackPower = data.attackPower;
-                allyChar.attackSpeed = data.attackSpeed;
-                allyChar.attackRange = data.attackRange;
-                allyChar.currentHP = data.maxHP;
-                allyChar.star = data.initialStar;
-                allyChar.ApplyStarVisual();
-                allyChar.moveSpeed = data.moveSpeed;
-
-                Debug.Log($"[SummonManager] 드래그로 [{data.characterName}] (area1) 몬스터 소환 - {selectedRoute} 루트 선택 (cost={data.cost})");
                 return true;
             }
             else
@@ -1142,60 +958,20 @@ public class SummonManager : MonoBehaviour
             WaveSpawnerRegion2 spawner2 = FindFirstObjectByType<WaveSpawnerRegion2>();
             if (spawner2 != null && coreData.opponentOurMonsterPanel != null)
             {
-                RouteType selectedRoute = RouteManager.Instance.DetermineRouteFromTile(tile, spawner2);
-                Transform[] waypoints = RouteManager.Instance.GetWaypointsForRoute(spawner2, selectedRoute);
-                
-                if (waypoints == null || waypoints.Length == 0)
-                {
-                    Debug.LogWarning($"[SummonManager] {selectedRoute} 루트의 웨이포인트가 없습니다.");
-                    return false;
-                }
-                
-                Vector3 spawnPos = RouteManager.Instance.GetSpawnPositionForRoute(spawner2, selectedRoute);
                 GameObject enemyObj = Instantiate(data.spawnPrefab, coreData.opponentOurMonsterPanel);
                 if (enemyObj != null)
                 {
-                    enemyObj.SetActive(true);
-                    RectTransform enemyRect = enemyObj.GetComponent<RectTransform>();
-                    if (enemyRect != null)
-                    {
-                        Vector2 localPos = coreData.opponentOurMonsterPanel.InverseTransformPoint(spawnPos);
-                        enemyRect.SetParent(coreData.opponentOurMonsterPanel, false);
-                        enemyRect.anchoredPosition = localPos;
-                        enemyRect.localRotation = Quaternion.identity;
-                    }
-                    else
-                    {
-                        enemyObj.transform.SetParent(null);
-                        enemyObj.transform.position = spawnPos;
-                        enemyObj.transform.localRotation = Quaternion.identity;
-                    }
-
+                    enemyObj.transform.position = new Vector3(-1000, -1000, 0);
+                    
                     Character enemyCharacter = enemyObj.GetComponent<Character>();
-                    enemyCharacter.currentTile = null;
-                    enemyCharacter.isHero = false;
-                    enemyCharacter.isCharAttack = true;
-
-                    enemyCharacter.currentWaypointIndex = 0;
-                    enemyCharacter.pathWaypoints = waypoints;
-                    enemyCharacter.maxWaypointIndex = waypoints.Length - 1;
-                    enemyCharacter.areaIndex = 2;
-                    enemyCharacter.selectedRoute = selectedRoute;
-
-                    enemyCharacter.attackPower = data.attackPower;
-                    enemyCharacter.attackSpeed = data.attackSpeed;
-                    enemyCharacter.attackRange = data.attackRange;
-                    enemyCharacter.currentHP = data.maxHP;
-                    enemyCharacter.star = data.initialStar;
-                    enemyCharacter.ApplyStarVisual();
-                    enemyCharacter.moveSpeed = data.moveSpeed;
-
-                    Debug.Log($"[SummonManager] [{data.characterName}] (지역2) 몬스터 소환 - {selectedRoute} 루트 선택 (cost={data.cost})");
+                    ConfigureCharacterForWalkable2(enemyCharacter, data, tile, spawner2, 2);
+                    
+                    Debug.Log($"[SummonManager] [{data.characterName}] (지역2) 몬스터 소환 완료 (cost={data.cost})");
 
                     var selectUI = FindFirstObjectByType<CharacterSelectUI>();
                     if (selectUI != null)
                     {
-                        selectUI.MarkCardAsUsed(coreData.currentCharacterIndex);
+                        selectUI.MarkCardAsUsed(summonIndex);
                     }
                     return true;
                 }
@@ -1211,9 +987,9 @@ public class SummonManager : MonoBehaviour
                 return false;
             }
         }
-        else if (tile.IsPlacable() || tile.IsPlacable2())
+        else if (tile.IsPlacable() || tile.IsPlacable2() || tile.IsPlaceTile() || tile.IsPlaced2())
         {
-            bool isArea2Tile = tile.IsPlacable2();
+            bool isArea2Tile = tile.IsPlacable2() || tile.IsPlaced2();
             RectTransform targetParent = isArea2Tile
                 ? (coreData.opponentCharacterPanel != null ? coreData.opponentCharacterPanel : coreData.characterPanel)
                 : coreData.characterPanel;
@@ -1221,120 +997,28 @@ public class SummonManager : MonoBehaviour
             GameObject newCharObj = Instantiate(data.spawnPrefab, targetParent);
             if (newCharObj != null)
             {
-                RectTransform tileRect = tile.GetComponent<RectTransform>();
-                RectTransform charRect = newCharObj.GetComponent<RectTransform>();
-                if (tileRect != null && charRect != null)
-                {
-                    Vector2 localPos = targetParent.InverseTransformPoint(tileRect.transform.position);
-                    charRect.anchoredPosition = localPos;
-                    charRect.localRotation = Quaternion.identity;
-                }
-                else
-                {
-                    newCharObj.transform.position = tile.transform.position;
-                    newCharObj.transform.localRotation = Quaternion.identity;
-                }
-
+                PositionCharacterOnTile(newCharObj, tile, targetParent);
+                
                 Character cComp = newCharObj.GetComponent<Character>();
-                if (cComp != null)
+                ConfigureCharacterForTower(cComp, data, tile, isArea2Tile);
+                
+                if (TileManager.Instance != null)
                 {
-                    cComp.currentTile = tile;
-                    cComp.isHero = (summonIndex == 9);
-                    cComp.isCharAttack = false;
-
-                    cComp.currentWaypointIndex = -1;
-                    cComp.maxWaypointIndex = 6;
-
-                    cComp.attackPower = data.attackPower;
-                    cComp.attackSpeed = data.attackSpeed;
-                    cComp.attackRange = data.attackRange;
-                    cComp.currentHP = data.maxHP;
-                    cComp.star = data.initialStar;
-                    cComp.ApplyStarVisual();
-
-                    cComp.areaIndex = isArea2Tile ? 2 : 1;
-
-                    if (isArea2Tile && coreData.opponentBulletPanel != null)
-                    {
-                        cComp.opponentBulletPanel = coreData.opponentBulletPanel;
-                    }
-                    else
-                    {
-                        cComp.SetBulletPanel(coreData.bulletPanel);
-                    }
+                    TileManager.Instance.CreatePlaceTileChild(tile);
                 }
-
-                TileManager.Instance.CreatePlaceTileChild(tile);
-                Debug.Log($"[SummonManager] [{data.characterName}] 드래그 배치(Placable/Placable2)");
+                
+                Debug.Log($"[SummonManager] [{data.characterName}] 드래그 배치 완료 (cost={data.cost})");
+                
+                var selectUI = FindFirstObjectByType<CharacterSelectUI>();
+                if (selectUI != null)
+                {
+                    selectUI.MarkCardAsUsed(summonIndex);
+                }
                 return true;
             }
             else
             {
-                Debug.LogError("[SummonManager] placable => Instantiate 실패");
-                return false;
-            }
-        }
-        else if (tile.IsPlaceTile() || tile.IsPlaced2())
-        {
-            bool isArea2Tile = tile.IsPlaced2();
-            RectTransform targetParent = isArea2Tile
-                ? (coreData.opponentCharacterPanel != null ? coreData.opponentCharacterPanel : coreData.characterPanel)
-                : coreData.characterPanel;
-
-            GameObject newCharObj = Instantiate(data.spawnPrefab, targetParent);
-            if (newCharObj != null)
-            {
-                RectTransform tileRect = tile.GetComponent<RectTransform>();
-                RectTransform charRect = newCharObj.GetComponent<RectTransform>();
-
-                if (tileRect != null && charRect != null)
-                {
-                    Vector2 localPos = targetParent.InverseTransformPoint(tileRect.transform.position);
-                    charRect.anchoredPosition = localPos;
-                    charRect.localRotation = Quaternion.identity;
-                }
-                else
-                {
-                    newCharObj.transform.position = tile.transform.position;
-                    newCharObj.transform.localRotation = Quaternion.identity;
-                }
-
-                Character cComp = newCharObj.GetComponent<Character>();
-                if (cComp != null)
-                {
-                    cComp.currentTile = tile;
-                    cComp.isHero = (summonIndex == 9);
-                    cComp.isCharAttack = false;
-
-                    cComp.currentWaypointIndex = -1;
-                    cComp.maxWaypointIndex = 6;
-
-                    cComp.attackPower = data.attackPower;
-                    cComp.attackSpeed = data.attackSpeed;
-                    cComp.attackRange = data.attackRange;
-                    cComp.currentHP = data.maxHP;
-                    cComp.star = data.initialStar;
-                    cComp.ApplyStarVisual();
-
-                    cComp.areaIndex = isArea2Tile ? 2 : 1;
-
-                    if (isArea2Tile && coreData.opponentBulletPanel != null)
-                    {
-                        cComp.opponentBulletPanel = coreData.opponentBulletPanel;
-                    }
-                    else
-                    {
-                        cComp.SetBulletPanel(coreData.bulletPanel);
-                    }
-                }
-
-                TileManager.Instance.CreatePlaceTileChild(tile);
-                Debug.Log($"[SummonManager] [{data.characterName}] 드래그 배치(PlaceTile/Placed2)");
-                return true;
-            }
-            else
-            {
-                Debug.LogError("[SummonManager] PlaceTile/Placed2 => Instantiate 실패");
+                Debug.LogError("[SummonManager] Instantiate 실패");
                 return false;
             }
         }
@@ -1343,6 +1027,56 @@ public class SummonManager : MonoBehaviour
             Debug.LogWarning($"[SummonManager] {tile.name} 상태를 처리할 수 없습니다 (드래그 소환).");
             return false;
         }
+    }
+
+    // 기타 메서드들도 CoreDataManager 체크 추가
+    public void ToggleRemoveMode()
+    {
+        removeMode = !removeMode;
+        Debug.Log($"[SummonManager] removeMode = {removeMode}");
+
+        if (removeMode)
+        {
+            RemoveRandomCharacter();
+        }
+    }
+
+    private void RemoveRandomCharacter()
+    {
+        List<Character> placedCharacters = new List<Character>();
+        Character[] allCharacters = FindObjectsByType<Character>(FindObjectsSortMode.None);
+
+        foreach (var c in allCharacters)
+        {
+            if (c != null && c.currentTile != null)
+            {
+                Tile t = c.currentTile;
+                if (t.IsPlaceTile() || t.IsPlaced2() || t.IsPlacable() || t.IsPlacable2())
+                {
+                    placedCharacters.Add(c);
+                }
+            }
+        }
+
+        if (placedCharacters.Count == 0)
+        {
+            Debug.Log("[SummonManager] 제거할 캐릭터가 없습니다.");
+            return;
+        }
+
+        int randomIndex = Random.Range(0, placedCharacters.Count);
+        Character targetCharacter = placedCharacters[randomIndex];
+        Tile targetTile = targetCharacter.currentTile;
+
+        if (targetTile == null)
+        {
+            Debug.LogWarning("[SummonManager] 선택된 캐릭터의 타일이 null입니다.");
+            return;
+        }
+
+        Debug.Log($"[SummonManager] 랜덤 제거 대상: {targetCharacter.characterName} (별:{targetCharacter.star}, 타일:{targetTile.name})");
+        RemoveCharacterOnTile(targetTile);
+        removeMode = false;
     }
 
     public void RemoveCharacterOnTile(Tile tile)
@@ -1369,7 +1103,7 @@ public class SummonManager : MonoBehaviour
         int cost = 10;
         var coreData = CoreDataManager.Instance;
 
-        if (coreData.characterDatabase != null && coreData.characterDatabase.currentRegisteredCharacters != null)
+        if (coreData != null && coreData.characterDatabase != null && coreData.characterDatabase.currentRegisteredCharacters != null)
         {
             for (int i = 0; i < coreData.characterDatabase.currentRegisteredCharacters.Length; i++)
             {
@@ -1383,7 +1117,7 @@ public class SummonManager : MonoBehaviour
             }
         }
 
-        if (occupant.areaIndex == 2 && coreData.enemyDatabase != null && coreData.enemyDatabase.characters != null)
+        if (occupant.areaIndex == 2 && coreData != null && coreData.enemyDatabase != null && coreData.enemyDatabase.characters != null)
         {
             for (int i = 0; i < coreData.enemyDatabase.characters.Length; i++)
             {
@@ -1415,15 +1149,18 @@ public class SummonManager : MonoBehaviour
         float refundFloat = halfCost * ratio;
         int finalRefund = Mathf.FloorToInt(refundFloat);
 
-        if (occupant.areaIndex == 1 && coreData.region1MineralBar != null)
+        if (coreData != null)
         {
-            coreData.region1MineralBar.RefundMinerals(finalRefund);
-            Debug.Log($"[SummonManager] area1 캐릭터 제거 => 미네랄 {finalRefund} 환급 (코스트 {cost}/2 * {ratio * 100}%)");
-        }
-        else if (occupant.areaIndex == 2 && coreData.region2MineralBar != null)
-        {
-            coreData.region2MineralBar.RefundMinerals(finalRefund);
-            Debug.Log($"[SummonManager] area2 캐릭터 제거 => 미네랄 {finalRefund} 환급 (코스트 {cost}/2 * {ratio * 100}%)");
+            if (occupant.areaIndex == 1 && coreData.region1MineralBar != null)
+            {
+                coreData.region1MineralBar.RefundMinerals(finalRefund);
+                Debug.Log($"[SummonManager] area1 캐릭터 제거 => 미네랄 {finalRefund} 환급 (코스트 {cost}/2 * {ratio * 100}%)");
+            }
+            else if (occupant.areaIndex == 2 && coreData.region2MineralBar != null)
+            {
+                coreData.region2MineralBar.RefundMinerals(finalRefund);
+                Debug.Log($"[SummonManager] area2 캐릭터 제거 => 미네랄 {finalRefund} 환급 (코스트 {cost}/2 * {ratio * 100}%)");
+            }
         }
 
         occupant.currentTile = null;
@@ -1436,10 +1173,16 @@ public class SummonManager : MonoBehaviour
         }
         else
         {
-            TileManager.Instance.RemovePlaceTileChild(tile);
+            if (TileManager.Instance != null)
+            {
+                TileManager.Instance.RemovePlaceTileChild(tile);
+            }
         }
         
-        TileManager.Instance.OnCharacterRemovedFromTile(tile);
+        if (TileManager.Instance != null)
+        {
+            TileManager.Instance.OnCharacterRemovedFromTile(tile);
+        }
 
         Debug.Log($"[SummonManager] {tile.name} 타일의 캐릭터 제거 완료 (Star={occupant.star})");
     }
@@ -1447,6 +1190,11 @@ public class SummonManager : MonoBehaviour
     public void OnClickAutoPlace()
     {
         var coreData = CoreDataManager.Instance;
+        if (coreData == null)
+        {
+            Debug.LogError("[SummonManager] CoreDataManager가 없습니다!");
+            return;
+        }
         
         if (coreData.currentCharacterIndex < 0)
         {
@@ -1456,12 +1204,19 @@ public class SummonManager : MonoBehaviour
         
         bool targetRegion2 = !coreData.isHost;
         
-        Tile targetTile = TileManager.Instance.FindEmptyPlacedOrPlacableTile(targetRegion2);
+        Tile targetTile = null;
+        if (TileManager.Instance != null)
+        {
+            targetTile = TileManager.Instance.FindEmptyPlacedOrPlacableTile(targetRegion2);
+        }
         
         if (targetTile == null)
         {
             Debug.Log("[SummonManager] placed/placable 타일이 모두 꽉 찼습니다. walkable 타일로 전환합니다.");
-            targetTile = TileManager.Instance.FindEmptyWalkableTile(targetRegion2);
+            if (TileManager.Instance != null)
+            {
+                targetTile = TileManager.Instance.FindEmptyWalkableTile(targetRegion2);
+            }
         }
         
         if (targetTile != null)
@@ -1477,6 +1232,7 @@ public class SummonManager : MonoBehaviour
     public int FindCharacterIndexInEnemyDatabase(CharacterData character)
     {
         var coreData = CoreDataManager.Instance;
+        if (coreData == null) return -1;
         
         if (coreData.enemyDatabase == null || coreData.enemyDatabase.characters == null)
         {

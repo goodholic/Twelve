@@ -30,9 +30,9 @@ public class RaceRecycleManager : MonoBehaviour
     [SerializeField] private float selectedOutlineWidth = 5f;
     
     [Header("종족별 캐릭터 수 텍스트")]
-    [SerializeField] private TextMeshProUGUI humanCountText;
-    [SerializeField] private TextMeshProUGUI orcCountText;
-    [SerializeField] private TextMeshProUGUI elfCountText;
+    public TextMeshProUGUI humanCountText;
+    public TextMeshProUGUI orcCountText;
+    public TextMeshProUGUI elfCountText;
     
     // 현재 선택된 종족
     private CharacterRace? selectedRace = null;

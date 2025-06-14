@@ -136,28 +136,134 @@ public class CoreDataManager : MonoBehaviour
         }
     }
 
-    private void Start()
+    // CoreDataManager.cs의 Start 메서드에 다음 코드를 추가하세요:
+
+private void Start()
+{
+    // UI 패널 디버그 로그
+    Debug.Log($"[CoreDataManager] UI 패널 상태 확인 - " +
+              $"characterPanel={characterPanel != null}, " +
+              $"opponentCharacterPanel={opponentCharacterPanel != null}, " +
+              $"opponentOurMonsterPanel={opponentOurMonsterPanel != null}, " +
+              $"opponentBulletPanel={opponentBulletPanel != null}");
+
+    // 로그인 패널이 비활성화된 상태이므로 항상 호스트로 설정
+    isHost = true;
+    Debug.Log("[CoreDataManager] 로그인 패널 비활성화 상태: 호스트 모드로 플레이합니다.");
+
+    // CSV 동기화 초기화
+    if (enableCSVSync)
     {
-        // UI 패널 디버그 로그
-        Debug.Log($"[CoreDataManager] UI 패널 상태 확인 - " +
-                  $"characterPanel={characterPanel != null}, " +
-                  $"opponentCharacterPanel={opponentCharacterPanel != null}, " +
-                  $"opponentOurMonsterPanel={opponentOurMonsterPanel != null}, " +
-                  $"opponentBulletPanel={opponentBulletPanel != null}");
-
-        // 로그인 패널이 비활성화된 상태이므로 항상 호스트로 설정
-        isHost = true;
-        Debug.Log("[CoreDataManager] 로그인 패널 비활성화 상태: 호스트 모드로 플레이합니다.");
-
-        // CSV 동기화 초기화
-        if (enableCSVSync)
-        {
-            InitializeCSVSync();
-        }
-
-        // 성 체력 초기화
-        SetupCastleHealth();
+        InitializeCSVSync();
     }
+
+    // 성 체력 초기화
+    SetupCastleHealth();
+    
+    // ========== 추가된 코드 시작 ==========
+    // characterDatabase 초기화 확인
+    if (characterDatabase == null)
+    {
+        // 씬에서 CharacterDatabase 컴포넌트를 찾아서 자동 설정
+        CharacterDatabase foundDB = FindFirstObjectByType<CharacterDatabase>();
+        if (foundDB != null)
+        {
+            characterDatabase = foundDB;
+            Debug.Log("[CoreDataManager] CharacterDatabase를 자동으로 찾아서 설정했습니다.");
+        }
+        else
+        {
+            Debug.LogError("[CoreDataManager] characterDatabase가 null이고 씬에서도 찾을 수 없습니다! CharacterDatabase 프리팹을 씬에 배치해주세요.");
+        }
+    }
+    
+    if (characterDatabase != null)
+    {
+        if (characterDatabase.currentRegisteredCharacters == null || characterDatabase.currentRegisteredCharacters.Length == 0)
+        {
+            Debug.LogWarning("[CoreDataManager] characterDatabase.currentRegisteredCharacters가 비어있습니다!");
+            
+            // GameManager에서 데이터 가져오기 시도
+            if (GameManager.Instance != null && GameManager.Instance.currentRegisteredCharacters != null)
+            {
+                characterDatabase.currentRegisteredCharacters = new CharacterData[GameManager.Instance.currentRegisteredCharacters.Length];
+                for (int i = 0; i < GameManager.Instance.currentRegisteredCharacters.Length; i++)
+                {
+                    characterDatabase.currentRegisteredCharacters[i] = GameManager.Instance.currentRegisteredCharacters[i];
+                }
+                Debug.Log($"[CoreDataManager] GameManager에서 {characterDatabase.currentRegisteredCharacters.Length}개 캐릭터 데이터를 가져왔습니다.");
+            }
+        }
+        else
+        {
+            Debug.Log($"[CoreDataManager] characterDatabase에 {characterDatabase.currentRegisteredCharacters.Length}개 캐릭터가 등록되어 있습니다.");
+        }
+    }
+    
+    // MineralBar 초기화 확인
+    if (region1MineralBar == null)
+    {
+        GameObject mineralBarObj = GameObject.Find("Region1MineralBar");
+        if (mineralBarObj != null)
+        {
+            region1MineralBar = mineralBarObj.GetComponent<MineralBar>();
+            Debug.Log("[CoreDataManager] Region1MineralBar를 자동으로 찾았습니다.");
+        }
+        else
+        {
+            Debug.LogError("[CoreDataManager] region1MineralBar가 null입니다! Inspector에서 설정해주세요.");
+        }
+    }
+    
+    if (region2MineralBar == null)
+    {
+        GameObject mineralBarObj = GameObject.Find("Region2MineralBar");
+        if (mineralBarObj != null)
+        {
+            region2MineralBar = mineralBarObj.GetComponent<MineralBar>();
+            Debug.Log("[CoreDataManager] Region2MineralBar를 자동으로 찾았습니다.");
+        }
+        else
+        {
+            Debug.LogError("[CoreDataManager] region2MineralBar가 null입니다! Inspector에서 설정해주세요.");
+        }
+    }
+    
+    // UI 패널들이 없으면 자동으로 찾기
+    if (characterPanel == null)
+    {
+        GameObject panelObj = GameObject.Find("CharacterPanel");
+        if (panelObj != null)
+        {
+            characterPanel = panelObj.GetComponent<RectTransform>();
+            Debug.Log("[CoreDataManager] CharacterPanel을 자동으로 찾았습니다.");
+        }
+    }
+    
+    if (ourMonsterPanel == null)
+    {
+        GameObject panelObj = GameObject.Find("OurMonsterPanel");
+        if (panelObj != null)
+        {
+            ourMonsterPanel = panelObj.GetComponent<RectTransform>();
+            Debug.Log("[CoreDataManager] OurMonsterPanel을 자동으로 찾았습니다.");
+        }
+    }
+    
+    if (bulletPanel == null)
+    {
+        GameObject panelObj = GameObject.Find("BulletPanel");
+        if (panelObj != null)
+        {
+            bulletPanel = panelObj.GetComponent<RectTransform>();
+            Debug.Log("[CoreDataManager] BulletPanel을 자동으로 찾았습니다.");
+        }
+    }
+    
+    // 초기 캐릭터 인덱스 설정
+    currentCharacterIndex = -1; // 선택되지 않은 상태로 시작
+    // ========== 추가된 코드 끝 ==========
+}
 
     /// <summary>
     /// CSV 동기화 초기화

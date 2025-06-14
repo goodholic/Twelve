@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using UnityEngine.SceneManagement;
+using System.Collections.Generic;
 
 public class GameSceneManager : MonoBehaviour
 {
@@ -57,6 +58,13 @@ public class GameSceneManager : MonoBehaviour
 
     private void Start()
     {
+        // CoreDataManager 초기화 확인
+        if (CoreDataManager.Instance == null)
+        {
+            Debug.LogError("[GameSceneManager] CoreDataManager가 없습니다!");
+            return;
+        }
+
         // 1) 1~9 캐릭터
         if (GameManager.Instance != null && 
             GameManager.Instance.currentRegisteredCharacters != null &&
@@ -112,100 +120,8 @@ public class GameSceneManager : MonoBehaviour
         // 종족별 카운트 UI 업데이트
         UpdateRaceCountUI();
 
-        // 4) Hero(인덱스 9) 자동 소환
-        if (heroCharacter != null && heroCharacter.spawnPrefab != null)
-        {
-            // 프리팹 유효성 검사
-            if (!IsPrefabValid(heroCharacter.spawnPrefab))
-            {
-                Debug.LogError($"[GameSceneManager] 히어로 프리팹 '{heroCharacter.spawnPrefab.name}'에 Missing Script 참조가 있습니다. 프리팹을 확인해주세요.");
-            }
-            else
-            {
-                GameObject heroObj = Instantiate(heroCharacter.spawnPrefab);
-                if (heroObj == null)
-                {
-                    Debug.LogError("[GameSceneManager] 히어로 인스턴스화 실패");
-                    return;
-                }
-                
-                // UI 요소로 적절히 배치
-                if (heroPanel != null)
-                {
-                    // 캔버스 계층 구조 확인
-                    Canvas canvas = heroPanel.GetComponentInParent<Canvas>();
-                    if (canvas == null)
-                    {
-                        Debug.LogWarning("[GameSceneManager] heroPanel의 부모에 Canvas가 없습니다.");
-                        canvas = FindFirstObjectByType<Canvas>();
-                        if (canvas != null)
-                        {
-                            heroPanel.transform.SetParent(canvas.transform, false);
-                            Debug.Log("[GameSceneManager] heroPanel을 Canvas의 자식으로 이동했습니다.");
-                        }
-                    }
-                
-                    heroObj.transform.SetParent(heroPanel.transform, false);
-
-                    // UI 위치 설정
-                    RectTransform rt = heroObj.GetComponent<RectTransform>();
-                    if (rt != null)
-                    {
-                        rt.anchoredPosition = Vector2.zero;
-                        rt.localRotation = Quaternion.identity;
-                        rt.localScale = Vector3.one;
-                    }
-                    else
-                    {
-                        heroObj.transform.localPosition = Vector3.zero;
-                        heroObj.transform.localRotation = Quaternion.identity;
-                        heroObj.transform.localScale = Vector3.one;
-                    }
-                }
-                else
-                {
-                    heroObj.transform.position = Vector3.zero;
-                    heroObj.transform.localRotation = Quaternion.identity;
-                    Debug.LogWarning("[GameSceneManager] heroPanel이 null -> (0,0,0)에 배치");
-                }
-
-                // Hero가 자동 이동/공격
-                if (heroObj.GetComponent<HeroAutoMover>() == null)
-                {
-                    heroObj.AddComponent<HeroAutoMover>();
-                }
-
-                // Character 컴포넌트 설정
-                Character heroComp = heroObj.GetComponent<Character>();
-                if (heroComp != null)
-                {
-                    // ▼▼ (추가) 히어로로 강제 지정 + HP바 비활성화 ▼▼
-                    heroComp.isHero = true;
-                    if (heroComp.hpBarCanvas != null)
-                    {
-                        heroComp.hpBarCanvas.gameObject.SetActive(false);
-                    }
-                    // ▲▲ (추가 끝) ▲▲
-
-                    heroComp.attackPower = heroCharacter.attackPower;
-                    switch (heroCharacter.rangeType)
-                    {
-                        case RangeType.Melee:    heroComp.attackRange = 1.2f; break;
-                        case RangeType.Ranged:   heroComp.attackRange = 2.5f; break;
-                        case RangeType.LongRange:heroComp.attackRange = 4.0f; break;
-                    }
-
-                    // 총알 패널 연결
-                    var pMan = PlacementManager.Instance;
-                    if (pMan != null && pMan.bulletPanel != null)
-                    {
-                        heroComp.SetBulletPanel(pMan.bulletPanel);
-                    }
-                }
-
-                Debug.Log("[GameSceneManager] Hero(인덱스9) 자동 소환 완료");
-            }
-        }
+        // 4) Hero(인덱스 9) 자동 소환 - 지연 실행으로 변경
+        StartCoroutine(SpawnHeroDelayed());
 
         // 나가기 버튼
         if (exitButton != null)
@@ -228,6 +144,148 @@ public class GameSceneManager : MonoBehaviour
 
         // 리사이클 매니저 초기화
         InitializeRaceRecycleManager();
+    }
+
+    /// <summary>
+    /// 히어로 소환을 지연시켜 다른 컴포넌트들이 먼저 초기화되도록 함
+    /// </summary>
+    private System.Collections.IEnumerator SpawnHeroDelayed()
+    {
+        // 1프레임 대기
+        yield return null;
+        
+        // CoreDataManager가 초기화될 때까지 대기
+        int waitCount = 0;
+        while (CoreDataManager.Instance == null && waitCount < 30)
+        {
+            yield return null;
+            waitCount++;
+        }
+
+        if (CoreDataManager.Instance == null)
+        {
+            Debug.LogError("[GameSceneManager] CoreDataManager 초기화 실패!");
+            yield break;
+        }
+
+        // Hero 소환
+        SpawnHero();
+    }
+
+    /// <summary>
+    /// 히어로 캐릭터 소환
+    /// </summary>
+    private void SpawnHero()
+    {
+        if (heroCharacter == null || heroCharacter.spawnPrefab == null)
+        {
+            Debug.LogWarning("[GameSceneManager] 히어로 캐릭터 데이터가 없습니다.");
+            return;
+        }
+
+        // 프리팹 유효성 검사
+        if (!IsPrefabValid(heroCharacter.spawnPrefab))
+        {
+            Debug.LogError($"[GameSceneManager] 히어로 프리팹 '{heroCharacter.spawnPrefab.name}'에 Missing Script 참조가 있습니다. 프리팹을 확인해주세요.");
+            return;
+        }
+
+        // heroPanel이 없으면 찾거나 생성
+        if (heroPanel == null)
+        {
+            // 기존 heroPanel 찾기
+            GameObject existingHeroPanel = GameObject.Find("HeroPanel");
+            if (existingHeroPanel != null)
+            {
+                heroPanel = existingHeroPanel;
+                Debug.Log("[GameSceneManager] 기존 HeroPanel을 찾았습니다.");
+            }
+            else
+            {
+                // Canvas 찾기
+                Canvas canvas = FindFirstObjectByType<Canvas>();
+                if (canvas == null)
+                {
+                    Debug.LogError("[GameSceneManager] Canvas를 찾을 수 없습니다!");
+                    return;
+                }
+
+                // HeroPanel 생성
+                heroPanel = new GameObject("HeroPanel");
+                RectTransform heroPanelRect = heroPanel.AddComponent<RectTransform>();
+                heroPanel.transform.SetParent(canvas.transform, false);
+                
+                // 위치 설정 (화면 중앙 하단)
+                heroPanelRect.anchorMin = new Vector2(0.5f, 0f);
+                heroPanelRect.anchorMax = new Vector2(0.5f, 0f);
+                heroPanelRect.pivot = new Vector2(0.5f, 0f);
+                heroPanelRect.anchoredPosition = new Vector2(0, 100);
+                heroPanelRect.sizeDelta = new Vector2(100, 100);
+                
+                Debug.Log("[GameSceneManager] HeroPanel을 새로 생성했습니다.");
+            }
+        }
+
+        // 히어로 인스턴스 생성
+        GameObject heroObj = Instantiate(heroCharacter.spawnPrefab);
+        if (heroObj == null)
+        {
+            Debug.LogError("[GameSceneManager] 히어로 인스턴스화 실패");
+            return;
+        }
+
+        // 히어로를 heroPanel의 자식으로 설정
+        heroObj.transform.SetParent(heroPanel.transform, false);
+
+        // UI 위치 설정
+        RectTransform rt = heroObj.GetComponent<RectTransform>();
+        if (rt != null)
+        {
+            rt.anchoredPosition = Vector2.zero;
+            rt.localRotation = Quaternion.identity;
+            rt.localScale = Vector3.one;
+        }
+        else
+        {
+            heroObj.transform.localPosition = Vector3.zero;
+            heroObj.transform.localRotation = Quaternion.identity;
+            heroObj.transform.localScale = Vector3.one;
+        }
+
+        // Hero가 자동 이동/공격
+        if (heroObj.GetComponent<HeroAutoMover>() == null)
+        {
+            heroObj.AddComponent<HeroAutoMover>();
+        }
+
+        // Character 컴포넌트 설정
+        Character heroComp = heroObj.GetComponent<Character>();
+        if (heroComp != null)
+        {
+            // 히어로로 강제 지정 + HP바 비활성화
+            heroComp.isHero = true;
+            if (heroComp.hpBarCanvas != null)
+            {
+                heroComp.hpBarCanvas.gameObject.SetActive(false);
+            }
+
+            heroComp.attackPower = heroCharacter.attackPower;
+            switch (heroCharacter.rangeType)
+            {
+                case RangeType.Melee:    heroComp.attackRange = 1.2f; break;
+                case RangeType.Ranged:   heroComp.attackRange = 2.5f; break;
+                case RangeType.LongRange:heroComp.attackRange = 4.0f; break;
+            }
+
+            // 총알 패널 연결
+            var pMan = PlacementManager.Instance;
+            if (pMan != null && pMan.bulletPanel != null)
+            {
+                heroComp.SetBulletPanel(pMan.bulletPanel);
+            }
+        }
+
+        Debug.Log("[GameSceneManager] Hero(인덱스9) 자동 소환 완료");
     }
 
     private void Update()
@@ -277,7 +335,14 @@ public class GameSceneManager : MonoBehaviour
 
     private bool IsPrefabValid(GameObject prefab)
     {
-        if (prefab == null) return false;
+        if (prefab == null) 
+        {
+            Debug.LogError("[GameSceneManager] 프리팹이 null입니다.");
+            return false;
+        }
+        
+        bool hasIssues = false;
+        List<string> missingScripts = new List<string>();
         
         // 프리팹의 모든 컴포넌트 확인
         Component[] components = prefab.GetComponents<Component>();
@@ -285,12 +350,14 @@ public class GameSceneManager : MonoBehaviour
         {
             if (components[i] == null)
             {
-                return false; // null 컴포넌트 발견 (Missing Script)
+                hasIssues = true;
+                missingScripts.Add($"Root object component {i}");
             }
         }
         
         // 자식 오브젝트의 컴포넌트도 확인
-        foreach (Transform child in prefab.transform)
+        Transform[] allChildren = prefab.GetComponentsInChildren<Transform>(true);
+        foreach (Transform child in allChildren)
         {
             if (child == null) continue;
             
@@ -299,9 +366,29 @@ public class GameSceneManager : MonoBehaviour
             {
                 if (childComponents[i] == null)
                 {
-                    return false; // 자식 오브젝트에서 null 컴포넌트 발견
+                    hasIssues = true;
+                    missingScripts.Add($"{child.name} component {i}");
                 }
             }
+        }
+        
+        if (hasIssues)
+        {
+            Debug.LogError($"[GameSceneManager] 프리팹 '{prefab.name}'에 Missing Script 참조가 있습니다:");
+            foreach (string missing in missingScripts)
+            {
+                Debug.LogError($"  - {missing}");
+            }
+            Debug.LogError("[GameSceneManager] 프리팹을 수정하거나 다른 프리팹을 사용해주세요.");
+            
+            // Missing Script가 있어도 기본 컴포넌트들이 있으면 사용 시도
+            if (prefab.GetComponent<Character>() != null || prefab.GetComponent<RectTransform>() != null)
+            {
+                Debug.LogWarning($"[GameSceneManager] 프리팹 '{prefab.name}'에 필수 컴포넌트가 있어서 사용을 시도합니다.");
+                return true; // 경고만 하고 사용 허용
+            }
+            
+            return false;
         }
         
         return true;
@@ -356,7 +443,7 @@ public class GameSceneManager : MonoBehaviour
         // 게임 기획서 검증: 각 종족 3명 + 자유 1명 = 10명
         if (humanCount + orcCount + elfCount != 10)
         {
-            Debug.LogWarning($"[GameSceneManager] 덱 구성이 10명이 아닙니다! 현재: {humanCount + orcCount + elfCount}명");
+            Debug.LogWarning($"[GameSceneManager] 덱 구성이 10명이 아닙니다! (현재: {humanCount + orcCount + elfCount}명)");
         }
     }
 
@@ -376,14 +463,11 @@ public class GameSceneManager : MonoBehaviour
     {
         switch (race)
         {
-            case CharacterRace.Human:
-                return "휴먼";
-            case CharacterRace.Orc:
-                return "오크";
-            case CharacterRace.Elf:
-                return "엘프";
-            default:
-                return "기타";
+            case CharacterRace.Human: return "휴먼";
+            case CharacterRace.Orc: return "오크";
+            case CharacterRace.Elf: return "엘프";
+            case CharacterRace.Undead: return "언데드";
+            default: return "기타";
         }
     }
 }

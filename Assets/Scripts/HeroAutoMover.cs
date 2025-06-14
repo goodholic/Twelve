@@ -11,9 +11,7 @@ using UnityEngine;
 ///   1. 적 탐지 시 → 사정거리 내면 공격, 밖이면 웨이포인트 이동
 ///   2. 웨이포인트 상실 시 → 중간성 목표
 ///   3. 중간성 파괴 시 → 최종성 목표
-/// 
-/// 현재는 단순히 가장 가까운 몬스터를 추적하는 방식이지만,
-/// 추후 웨이포인트 시스템과 연동 필요
+/// - 히어로도 지역 간 이동 가능
 /// </summary>
 public class HeroAutoMover : MonoBehaviour
 {
@@ -34,11 +32,13 @@ public class HeroAutoMover : MonoBehaviour
     public float waypointReachDistance = 0.5f;
 
     private Character heroCharacter;
+    private CharacterMovement heroMovement;
     private bool hasWaypoints = false;
 
     private void Start()
     {
         heroCharacter = GetComponent<Character>();
+        heroMovement = GetComponent<CharacterMovement>();
         
         // 웨이포인트 설정 확인
         if (heroWaypoints != null && heroWaypoints.Length > 0)
@@ -48,144 +48,132 @@ public class HeroAutoMover : MonoBehaviour
         }
         else
         {
-            Debug.LogWarning("[HeroAutoMover] 웨이포인트가 설정되지 않음. 몬스터 추적 모드로 작동합니다.");
+            Debug.LogWarning("[HeroAutoMover] 웨이포인트가 설정되지 않음. CharacterMovement의 웨이포인트를 사용합니다.");
+            
+            // CharacterMovement의 웨이포인트 사용
+            if (heroMovement != null)
+            {
+                Debug.Log("[HeroAutoMover] CharacterMovement의 웨이포인트 시스템 사용");
+            }
+        }
+
+        // 히어로 초기 설정
+        if (heroCharacter != null)
+        {
+            Debug.Log($"[HeroAutoMover] 히어로 {heroCharacter.characterName} 자동 이동 시작 (지역{heroCharacter.areaIndex})");
         }
     }
 
     private void Update()
     {
-        // 게임 기획서에 따른 우선순위 처리
+        if (heroCharacter == null) return;
         
-        // 1) 가장 가까운 '적' 몬스터(동일 areaIndex) 찾기
-        Monster nearest = FindNearestMonster();
-        
-        if (nearest != null)
+        // CharacterMovement가 있으면 그것에 맡김
+        if (heroMovement != null && heroMovement.enabled)
         {
-            float dist = Vector2.Distance(transform.position, nearest.transform.position);
-            
-            // 사정거리 확인 (게임 기획서: 사정거리 내면 공격, 밖이면 웨이포인트 이동)
-            if (heroCharacter != null && dist <= heroCharacter.attackRange)
-            {
-                // 사정거리 내 - 공격만 하고 이동하지 않음
-                return;
-            }
-            else if (dist <= stopDistance)
-            {
-                // stopDistance 내에 있지만 사정거리 밖 - 멈춤
-                return;
-            }
-        }
-        
-        // 2) 웨이포인트가 있다면 웨이포인트 따라 이동
-        if (hasWaypoints && currentWaypointIndex < heroWaypoints.Length)
-        {
-            MoveAlongWaypoint();
-        }
-        // 3) 웨이포인트가 없거나 끝났다면 몬스터 추적
-        else if (nearest != null)
-        {
-            MoveTowardsMonster(nearest);
-        }
-        // 4) 몬스터도 없다면 대기
-    }
-
-    /// <summary>
-    /// 웨이포인트를 따라 이동
-    /// </summary>
-    private void MoveAlongWaypoint()
-    {
-        if (heroWaypoints[currentWaypointIndex] == null)
-        {
-            currentWaypointIndex++;
+            // CharacterMovement가 알아서 웨이포인트 이동과 지역 간 점프를 처리함
             return;
         }
         
-        Vector2 targetPos = heroWaypoints[currentWaypointIndex].position;
-        Vector2 currentPos = transform.position;
-        float dist = Vector2.Distance(currentPos, targetPos);
+        // CharacterMovement가 없거나 비활성화된 경우 기본 이동 로직
+        MoveToNearestMonster();
+    }
+
+    /// <summary>
+    /// 가장 가까운 몬스터를 찾아서 이동 (기본 로직)
+    /// </summary>
+    private void MoveToNearestMonster()
+    {
+        // 현재 위치에서 가장 가까운 몬스터 찾기
+        Monster nearestMonster = FindNearestMonster();
         
-        if (dist > waypointReachDistance)
+        if (nearestMonster != null)
         {
-            Vector2 dir = (targetPos - currentPos).normalized;
-            transform.position += (Vector3)(dir * moveSpeed * Time.deltaTime);
+            Vector3 dirToMonster = (nearestMonster.transform.position - transform.position).normalized;
+            float distToMonster = Vector3.Distance(transform.position, nearestMonster.transform.position);
+
+            // 사정거리 내에 있으면 공격 (이동하지 않음)
+            if (distToMonster <= heroCharacter.attackRange)
+            {
+                // CharacterCombat이 알아서 공격 처리
+                return;
+            }
+
+            // 사정거리 밖이면 웨이포인트 따라 이동
+            if (hasWaypoints && currentWaypointIndex < heroWaypoints.Length)
+            {
+                MoveToWaypoint();
+            }
+            else
+            {
+                // 웨이포인트가 없으면 몬스터 방향으로 이동
+                if (distToMonster > stopDistance)
+                {
+                    transform.position += dirToMonster * moveSpeed * Time.deltaTime;
+                }
+            }
         }
         else
         {
-            // 웨이포인트 도달
-            currentWaypointIndex++;
-            
-            if (currentWaypointIndex >= heroWaypoints.Length)
+            // 몬스터가 없으면 웨이포인트 따라 이동
+            if (hasWaypoints && currentWaypointIndex < heroWaypoints.Length)
             {
-                Debug.Log("[HeroAutoMover] 모든 웨이포인트 도달 완료");
-                hasWaypoints = false; // 웨이포인트 상실 상태로 전환
-                
-                // [게임 기획서] 웨이포인트 상실 시 중간성 목표
-                // TODO: MiddleCastle 타겟팅 로직 추가
+                MoveToWaypoint();
             }
         }
     }
 
     /// <summary>
-    /// 몬스터를 향해 이동
+    /// 웨이포인트로 이동
     /// </summary>
-    private void MoveTowardsMonster(Monster target)
+    private void MoveToWaypoint()
     {
-        if (target == null) return;
+        if (currentWaypointIndex >= heroWaypoints.Length) return;
         
-        Vector2 dir = (target.transform.position - transform.position).normalized;
-        transform.position += (Vector3)(dir * moveSpeed * Time.deltaTime);
+        Transform targetWaypoint = heroWaypoints[currentWaypointIndex];
+        if (targetWaypoint == null) return;
+        
+        Vector3 direction = (targetWaypoint.position - transform.position).normalized;
+        float distance = Vector3.Distance(transform.position, targetWaypoint.position);
+        
+        if (distance > waypointReachDistance)
+        {
+            transform.position += direction * moveSpeed * Time.deltaTime;
+        }
+        else
+        {
+            // 웨이포인트 도달, 다음 웨이포인트로
+            currentWaypointIndex++;
+            Debug.Log($"[HeroAutoMover] 웨이포인트 {currentWaypointIndex} 도달");
+        }
     }
 
     /// <summary>
-    /// 현재 heroCharacter.areaIndex와 동일한 몬스터 중,
-    /// 가장 가까운 몬스터를 찾는다.
+    /// 가장 가까운 몬스터 찾기
     /// </summary>
     private Monster FindNearestMonster()
     {
-        Monster[] all = FindObjectsByType<Monster>(FindObjectsSortMode.None);
-        Monster nearest = null;
-        float nearestDist = float.MaxValue;
-
-        foreach (var m in all)
-        {
-            if (m == null) continue;
-
-            // heroCharacter의 areaIndex와 일치하는 몬스터만 추적
-            if (heroCharacter != null && m.areaIndex != heroCharacter.areaIndex)
-            {
-                continue;
-            }
-
-            float dist = Vector2.Distance(transform.position, m.transform.position);
-            if (dist < nearestDist)
-            {
-                nearestDist = dist;
-                nearest = m;
-            }
-        }
-        return nearest;
-    }
-
-    /// <summary>
-    /// [게임 기획서] 히어로를 특정 라인으로 변경
-    /// 드래그 이동 시스템과 연동하여 사용
-    /// </summary>
-    public void ChangeToLine(int lineIndex)
-    {
-        if (!hasWaypoints || heroWaypoints == null || heroWaypoints.Length == 0)
-        {
-            Debug.LogWarning("[HeroAutoMover] 웨이포인트가 설정되지 않아 라인 변경 불가");
-            return;
-        }
+        string targetTag = (heroCharacter.areaIndex == 1) ? "EnemyMonster" : "Monster";
+        GameObject[] monsterObjs = GameObject.FindGameObjectsWithTag(targetTag);
         
-        // lineIndex: 0=왼쪽, 1=중앙, 2=오른쪽
-        if (lineIndex < 0 || lineIndex >= 3)
+        Monster nearestMonster = null;
+        float nearestDistance = Mathf.Infinity;
+
+        foreach (GameObject obj in monsterObjs)
         {
-            Debug.LogWarning($"[HeroAutoMover] 잘못된 라인 인덱스: {lineIndex}");
-            return;
+            if (obj == null) continue;
+            
+            Monster monster = obj.GetComponent<Monster>();
+            if (monster == null) continue;
+
+            float distance = Vector3.Distance(transform.position, monster.transform.position);
+            if (distance < nearestDistance)
+            {
+                nearestDistance = distance;
+                nearestMonster = monster;
+            }
         }
-        
-        // TODO: RouteManager와 연동하여 해당 라인의 웨이포인트로 변경
-        Debug.Log($"[HeroAutoMover] {lineIndex}번 라인으로 변경 요청 (구현 필요)");
+
+        return nearestMonster;
     }
 }

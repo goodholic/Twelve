@@ -47,6 +47,14 @@ public class CharacterCombat : MonoBehaviour
         this.jumpSystem = jumpSystem;
         
         InitializeBulletPanel();
+        
+        // bulletPrefab이 설정되지 않았으면 자동으로 설정 시도
+        if (bulletPrefab == null)
+        {
+            Debug.LogWarning($"[CharacterCombat] {character.characterName}의 bulletPrefab이 null입니다. 자동 설정을 시도합니다.");
+            GetBulletPrefab(); // 이 메서드에서 자동으로 bulletPrefab을 찾아서 설정함
+        }
+        
         StartCoroutine(AttackRoutine());
     }
     
@@ -472,9 +480,82 @@ public class CharacterCombat : MonoBehaviour
         }
         else
         {
-            Debug.LogError($"[Character] {character.characterName}에 bulletPrefab이 설정되지 않음!");
+            // bulletPrefab이 null일 때 자동으로 기본 총알 프리팹 찾기
+            Debug.LogWarning($"[Character] {character.characterName}에 bulletPrefab이 설정되지 않음! 기본 총알 프리팹을 찾는 중...");
+            
+            // CoreDataManager에서 총알 프리팹 가져오기 시도
+            var coreData = CoreDataManager.Instance;
+            if (coreData != null)
+            {
+                // 캐릭터의 인덱스에 맞는 총알 프리팹 사용
+                int characterIndex = GetCharacterIndex();
+                
+                if (character.areaIndex == 2)
+                {
+                    // 지역2 (적) 캐릭터는 enemy 총알 프리팹 사용
+                    if (characterIndex >= 0 && characterIndex < coreData.enemyBulletPrefabs.Length && 
+                        coreData.enemyBulletPrefabs[characterIndex] != null)
+                    {
+                        bulletPrefab = coreData.enemyBulletPrefabs[characterIndex];
+                        Debug.Log($"[Character] {character.characterName}에 적 총알 프리팹 {characterIndex}번을 자동 설정했습니다.");
+                        return bulletPrefab;
+                    }
+                }
+                else
+                {
+                    // 지역1 (아군) 캐릭터는 ally 총알 프리팹 사용
+                    if (characterIndex >= 0 && characterIndex < coreData.allyBulletPrefabs.Length && 
+                        coreData.allyBulletPrefabs[characterIndex] != null)
+                    {
+                        bulletPrefab = coreData.allyBulletPrefabs[characterIndex];
+                        Debug.Log($"[Character] {character.characterName}에 아군 총알 프리팹 {characterIndex}번을 자동 설정했습니다.");
+                        return bulletPrefab;
+                    }
+                }
+            }
+            
+            // Resources 폴더에서 기본 총알 프리팹 찾기
+            GameObject defaultBullet = Resources.Load<GameObject>("BulletPrefab");
+            if (defaultBullet == null)
+            {
+                // Assets/Prefabs/Character/Bullet/ 경로에서 찾기
+                defaultBullet = Resources.Load<GameObject>("Prefabs/Character/Bullet/BulletPrefab");
+            }
+            
+            if (defaultBullet != null)
+            {
+                bulletPrefab = defaultBullet;
+                Debug.Log($"[Character] {character.characterName}에 기본 총알 프리팹을 자동 설정했습니다.");
+                return bulletPrefab;
+            }
+            
+            Debug.LogError($"[Character] {character.characterName}에 bulletPrefab을 찾을 수 없습니다! 기본 총알 프리팹도 없습니다.");
             return null;
         }
+    }
+    
+    /// <summary>
+    /// 캐릭터의 인덱스를 가져오는 메서드
+    /// </summary>
+    private int GetCharacterIndex()
+    {
+        if (character == null || string.IsNullOrEmpty(character.characterName))
+            return 0;
+            
+        // 캐릭터 이름에서 인덱스 추출 시도
+        string name = character.characterName.ToLower();
+        
+        // "character_1", "char_2" 등의 패턴에서 숫자 추출
+        for (int i = 0; i <= 9; i++)
+        {
+            if (name.Contains(i.ToString()))
+            {
+                return i;
+            }
+        }
+        
+        // 기본값으로 0 반환
+        return 0;
     }
     
     public void SetBulletPanel(RectTransform panel)

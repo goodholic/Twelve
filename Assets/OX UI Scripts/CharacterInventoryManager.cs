@@ -228,9 +228,24 @@ public class CharacterInventoryManager : MonoBehaviour
     public void MoveToDeck(CharacterData c)
     {
         if (c == null) return;
+        
+        // 1) ownedCharacters에서 제거
         if (ownedCharacters.Contains(c))
         {
             ownedCharacters.Remove(c);
+            
+            // 2) sharedSlotData200에서도 제거 (중요!)
+            for (int i = 0; i < sharedSlotData200.Length; i++)
+            {
+                if (sharedSlotData200[i] == c)
+                {
+                    sharedSlotData200[i] = null;
+                    Debug.Log($"[CharacterInventoryManager] sharedSlotData200[{i}]에서 {c.characterName} 제거");
+                    break;
+                }
+            }
+            
+            // 3) deckCharacters에 추가
             deckCharacters.Add(c);
             Debug.Log($"[CharacterInventoryManager] 인벤토리 -> 덱 이동: {c.characterName}");
         }
@@ -243,10 +258,36 @@ public class CharacterInventoryManager : MonoBehaviour
     public void MoveToInventory(CharacterData c)
     {
         if (c == null) return;
+        
         if (deckCharacters.Contains(c))
         {
+            // 1) deckCharacters에서 제거
             deckCharacters.Remove(c);
+            
+            // 2) ownedCharacters에 추가
             ownedCharacters.Add(c);
+            
+            // 3) sharedSlotData200의 첫 번째 빈 공간에 추가
+            int firstEmptyIndex = -1;
+            for (int i = 0; i < sharedSlotData200.Length; i++)
+            {
+                if (sharedSlotData200[i] == null)
+                {
+                    firstEmptyIndex = i;
+                    break;
+                }
+            }
+            
+            if (firstEmptyIndex >= 0 && firstEmptyIndex < sharedSlotData200.Length)
+            {
+                sharedSlotData200[firstEmptyIndex] = c;
+                Debug.Log($"[CharacterInventoryManager] {c.characterName} => sharedSlotData200[{firstEmptyIndex}]에 복원");
+            }
+            else
+            {
+                Debug.LogWarning($"[CharacterInventoryManager] 인벤토리가 가득 차서 {c.characterName}을 sharedSlotData200에 넣을 수 없음");
+            }
+            
             Debug.Log($"[CharacterInventoryManager] 덱 -> 인벤토리 이동: {c.characterName}");
         }
         else
@@ -272,9 +313,21 @@ public class CharacterInventoryManager : MonoBehaviour
     {
         if (c != null)
         {
+            // 1) ownedCharacters에서 제거
             if (ownedCharacters.Remove(c))
             {
                 Debug.Log($"[CharacterInventoryManager] 인벤토리에서 제거: {c.characterName}");
+                
+                // 2) sharedSlotData200에서도 제거 (중요!)
+                for (int i = 0; i < sharedSlotData200.Length; i++)
+                {
+                    if (sharedSlotData200[i] == c)
+                    {
+                        sharedSlotData200[i] = null;
+                        Debug.Log($"[CharacterInventoryManager] sharedSlotData200[{i}]에서 {c.characterName} 제거");
+                        break;
+                    }
+                }
             }
             else
             {
@@ -302,7 +355,30 @@ public class CharacterInventoryManager : MonoBehaviour
     {
         if (c != null)
         {
+            // 1) ownedCharacters에 추가
             ownedCharacters.Add(c);
+            
+            // 2) sharedSlotData200의 첫 번째 빈 공간에 추가
+            int firstEmptyIndex = -1;
+            for (int i = 0; i < sharedSlotData200.Length; i++)
+            {
+                if (sharedSlotData200[i] == null)
+                {
+                    firstEmptyIndex = i;
+                    break;
+                }
+            }
+            
+            if (firstEmptyIndex >= 0 && firstEmptyIndex < sharedSlotData200.Length)
+            {
+                sharedSlotData200[firstEmptyIndex] = c;
+                Debug.Log($"[CharacterInventoryManager] {c.characterName} => sharedSlotData200[{firstEmptyIndex}]에 추가");
+            }
+            else
+            {
+                Debug.LogWarning($"[CharacterInventoryManager] 인벤토리가 가득 차서 {c.characterName}을 sharedSlotData200에 넣을 수 없음");
+            }
+            
             Debug.Log($"[CharacterInventoryManager] 인벤토리에 추가: {c.characterName}");
         }
     }
@@ -311,9 +387,20 @@ public class CharacterInventoryManager : MonoBehaviour
     {
         foreach (var c in charsToConsume)
         {
+            // ownedCharacters에서 제거 시도
             if (ownedCharacters.Remove(c))
             {
                 Debug.Log($"[CharacterInventoryManager] 업그레이드로 인벤토리 제거: {c.characterName}");
+                
+                // sharedSlotData200에서도 제거
+                for (int i = 0; i < sharedSlotData200.Length; i++)
+                {
+                    if (sharedSlotData200[i] == c)
+                    {
+                        sharedSlotData200[i] = null;
+                        break;
+                    }
+                }
             }
             else if (deckCharacters.Remove(c))
             {
@@ -378,7 +465,14 @@ public class CharacterInventoryManager : MonoBehaviour
 
         ownedCharacters.Clear();
         deckCharacters.Clear();
+        
+        // sharedSlotData200 초기화
+        for (int i = 0; i < sharedSlotData200.Length; i++)
+        {
+            sharedSlotData200[i] = null;
+        }
 
+        int slotIndex = 0;
         foreach (var rec in wrapper.records)
         {
             CharacterData template = FindTemplateByName(rec.characterName);
@@ -393,39 +487,47 @@ public class CharacterInventoryManager : MonoBehaviour
             newChar.currentExp = rec.currentExp;
 
             if (rec.isInDeck)
+            {
                 deckCharacters.Add(newChar);
+            }
             else
+            {
                 ownedCharacters.Add(newChar);
+                
+                // sharedSlotData200에도 추가
+                if (slotIndex < sharedSlotData200.Length)
+                {
+                    sharedSlotData200[slotIndex] = newChar;
+                    slotIndex++;
+                }
+            }
         }
 
-        Debug.Log($"[CharacterInventoryManager] LoadCharacters() 완료. 인벤토리={ownedCharacters.Count}, 덱={deckCharacters.Count}");
+        Debug.Log($"[CharacterInventoryManager] LoadCharacters() 완료. owned={ownedCharacters.Count}, deck={deckCharacters.Count}");
     }
 
-    public CharacterData FindTemplateByName(string name)
+    private CharacterData FindTemplateByName(string charName)
     {
-        if (characterDatabaseObject == null || characterDatabaseObject.characters == null)
-            return null;
-
-        foreach (var c in characterDatabaseObject.characters)
+        foreach (var gc in gachaPool)
         {
-            if (c != null && c.characterName == name)
-                return c;
+            if (gc != null && gc.characterName == charName)
+                return gc;
         }
         return null;
     }
-}
 
-[System.Serializable]
-public class CharacterRecord
-{
-    public string characterName;
-    public int level;
-    public int currentExp;
-    public bool isInDeck;
-}
+    [System.Serializable]
+    private class CharacterRecord
+    {
+        public string characterName;
+        public int level;
+        public int currentExp;
+        public bool isInDeck;
+    }
 
-[System.Serializable]
-public class CharacterRecordWrapper
-{
-    public List<CharacterRecord> records;
+    [System.Serializable]
+    private class CharacterRecordWrapper
+    {
+        public List<CharacterRecord> records;
+    }
 }
