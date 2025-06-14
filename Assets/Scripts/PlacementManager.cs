@@ -88,14 +88,14 @@ public class PlacementManager : MonoBehaviour
         }
     }
 
-    public bool SummonCharacterOnTile(int characterIndex, Tile tile)
+    public bool SummonCharacterOnTile(int characterIndex, Tile tile, bool forceEnemyArea2 = false)
+{
+    if (summonManager != null)
     {
-        if (summonManager != null)
-        {
-            return summonManager.SummonCharacterOnTile(characterIndex, tile);
-        }
-        return false;
+        return summonManager.SummonCharacterOnTile(characterIndex, tile, forceEnemyArea2);
     }
+    return false;
+}
 
     public void RemoveCharacterOnTile(Tile tile)
     {

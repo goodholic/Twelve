@@ -1,5 +1,3 @@
-// Assets\OX UI Scripts\CharacterInventoryManager.cs
-
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -210,17 +208,27 @@ public class CharacterInventoryManager : MonoBehaviour
         CharacterData copy = new CharacterData
         {
             characterName = template.characterName,
-            attackPower   = template.attackPower,
-            rangeType     = template.rangeType,
-            isAreaAttack  = template.isAreaAttack,
+            attackPower = template.attackPower,
+            attackSpeed = template.attackSpeed,
+            attackRange = template.attackRange,
+            maxHP = template.maxHP,
+            moveSpeed = template.moveSpeed,
+            rangeType = template.rangeType,
+            isAreaAttack = template.isAreaAttack,
             isBuffSupport = template.isBuffSupport,
-            spawnPrefab   = template.spawnPrefab,
-            buttonIcon    = template.buttonIcon,
-            cost          = template.cost,
-
-            level         = template.level,
-            currentExp    = 0,
-            expToNextLevel= template.expToNextLevel,
+            spawnPrefab = template.spawnPrefab,
+            buttonIcon = template.buttonIcon,
+            cost = template.cost,
+            level = template.level,
+            currentExp = 0,
+            expToNextLevel = template.expToNextLevel,
+            initialStar = template.initialStar,
+            race = template.race,
+            isFreeSlotOnly = template.isFreeSlotOnly,
+            frontSprite = template.frontSprite,
+            backSprite = template.backSprite,
+            areaAttackRadius = template.areaAttackRadius,
+            motionPrefab = template.motionPrefab
         };
         return copy;
     }
@@ -229,27 +237,40 @@ public class CharacterInventoryManager : MonoBehaviour
     {
         if (c == null) return;
         
-        // 1) ownedCharacters에서 제거
-        if (ownedCharacters.Contains(c))
+        // 1) ownedCharacters에서 제거 (참조가 다를 수 있으므로 이름으로도 검사)
+        bool removed = false;
+        for (int i = ownedCharacters.Count - 1; i >= 0; i--)
         {
-            ownedCharacters.Remove(c);
-            
-            // 2) sharedSlotData200에서도 제거 (중요!)
-            for (int i = 0; i < sharedSlotData200.Length; i++)
+            if (ownedCharacters[i] == c || 
+                (ownedCharacters[i] != null && ownedCharacters[i].characterName == c.characterName))
             {
-                if (sharedSlotData200[i] == c)
+                ownedCharacters.RemoveAt(i);
+                removed = true;
+                
+                // 2) sharedSlotData200에서도 제거 (중요!)
+                for (int j = 0; j < sharedSlotData200.Length; j++)
                 {
-                    sharedSlotData200[i] = null;
-                    Debug.Log($"[CharacterInventoryManager] sharedSlotData200[{i}]에서 {c.characterName} 제거");
-                    break;
+                    if (sharedSlotData200[j] == c || 
+                        (sharedSlotData200[j] != null && sharedSlotData200[j].characterName == c.characterName))
+                    {
+                        sharedSlotData200[j] = null;
+                        Debug.Log($"[CharacterInventoryManager] sharedSlotData200[{j}]에서 {c.characterName} 제거");
+                        break;
+                    }
                 }
+                
+                // 3) deckCharacters에 추가
+                deckCharacters.Add(c);
+                Debug.Log($"[CharacterInventoryManager] 인벤토리 -> 덱 이동: {c.characterName}");
+                
+                // 4) 자동 정렬 호출 (★ 추가된 부분 ★)
+                CondenseAndReorderSharedSlots();
+                SyncOwnedFromSharedSlots();
+                break;
             }
-            
-            // 3) deckCharacters에 추가
-            deckCharacters.Add(c);
-            Debug.Log($"[CharacterInventoryManager] 인벤토리 -> 덱 이동: {c.characterName}");
         }
-        else
+        
+        if (!removed)
         {
             Debug.LogWarning($"[CharacterInventoryManager] 인벤토리에 없는 캐릭터({c.characterName})");
         }
@@ -289,6 +310,10 @@ public class CharacterInventoryManager : MonoBehaviour
             }
             
             Debug.Log($"[CharacterInventoryManager] 덱 -> 인벤토리 이동: {c.characterName}");
+            
+            // 4) 자동 정렬 호출
+            CondenseAndReorderSharedSlots();
+            SyncOwnedFromSharedSlots();
         }
         else
         {
@@ -314,20 +339,38 @@ public class CharacterInventoryManager : MonoBehaviour
         if (c != null)
         {
             // 1) ownedCharacters에서 제거
-            if (ownedCharacters.Remove(c))
+            bool removed = false;
+            
+            // 참조가 다를 수 있으므로 이름으로도 검사
+            for (int i = ownedCharacters.Count - 1; i >= 0; i--)
             {
-                Debug.Log($"[CharacterInventoryManager] 인벤토리에서 제거: {c.characterName}");
-                
+                if (ownedCharacters[i] == c || 
+                    (ownedCharacters[i] != null && ownedCharacters[i].characterName == c.characterName))
+                {
+                    ownedCharacters.RemoveAt(i);
+                    removed = true;
+                    Debug.Log($"[CharacterInventoryManager] 인벤토리에서 제거: {c.characterName}");
+                    break;
+                }
+            }
+            
+            if (removed)
+            {
                 // 2) sharedSlotData200에서도 제거 (중요!)
                 for (int i = 0; i < sharedSlotData200.Length; i++)
                 {
-                    if (sharedSlotData200[i] == c)
+                    if (sharedSlotData200[i] == c || 
+                        (sharedSlotData200[i] != null && sharedSlotData200[i].characterName == c.characterName))
                     {
                         sharedSlotData200[i] = null;
                         Debug.Log($"[CharacterInventoryManager] sharedSlotData200[{i}]에서 {c.characterName} 제거");
                         break;
                     }
                 }
+                
+                // 3) 자동 정렬 호출
+                CondenseAndReorderSharedSlots();
+                SyncOwnedFromSharedSlots();
             }
             else
             {
@@ -380,6 +423,10 @@ public class CharacterInventoryManager : MonoBehaviour
             }
             
             Debug.Log($"[CharacterInventoryManager] 인벤토리에 추가: {c.characterName}");
+            
+            // 3) 자동 정렬 호출
+            CondenseAndReorderSharedSlots();
+            SyncOwnedFromSharedSlots();
         }
     }
 
@@ -406,128 +453,159 @@ public class CharacterInventoryManager : MonoBehaviour
             {
                 Debug.Log($"[CharacterInventoryManager] 업그레이드로 덱 제거: {c.characterName}");
             }
-            else
-            {
-                Debug.LogWarning($"[CharacterInventoryManager] 없음: {c.characterName}");
-            }
         }
+        
+        // 업그레이드 후 자동 정렬
+        CondenseAndReorderSharedSlots();
+        SyncOwnedFromSharedSlots();
     }
 
+    // ===================================================================
+    // 저장/불러오기 관련
+    // ===================================================================
     public void SaveCharacters()
     {
-        List<CharacterRecord> recordList = new List<CharacterRecord>();
+        var saveDataList = new List<SaveData>();
 
+        // ownedCharacters 저장
         foreach (var c in ownedCharacters)
         {
-            recordList.Add(new CharacterRecord
+            var sd = new SaveData
             {
-                characterName = c.characterName,
-                level         = c.level,
-                currentExp    = c.currentExp,
-                isInDeck      = false
-            });
+                name = c.characterName,
+                level = c.level,
+                currentExp = c.currentExp,
+                isInDeck = false
+            };
+            saveDataList.Add(sd);
         }
 
+        // deckCharacters 저장
         foreach (var c in deckCharacters)
         {
-            recordList.Add(new CharacterRecord
+            var sd = new SaveData
             {
-                characterName = c.characterName,
-                level         = c.level,
-                currentExp    = c.currentExp,
-                isInDeck      = true
-            });
+                name = c.characterName,
+                level = c.level,
+                currentExp = c.currentExp,
+                isInDeck = true
+            };
+            saveDataList.Add(sd);
         }
 
-        CharacterRecordWrapper wrapper = new CharacterRecordWrapper { records = recordList };
-        string json = JsonUtility.ToJson(wrapper);
+        string json = JsonUtility.ToJson(new SerializationWrapper { characters = saveDataList });
         PlayerPrefs.SetString(PLAYER_PREFS_OWNED_KEY, json);
         PlayerPrefs.Save();
 
-        Debug.Log($"[CharacterInventoryManager] SaveCharacters() 완료. totalCount={recordList.Count}");
+        Debug.Log($"[CharacterInventoryManager] 캐릭터 저장 완료. 인벤토리: {ownedCharacters.Count}, 덱: {deckCharacters.Count}");
     }
 
-    public void LoadCharacters()
+    private void LoadCharacters()
     {
-        string json = PlayerPrefs.GetString(PLAYER_PREFS_OWNED_KEY, "");
-        if (string.IsNullOrEmpty(json))
-        {
-            Debug.Log("[CharacterInventoryManager] 저장된 데이터 없음");
-            return;
-        }
-
-        CharacterRecordWrapper wrapper = JsonUtility.FromJson<CharacterRecordWrapper>(json);
-        if (wrapper == null || wrapper.records == null)
-        {
-            Debug.LogWarning("[CharacterInventoryManager] LoadCharacters() 실패");
-            return;
-        }
-
         ownedCharacters.Clear();
         deckCharacters.Clear();
-        
-        // sharedSlotData200 초기화
-        for (int i = 0; i < sharedSlotData200.Length; i++)
+
+        if (!PlayerPrefs.HasKey(PLAYER_PREFS_OWNED_KEY))
         {
-            sharedSlotData200[i] = null;
+            Debug.Log("[CharacterInventoryManager] 저장된 데이터 없음. 기본 로드 실행.");
+            
+            // 기본 캐릭터 추가 (8개의 RandomChar)
+            int addedCount = 0;
+            for (int i = 1; i <= 8; i++)
+            {
+                string charName = $"RandomChar_{i}";
+                var template = FindTemplateByName(charName);
+                
+                if (template != null)
+                {
+                    CharacterData newChar = CreateNewCharacter(template);
+                    ownedCharacters.Add(newChar);
+                    addedCount++;
+                    Debug.Log($"[CharacterInventoryManager] 기본 캐릭터 추가: {charName}");
+                }
+                else
+                {
+                    Debug.LogWarning($"[CharacterInventoryManager] 템플릿을 찾을 수 없음: {charName}");
+                }
+            }
+            
+            Debug.Log($"[CharacterInventoryManager] 총 {addedCount}개의 기본 캐릭터 추가됨");
+            
+            // sharedSlotData200 초기화
+            for (int i = 0; i < ownedCharacters.Count && i < sharedSlotData200.Length; i++)
+            {
+                sharedSlotData200[i] = ownedCharacters[i];
+            }
+            
+            // 초기 데이터 저장
+            SaveCharacters();
+            
+            return;
         }
 
-        int slotIndex = 0;
-        foreach (var rec in wrapper.records)
+        string json = PlayerPrefs.GetString(PLAYER_PREFS_OWNED_KEY);
+        var wrapper = JsonUtility.FromJson<SerializationWrapper>(json);
+
+        if (wrapper != null && wrapper.characters != null)
         {
-            CharacterData template = FindTemplateByName(rec.characterName);
-            if (template == null)
+            foreach (var sd in wrapper.characters)
             {
-                Debug.LogWarning($"[CharacterInventoryManager] DB에 없는 캐릭터({rec.characterName})");
-                continue;
-            }
-
-            CharacterData newChar = CreateNewCharacter(template);
-            newChar.level      = rec.level;
-            newChar.currentExp = rec.currentExp;
-
-            if (rec.isInDeck)
-            {
-                deckCharacters.Add(newChar);
-            }
-            else
-            {
-                ownedCharacters.Add(newChar);
-                
-                // sharedSlotData200에도 추가
-                if (slotIndex < sharedSlotData200.Length)
+                var template = FindTemplateByName(sd.name);
+                if (template == null) 
                 {
-                    sharedSlotData200[slotIndex] = newChar;
-                    slotIndex++;
+                    Debug.LogWarning($"[CharacterInventoryManager] 템플릿을 찾을 수 없음: {sd.name}");
+                    continue;
+                }
+
+                var loadedChar = CreateNewCharacter(template);
+                loadedChar.level = sd.level;
+                loadedChar.currentExp = sd.currentExp;
+
+                if (sd.isInDeck)
+                {
+                    deckCharacters.Add(loadedChar);
+                }
+                else
+                {
+                    ownedCharacters.Add(loadedChar);
                 }
             }
         }
 
-        Debug.Log($"[CharacterInventoryManager] LoadCharacters() 완료. owned={ownedCharacters.Count}, deck={deckCharacters.Count}");
+        // sharedSlotData200 재구성
+        for (int i = 0; i < sharedSlotData200.Length; i++)
+        {
+            if (i < ownedCharacters.Count)
+                sharedSlotData200[i] = ownedCharacters[i];
+            else
+                sharedSlotData200[i] = null;
+        }
+
+        Debug.Log($"[CharacterInventoryManager] 캐릭터 로드 완료. 인벤토리: {ownedCharacters.Count}, 덱: {deckCharacters.Count}");
     }
 
-    private CharacterData FindTemplateByName(string charName)
+    private CharacterData FindTemplateByName(string name)
     {
-        foreach (var gc in gachaPool)
+        foreach (var c in gachaPool)
         {
-            if (gc != null && gc.characterName == charName)
-                return gc;
+            if (c.characterName == name)
+                return c;
         }
         return null;
     }
 
     [System.Serializable]
-    private class CharacterRecord
+    private class SaveData
     {
-        public string characterName;
+        public string name;
         public int level;
         public int currentExp;
         public bool isInDeck;
     }
 
     [System.Serializable]
-    private class CharacterRecordWrapper
+    private class SerializationWrapper
     {
-        public List<CharacterRecord> records;
+        public List<SaveData> characters;
     }
 }

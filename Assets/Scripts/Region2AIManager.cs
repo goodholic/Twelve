@@ -179,16 +179,29 @@ public class Region2AIManager : MonoBehaviour
             CharacterData chosen = SelectRandomUnit();
             if (chosen != null)
             {
-                Tile targetTile = PickRandomRegion2Tile();
-                if (targetTile != null)
+                // 미네랄 체크 먼저
+                CoreDataManager coreData = CoreDataManager.Instance;
+                if (coreData != null && coreData.region2MineralBar != null)
                 {
-                    bool summonSuccess = SummonCharacterInRegion2(chosen, targetTile);
-                    
-                    // 미네랄이 부족하거나 합성 실패 등으로 소환이 불발되면 -> 잠시 후 재시도
-                    if (!summonSuccess)
+                    if (coreData.region2MineralBar.GetCurrentMinerals() >= chosen.cost)
                     {
-                        yield return new WaitForSeconds(retryInterval);
-                        continue;
+                        Tile targetTile = PickRandomRegion2Tile();
+                        if (targetTile != null)
+                        {
+                            bool summonSuccess = SummonCharacterInRegion2(chosen, targetTile);
+                            
+                            // 소환 실패 시 짧은 재시도 대기
+                            if (!summonSuccess)
+                            {
+                                Debug.Log($"[Region2AIManager] 소환 실패, {retryInterval}초 후 재시도");
+                                yield return new WaitForSeconds(retryInterval);
+                                continue;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        Debug.Log($"[Region2AIManager] 미네랄 부족 (현재: {coreData.region2MineralBar.GetCurrentMinerals()}, 필요: {chosen.cost})");
                     }
                 }
             }
@@ -244,57 +257,59 @@ public class Region2AIManager : MonoBehaviour
             return;
         }
     }
-
+    
     /// <summary>
-    /// 특정 별 등급의 캐릭터 3개를 찾아서 합성 시도
+    /// 특정 스타 레벨의 캐릭터 3개를 찾아 합성
     /// </summary>
     private bool TryMergeByStarLevel(List<Character> characters, CharacterStar starLevel)
     {
-        // 같은 별 등급의 캐릭터들을 그룹핑
-        Dictionary<string, List<Character>> characterGroups = new Dictionary<string, List<Character>>();
+        // 같은 스타 레벨의 캐릭터들 찾기
+        List<Character> sameStarChars = characters.FindAll(c => c.star == starLevel);
         
-        foreach (var character in characters)
+        if (sameStarChars.Count >= 3)
         {
-            if (character.star == starLevel)
+            // 캐릭터 이름별로 그룹화
+            Dictionary<string, List<Character>> charGroups = new Dictionary<string, List<Character>>();
+            
+            foreach (var character in sameStarChars)
             {
-                string key = character.characterName;
-                if (!characterGroups.ContainsKey(key))
+                string charName = character.characterName;
+                if (!charGroups.ContainsKey(charName))
                 {
-                    characterGroups[key] = new List<Character>();
+                    charGroups[charName] = new List<Character>();
                 }
-                characterGroups[key].Add(character);
+                charGroups[charName].Add(character);
             }
-        }
-        
-        // 3개 이상인 그룹 찾기
-        foreach (var group in characterGroups)
-        {
-            if (group.Value.Count >= 3)
+            
+            // 3개 이상인 그룹 찾기
+            foreach (var group in charGroups)
             {
-                // 3개만 선택
-                List<Character> toMerge = group.Value.GetRange(0, 3);
-                
-                // 가장 뒤쪽(Y좌표가 높은) 캐릭터 위치에 합성
-                Character topMostChar = null;
-                float highestY = float.MinValue;
-                
-                foreach (var character in toMerge)
+                if (group.Value.Count >= 3)
                 {
-                    RectTransform rect = character.GetComponent<RectTransform>();
-                    float y = rect != null ? rect.anchoredPosition.y : character.transform.position.y;
+                    List<Character> toMerge = group.Value.GetRange(0, 3);
                     
-                    if (y > highestY)
+                    // 가장 위쪽(y좌표가 큰) 캐릭터 찾기
+                    Character topMostChar = null;
+                    float highestY = float.MinValue;
+                    
+                    foreach (var character in toMerge)
                     {
-                        highestY = y;
-                        topMostChar = character;
+                        RectTransform rect = character.GetComponent<RectTransform>();
+                        float y = rect != null ? rect.anchoredPosition.y : character.transform.position.y;
+                        
+                        if (y > highestY)
+                        {
+                            highestY = y;
+                            topMostChar = character;
+                        }
                     }
-                }
-                
-                if (topMostChar != null && topMostChar.currentTile != null)
-                {
-                    // MergeManager를 통해 합성 실행
-                    ExecuteAIMerge(toMerge, topMostChar.currentTile);
-                    return true;
+                    
+                    if (topMostChar != null && topMostChar.currentTile != null)
+                    {
+                        // MergeManager를 통해 합성 실행
+                        ExecuteAIMerge(toMerge, topMostChar.currentTile);
+                        return true;
+                    }
                 }
             }
         }
@@ -430,105 +445,103 @@ public class Region2AIManager : MonoBehaviour
             return null;
         }
 
-        Tile selectedTile = null;
+        // 빈 타일 찾기
+        List<Tile> emptyTiles = new List<Tile>();
         
-        // 최대 5번 시도
-        for (int attempt = 0; attempt < 5; attempt++)
+        // walkable2 타일 중 빈 타일 추가
+        foreach (var tile in allWalkable2Tiles)
         {
-            if (hasWalkable2 && hasPlacable2)
+            if (tile != null && tile.CanPlaceCharacter() && !IsOccupiedByCharacter(tile))
             {
-                if (Random.value < 0.5f)
-                {
-                    // walkable2에서 선택할 때는 루트를 먼저 선택
-                    RouteType selectedRoute = GetRandomRoute();
-                    selectedTile = GetWalkable2TileForRoute(selectedRoute);
-                }
-                else
-                {
-                    selectedTile = placable2Tiles[Random.Range(0, placable2Tiles.Count)];
-                }
+                emptyTiles.Add(tile);
             }
-            else if (hasWalkable2)
+        }
+        
+        // placable2 타일 중 빈 타일 추가
+        foreach (var tile in placable2Tiles)
+        {
+            if (tile != null && tile.CanPlaceCharacter() && !IsOccupiedByCharacter(tile))
             {
-                // walkable2에서 선택할 때는 루트를 먼저 선택
-                RouteType selectedRoute = GetRandomRoute();
-                selectedTile = GetWalkable2TileForRoute(selectedRoute);
+                emptyTiles.Add(tile);
+            }
+        }
+        
+        if (emptyTiles.Count > 0)
+        {
+            return emptyTiles[Random.Range(0, emptyTiles.Count)];
+        }
+        
+        Debug.Log("[Region2AIManager] 모든 타일이 점유됨. 첫 번째 사용 가능한 타일 반환");
+        
+        // 모든 타일이 점유된 경우, 첫 번째 사용 가능한 타일 반환
+        if (allWalkable2Tiles.Count > 0) return allWalkable2Tiles[0];
+        if (placable2Tiles.Count > 0) return placable2Tiles[0];
+        
+        return null;
+    }
+
+    /// <summary>
+    /// chosen == AI가 골라낸 CharacterData
+    /// => DB의 characters[] 중에서 인덱스 찾기 → PlacementManager 소환
+    /// 
+    /// [수정] PlacementManager.SummonCharacterOnTile의 반환값을 체크하고,
+    /// forceEnemyArea2=true를 전달하도록 수정
+    /// </summary>
+    private bool SummonCharacterInRegion2(CharacterData chosen, Tile tile)
+    {
+        if (chosen == null || tile == null)
+        {
+            return false;
+        }
+
+        Debug.Log($"[Region2AIManager] SummonCharacterInRegion2() => chosen={chosen.characterName}, tile={tile.name}");
+
+        // DB에서 인덱스 찾기
+        int foundIndex = System.Array.IndexOf(opponentCharacterDatabase.characters, chosen);
+        if (foundIndex < 0)
+        {
+            Debug.LogWarning($"[Region2AIManager] DB에서 {chosen.characterName} 인덱스를 못찾음 => 소환 실패");
+            return false;
+        }
+
+        // PlacementManager를 통해 소환 시도
+        // forceEnemyArea2=true를 전달하여 지역2에 강제 소환
+        if (PlacementManager.Instance != null)
+        {
+            bool success = PlacementManager.Instance.SummonCharacterOnTile(foundIndex, tile, true);
+            
+            if (success)
+            {
+                Debug.Log($"[Region2AIManager] <color=magenta>AI 소환 성공</color> => {chosen.characterName}, tile={tile.name}, cost={chosen.cost}");
             }
             else
             {
-                selectedTile = placable2Tiles[Random.Range(0, placable2Tiles.Count)];
+                Debug.Log($"[Region2AIManager] 소환 실패 => {chosen.characterName}, tile={tile.name}");
             }
             
-            if (selectedTile != null && selectedTile.CanPlaceCharacter())
-            {
-                // 이미 다른 캐릭터가 점유 중인지 검사
-                if (!IsOccupiedByCharacter(selectedTile))
-                {
-                    Debug.Log($"[Region2AIManager] 유효한 타일 찾음: {selectedTile.name} (시도 {attempt+1}/5)");
-                    return selectedTile;
-                }
-            }
-        }
-        
-        // 결국 적합한 타일을 못 찾으면 랜덤 루트의 첫 번째를 사용
-        if (hasWalkable2)
-        {
-            RouteType fallbackRoute = GetRandomRoute();
-            Debug.LogWarning($"[Region2AIManager] 적합한 타일을 찾지 못해 {fallbackRoute} 루트의 첫 번째 walkable2 타일 사용");
-            return GetWalkable2TileForRoute(fallbackRoute);
+            return success;
         }
         else
         {
-            Debug.LogWarning("[Region2AIManager] 적합한 타일을 찾지 못해 첫 번째 placable2 타일 사용");
-            return placable2Tiles[0];
+            Debug.LogError("[Region2AIManager] PlacementManager.Instance가 null입니다!");
+            return false;
         }
     }
-    
+
     /// <summary>
-    /// 랜덤하게 루트(좌/중/우)를 선택합니다.
+    /// 코루틴 중단 등
     /// </summary>
-    private RouteType GetRandomRoute()
+    private void OnDisable()
     {
-        int randomValue = Random.Range(0, 3);
-        return (RouteType)randomValue;
+        isRunning = false;
     }
-    
-    /// <summary>
-    /// 선택된 루트에 해당하는 walkable2 타일을 반환합니다.
-    /// </summary>
-    private Tile GetWalkable2TileForRoute(RouteType route)
+
+    private IEnumerator ApplyStarVisualDelayed(Character character)
     {
-        List<Tile> routeTiles = null;
-        
-        switch (route)
-        {
-            case RouteType.Left:
-                routeTiles = walkable2LeftTiles;
-                break;
-            case RouteType.Center:
-                routeTiles = walkable2CenterTiles;
-                break;
-            case RouteType.Right:
-                routeTiles = walkable2RightTiles;
-                break;
-        }
-        
-        if (routeTiles != null && routeTiles.Count > 0)
-        {
-            return routeTiles[Random.Range(0, routeTiles.Count)];
-        }
-        
-        // 해당 루트에 타일이 없으면 다른 루트에서 찾기
-        if (walkable2LeftTiles != null && walkable2LeftTiles.Count > 0)
-            return walkable2LeftTiles[Random.Range(0, walkable2LeftTiles.Count)];
-        if (walkable2CenterTiles != null && walkable2CenterTiles.Count > 0)
-            return walkable2CenterTiles[Random.Range(0, walkable2CenterTiles.Count)];
-        if (walkable2RightTiles != null && walkable2RightTiles.Count > 0)
-            return walkable2RightTiles[Random.Range(0, walkable2RightTiles.Count)];
-            
-        return null;
+        yield return new WaitForSeconds(0.1f); // 잠시 대기
+        character.ApplyStarVisual();
     }
-    
+
     /// <summary>
     /// 타일이 이미 다른 캐릭터에 의해 점유되었는지 확인
     /// </summary>
@@ -545,111 +558,5 @@ public class Region2AIManager : MonoBehaviour
             }
         }
         return false;
-    }
-
-    /// <summary>
-    /// chosen == AI가 골라낸 CharacterData
-    /// => DB의 characters[] 중에서 인덱스 찾기 → PlacementManager 소환 OR 합성
-    /// 
-    /// [수정] 실제로 합성 혹은 소환이 **확정**되기 전에 미네랄을 소모하지 않도록 수정함.
-    /// </summary>
-    private bool SummonCharacterInRegion2(CharacterData chosen, Tile tile)
-    {
-        if (chosen == null)
-        {
-            return false;
-        }
-        if (tile == null)
-        {
-            return false;
-        }
-
-        Debug.Log($"[Region2AIManager] SummonCharacterInRegion2() => chosen={chosen.characterName}, tile={tile.name}");
-
-        // 1) 타일 위에 이미 캐릭터가 있는지(occupant) 검사
-        Character occupantChar = null;
-        Character[] allChars = Object.FindObjectsByType<Character>(FindObjectsSortMode.None);
-        foreach (var c in allChars)
-        {
-            if (c == null) continue;
-            if (c.currentTile == tile)
-            {
-                occupantChar = c;
-                break;
-            }
-        }
-
-        // 2) occupant가 있으면 합성 시도
-        if (occupantChar != null)
-        {
-            // (a) 별이 같고 3성 미만이면 합성 가능
-            if (!occupantChar.isHero
-                && (int)occupantChar.star < 3
-                && occupantChar.star == chosen.initialStar)
-            {
-                // 합성 처리 (미네랄 체크는 별도 시스템에서 처리)
-                occupantChar.star++;
-                occupantChar.currentHP = chosen.maxHP;
-                occupantChar.ApplyStarVisual();
-                Debug.Log($"[Region2AIManager] 타일({tile.name}) 위 캐릭터와 합성 완료 => 현재 스타: {occupantChar.star}");
-                return true;
-            }
-            else
-            {
-                Debug.Log($"[Region2AIManager] 타일({tile.name})에 있는 캐릭터와 합성 불가 => 소환 취소");
-                return false;
-            }
-        }
-        else
-        {
-            // occupant가 없는 타일 => 새로 소환
-            if (!tile.CanPlaceCharacter())
-            {
-                Debug.LogWarning($"[Region2AIManager] {tile.name}에 배치 불가 => 소환 취소");
-                return false;
-            }
-
-            // 소환 직전 타일 상태 체크
-            Debug.Log($"[Region2AIManager] 소환 전 타일 상태: IsWalkable2={tile.IsWalkable2()}, IsPlacable2={tile.IsPlacable2()}, IsPlaced2={tile.IsPlaced2()}");
-
-            // DB에서 인덱스 찾기
-            int foundIndex = System.Array.IndexOf(opponentCharacterDatabase.characters, chosen);
-            if (foundIndex < 0)
-            {
-                Debug.LogWarning($"[Region2AIManager] DB에서 {chosen.characterName} 인덱스를 못찾음 => 소환 실패");
-                return false;
-            }
-
-            // 소환 직전에 재확인
-            bool isValidTile = tile.CanPlaceCharacter() && 
-                              (tile.IsWalkable2() || tile.IsPlacable2() || tile.IsPlaced2());
-                              
-            if (!isValidTile)
-            {
-                Debug.LogWarning($"[Region2AIManager] {tile.name}에 최종 배치 불가 판정 => 소환 취소");
-                return false;
-            }
-
-            // 이제 실제 소환
-            Debug.Log($"[Region2AIManager] (소환) => PlacementManager.SummonCharacterOnTile({chosen.characterName}), tile={tile.name}");
-            
-            PlacementManager.Instance.SummonCharacterOnTile(foundIndex, tile);
-            Debug.Log($"[Region2AIManager] <color=magenta>AI 소환 성공</color> => {chosen.characterName}, tile={tile.name}, cost={chosen.cost}");
-            return true;
-        }
-    }
-
-    /// <summary>
-    /// 코루틴 중단 등
-    /// </summary>
-    private void OnDisable()
-    {
-        isRunning = false;
-    }
-
-    private IEnumerator ApplyStarVisualDelayed(Character character)
-    {
-        yield return new WaitForSeconds(0.1f); // 잠시 대기
-        character.ApplyStarVisual();
     }
 }
