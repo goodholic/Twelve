@@ -113,103 +113,203 @@ public class CharacterCombat : MonoBehaviour
             
             character.currentCharTarget = null;
             character.currentTarget = null;
-            IDamageable targetToDamage = null;
+            IDamageable target = null;
+            GameObject targetGameObject = null;
+            string targetName = "";
             
-            // walkable 타일 위의 캐릭터는 사정거리 내 적만 공격, 추적하지 않음
-            bool isOnWalkable = (character.currentTile == null || 
-                               character.currentTile.IsWalkable() || character.currentTile.IsWalkableLeft() || 
-                               character.currentTile.IsWalkableCenter() || character.currentTile.IsWalkableRight() ||
-                               character.currentTile.IsWalkable2() || character.currentTile.IsWalkable2Left() || 
-                               character.currentTile.IsWalkable2Center() || character.currentTile.IsWalkable2Right());
-            
-            switch (character.attackTargetType)
+            // 1. 캐릭터 타겟 찾기
+            Character charTarget = FindCharacterTargetInRange();
+            if (charTarget != null && charTarget.currentHP > 0)
             {
-                case AttackTargetType.All:
-                    character.currentCharTarget = FindCharacterTargetInRange();
-                    if (character.currentCharTarget != null)
-                    {
-                        targetToDamage = character.currentCharTarget;
-                        Debug.Log($"[Character] {character.characterName}이(가) 캐릭터 {character.currentCharTarget.characterName}을(를) 공격!");
-                    }
-                    else
-                    {
-                        character.currentTarget = character.isHero ? FindHeroTargetInRange() : FindMonsterTargetInRange();
-                        if (character.currentTarget != null)
-                        {
-                            targetToDamage = character.currentTarget;
-                            Debug.Log($"[Character] {character.characterName}이(가) 몬스터 {character.currentTarget.name}을(를) 공격!");
-                        }
-                        else if (!isOnWalkable)
-                        {
-                            // 성 타겟팅 (타워형 캐릭터만)
-                            CheckCastleTargets();
-                        }
-                    }
-                    break;
-                    
-                case AttackTargetType.CastleOnly:
-                    if (!isOnWalkable)
-                    {
-                        CheckCastleTargets();
-                    }
-                    break;
-                    
-                case AttackTargetType.CharacterOnly:
-                    character.currentCharTarget = FindCharacterTargetInRange();
-                    if (character.currentCharTarget != null)
-                    {
-                        targetToDamage = character.currentCharTarget;
-                    }
-                    break;
+                character.currentCharTarget = charTarget;
+                targetGameObject = charTarget.gameObject;
+                target = charTarget;
+                targetName = charTarget.characterName;
+            }
+            else
+            {
+                // 2. 몬스터 타겟 찾기
+                Monster monsterTarget = FindMonsterTargetInRange();
+                if (monsterTarget != null && monsterTarget.health > 0)
+                {
+                    character.currentTarget = monsterTarget;
+                    targetGameObject = monsterTarget.gameObject;
+                    target = monsterTarget;
+                    targetName = monsterTarget.gameObject.name;
+                }
             }
             
-            if (targetToDamage != null)
+            // 공격 실행
+            if (target != null)
             {
-                Attack(targetToDamage);
+                Attack(target, targetGameObject, targetName);
+                // movement.SetCombatState(true); // 메서드가 존재하지 않음
+                
+                if (visual != null)
+                {
+                    // visual.TriggerAttackAnimation(); // 메서드가 존재하지 않음
+                }
             }
-            else if (character.currentMiddleCastleTarget != null)
+            else
             {
-                AttackCastle(character.currentMiddleCastleTarget);
-            }
-            else if (character.currentFinalCastleTarget != null)
-            {
-                AttackCastle(character.currentFinalCastleTarget);
+                // movement.SetCombatState(false); // 메서드가 존재하지 않음
+                
+                // 타겟이 없으면 성 공격 체크
+                // movement.GetTargetMiddleCastle()와 GetTargetFinalCastle() 메서드가 존재하지 않음
+                // 대신 직접 찾기
+                MiddleCastle middleCastle = FindFirstObjectByType<MiddleCastle>();
+                FinalCastle finalCastle = FindFirstObjectByType<FinalCastle>();
+                
+                if (middleCastle != null && middleCastle.currentHealth > 0)
+                {
+                    AttackCastle(middleCastle);
+                }
+                else if (finalCastle != null && finalCastle.currentHealth > 0)
+                {
+                    AttackCastle(finalCastle);
+                }
             }
         }
     }
     
-    private void CheckCastleTargets()
+    private void Attack(IDamageable target, GameObject targetGameObject, string targetName)
     {
-        // 중간성 타겟팅
-        MiddleCastle[] middleCastles = FindObjectsByType<MiddleCastle>(FindObjectsSortMode.None);
-        foreach (var castle in middleCastles)
+        GameObject bulletPrefabToUse = GetBulletPrefab();
+        
+        if (bulletPrefabToUse != null)
         {
-            if (castle.areaIndex != character.areaIndex && !castle.IsDestroyed())
+            try
             {
-                float dist = Vector2.Distance(transform.position, castle.transform.position);
-                if (dist <= character.attackRange)
+                GameObject bulletObj = Instantiate(bulletPrefabToUse);
+                
+                // UI 총알이 보이도록 개선된 설정
+                RectTransform parentPanel = SelectBulletPanel(character.areaIndex == 1 ? 2 : 1);
+                
+                if (parentPanel != null)
                 {
-                    character.currentMiddleCastleTarget = castle;
-                    Debug.Log($"[Character] {character.characterName}이 중간성을 타겟팅!");
+                    bulletObj.transform.SetParent(parentPanel, false);
+                    
+                    // RectTransform 설정
+                    RectTransform bulletRect = bulletObj.GetComponent<RectTransform>();
+                    if (bulletRect == null)
+                    {
+                        bulletRect = bulletObj.AddComponent<RectTransform>();
+                    }
+                    
+                    // 위치 설정
+                    Vector2 localPos = parentPanel.InverseTransformPoint(transform.position);
+                    bulletRect.anchoredPosition = localPos;
+                    
+                    // 크기 설정 (UI에서 보이도록)
+                    bulletRect.sizeDelta = new Vector2(30f, 30f); // 기본 크기
+                    
+                    // 앵커와 피벗 설정
+                    bulletRect.anchorMin = new Vector2(0.5f, 0.5f);
+                    bulletRect.anchorMax = new Vector2(0.5f, 0.5f);
+                    bulletRect.pivot = new Vector2(0.5f, 0.5f);
+                    
+                    // 스케일 확인
+                    if (bulletRect.localScale.x < 0.1f || bulletRect.localScale.y < 0.1f)
+                    {
+                        bulletRect.localScale = Vector3.one;
+                    }
+                    
+                    // 맨 앞으로 이동
+                    bulletRect.SetAsLastSibling();
+                    
+                    // Image 컴포넌트 확인
+                    Image bulletImage = bulletObj.GetComponent<Image>();
+                    if (bulletImage != null)
+                    {
+                        bulletImage.enabled = true;
+                        
+                        // 색상이 투명하지 않도록 설정
+                        if (bulletImage.color.a < 0.1f)
+                        {
+                            Color c = bulletImage.color;
+                            c.a = 1f;
+                            bulletImage.color = c;
+                        }
+                        
+                        // 스프라이트가 없으면 기본 스프라이트 설정
+                        if (bulletImage.sprite == null)
+                        {
+                            // 방향에 따른 스프라이트 설정 시도
+                            if (bulletUpDirectionSprite != null || bulletDownDirectionSprite != null)
+                            {
+                                bool isUpDirection = targetGameObject.transform.position.y > transform.position.y;
+                                bulletImage.sprite = isUpDirection ? bulletUpDirectionSprite : bulletDownDirectionSprite;
+                            }
+                        }
+                        
+                        // Raycast Target 비활성화 (클릭 방해 방지)
+                        bulletImage.raycastTarget = false;
+                    }
+                    
+                    // Canvas Group 추가 (알파값 제어용)
+                    CanvasGroup canvasGroup = bulletObj.GetComponent<CanvasGroup>();
+                    if (canvasGroup == null)
+                    {
+                        canvasGroup = bulletObj.AddComponent<CanvasGroup>();
+                    }
+                    canvasGroup.alpha = 1f;
+                    canvasGroup.interactable = false;
+                    canvasGroup.blocksRaycasts = false;
+                }
+                
+                // 근접 공격이고 타겟이 매우 가까우면
+                if (character.rangeType == RangeType.Melee && 
+                    Vector2.Distance(transform.position, targetGameObject.transform.position) < 0.5f)
+                {
+                    bulletObj.transform.position = transform.position;
+                    bulletObj.transform.localRotation = Quaternion.identity;
+                    
+                    target.TakeDamage(character.attackPower);
+                    Destroy(bulletObj);
                     return;
                 }
+                
+                // Bullet 컴포넌트 초기화
+                Bullet bullet = bulletObj.GetComponent<Bullet>();
+                if (bullet != null)
+                {
+                    bullet.Initialize(
+                        targetGameObject,
+                        character.attackPower,
+                        character.areaIndex,
+                        character.isAreaAttack,
+                        bulletSpeed,
+                        character
+                    );
+                    
+                    if (character.isAreaAttack)
+                    {
+                        bullet.SetAreaAttack(character.areaAttackRadius);
+                    }
+                    
+                    if (character.rangeType == RangeType.Melee)
+                    {
+                        bullet.SetAsMeleeAttack();
+                    }
+                    
+                    Debug.Log($"[Character] {character.characterName}이(가) {targetName}에게 총알 발사! (속도: {bulletSpeed})");
+                }
+                else
+                {
+                    target.TakeDamage(character.attackPower);
+                    Destroy(bulletObj);
+                }
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"[Character] 총알 생성 중 오류 발생: {e.Message}");
+                target.TakeDamage(character.attackPower);
             }
         }
-        
-        // 최종성 타겟팅
-        FinalCastle[] finalCastles = FindObjectsByType<FinalCastle>(FindObjectsSortMode.None);
-        foreach (var castle in finalCastles)
+        else
         {
-            if (castle.areaIndex != character.areaIndex && !castle.IsDestroyed())
-            {
-                float dist = Vector2.Distance(transform.position, castle.transform.position);
-                if (dist <= character.attackRange)
-                {
-                    character.currentFinalCastleTarget = castle;
-                    Debug.Log($"[Character] {character.characterName}이 최종성을 타겟팅!");
-                    return;
-                }
-            }
+            target.TakeDamage(character.attackPower);
+            Debug.Log($"[Character] {character.characterName}이(가) {targetName}에게 직접 {character.attackPower} 데미지!");
         }
     }
     
@@ -224,12 +324,46 @@ public class CharacterCombat : MonoBehaviour
             if (parentPanel != null)
             {
                 bulletObj.transform.SetParent(parentPanel, false);
+                
+                // RectTransform 설정
                 RectTransform bulletRect = bulletObj.GetComponent<RectTransform>();
-                if (bulletRect != null)
+                if (bulletRect == null)
                 {
-                    Vector2 localPos = parentPanel.InverseTransformPoint(transform.position);
-                    bulletRect.anchoredPosition = localPos;
+                    bulletRect = bulletObj.AddComponent<RectTransform>();
                 }
+                
+                Vector2 localPos = parentPanel.InverseTransformPoint(transform.position);
+                bulletRect.anchoredPosition = localPos;
+                bulletRect.sizeDelta = new Vector2(30f, 30f);
+                bulletRect.anchorMin = new Vector2(0.5f, 0.5f);
+                bulletRect.anchorMax = new Vector2(0.5f, 0.5f);
+                bulletRect.pivot = new Vector2(0.5f, 0.5f);
+                bulletRect.localScale = Vector3.one;
+                bulletRect.SetAsLastSibling();
+                
+                // Image 컴포넌트 설정
+                Image bulletImage = bulletObj.GetComponent<Image>();
+                if (bulletImage != null)
+                {
+                    bulletImage.enabled = true;
+                    if (bulletImage.color.a < 0.1f)
+                    {
+                        Color c = bulletImage.color;
+                        c.a = 1f;
+                        bulletImage.color = c;
+                    }
+                    bulletImage.raycastTarget = false;
+                }
+                
+                // Canvas Group 설정
+                CanvasGroup canvasGroup = bulletObj.GetComponent<CanvasGroup>();
+                if (canvasGroup == null)
+                {
+                    canvasGroup = bulletObj.AddComponent<CanvasGroup>();
+                }
+                canvasGroup.alpha = 1f;
+                canvasGroup.interactable = false;
+                canvasGroup.blocksRaycasts = false;
             }
             
             Bullet bullet = bulletObj.GetComponent<Bullet>();
@@ -289,17 +423,18 @@ public class CharacterCombat : MonoBehaviour
     
     private Monster FindMonsterTargetInRange()
     {
-        string targetTag = (character.areaIndex == 1) ? "Monster" : "EnemyMonster";
-        GameObject[] monsterObjs = GameObject.FindGameObjectsWithTag(targetTag);
+        // 태그 대신 FindObjectsByType 사용하여 모든 몬스터 찾기
+        Monster[] allMonsters = FindObjectsByType<Monster>(FindObjectsSortMode.None);
         
         Monster nearestMonster = null;
         float nearestDistance = Mathf.Infinity;
         
-        foreach (GameObject obj in monsterObjs)
+        foreach (var monster in allMonsters)
         {
-            if (obj == null) continue;
-            Monster monster = obj.GetComponent<Monster>();
-            if (monster == null) continue;
+            if (monster == null || monster.health <= 0) continue;
+            
+            // 같은 지역의 몬스터는 공격하지 않음
+            if (monster.areaIndex == character.areaIndex) continue;
             
             float dist = Vector2.Distance(transform.position, monster.transform.position);
             if (dist <= character.attackRange && dist < nearestDistance)
@@ -312,136 +447,31 @@ public class CharacterCombat : MonoBehaviour
         return nearestMonster;
     }
     
-    private Monster FindHeroTargetInRange()
+    // 클릭 시 공격 범위 변경
+    private void OnMouseDown()
     {
-        string[] possibleTags = { "Monster", "EnemyMonster" };
-        Monster nearestMonster = null;
-        float nearestDistance = Mathf.Infinity;
+        Debug.Log($"[Character] {character.characterName} 클릭됨! 공격 범위를 {character.attackRange}에서 {newAttackRangeOnClick}로 변경");
+        character.attackRange = newAttackRangeOnClick;
         
-        foreach (string tag in possibleTags)
+        // 공격 범위 표시
+        if (attackInfoText != null)
         {
-            GameObject[] monsterObjs = GameObject.FindGameObjectsWithTag(tag);
-            foreach (GameObject obj in monsterObjs)
+            attackInfoText.text = $"공격범위: {character.attackRange:F1}";
+            
+            // 텍스트 위치 업데이트
+            if (attackInfoText.transform.parent != null)
             {
-                if (obj == null) continue;
-                Monster monster = obj.GetComponent<Monster>();
-                if (monster == null) continue;
-                
-                float dist = Vector2.Distance(transform.position, monster.transform.position);
-                if (dist <= character.attackRange && dist < nearestDistance)
-                {
-                    nearestDistance = dist;
-                    nearestMonster = monster;
-                }
+                Vector3 worldPos = transform.position + attackInfoOffset;
+                attackInfoText.transform.position = worldPos;
             }
         }
-        
-        return nearestMonster;
     }
     
-    private void Attack(IDamageable target)
+    private void OnDestroy()
     {
-        int targetAreaIndex = character.areaIndex;
-        Vector3 targetPosition = Vector3.zero;
-        string targetName = "Unknown";
-        GameObject targetGameObject = null;
-        
-        if (target is Monster monster)
+        if (attackInfoText != null && attackInfoText.gameObject != null)
         {
-            targetAreaIndex = monster.areaIndex;
-            targetPosition = monster.transform.position;
-            targetName = monster.name;
-            targetGameObject = monster.gameObject;
-        }
-        else if (target is Character targetChar)
-        {
-            targetAreaIndex = targetChar.areaIndex;
-            targetPosition = targetChar.transform.position;
-            targetName = targetChar.characterName;
-            targetGameObject = targetChar.gameObject;
-        }
-        else
-        {
-            Debug.LogWarning($"[Character] 알 수 없는 타겟 타입입니다: {target.GetType()}");
-            return;
-        }
-        
-        GameObject bulletPrefabToUse = GetBulletPrefab();
-        if (bulletPrefabToUse != null)
-        {
-            try
-            {
-                GameObject bulletObj = Instantiate(bulletPrefabToUse);
-                
-                RectTransform parentPanel = SelectBulletPanel(targetAreaIndex);
-                
-                if (parentPanel != null && parentPanel.gameObject.scene.IsValid())
-                {
-                    bulletObj.transform.SetParent(parentPanel, false);
-                    Debug.Log($"[Character] 총알을 {parentPanel.name}에 생성함");
-                }
-                else
-                {
-                    Debug.LogWarning($"[Character] 총알을 생성할 패널이 없음, 대체 로직 사용");
-                    bulletObj.transform.position = transform.position;
-                    bulletObj.transform.localRotation = Quaternion.identity;
-                    
-                    target.TakeDamage(character.attackPower);
-                    Destroy(bulletObj);
-                    return;
-                }
-                
-                RectTransform bulletRect = bulletObj.GetComponent<RectTransform>();
-                if (bulletRect != null && parentPanel != null)
-                {
-                    Vector2 localPos = parentPanel.InverseTransformPoint(transform.position);
-                    bulletRect.anchoredPosition = localPos;
-                }
-                else
-                {
-                    bulletObj.transform.position = transform.position;
-                }
-                
-                Bullet bullet = bulletObj.GetComponent<Bullet>();
-                if (bullet != null)
-                {
-                    bullet.Initialize(
-                        targetGameObject,
-                        character.attackPower,
-                        character.areaIndex,
-                        character.isAreaAttack,
-                        bulletSpeed,
-                        character
-                    );
-                    
-                    if (character.isAreaAttack)
-                    {
-                        bullet.SetAreaAttack(character.areaAttackRadius);
-                    }
-                    
-                    if (character.rangeType == RangeType.Melee)
-                    {
-                        bullet.SetAsMeleeAttack();
-                    }
-                    
-                    Debug.Log($"[Character] {character.characterName}이(가) {targetName}에게 총알 발사! (속도: {bulletSpeed})");
-                }
-                else
-                {
-                    target.TakeDamage(character.attackPower);
-                    Destroy(bulletObj);
-                }
-            }
-            catch (System.Exception e)
-            {
-                Debug.LogError($"[Character] 총알 생성 중 오류 발생: {e.Message}");
-                target.TakeDamage(character.attackPower);
-            }
-        }
-        else
-        {
-            target.TakeDamage(character.attackPower);
-            Debug.Log($"[Character] {character.characterName}이(가) {targetName}에게 직접 {character.attackPower} 데미지!");
+            Destroy(attackInfoText.gameObject);
         }
     }
     
@@ -563,47 +593,23 @@ public class CharacterCombat : MonoBehaviour
         }
     }
     
-    /// <summary>
-    /// 캐릭터의 인덱스를 가져오는 메서드
-    /// </summary>
     private int GetCharacterIndex()
     {
-        if (character == null || string.IsNullOrEmpty(character.characterName))
-            return 0;
-            
         // 캐릭터 이름에서 인덱스 추출 시도
-        string name = character.characterName.ToLower();
-        
-        // "character_1", "char_2" 등의 패턴에서 숫자 추출
-        for (int i = 0; i <= 9; i++)
+        if (!string.IsNullOrEmpty(character.characterName))
         {
-            if (name.Contains(i.ToString()))
+            // "Character1", "Character2" 등의 패턴에서 숫자 추출
+            string numStr = System.Text.RegularExpressions.Regex.Match(character.characterName, @"\d+").Value;
+            if (!string.IsNullOrEmpty(numStr))
             {
-                return i;
+                if (int.TryParse(numStr, out int index))
+                {
+                    return index - 1; // 1-based에서 0-based로 변환
+                }
             }
         }
         
-        // 기본값으로 0 반환
-        return 0;
-    }
-    
-    public void SetBulletPanel(RectTransform panel)
-    {
-        bulletPanel = panel;
-    }
-    
-    private void OnMouseDown()
-    {
-        character.attackRange = newAttackRangeOnClick;
-        Debug.Log($"[Character] '{character.characterName}' 클릭 -> 사거리 {character.attackRange}로 변경");
-        visual.CreateRangeIndicator();
-        
-        if (attackInfoText == null) return;
-        
-        attackInfoText.gameObject.SetActive(true);
-        attackInfoText.text = $"공격 범위: {character.attackRange}\n공격 형태: {character.rangeType}";
-        
-        Vector3 screenPos = Camera.main.WorldToScreenPoint(transform.position + attackInfoOffset);
-        attackInfoText.transform.position = screenPos;
+        // 캐릭터 ID 속성이 없으므로 기본값 반환
+        return 0; // 기본값으로 0 사용
     }
 }

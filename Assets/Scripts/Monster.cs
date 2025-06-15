@@ -16,7 +16,7 @@ public class Monster : MonoBehaviour, IDamageable
     public Transform[] pathWaypoints;
 
     [Header("Castle Attack Damage")]
-    public int damageToCastle = 1;
+    public int damageToCastle = 10;  // 기본값을 1에서 10으로 변경
 
     [Header("챕터 설정")]
     [Tooltip("몬스터의 현재 챕터 (기본값: 1)")]
@@ -61,33 +61,43 @@ public class Monster : MonoBehaviour, IDamageable
         Debug.Log($"[Monster] {gameObject.name} 크기 설정: {sizeScale * 100}%");
 
         // 챕터에 따른 스탯 증가 적용
-        if (currentChapter > 1)
-        {
-            ApplyChapterStatBonus();
-        }
-
-        originalMoveSpeed = moveSpeed;
+        float multiplier = Mathf.Pow(chapterStatMultiplier, currentChapter - 1);
+        health *= multiplier;
+        damageToCastle = Mathf.RoundToInt(damageToCastle * multiplier);
+        
+        Debug.Log($"[Monster] 챕터 {currentChapter} 몬스터 - 체력: {health}, 성 데미지: {damageToCastle}");
+        
         maxHealth = health;
+        originalMoveSpeed = moveSpeed;
 
-        if (hpBarCanvas == null || hpFillImage == null)
+        // HP바 초기화
+        UpdateHpBar();
+    }
+
+    private void Update()
+    {
+        if (isDead || hasReachedEnd) return;
+
+        // 상태 효과 업데이트
+        UpdateStatusEffects();
+
+        // 스턴 상태면 이동 안함
+        if (isStunned) return;
+
+        // 성을 타겟팅 중이면 성으로 이동
+        if (isTargetingCastle)
         {
-            Debug.LogWarning($"[Monster] HP Bar Canvas 또는 Fill Image 미연결 ( {name} )");
+            MoveTowardsCastle();
         }
         else
         {
-            hpBarCanvas.gameObject.SetActive(true);
-            UpdateHpBar();
-            
-            // HP바도 몬스터 크기에 맞춰 조정
-            if (hpBarCanvas != null)
-            {
-                hpBarCanvas.transform.localScale = Vector3.one * (1f / sizeScale);  // 역배율로 보정
-            }
+            // 일반 웨이포인트 이동
+            MoveAlongPath();
         }
     }
 
     /// <summary>
-    /// 몬스터가 어느 라인을 따라가는지 설정
+    /// 몬스터가 속한 라인 설정
     /// </summary>
     public void SetMonsterRoute(RouteType route)
     {
@@ -95,63 +105,9 @@ public class Monster : MonoBehaviour, IDamageable
         Debug.Log($"[Monster] {gameObject.name} 라인 설정: {route}");
     }
 
-    /// <summary>
-    /// 챕터에 따라 몬스터 스탯을 강화합니다 (1.05배씩 증가)
-    /// </summary>
-    private void ApplyChapterStatBonus()
-    {
-        // 1챕터 이상일 때만 계산
-        if (currentChapter <= 1) return;
-
-        // 몇 번 강화할지 계산 (2챕터=1번, 3챕터=2번, ...)
-        int upgradeCount = currentChapter - 1;
-        
-        // 각 스탯에 대해 (upgradeCount)번 곱하기
-        float multiplier = Mathf.Pow(chapterStatMultiplier, upgradeCount);
-        
-        // 스탯 적용
-        health *= multiplier;
-        moveSpeed *= multiplier;
-        damageToCastle = Mathf.RoundToInt(damageToCastle * multiplier);
-        
-        // 속도는 너무 빨라지지 않도록 제한
-        moveSpeed = Mathf.Min(moveSpeed, 1.5f);  // 최대 속도 1.5f로 제한 (기존 2f에서 하향)
-        
-        Debug.Log($"[Monster] 챕터 {currentChapter}에 따른 스탯 증가: 배율 {multiplier:F2}배 " +
-                 $"(체력: {health:F1}, 이동속도: {moveSpeed:F2}, 성 공격력: {damageToCastle})");
-    }
-
-    private void Update()
-    {
-        if (isDead || hasReachedEnd) return;  // 추가: hasReachedEnd 체크
-        UpdateStatusEffects();
-
-        if (!isStunned)
-        {
-            if (isTargetingCastle)
-            {
-                MoveTowardsCastle();
-            }
-            else
-            {
-                MoveAlongPath2D();
-            }
-        }
-    }
-
-    private void LateUpdate()
-    {
-        // HP 바 위치 보정(머리 위)
-        if (hpBarCanvas != null && hpBarCanvas.transform.parent == null)
-        {
-            Vector3 offset = new Vector3(0f, 0.4f * sizeScale, 0f);  // 크기에 맞춰 오프셋 조정
-            hpBarCanvas.transform.position = transform.position + offset;
-        }
-    }
-
     private void UpdateStatusEffects()
     {
-        // 슬로우
+        // 슬로우 효과
         if (slowDuration > 0)
         {
             slowDuration -= Time.deltaTime;
@@ -159,40 +115,63 @@ public class Monster : MonoBehaviour, IDamageable
             {
                 moveSpeed = originalMoveSpeed;
                 slowAmount = 0f;
+                Debug.Log($"[Monster] {gameObject.name} 슬로우 효과 종료");
             }
         }
 
-        // 출혈
+        // 출혈 효과
         if (bleedDuration > 0)
         {
             bleedDuration -= Time.deltaTime;
-            if (bleedDamagePerSec > 0)
-            {
-                TakeDamage(bleedDamagePerSec * Time.deltaTime);
-            }
+            TakeDamage(bleedDamagePerSec * Time.deltaTime);
+            
             if (bleedDuration <= 0)
             {
                 bleedDamagePerSec = 0f;
+                Debug.Log($"[Monster] {gameObject.name} 출혈 효과 종료");
             }
         }
 
-        // 스턴
+        // 스턴 효과
         if (stunDuration > 0)
         {
             stunDuration -= Time.deltaTime;
-            isStunned = true;
             if (stunDuration <= 0)
             {
                 isStunned = false;
+                Debug.Log($"[Monster] {gameObject.name} 스턴 효과 종료");
             }
         }
     }
 
-    private void MoveAlongPath2D()
+    private void UpdateHpBar()
     {
-        if (pathWaypoints == null || pathWaypoints.Length == 0 || currentWaypointIndex >= pathWaypoints.Length)
+        if (hpFillImage != null)
         {
-            // 웨이포인트가 끝났으면 해당 라인의 중간성으로 이동
+            float ratio = health / maxHealth;
+            hpFillImage.fillAmount = ratio;
+
+            // 체력에 따른 색상 변경
+            if (ratio > 0.6f)
+                hpFillImage.color = Color.green;
+            else if (ratio > 0.3f)
+                hpFillImage.color = Color.yellow;
+            else
+                hpFillImage.color = Color.red;
+        }
+    }
+
+    private void MoveAlongPath()
+    {
+        if (pathWaypoints == null || pathWaypoints.Length == 0)
+        {
+            Debug.LogWarning($"[Monster] {gameObject.name}의 웨이포인트가 설정되지 않았습니다!");
+            return;
+        }
+
+        if (currentWaypointIndex >= pathWaypoints.Length)
+        {
+            // 웨이포인트 끝에 도달 -> 중간성으로 전환
             SwitchToMiddleCastleTarget();
             return;
         }
@@ -200,6 +179,7 @@ public class Monster : MonoBehaviour, IDamageable
         Transform target = pathWaypoints[currentWaypointIndex];
         if (target == null)
         {
+            Debug.LogWarning($"[Monster] 웨이포인트[{currentWaypointIndex}]가 null입니다!");
             currentWaypointIndex++;
             return;
         }
@@ -341,8 +321,17 @@ public class Monster : MonoBehaviour, IDamageable
 
         if (areaIndex == 1)
         {
-            // 지역1 캐슬
-            CastleHealthManager.Instance?.TakeDamage(damageToCastle);
+            // 지역1 캐슬 - CastleHealthManager를 통해 처리
+            CastleHealthManager castleHealthMgr = FindFirstObjectByType<CastleHealthManager>();
+            if (castleHealthMgr != null)
+            {
+                castleHealthMgr.TakeDamageToMidCastle(monsterRoute, damageToCastle);
+            }
+            else
+            {
+                // 구버전 호환
+                CastleHealthManager.Instance?.TakeDamage(damageToCastle);
+            }
         }
         else if (areaIndex == 2)
         {
@@ -409,14 +398,13 @@ public class Monster : MonoBehaviour, IDamageable
         }
     }
 
-    public void ApplyBleed(float damagePerSecond, float duration)
+    public void ApplyBleed(float damagePerSec, float duration)
     {
-        if (damagePerSecond > bleedDamagePerSec ||
-            (damagePerSecond == bleedDamagePerSec && duration > bleedDuration))
+        if (damagePerSec > bleedDamagePerSec || (damagePerSec == bleedDamagePerSec && duration > bleedDuration))
         {
-            bleedDamagePerSec = damagePerSecond;
+            bleedDamagePerSec = damagePerSec;
             bleedDuration = duration;
-            Debug.Log($"[Monster] {gameObject.name} 출혈(초당 {damagePerSecond}), {duration}초");
+            Debug.Log($"[Monster] {gameObject.name} 출혈 초당 {damagePerSec} 적용 (지속 {duration}초)");
         }
     }
 
@@ -427,22 +415,6 @@ public class Monster : MonoBehaviour, IDamageable
             stunDuration = duration;
             isStunned = true;
             Debug.Log($"[Monster] {gameObject.name} 스턴 적용 (지속 {duration}초)");
-        }
-    }
-
-    private void UpdateHpBar()
-    {
-        if (hpFillImage == null) return;
-        float ratio = Mathf.Clamp01(health / maxHealth);
-        hpFillImage.fillAmount = ratio;
-    }
-
-    private void OnDestroy()
-    {
-        // 오브젝트가 파괴될 때 HP바도 함께 제거
-        if (hpBarCanvas != null)
-        {
-            Destroy(hpBarCanvas.gameObject);
         }
     }
 }

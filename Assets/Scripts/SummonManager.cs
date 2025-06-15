@@ -69,6 +69,14 @@ public class SummonManager : MonoBehaviour
 
         var coreData = CoreDataManager.Instance;
         
+        // characterDatabase가 초기화될 때까지 추가 대기
+        int dbWaitCount = 0;
+        while (coreData.characterDatabase == null && dbWaitCount < 60) // 최대 60프레임 대기
+        {
+            yield return null;
+            dbWaitCount++;
+        }
+        
         // characterDatabase 확인
         if (coreData.characterDatabase == null)
         {
@@ -81,13 +89,16 @@ public class SummonManager : MonoBehaviour
             {
                 Debug.Log("[SummonManager] 씬에서 CharacterDatabase를 찾았지만 CoreDataManager에 연결되지 않았습니다.");
                 Debug.Log("[SummonManager] CoreDataManager.Start()가 실행되면 자동으로 연결될 예정입니다.");
+                
+                // 직접 연결 시도
+                coreData.characterDatabase = foundDB;
+                Debug.Log("[SummonManager] CharacterDatabase를 직접 연결했습니다.");
             }
             else
             {
                 Debug.LogError("[SummonManager] 씬에 CharacterDatabase가 없습니다! CharacterDatabase 프리팹을 씬에 배치해주세요.");
+                yield break;
             }
-            
-            yield break;
         }
 
         // 원 버튼 소환 풀이 비어있으면 기본 캐릭터들로 채우기

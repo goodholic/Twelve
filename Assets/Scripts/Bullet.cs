@@ -204,15 +204,52 @@ public class Bullet : MonoBehaviour
         spriteRenderer = GetComponent<SpriteRenderer>();
         uiImage = GetComponent<UnityEngine.UI.Image>();
 
-        // (RectTransform 초기화 - UI 상에서 총알 안 보이는 문제 방지)
+        // UI 상에서 총알 안 보이는 문제 해결 - RectTransform 초기화 개선
         RectTransform rt = GetComponent<RectTransform>();
         if (rt != null)
         {
+            // 앵커와 피벗 설정
             rt.anchorMin = new Vector2(0.5f, 0.5f);
             rt.anchorMax = new Vector2(0.5f, 0.5f);
             rt.pivot = new Vector2(0.5f, 0.5f);
-            rt.localScale = Vector3.one;
+            
+            // 크기 설정 (총알이 보이도록 적절한 크기 설정)
+            rt.sizeDelta = new Vector2(30f, 30f); // 기본 크기 30x30
+            
+            // 스케일 확인
+            if (rt.localScale.x < 0.1f || rt.localScale.y < 0.1f)
+            {
+                rt.localScale = Vector3.one;
+            }
+            
+            // 맨 앞으로 이동
             rt.SetAsLastSibling();
+            
+            // UI 이미지가 있다면 활성화 확인
+            if (uiImage != null)
+            {
+                uiImage.enabled = true;
+                
+                // 이미지 색상이 투명하지 않도록 확인
+                if (uiImage.color.a < 0.1f)
+                {
+                    Color c = uiImage.color;
+                    c.a = 1f;
+                    uiImage.color = c;
+                }
+                
+                // 스프라이트가 설정되어 있는지 확인
+                if (uiImage.sprite == null)
+                {
+                    Debug.LogWarning($"[Bullet] UI Image에 스프라이트가 설정되지 않았습니다!");
+                }
+            }
+        }
+        else if (spriteRenderer != null)
+        {
+            // SpriteRenderer 사용 시
+            spriteRenderer.enabled = true;
+            spriteRenderer.sortingOrder = 100; // 높은 값으로 설정하여 앞쪽에 표시
         }
     }
 
@@ -293,13 +330,6 @@ public class Bullet : MonoBehaviour
 
     private void OnHitTarget()
     {
-        if (target == null) return;
-        if (!target.activeInHierarchy)
-        {
-            Destroy(gameObject);
-            return;
-        }
-
         switch (bulletType)
         {
             case BulletType.Normal:
@@ -317,33 +347,34 @@ public class Bullet : MonoBehaviour
                 {
                     Destroy(gameObject);
                 }
+                else
+                {
+                    FindNextUnifiedTarget(target.transform.position);
+                }
                 break;
 
             case BulletType.Explosive:
                 ApplyDamageToTarget(damage);
-                if (isAreaAttack)
-                {
-                    ApplyUnifiedAreaDamage(target.transform.position);
-                }
+                ApplyUnifiedAreaDamage(target.transform.position);
                 SpawnExplosionEffect(target.transform.position);
                 Destroy(gameObject);
                 break;
 
             case BulletType.Slow:
-                ApplyDamageToTarget(damage * 0.7f);
+                ApplyDamageToTarget(damage * 0.8f);
                 if (damageableTarget is Monster monsterSlow)
                 {
-                    monsterSlow.ApplySlow(slowAmount, slowDuration);
+                    monsterSlow.ApplySlow(slowDuration, slowAmount);
                 }
                 SpawnImpactEffect(target.transform.position);
                 Destroy(gameObject);
                 break;
 
             case BulletType.Bleed:
-                ApplyDamageToTarget(damage);
+                ApplyDamageToTarget(damage * 0.7f);
                 if (damageableTarget is Monster monsterBleed)
                 {
-                    monsterBleed.ApplyBleed(bleedDamagePerSec, bleedDuration);
+                    monsterBleed.ApplyBleed(bleedDuration, bleedDamagePerSec);
                 }
                 SpawnImpactEffect(target.transform.position);
                 Destroy(gameObject);
@@ -429,45 +460,12 @@ public class Bullet : MonoBehaviour
         {
             if (c == null) continue;
             if (c.gameObject == target) continue;
-            if (c.isHero) continue;
-
+            if (c.areaIndex == this.areaIndex) continue;
+            
             float dist = Vector2.Distance(center, c.transform.position);
             if (dist <= areaRadius)
             {
-                if (c.areaIndex != this.areaIndex)
-                {
-                    c.TakeDamage(damage);
-                }
-            }
-        }
-        
-        // 중간성 광역 데미지
-        MiddleCastle[] allMiddleCastles = Object.FindObjectsByType<MiddleCastle>(FindObjectsSortMode.None);
-        foreach (var castle in allMiddleCastles)
-        {
-            if (castle == null) continue;
-            if (castle.gameObject == target) continue;
-            if (castle.areaIndex == this.areaIndex) continue;
-            
-            float dist = Vector2.Distance(center, castle.transform.position);
-            if (dist <= areaRadius)
-            {
-                castle.TakeDamage(damage);
-            }
-        }
-        
-        // 최종성 광역 데미지
-        FinalCastle[] allFinalCastles = Object.FindObjectsByType<FinalCastle>(FindObjectsSortMode.None);
-        foreach (var castle in allFinalCastles)
-        {
-            if (castle == null) continue;
-            if (castle.gameObject == target) continue;
-            if (castle.areaIndex == this.areaIndex) continue;
-            
-            float dist = Vector2.Distance(center, castle.transform.position);
-            if (dist <= areaRadius)
-            {
-                castle.TakeDamage(damage);
+                c.TakeDamage(damage);
             }
         }
     }
@@ -478,12 +476,13 @@ public class Bullet : MonoBehaviour
         IDamageable bestDamageable = null;
         float minDist = float.MaxValue;
 
-        Monster[] monsters = Object.FindObjectsByType<Monster>(FindObjectsSortMode.None);
-        foreach (var m in monsters)
+        // 몬스터 체크
+        Monster[] allMonsters = Object.FindObjectsByType<Monster>(FindObjectsSortMode.None);
+        foreach (var m in allMonsters)
         {
             if (m == null) continue;
             if (m.gameObject == target) continue;
-
+            
             float dist = Vector2.Distance(position, m.transform.position);
             if (dist < chainBounceRange && dist < minDist)
             {
@@ -492,23 +491,21 @@ public class Bullet : MonoBehaviour
                 bestDamageable = m;
             }
         }
-
-        Character[] characters = Object.FindObjectsByType<Character>(FindObjectsSortMode.None);
-        foreach (var c in characters)
+        
+        // 캐릭터 체크
+        Character[] allCharacters = Object.FindObjectsByType<Character>(FindObjectsSortMode.None);
+        foreach (var c in allCharacters)
         {
             if (c == null) continue;
             if (c.gameObject == target) continue;
-            if (c.isHero) continue;
-
-            if (c.areaIndex != this.areaIndex)
+            if (c.areaIndex == this.areaIndex) continue;
+            
+            float dist = Vector2.Distance(position, c.transform.position);
+            if (dist < chainBounceRange && dist < minDist)
             {
-                float dist = Vector2.Distance(position, c.transform.position);
-                if (dist < chainBounceRange && dist < minDist)
-                {
-                    minDist = dist;
-                    bestTarget = c.gameObject;
-                    bestDamageable = c;
-                }
+                minDist = dist;
+                bestTarget = c.gameObject;
+                bestDamageable = c;
             }
         }
         

@@ -233,87 +233,56 @@ public class WaveSpawner : MonoBehaviour
 
         isSpawning = false;
         
-        // 몬스터가 모두 죽을 때까지 대기
-        while (aliveMonsters > 0)
-        {
-            yield return null;
-        }
-
-        OnWaveClear();
-        
-        Debug.Log($"[WaveSpawner] Wave {currentWave} 완전 종료");
+        Debug.Log($"[WaveSpawner] Wave {currentWave} 스폰 완료");
     }
 
     /// <summary>
-    /// 5마리를 3라인에 분배하는 로직
+    /// 5마리를 3라인에 분배
     /// </summary>
     private List<int> GetSpawnDistribution(int monsterCount)
     {
         List<int> distribution = new List<int>();
         
-        // 기본 분배: 2-1-2 (좌측2, 중앙1, 우측2)
-        if (monsterCount == 5)
+        // 기본적으로 균등 분배
+        for (int i = 0; i < monsterCount; i++)
         {
-            distribution.Add(0); // 좌측
-            distribution.Add(0); // 좌측
-            distribution.Add(1); // 중앙
-            distribution.Add(2); // 우측
-            distribution.Add(2); // 우측
+            distribution.Add(i % 3); // 0:좌, 1:중, 2:우
         }
-        else
+        
+        // 랜덤하게 섞기
+        for (int i = 0; i < distribution.Count; i++)
         {
-            // 다른 경우는 균등 분배
-            for (int i = 0; i < monsterCount; i++)
-            {
-                distribution.Add(i % 3);
-            }
+            int randomIndex = Random.Range(i, distribution.Count);
+            int temp = distribution[i];
+            distribution[i] = distribution[randomIndex];
+            distribution[randomIndex] = temp;
         }
         
         return distribution;
     }
 
     /// <summary>
-    /// 몬스터용 루트에 따른 웨이포인트 배열 반환
+    /// 몬스터용 웨이포인트 가져오기
     /// </summary>
     private Transform[] GetMonsterWaypointsForRoute(int route)
     {
-        Transform[] waypoints = null;
-        
         switch (route)
         {
-            case 0:
-                waypoints = monsterWaypointsLeft;
+            case 0: // 좌측
+                if (monsterWaypointsLeft != null && monsterWaypointsLeft.Length > 0)
+                    return monsterWaypointsLeft;
                 break;
-            case 1:
-                waypoints = monsterWaypointsCenter;
+            case 1: // 중앙
+                if (monsterWaypointsCenter != null && monsterWaypointsCenter.Length > 0)
+                    return monsterWaypointsCenter;
                 break;
-            case 2:
-                waypoints = monsterWaypointsRight;
-                break;
-            default:
-                waypoints = monsterWaypointsCenter;
+            case 2: // 우측
+                if (monsterWaypointsRight != null && monsterWaypointsRight.Length > 0)
+                    return monsterWaypointsRight;
                 break;
         }
         
-        if (waypoints != null && waypoints.Length > 0)
-        {
-            List<Transform> validWaypoints = new List<Transform>();
-            
-            for (int i = 0; i < waypoints.Length; i++)
-            {
-                if (waypoints[i] != null)
-                {
-                    validWaypoints.Add(waypoints[i]);
-                }
-            }
-            
-            if (validWaypoints.Count > 0)
-            {
-                return validWaypoints.ToArray();
-            }
-        }
-        
-        Debug.LogWarning($"[WaveSpawner] 몬스터 {route} 루트의 웨이포인트가 없습니다!");
+        Debug.LogWarning($"[WaveSpawner] {route} 루트의 몬스터 웨이포인트가 없습니다!");
         return null;
     }
 
@@ -366,7 +335,7 @@ public class WaveSpawner : MonoBehaviour
         if (selectedWaypoints == null || selectedWaypoints.Length == 0)
         {
             Debug.LogError($"[WaveSpawner] 몬스터 {routeIndex} 루트의 웨이포인트가 없습니다!");
-            aliveMonsters--;  // 생성 실패 시 카운트 감소
+            aliveMonsters--;
             return;
         }
 
@@ -374,55 +343,30 @@ public class WaveSpawner : MonoBehaviour
         Vector3 spawnPos = GetMonsterSpawnPosition(routeIndex);
 
         // 챕터별 몬스터 선택 로직
-        GameObject prefabToSpawn = monsterPrefab;
+        GameObject prefabToUse = monsterPrefab;
         int monsterChapter = currentChapter;
 
-        if (useChapterMonsterLogic)
+        if (useChapterMonsterLogic && indexInWave == 2) // 3번째 몬스터 (인덱스 2)
         {
-            if (chapterMonsters != null && chapterMonsters.Length >= 101)
+            if (currentChapter < chapterMonsters.Length && chapterMonsters[currentChapter] != null)
             {
-                if (indexInWave == 2 && currentChapter < 101 && chapterMonsters[currentChapter] != null)
-                {
-                    prefabToSpawn = chapterMonsters[currentChapter];
-                    monsterChapter = currentChapter + 1;
-                }
-                else
-                {
-                    int curIdx = currentChapter - 1;
-                    if (curIdx >= 0 && curIdx < chapterMonsters.Length && chapterMonsters[curIdx] != null)
-                    {
-                        prefabToSpawn = chapterMonsters[curIdx];
-                    }
-                }
-            }
-            else
-            {
-                if (indexInWave == 2)
-                {
-                    if (currentChapter == 1 && chapter2MonsterPrefab != null)
-                    {
-                        prefabToSpawn = chapter2MonsterPrefab;
-                        monsterChapter = 2;
-                    }
-                    else if (currentChapter == 2 && chapter3MonsterPrefab != null)
-                    {
-                        prefabToSpawn = chapter3MonsterPrefab;
-                        monsterChapter = 3;
-                    }
-                }
+                prefabToUse = chapterMonsters[currentChapter];
+                monsterChapter = currentChapter + 1;
+                Debug.Log($"[WaveSpawner] 3번째 몬스터는 다음 챕터({monsterChapter}) 몬스터로 소환");
             }
         }
 
         // 몬스터 생성
-        GameObject monsterObj = Instantiate(prefabToSpawn, spawnPos, Quaternion.identity, monsterParent);
-        Monster monster = monsterObj.GetComponent<Monster>();
+        GameObject newMonster = Instantiate(prefabToUse, spawnPos, Quaternion.identity, monsterParent);
+        newMonster.name = $"Monster_W{currentWave}_{indexInWave}";
 
+        Monster monster = newMonster.GetComponent<Monster>();
         if (monster != null)
         {
             // 몬스터 설정
             monster.pathWaypoints = selectedWaypoints;
             monster.currentChapter = monsterChapter;
-            monster.areaIndex = 1;  // Area 1로 설정
+            monster.areaIndex = 1;  // 지역1 몬스터
             
             // 라인 정보 설정
             RouteType routeType = RouteType.Center;
@@ -432,9 +376,9 @@ public class WaveSpawner : MonoBehaviour
                 case 1: routeType = RouteType.Center; break;
                 case 2: routeType = RouteType.Right; break;
             }
-            monster.SetMonsterRoute(routeType);
-            
-            // 이벤트 구독 - 이것이 누락되어 있었음!
+            monster.SetMonsterRoute(routeType);  // 몬스터에 라인 정보 전달
+
+            // 이벤트 연결
             monster.OnDeath += HandleMonsterDeath;
             monster.OnReachedCastle += HandleMonsterReachedCastle;
             
@@ -461,7 +405,7 @@ public class WaveSpawner : MonoBehaviour
     private void HandleMonsterReachedCastle(Monster monster)
     {
         Debug.Log($"[WaveSpawner] Monster가 성에 도달함");
-        // 성에 도달한 몬스터도 죽은 것으로 처리되므로 별도 처리 불필요
+        // 성에 도달한 몬스터도 죽은 것으로 처리
     }
 
     private void OnWaveClear()
@@ -489,79 +433,38 @@ public class WaveSpawner : MonoBehaviour
             return;
         }
         
-        // 기존 보상 버튼들 찾기 (이미 씬에 있는 버튼들)
-        UnityEngine.UI.Button[] existingButtons = rewardButtonParent.GetComponentsInChildren<UnityEngine.UI.Button>(true);
-        
-        // 랜덤 2성 캐릭터 3개 선택
-        List<CharacterData> twoStarCharacters = new List<CharacterData>();
-        
-        // 모든 종족의 2성 캐릭터 수집
-        RaceType[] allRaces = { RaceType.Human, RaceType.Orc, RaceType.Elf };
-        foreach (var race in allRaces)
-        {
-            var twoStarData = starMergeDatabase.GetRandom2Star(race);
-            if (twoStarData != null)
-            {
-                twoStarCharacters.Add(twoStarData);
-            }
-        }
-        
-        // 중복 없이 3개 선택
-        List<CharacterData> selectedRewards = new List<CharacterData>();
-        while (selectedRewards.Count < 3 && twoStarCharacters.Count > 0)
-        {
-            int randomIndex = Random.Range(0, twoStarCharacters.Count);
-            selectedRewards.Add(twoStarCharacters[randomIndex]);
-            twoStarCharacters.RemoveAt(randomIndex);
-        }
-        
-        // 버튼에 보상 정보 설정
-        for (int i = 0; i < existingButtons.Length && i < selectedRewards.Count; i++)
-        {
-            int index = i;  // 클로저를 위한 로컬 변수
-            CharacterData reward = selectedRewards[i];
-            
-            // 버튼 이벤트 설정
-            existingButtons[i].onClick.RemoveAllListeners();
-            existingButtons[i].onClick.AddListener(() => OnRewardSelected(reward));
-            
-            // 버튼 텍스트 업데이트 (버튼 하위에 Text 컴포넌트가 있다고 가정)
-            var buttonText = existingButtons[i].GetComponentInChildren<TextMeshProUGUI>();
-            if (buttonText != null)
-            {
-                buttonText.text = $"{reward.characterName} (2★)";
-            }
-            
-            existingButtons[i].gameObject.SetActive(true);
-        }
-        
-        // 사용하지 않는 버튼은 비활성화
-        for (int i = selectedRewards.Count; i < existingButtons.Length; i++)
-        {
-            existingButtons[i].gameObject.SetActive(false);
-        }
-        
-        // 보상 패널 표시
+        // 보상 선택 패널 활성화
         rewardSelectionPanel.SetActive(true);
         
-        // 게임 일시정지 (선택적)
-        Time.timeScale = 0f;
-    }
-    
-    private void OnRewardSelected(CharacterData selectedCharacter)
-    {
-        Debug.Log($"[WaveSpawner] 보상 선택됨: {selectedCharacter.characterName}");
-        
-        // TODO: 선택된 캐릭터를 플레이어의 인벤토리나 덱에 추가하는 로직
-        // 예: PlayerInventory.Instance.AddCharacter(selectedCharacter);
-        
-        // 보상 패널 숨기기
-        if (rewardSelectionPanel != null)
+        // 기존 보상 버튼들 제거
+        foreach (Transform child in rewardButtonParent)
         {
-            rewardSelectionPanel.SetActive(false);
+            Destroy(child.gameObject);
         }
         
-        // 게임 재개
-        Time.timeScale = 1f;
+        // StarMergeDatabaseObject의 GetWaveRewardCandidates 메서드 사용
+        CharacterData[] rewardCandidates = starMergeDatabase.GetWaveRewardCandidates();
+        
+        if (rewardCandidates != null && rewardCandidates.Length >= 3)
+        {
+            // 3개 보상 캐릭터 표시
+            for (int i = 0; i < 3; i++)
+            {
+                CharacterData selectedChar = rewardCandidates[i];
+                if (selectedChar != null)
+                {
+                    // 보상 버튼 생성 (실제 구현 필요)
+                    Debug.Log($"[WaveSpawner] 보상 캐릭터 선택지 {i+1}: {selectedChar.characterName}");
+                }
+                else
+                {
+                    Debug.LogWarning($"[WaveSpawner] 보상 캐릭터 {i+1}이 null입니다!");
+                }
+            }
+        }
+        else
+        {
+            Debug.LogWarning("[WaveSpawner] 보상 캐릭터를 가져올 수 없습니다!");
+        }
     }
 }
