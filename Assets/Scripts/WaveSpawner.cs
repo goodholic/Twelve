@@ -184,24 +184,27 @@ public class WaveSpawner : MonoBehaviour
             StartNextWave();
 
             // 현재 웨이브가 끝날 때까지 대기
-            while (isSpawning)
+            while (isSpawning || aliveMonsters > 0)
             {
                 yield return null;
             }
+            
+            // 다음 웨이브 전 대기 시간
+            yield return new WaitForSeconds(timeBetweenWaves);
         }
         Debug.Log("[WaveSpawner] 200 wave 전부 완료!");
     }
 
     public void StartNextWave()
     {
-        if (!isSpawning)
+        if (!isSpawning && aliveMonsters == 0)
         {
             Debug.Log($"[WaveSpawner] StartNextWave() 호출 -> currentWave={currentWave+1}");
             StartCoroutine(SpawnWaveRoutine());
         }
         else
         {
-            Debug.Log("[WaveSpawner] 이미 웨이브 스폰 중입니다.");
+            Debug.Log($"[WaveSpawner] 웨이브 시작 불가 - isSpawning: {isSpawning}, aliveMonsters: {aliveMonsters}");
         }
     }
 
@@ -228,17 +231,17 @@ public class WaveSpawner : MonoBehaviour
             yield return new WaitForSeconds(spawnInterval);
         }
 
+        isSpawning = false;
+        
+        // 몬스터가 모두 죽을 때까지 대기
         while (aliveMonsters > 0)
         {
             yield return null;
         }
 
         OnWaveClear();
-
-        yield return new WaitForSeconds(timeBetweenWaves);
-
-        isSpawning = false;
-        Debug.Log($"[WaveSpawner] Wave {currentWave} 종료 -> 다음 웨이브로 넘어감");
+        
+        Debug.Log($"[WaveSpawner] Wave {currentWave} 완전 종료");
     }
 
     /// <summary>
@@ -354,6 +357,7 @@ public class WaveSpawner : MonoBehaviour
         if (monsterPrefab == null || monsterParent == null)
         {
             Debug.LogError("[WaveSpawner] monsterPrefab/monsterParent가 설정되지 않아 몬스터 소환 불가");
+            aliveMonsters--;  // 생성 실패 시 카운트 감소
             return;
         }
 
@@ -362,6 +366,7 @@ public class WaveSpawner : MonoBehaviour
         if (selectedWaypoints == null || selectedWaypoints.Length == 0)
         {
             Debug.LogError($"[WaveSpawner] 몬스터 {routeIndex} 루트의 웨이포인트가 없습니다!");
+            aliveMonsters--;  // 생성 실패 시 카운트 감소
             return;
         }
 
@@ -404,112 +409,42 @@ public class WaveSpawner : MonoBehaviour
                         prefabToSpawn = chapter3MonsterPrefab;
                         monsterChapter = 3;
                     }
-                    else if (currentChapter >= 3 && chapter3MonsterPrefab != null)
-                    {
-                        prefabToSpawn = chapter3MonsterPrefab;
-                        monsterChapter = currentChapter + 1;
-                    }
                 }
             }
         }
 
-        // 실제 스폰
-        GameObject mObj = Instantiate(prefabToSpawn, monsterParent);
-        mObj.SetActive(true);
-        mObj.transform.position = spawnPos;
+        // 몬스터 생성
+        GameObject monsterObj = Instantiate(prefabToSpawn, spawnPos, Quaternion.identity, monsterParent);
+        Monster monster = monsterObj.GetComponent<Monster>();
 
-        Monster mComp = mObj.GetComponent<Monster>();
-        if (mComp != null)
+        if (monster != null)
         {
-            mComp.areaIndex = 1;
-            mComp.pathWaypoints = selectedWaypoints;
-            mComp.OnDeath += HandleMonsterDeath;
-            mComp.currentChapter = monsterChapter;
-
-            // 몬스터가 어느 루트인지 설정
+            // 몬스터 설정
+            monster.pathWaypoints = selectedWaypoints;
+            monster.currentChapter = monsterChapter;
+            monster.areaIndex = 1;  // Area 1로 설정
+            
+            // 라인 정보 설정
+            RouteType routeType = RouteType.Center;
             switch (routeIndex)
             {
-                case 0:
-                    mComp.SetMonsterRoute(RouteType.Left);
-                    break;
-                case 1:
-                    mComp.SetMonsterRoute(RouteType.Center);
-                    break;
-                case 2:
-                    mComp.SetMonsterRoute(RouteType.Right);
-                    break;
+                case 0: routeType = RouteType.Left; break;
+                case 1: routeType = RouteType.Center; break;
+                case 2: routeType = RouteType.Right; break;
             }
-
-            Debug.Log($"[WaveSpawner] Spawned Monster on route {routeIndex}, indexInWave={indexInWave}, chapter={monsterChapter}, Wave={currentWave}");
+            monster.SetMonsterRoute(routeType);
+            
+            // 이벤트 구독 - 이것이 누락되어 있었음!
+            monster.OnDeath += HandleMonsterDeath;
+            monster.OnReachedCastle += HandleMonsterReachedCastle;
+            
+            Debug.Log($"[WaveSpawner] 몬스터 생성 완료 - 위치: {spawnPos}, 루트: {routeType}, 챕터: {monsterChapter}");
         }
         else
         {
-            Debug.LogWarning("[WaveSpawner] 스폰된 프리팹에 Monster 컴포넌트가 없음");
+            Debug.LogError("[WaveSpawner] 생성된 몬스터에 Monster 컴포넌트가 없습니다!");
+            aliveMonsters--;  // 생성 실패 시 카운트 감소
         }
-    }
-
-    /// <summary>
-    /// 선택된 루트에 따른 웨이포인트 배열 반환 (캐릭터용)
-    /// </summary>
-    private Transform[] GetWaypointsForRoute(RouteType route)
-    {
-        Transform[] waypoints = null;
-        
-        switch (route)
-        {
-            case RouteType.Left:
-                waypoints = walkableLeft;
-                break;
-            case RouteType.Center:
-                waypoints = walkableCenter;
-                break;
-            case RouteType.Right:
-                waypoints = walkableRight;
-                break;
-            default:
-                waypoints = walkableCenter;
-                break;
-        }
-        
-        if (waypoints != null && waypoints.Length > 0)
-        {
-            List<Transform> validWaypoints = new List<Transform>();
-            
-            for (int i = 0; i < waypoints.Length; i++)
-            {
-                if (waypoints[i] != null)
-                {
-                    validWaypoints.Add(waypoints[i]);
-                }
-                else
-                {
-                    Debug.LogWarning($"[WaveSpawner] {route} 루트의 웨이포인트[{i}]가 null입니다!");
-                }
-            }
-            
-            if (validWaypoints.Count > 0)
-            {
-                for (int i = 0; i < validWaypoints.Count - 1; i++)
-                {
-                    float distance = Vector2.Distance(validWaypoints[i].position, validWaypoints[i + 1].position);
-                    if (distance > 12f)
-                    {
-                        Debug.LogWarning($"[WaveSpawner] {route} 루트 웨이포인트[{i}]→[{i+1}] 거리가 너무 멉니다: {distance:F2}");
-                    }
-                }
-                
-                Debug.Log($"[WaveSpawner] {route} 루트 웨이포인트 검증 완료: {validWaypoints.Count}개");
-                return validWaypoints.ToArray();
-            }
-            else
-            {
-                Debug.LogError($"[WaveSpawner] {route} 루트에 유효한 웨이포인트가 없습니다!");
-                return null;
-            }
-        }
-        
-        Debug.LogWarning($"[WaveSpawner] {route} 루트의 웨이포인트 배열이 null이거나 비어있습니다!");
-        return null;
     }
 
     private void HandleMonsterDeath()
@@ -521,6 +456,12 @@ public class WaveSpawner : MonoBehaviour
         {
             aliveMonsters = 0;
         }
+    }
+
+    private void HandleMonsterReachedCastle(Monster monster)
+    {
+        Debug.Log($"[WaveSpawner] Monster가 성에 도달함");
+        // 성에 도달한 몬스터도 죽은 것으로 처리되므로 별도 처리 불필요
     }
 
     private void OnWaveClear()
@@ -574,73 +515,53 @@ public class WaveSpawner : MonoBehaviour
             twoStarCharacters.RemoveAt(randomIndex);
         }
         
-        // 기존 버튼들에 보상 데이터 설정
+        // 버튼에 보상 정보 설정
         for (int i = 0; i < existingButtons.Length && i < selectedRewards.Count; i++)
         {
+            int index = i;  // 클로저를 위한 로컬 변수
             CharacterData reward = selectedRewards[i];
-            var button = existingButtons[i];
             
-            // 버튼 활성화
-            button.gameObject.SetActive(true);
+            // 버튼 이벤트 설정
+            existingButtons[i].onClick.RemoveAllListeners();
+            existingButtons[i].onClick.AddListener(() => OnRewardSelected(reward));
             
-            // 버튼 UI 설정
-            var image = button.GetComponentInChildren<UnityEngine.UI.Image>();
-            var text = button.GetComponentInChildren<TMPro.TextMeshProUGUI>();
-            
-            if (image != null && reward.buttonIcon != null)
+            // 버튼 텍스트 업데이트 (버튼 하위에 Text 컴포넌트가 있다고 가정)
+            var buttonText = existingButtons[i].GetComponentInChildren<TextMeshProUGUI>();
+            if (buttonText != null)
             {
-                image.sprite = reward.buttonIcon.sprite;
+                buttonText.text = $"{reward.characterName} (2★)";
             }
             
-            if (text != null)
-            {
-                text.text = $"{reward.characterName}\n★★";
-            }
-            
-            // 기존 리스너 제거 후 새 리스너 추가
-            button.onClick.RemoveAllListeners();
-            button.onClick.AddListener(() =>
-            {
-                OnRewardSelected(reward);
-            });
+            existingButtons[i].gameObject.SetActive(true);
         }
         
-        // 남은 버튼들은 비활성화
+        // 사용하지 않는 버튼은 비활성화
         for (int i = selectedRewards.Count; i < existingButtons.Length; i++)
         {
             existingButtons[i].gameObject.SetActive(false);
         }
         
-        // 패널 표시
+        // 보상 패널 표시
         rewardSelectionPanel.SetActive(true);
-        Time.timeScale = 0f; // 게임 일시정지
+        
+        // 게임 일시정지 (선택적)
+        Time.timeScale = 0f;
     }
     
     private void OnRewardSelected(CharacterData selectedCharacter)
     {
-        Debug.Log($"[WaveSpawner] 보상 캐릭터 선택: {selectedCharacter.characterName}");
+        Debug.Log($"[WaveSpawner] 보상 선택됨: {selectedCharacter.characterName}");
         
-        // 빈 타일 찾기
-        Tile emptyTile = TileManager.Instance.FindEmptyPlacedOrPlacableTile(false);
+        // TODO: 선택된 캐릭터를 플레이어의 인벤토리나 덱에 추가하는 로직
+        // 예: PlayerInventory.Instance.AddCharacter(selectedCharacter);
         
-        if (emptyTile == null)
+        // 보상 패널 숨기기
+        if (rewardSelectionPanel != null)
         {
-            // placable 타일이 없으면 walkable 타일로
-            emptyTile = TileManager.Instance.FindEmptyWalkableTile(false);
+            rewardSelectionPanel.SetActive(false);
         }
         
-        if (emptyTile != null && selectedCharacter.spawnPrefab != null)
-        {
-            // PlacementManager를 통해 보상 캐릭터 배치
-            PlacementManager.Instance.PlaceRewardCharacterOnTile(selectedCharacter, emptyTile);
-        }
-        else
-        {
-            Debug.LogWarning("[WaveSpawner] 보상 캐릭터를 배치할 타일이 없습니다!");
-        }
-        
-        // 패널 닫기
-        rewardSelectionPanel.SetActive(false);
-        Time.timeScale = 1f; // 게임 재개
+        // 게임 재개
+        Time.timeScale = 1f;
     }
 }

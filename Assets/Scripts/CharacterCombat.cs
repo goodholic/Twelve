@@ -51,8 +51,13 @@ public class CharacterCombat : MonoBehaviour
         // bulletPrefab이 설정되지 않았으면 자동으로 설정 시도
         if (bulletPrefab == null)
         {
-            Debug.LogWarning($"[CharacterCombat] {character.characterName}의 bulletPrefab이 null입니다. 자동 설정을 시도합니다.");
-            GetBulletPrefab(); // 이 메서드에서 자동으로 bulletPrefab을 찾아서 설정함
+            Debug.Log($"[CharacterCombat] {character.characterName}의 bulletPrefab이 null입니다. 자동 설정을 시도합니다.");
+            GameObject foundPrefab = GetBulletPrefab(); // 이 메서드에서 자동으로 bulletPrefab을 찾아서 설정함
+            
+            if (foundPrefab == null)
+            {
+                Debug.LogWarning($"[CharacterCombat] {character.characterName}의 총알 프리팹을 찾을 수 없습니다. 공격 시 직접 데미지로 처리됩니다.");
+            }
         }
         
         StartCoroutine(AttackRoutine());
@@ -134,6 +139,18 @@ public class CharacterCombat : MonoBehaviour
                             targetToDamage = character.currentTarget;
                             Debug.Log($"[Character] {character.characterName}이(가) 몬스터 {character.currentTarget.name}을(를) 공격!");
                         }
+                        else if (!isOnWalkable)
+                        {
+                            // 성 타겟팅 (타워형 캐릭터만)
+                            CheckCastleTargets();
+                        }
+                    }
+                    break;
+                    
+                case AttackTargetType.CastleOnly:
+                    if (!isOnWalkable)
+                    {
+                        CheckCastleTargets();
                     }
                     break;
                     
@@ -142,153 +159,189 @@ public class CharacterCombat : MonoBehaviour
                     if (character.currentCharTarget != null)
                     {
                         targetToDamage = character.currentCharTarget;
-                        Debug.Log($"[Character] {character.characterName}이(가) 캐릭터 {character.currentCharTarget.characterName}을(를) 공격!");
                     }
-                    break;
-                    
-                case AttackTargetType.CastleOnly:
-                    // 성만 공격 - 이동만 하고 전투하지 않음
                     break;
             }
             
             if (targetToDamage != null)
             {
-                if (character.isHero)
+                Attack(targetToDamage);
+            }
+            else if (character.currentMiddleCastleTarget != null)
+            {
+                AttackCastle(character.currentMiddleCastleTarget);
+            }
+            else if (character.currentFinalCastleTarget != null)
+            {
+                AttackCastle(character.currentFinalCastleTarget);
+            }
+        }
+    }
+    
+    private void CheckCastleTargets()
+    {
+        // 중간성 타겟팅
+        MiddleCastle[] middleCastles = FindObjectsByType<MiddleCastle>(FindObjectsSortMode.None);
+        foreach (var castle in middleCastles)
+        {
+            if (castle.areaIndex != character.areaIndex && !castle.IsDestroyed())
+            {
+                float dist = Vector2.Distance(transform.position, castle.transform.position);
+                if (dist <= character.attackRange)
                 {
-                    float originalDamage = character.attackPower;
-                    character.attackPower *= 1.5f;
-                    
-                    AttackTarget(targetToDamage);
-                    
-                    character.attackPower = originalDamage;
+                    character.currentMiddleCastleTarget = castle;
+                    Debug.Log($"[Character] {character.characterName}이 중간성을 타겟팅!");
+                    return;
                 }
-                else
+            }
+        }
+        
+        // 최종성 타겟팅
+        FinalCastle[] finalCastles = FindObjectsByType<FinalCastle>(FindObjectsSortMode.None);
+        foreach (var castle in finalCastles)
+        {
+            if (castle.areaIndex != character.areaIndex && !castle.IsDestroyed())
+            {
+                float dist = Vector2.Distance(transform.position, castle.transform.position);
+                if (dist <= character.attackRange)
                 {
-                    AttackTarget(targetToDamage);
+                    character.currentFinalCastleTarget = castle;
+                    Debug.Log($"[Character] {character.characterName}이 최종성을 타겟팅!");
+                    return;
                 }
             }
         }
     }
     
-    private Monster FindMonsterTargetInRange()
+    private void AttackCastle(MonoBehaviour castle)
     {
-        string targetTag = (character.areaIndex == 1) ? "EnemyMonster" : "Monster";
-        
-        GameObject[] foundObjs = GameObject.FindGameObjectsWithTag(targetTag);
-        
-        Monster nearest = null;
-        float nearestDist = Mathf.Infinity;
-        
-        foreach (GameObject mo in foundObjs)
+        GameObject bulletPrefabToUse = GetBulletPrefab();
+        if (bulletPrefabToUse != null)
         {
-            if (mo == null) continue;
-            Monster m = mo.GetComponent<Monster>();
-            if (m == null) continue;
+            GameObject bulletObj = Instantiate(bulletPrefabToUse);
+            RectTransform parentPanel = SelectBulletPanel(character.areaIndex == 1 ? 2 : 1);
             
-            float dist = Vector3.Distance(transform.position, m.transform.position);
-            if (dist <= character.attackRange && dist < nearestDist)
+            if (parentPanel != null)
             {
-                nearest = m;
-                nearestDist = dist;
-            }
-        }
-        
-        return nearest;
-    }
-    
-    private Monster FindHeroTargetInRange()
-    {
-        float heroAttackRange = character.attackRange * 1.5f;
-        
-        // 히어로는 본인 지역 타일에 있는 타 지역의 몬스터만 공격
-        // 히어로가 지역1에 있으면 -> 지역2에서 온 몬스터(EnemyMonster) 공격
-        // 히어로가 지역2에 있으면 -> 지역1에서 온 몬스터(Monster) 공격
-        string targetTag = (character.areaIndex == 1) ? "EnemyMonster" : "Monster";
-        GameObject[] foundObjs = GameObject.FindGameObjectsWithTag(targetTag);
-        
-        Monster nearest = null;
-        float nearestDist = Mathf.Infinity;
-        
-        foreach (GameObject mo in foundObjs)
-        {
-            if (mo == null) continue;
-            Monster m = mo.GetComponent<Monster>();
-            if (m == null) continue;
-            
-            // 몬스터가 히어로와 같은 지역에 있는지 확인 (같은 지역에 침입한 적 몬스터만 공격)
-            // 예: 지역1 히어로는 지역1로 침입한 지역2 몬스터만 공격
-            bool isInSameRegion = false;
-            if (character.currentTile != null)
-            {
-                // 히어로의 현재 타일과 몬스터의 위치를 비교하여 같은 지역인지 확인
-                // walkable 타일에 있는 몬스터는 이미 침입한 상태
-                isInSameRegion = true; // 간단히 처리 - 태그로 이미 필터링됨
+                bulletObj.transform.SetParent(parentPanel, false);
+                RectTransform bulletRect = bulletObj.GetComponent<RectTransform>();
+                if (bulletRect != null)
+                {
+                    Vector2 localPos = parentPanel.InverseTransformPoint(transform.position);
+                    bulletRect.anchoredPosition = localPos;
+                }
             }
             
-            if (!isInSameRegion) continue;
-            
-            float dist = Vector2.Distance(transform.position, m.transform.position);
-            if (dist < heroAttackRange && dist < nearestDist)
+            Bullet bullet = bulletObj.GetComponent<Bullet>();
+            if (bullet != null)
             {
-                nearestDist = dist;
-                nearest = m;
+                bullet.Initialize(
+                    castle.gameObject,
+                    character.attackPower,
+                    character.areaIndex,
+                    true,
+                    bulletSpeed,
+                    character
+                );
+                
+                if (character.isAreaAttack)
+                {
+                    bullet.SetAreaAttack(character.areaAttackRadius);
+                }
             }
         }
-        
-        if (nearest != null)
+        else
         {
-            Debug.Log($"[Character] 히어로 {character.characterName}이(가) 타 지역 몬스터 {nearest.name}을(를) 탐지! (거리: {nearestDist}, 히어로 공격범위: {heroAttackRange})");
+            // 직접 데미지
+            if (castle is MiddleCastle middleCastle)
+            {
+                middleCastle.TakeDamage(character.attackPower);
+            }
+            else if (castle is FinalCastle finalCastle)
+            {
+                finalCastle.TakeDamage(character.attackPower);
+            }
         }
-        
-        return nearest;
     }
     
     private Character FindCharacterTargetInRange()
     {
-        if (character.isHero || !movement.HasJumped())
-        {
-            return null;
-        }
-        
         Character[] allCharacters = FindObjectsByType<Character>(FindObjectsSortMode.None);
+        Character nearestChar = null;
+        float nearestDistance = Mathf.Infinity;
         
-        Character nearest = null;
-        float nearestDist = Mathf.Infinity;
-        
-        foreach (Character otherChar in allCharacters)
+        foreach (var otherChar in allCharacters)
         {
             if (otherChar == null || otherChar == character) continue;
+            if (otherChar.areaIndex == character.areaIndex) continue;
+            if (otherChar.currentHP <= 0) continue;
             
-            if (character.isHero && otherChar.isHero)
+            float dist = Vector2.Distance(transform.position, otherChar.transform.position);
+            if (dist <= character.attackRange && dist < nearestDistance)
             {
-                continue;
-            }
-            
-            bool canAttack = false;
-            
-            if (character.areaIndex != otherChar.areaIndex)
-            {
-                canAttack = true;
-            }
-            
-            if (!canAttack) continue;
-            
-            float dist = Vector3.Distance(transform.position, otherChar.transform.position);
-            if (dist <= character.attackRange && dist < nearestDist)
-            {
-                nearest = otherChar;
-                nearestDist = dist;
+                nearestDistance = dist;
+                nearestChar = otherChar;
             }
         }
         
-        return nearest;
+        return nearestChar;
     }
     
-    private void AttackTarget(IDamageable target)
+    private Monster FindMonsterTargetInRange()
     {
-        if (target == null) return;
+        string targetTag = (character.areaIndex == 1) ? "Monster" : "EnemyMonster";
+        GameObject[] monsterObjs = GameObject.FindGameObjectsWithTag(targetTag);
         
-        int targetAreaIndex = 0;
+        Monster nearestMonster = null;
+        float nearestDistance = Mathf.Infinity;
+        
+        foreach (GameObject obj in monsterObjs)
+        {
+            if (obj == null) continue;
+            Monster monster = obj.GetComponent<Monster>();
+            if (monster == null) continue;
+            
+            float dist = Vector2.Distance(transform.position, monster.transform.position);
+            if (dist <= character.attackRange && dist < nearestDistance)
+            {
+                nearestDistance = dist;
+                nearestMonster = monster;
+            }
+        }
+        
+        return nearestMonster;
+    }
+    
+    private Monster FindHeroTargetInRange()
+    {
+        string[] possibleTags = { "Monster", "EnemyMonster" };
+        Monster nearestMonster = null;
+        float nearestDistance = Mathf.Infinity;
+        
+        foreach (string tag in possibleTags)
+        {
+            GameObject[] monsterObjs = GameObject.FindGameObjectsWithTag(tag);
+            foreach (GameObject obj in monsterObjs)
+            {
+                if (obj == null) continue;
+                Monster monster = obj.GetComponent<Monster>();
+                if (monster == null) continue;
+                
+                float dist = Vector2.Distance(transform.position, monster.transform.position);
+                if (dist <= character.attackRange && dist < nearestDistance)
+                {
+                    nearestDistance = dist;
+                    nearestMonster = monster;
+                }
+            }
+        }
+        
+        return nearestMonster;
+    }
+    
+    private void Attack(IDamageable target)
+    {
+        int targetAreaIndex = character.areaIndex;
         Vector3 targetPosition = Vector3.zero;
         string targetName = "Unknown";
         GameObject targetGameObject = null;
@@ -343,60 +396,35 @@ public class CharacterCombat : MonoBehaviour
                 {
                     Vector2 localPos = parentPanel.InverseTransformPoint(transform.position);
                     bulletRect.anchoredPosition = localPos;
-                    bulletRect.localRotation = Quaternion.identity;
                 }
                 else
                 {
                     bulletObj.transform.position = transform.position;
-                    bulletObj.transform.localRotation = Quaternion.identity;
                 }
                 
-                Bullet bulletComp = bulletObj.GetComponent<Bullet>();
-                if (bulletComp != null)
+                Bullet bullet = bulletObj.GetComponent<Bullet>();
+                if (bullet != null)
                 {
-                    float bulletSpeed = 10.0f;
+                    bullet.Initialize(
+                        targetGameObject,
+                        character.attackPower,
+                        character.areaIndex,
+                        character.isAreaAttack,
+                        bulletSpeed,
+                        character
+                    );
                     
-                    if (character.isHero)
+                    if (character.isAreaAttack)
                     {
-                        bulletComp.isAreaAttack = true;
-                        bulletComp.areaRadius = 2.0f;
-                        
-                        if (character.star == CharacterStar.OneStar)
-                        {
-                            bulletComp.bulletType = BulletType.Normal;
-                        }
-                        else if (character.star == CharacterStar.TwoStar)
-                        {
-                            bulletComp.bulletType = BulletType.Explosive;
-                            bulletComp.speed = bulletSpeed * 1.2f;
-                        }
-                        else if (character.star == CharacterStar.ThreeStar)
-                        {
-                            bulletComp.bulletType = BulletType.Chain;
-                            bulletComp.chainMaxBounces = 3;
-                            bulletComp.chainBounceRange = 3.0f;
-                            bulletComp.speed = bulletSpeed * 1.2f;
-                        }
-                        
-                        Debug.Log($"[Character] 히어로 {character.characterName}이(가) 특수 총알을 발사! (타입: {bulletComp.bulletType})");
-                    }
-                    else
-                    {
-                        bulletComp.bulletType = BulletType.Normal;
-                        bulletComp.isAreaAttack = character.isAreaAttack;
-                        bulletComp.areaRadius = character.areaAttackRadius;
+                        bullet.SetAreaAttack(character.areaAttackRadius);
                     }
                     
-                    bulletComp.speed = bulletSpeed;
+                    if (character.rangeType == RangeType.Melee)
+                    {
+                        bullet.SetAsMeleeAttack();
+                    }
                     
-                    bool isTargetAbove = targetPosition.y > transform.position.y;
-                    bulletComp.bulletUpDirectionSprite = bulletUpDirectionSprite;
-                    bulletComp.bulletDownDirectionSprite = bulletDownDirectionSprite;
-                    
-                    bulletComp.target = targetGameObject;
-                    
-                    bulletComp.Init(target, character.attackPower, bulletSpeed, bulletComp.isAreaAttack, bulletComp.areaRadius, character.areaIndex);
-                    Debug.Log($"[Character] {character.characterName}의 총알이 {targetName}을(를) 향해 발사됨! (속도: {bulletSpeed})");
+                    Debug.Log($"[Character] {character.characterName}이(가) {targetName}에게 총알 발사! (속도: {bulletSpeed})");
                 }
                 else
                 {
@@ -481,7 +509,7 @@ public class CharacterCombat : MonoBehaviour
         else
         {
             // bulletPrefab이 null일 때 자동으로 기본 총알 프리팹 찾기
-            Debug.LogWarning($"[Character] {character.characterName}에 bulletPrefab이 설정되지 않음! 기본 총알 프리팹을 찾는 중...");
+            Debug.Log($"[CharacterCombat] {character.characterName}에 bulletPrefab이 설정되지 않음! 기본 총알 프리팹을 찾는 중...");
             
             // CoreDataManager에서 총알 프리팹 가져오기 시도
             var coreData = CoreDataManager.Instance;
@@ -497,7 +525,7 @@ public class CharacterCombat : MonoBehaviour
                         coreData.enemyBulletPrefabs[characterIndex] != null)
                     {
                         bulletPrefab = coreData.enemyBulletPrefabs[characterIndex];
-                        Debug.Log($"[Character] {character.characterName}에 적 총알 프리팹 {characterIndex}번을 자동 설정했습니다.");
+                        Debug.Log($"[CharacterCombat] {character.characterName}에 적 총알 프리팹 {characterIndex}번을 자동 설정했습니다.");
                         return bulletPrefab;
                     }
                 }
@@ -508,7 +536,7 @@ public class CharacterCombat : MonoBehaviour
                         coreData.allyBulletPrefabs[characterIndex] != null)
                     {
                         bulletPrefab = coreData.allyBulletPrefabs[characterIndex];
-                        Debug.Log($"[Character] {character.characterName}에 아군 총알 프리팹 {characterIndex}번을 자동 설정했습니다.");
+                        Debug.Log($"[CharacterCombat] {character.characterName}에 아군 총알 프리팹 {characterIndex}번을 자동 설정했습니다.");
                         return bulletPrefab;
                     }
                 }
@@ -525,11 +553,12 @@ public class CharacterCombat : MonoBehaviour
             if (defaultBullet != null)
             {
                 bulletPrefab = defaultBullet;
-                Debug.Log($"[Character] {character.characterName}에 기본 총알 프리팹을 자동 설정했습니다.");
+                Debug.Log($"[CharacterCombat] {character.characterName}에 기본 총알 프리팹을 자동 설정했습니다.");
                 return bulletPrefab;
             }
             
-            Debug.LogError($"[Character] {character.characterName}에 bulletPrefab을 찾을 수 없습니다! 기본 총알 프리팹도 없습니다.");
+            // 프리팹을 찾을 수 없음 - null 반환
+            Debug.Log($"[CharacterCombat] {character.characterName}의 총알 프리팹을 찾을 수 없습니다. 공격 시 직접 데미지로 처리됩니다.");
             return null;
         }
     }

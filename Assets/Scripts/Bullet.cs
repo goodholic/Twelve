@@ -641,4 +641,91 @@ public class Bullet : MonoBehaviour
             Destroy(effect, 1f);
         }
     }
+
+    // =====================================================================
+    // CharacterCombat에서 호출하는 메서드들 (호환성을 위해 추가)
+    // =====================================================================
+    
+    /// <summary>
+    /// CharacterCombat에서 호출하는 Initialize 메서드 (Init 메서드의 래퍼)
+    /// </summary>
+    public void Initialize(GameObject targetGameObject, float baseDamage, int areaIndex, 
+                          bool areaAtk, float baseSpeed, Character sourceCharacter)
+    {
+        // targetGameObject에서 IDamageable 컴포넌트 찾기
+        IDamageable targetDamageable = null;
+        
+        if (targetGameObject != null)
+        {
+            // Monster 컴포넌트 확인
+            Monster monster = targetGameObject.GetComponent<Monster>();
+            if (monster != null)
+            {
+                targetDamageable = monster;
+            }
+            else
+            {
+                // Character 컴포넌트 확인
+                Character character = targetGameObject.GetComponent<Character>();
+                if (character != null)
+                {
+                    targetDamageable = character;
+                }
+                else
+                {
+                    // Castle 컴포넌트들 확인
+                    MiddleCastle middleCastle = targetGameObject.GetComponent<MiddleCastle>();
+                    if (middleCastle != null)
+                    {
+                        targetDamageable = middleCastle;
+                    }
+                    else
+                    {
+                        FinalCastle finalCastle = targetGameObject.GetComponent<FinalCastle>();
+                        if (finalCastle != null)
+                        {
+                            targetDamageable = finalCastle;
+                        }
+                    }
+                }
+            }
+        }
+        
+        if (targetDamageable != null)
+        {
+            // 기본 광역 반지름 설정 (sourceCharacter가 있는 경우)
+            float areaAtkRadius = 1.5f;
+            if (sourceCharacter != null && sourceCharacter.isAreaAttack)
+            {
+                areaAtkRadius = sourceCharacter.areaAttackRadius;
+            }
+            
+            // 기존 Init 메서드 호출
+            Init(targetDamageable, baseDamage, baseSpeed, areaAtk, areaAtkRadius, areaIndex);
+        }
+        else
+        {
+            Debug.LogWarning($"[Bullet] Initialize: 타겟 오브젝트에서 IDamageable 컴포넌트를 찾을 수 없습니다: {targetGameObject?.name}");
+        }
+    }
+    
+    /// <summary>
+    /// 광역 공격 설정
+    /// </summary>
+    public void SetAreaAttack(float radius)
+    {
+        this.isAreaAttack = true;
+        this.areaRadius = radius;
+    }
+    
+    /// <summary>
+    /// 근접 공격으로 설정 (즉시 타겟에 도달하도록)
+    /// </summary>
+    public void SetAsMeleeAttack()
+    {
+        // 근접 공격의 경우 속도를 매우 빠르게 설정하여 즉시 도달하도록 함
+        this.speed = 50f;
+        this.maxLifeTime = 0.5f; // 짧은 생존 시간
+        this.speedMultiplier = 2f; // 속도 배율 증가
+    }
 }

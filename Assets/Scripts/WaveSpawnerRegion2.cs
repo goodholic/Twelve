@@ -52,7 +52,8 @@ public class WaveSpawnerRegion2 : MonoBehaviour
     public int monstersPerWave2 = 5; // 기획서: 5마리 동시 생성
     public float spawnInterval2 = 0.2f; // 동시 생성을 위해 간격 축소
     public float firstWaveDelay2 = 10f;
-    public int maxWaveCount2 = 200;
+    public bool autoStartWaves = true;  // 수정: false에서 true로 변경하여 자동 시작
+    public int maxWaveCount2 = 200;  // 수정: 5에서 200으로 변경
 
     private int currentWave2 = 0;
     private int aliveMonsters2 = 0;
@@ -89,11 +90,16 @@ public class WaveSpawnerRegion2 : MonoBehaviour
 
     private void Start()
     {
-        StartCoroutine(DelayFirstWaveRoutine2(firstWaveDelay2));
         UpdateRegion2LifeText();
         
         // 중간성/최종성 체력 설정
         SetupCastleHealth();
+        
+        // 자동 웨이브 시작이 활성화되어 있으면 시작
+        if (autoStartWaves)
+        {
+            StartCoroutine(DelayFirstWaveRoutine2(firstWaveDelay2));
+        }
     }
 
     /// <summary>
@@ -156,7 +162,7 @@ public class WaveSpawnerRegion2 : MonoBehaviour
 
     private void StartAutoWaveSpawn2()
     {
-        if (!autoStarted2)
+        if (!autoStarted2 && autoStartWaves)
         {
             autoStarted2 = true;
             StartCoroutine(AutoWaveRoutine2());
@@ -165,24 +171,38 @@ public class WaveSpawnerRegion2 : MonoBehaviour
 
     private IEnumerator AutoWaveRoutine2()
     {
+        // 최대 웨이브 수까지만 실행
         while (currentWave2 < maxWaveCount2)
         {
             StartNextWave2();
 
-            while (isSpawning2)
+            // 현재 웨이브가 끝날 때까지 대기
+            while (isSpawning2 || aliveMonsters2 > 0)
             {
                 yield return null;
             }
+            
+            // 다음 웨이브 시작 전 대기
+            yield return new WaitForSeconds(timeBetweenWaves2);
         }
 
-        Debug.Log("[WaveSpawnerRegion2] 모든 웨이브 종료 or 최대치 도달");
+        Debug.Log($"[WaveSpawnerRegion2] {maxWaveCount2} wave 전부 완료!");
     }
 
     public void StartNextWave2()
     {
-        if (!isSpawning2)
+        if (!isSpawning2 && currentWave2 < maxWaveCount2)
         {
+            Debug.Log($"[WaveSpawnerRegion2] StartNextWave2() 호출 -> currentWave2={currentWave2+1}");
             StartCoroutine(SpawnWaveRoutine2());
+        }
+        else if (currentWave2 >= maxWaveCount2)
+        {
+            Debug.Log($"[WaveSpawnerRegion2] 최대 웨이브 수({maxWaveCount2})에 도달했습니다.");
+        }
+        else
+        {
+            Debug.Log("[WaveSpawnerRegion2] 이미 웨이브 스폰 중입니다.");
         }
     }
 
@@ -193,6 +213,8 @@ public class WaveSpawnerRegion2 : MonoBehaviour
 
         aliveMonsters2 = monstersPerWave2;
         
+        Debug.Log($"[WaveSpawnerRegion2] Wave {currentWave2} 시작 - 몬스터 {monstersPerWave2}마리 소환 예정");
+        
         // 기획서: 5마리 동시 생성을 위해 3라인에 분배
         List<int> spawnRoutes = GetSpawnDistribution(monstersPerWave2);
         
@@ -202,13 +224,13 @@ public class WaveSpawnerRegion2 : MonoBehaviour
             yield return new WaitForSeconds(spawnInterval2);
         }
 
+        // 몬스터가 모두 사라질 때까지 대기
         while (aliveMonsters2 > 0)
         {
             yield return null;
         }
 
         Debug.Log($"[WaveSpawnerRegion2] 웨이브 {currentWave2} 클리어!");
-        yield return new WaitForSeconds(timeBetweenWaves2);
 
         isSpawning2 = false;
     }
@@ -324,7 +346,7 @@ public class WaveSpawnerRegion2 : MonoBehaviour
     /// <summary>
     /// 선택된 루트에 따른 웨이포인트 배열 반환 (캐릭터용)
     /// </summary>
-    private Transform[] GetWaypointsForRoute(int route)
+    public Transform[] GetWaypointsForRoute(int route)
     {
         Transform[] waypoints = null;
         
@@ -433,6 +455,7 @@ public class WaveSpawnerRegion2 : MonoBehaviour
         if (enemyMonsterPrefab == null || enemyMonsterParent == null)
         {
             Debug.LogError("[WaveSpawnerRegion2] 몬스터 프리팹/Parent 미설정");
+            aliveMonsters2--;  // 생성 실패 시 카운트 감소
             return;
         }
 
@@ -441,6 +464,7 @@ public class WaveSpawnerRegion2 : MonoBehaviour
         if (selectedWaypoints == null || selectedWaypoints.Length == 0)
         {
             Debug.LogError($"[WaveSpawnerRegion2] 몬스터 {routeIndex} 루트의 웨이포인트가 없습니다!");
+            aliveMonsters2--;  // 생성 실패 시 카운트 감소
             return;
         }
 
@@ -463,8 +487,7 @@ public class WaveSpawnerRegion2 : MonoBehaviour
                 else
                 {
                     int curIdx = currentChapter - 1;
-                    if (curIdx >= 0 && curIdx < allChapterMonsterPrefabsRegion2.Length 
-                        && allChapterMonsterPrefabsRegion2[curIdx] != null)
+                    if (curIdx >= 0 && curIdx < allChapterMonsterPrefabsRegion2.Length && allChapterMonsterPrefabsRegion2[curIdx] != null)
                     {
                         prefabToSpawn = allChapterMonsterPrefabsRegion2[curIdx];
                     }
@@ -479,27 +502,29 @@ public class WaveSpawnerRegion2 : MonoBehaviour
                         prefabToSpawn = chapter3MonsterPrefab;
                         monsterChapter = 3;
                     }
-                    else if (currentChapter >= 3 && chapter3MonsterPrefab != null)
-                    {
-                        prefabToSpawn = chapter3MonsterPrefab;
-                        monsterChapter = currentChapter + 1;
-                    }
                 }
             }
         }
 
-        GameObject enemyObj = Instantiate(prefabToSpawn, enemyMonsterParent);
+        // 실제 스폰
+        GameObject enemyObj = Instantiate(prefabToSpawn, spawnPos, Quaternion.identity, enemyMonsterParent);
+        if (enemyObj == null)
+        {
+            Debug.LogError("[WaveSpawnerRegion2] 몬스터 생성 실패");
+            aliveMonsters2--;  // 생성 실패 시 카운트 감소
+            return;
+        }
+
         enemyObj.SetActive(true);
-        enemyObj.transform.position = spawnPos;
 
         Monster enemyComp = enemyObj.GetComponent<Monster>();
         if (enemyComp != null)
         {
-            enemyComp.pathWaypoints = selectedWaypoints;
             enemyComp.areaIndex = 2;
+            enemyComp.pathWaypoints = selectedWaypoints;
             enemyComp.OnDeath += HandleEnemyMonsterDeath;
             enemyComp.currentChapter = monsterChapter;
-            
+
             // 몬스터가 어느 루트인지 설정
             switch (routeIndex)
             {
@@ -516,12 +541,19 @@ public class WaveSpawnerRegion2 : MonoBehaviour
             
             Debug.Log($"[WaveSpawnerRegion2] Spawned Monster on route {routeIndex}, indexInWave={indexInWave}, chapter={monsterChapter}, Wave={currentWave2}");
         }
+        else
+        {
+            Debug.LogError("[WaveSpawnerRegion2] 생성된 몬스터에 Monster 컴포넌트가 없습니다!");
+            aliveMonsters2--;  // 생성 실패 시 카운트 감소
+        }
     }
 
     private void HandleEnemyMonsterDeath()
     {
         aliveMonsters2--;
         if (aliveMonsters2 < 0) aliveMonsters2 = 0;
+        
+        Debug.Log($"[WaveSpawnerRegion2] Monster 사망 -> aliveMonsters2={aliveMonsters2}");
     }
 
     /// <summary>

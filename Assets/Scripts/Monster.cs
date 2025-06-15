@@ -5,7 +5,7 @@ using UnityEngine.UI;
 public class Monster : MonoBehaviour, IDamageable
 {
     [Header("Monster Stats")]
-    public float moveSpeed = 1.5f;  // 기존 3f → 1.5f로 속도 감소
+    public float moveSpeed = 0.7f;  // 1.0f → 0.7f로 속도 더 감소
     public float health = 50f;
 
     [Header("Monster Size")]
@@ -29,6 +29,7 @@ public class Monster : MonoBehaviour, IDamageable
 
     private int currentWaypointIndex = 0;
     private bool isDead = false;
+    private bool hasReachedEnd = false;  // 추가: 중복 처리 방지
 
     // 상태 효과 (슬로우/출혈/스턴)
     private float slowDuration = 0f;
@@ -114,7 +115,7 @@ public class Monster : MonoBehaviour, IDamageable
         damageToCastle = Mathf.RoundToInt(damageToCastle * multiplier);
         
         // 속도는 너무 빨라지지 않도록 제한
-        moveSpeed = Mathf.Min(moveSpeed, 3f);  // 최대 속도 3f로 제한
+        moveSpeed = Mathf.Min(moveSpeed, 1.5f);  // 최대 속도 1.5f로 제한 (기존 2f에서 하향)
         
         Debug.Log($"[Monster] 챕터 {currentChapter}에 따른 스탯 증가: 배율 {multiplier:F2}배 " +
                  $"(체력: {health:F1}, 이동속도: {moveSpeed:F2}, 성 공격력: {damageToCastle})");
@@ -122,7 +123,7 @@ public class Monster : MonoBehaviour, IDamageable
 
     private void Update()
     {
-        if (isDead) return;
+        if (isDead || hasReachedEnd) return;  // 추가: hasReachedEnd 체크
         UpdateStatusEffects();
 
         if (!isStunned)
@@ -309,6 +310,10 @@ public class Monster : MonoBehaviour, IDamageable
 
     private void OnReachCastle()
     {
+        if (hasReachedEnd || isDead) return;  // 추가: isDead 체크도 추가
+        hasReachedEnd = true;  // 추가: 도달 플래그 설정
+        
+        // 성에 데미지 주기
         if (targetMiddleCastle != null && !targetMiddleCastle.IsDestroyed())
         {
             targetMiddleCastle.TakeDamage(damageToCastle);
@@ -320,11 +325,16 @@ public class Monster : MonoBehaviour, IDamageable
             Debug.Log($"[Monster] {gameObject.name}이 최종성 공격! 데미지: {damageToCastle}");
         }
         
+        // 이벤트 호출 후 죽음 처리
+        OnReachedCastle?.Invoke(this);
         Die();
     }
 
     private void OnReachEndPoint()
     {
+        if (hasReachedEnd || isDead) return;  // 추가: isDead 체크도 추가
+        hasReachedEnd = true;  // 추가: 도달 플래그 설정
+        
         // 기존 코드 유지 (웨이포인트 끝 도달 시)
         OnReachedCastle?.Invoke(this);
         OnDeath?.Invoke();
@@ -375,7 +385,14 @@ public class Monster : MonoBehaviour, IDamageable
         if (isDead) return;
         isDead = true;
 
+        // OnDeath 이벤트 호출
         OnDeath?.Invoke();
+
+        // HP바 캔버스 제거
+        if (hpBarCanvas != null)
+        {
+            Destroy(hpBarCanvas.gameObject);
+        }
 
         // Fusion 네트워킹 코드 제거 - 일반 Unity 오브젝트 파괴로 변경
         Destroy(gameObject);
@@ -418,5 +435,14 @@ public class Monster : MonoBehaviour, IDamageable
         if (hpFillImage == null) return;
         float ratio = Mathf.Clamp01(health / maxHealth);
         hpFillImage.fillAmount = ratio;
+    }
+
+    private void OnDestroy()
+    {
+        // 오브젝트가 파괴될 때 HP바도 함께 제거
+        if (hpBarCanvas != null)
+        {
+            Destroy(hpBarCanvas.gameObject);
+        }
     }
 }
