@@ -5,6 +5,7 @@ using System.Collections.Generic;
 /// <summary>
 /// 캐릭터 이동, 드래그 처리
 /// 기획서: 드래그로 3라인(좌/중/우) 변경 가능
+/// ★★★ 수정: 같은 캐릭터끼리는 한 타일에 최대 3개까지 배치 가능
 /// </summary>
 public class CharacterMovementManager : MonoBehaviour
 {
@@ -36,6 +37,9 @@ public class CharacterMovementManager : MonoBehaviour
         instance = this;
     }
 
+    /// <summary>
+    /// ★★★ 수정: 캐릭터 드롭 처리
+    /// </summary>
     public void OnDropCharacter(Character movingChar, Tile newTile)
     {
         if (movingChar == null || newTile == null) 
@@ -64,248 +68,236 @@ public class CharacterMovementManager : MonoBehaviour
             if (isMovingToDifferentRegion)
             {
                 Debug.LogWarning($"[CharacterMovementManager] 히어로 {movingChar.characterName}은(는) 타 지역으로 이동할 수 없습니다!");
-                
-                // 원래 타일로 되돌리기
-                Tile originalTile = movingChar.currentTile;
-                if (originalTile != null)
-                {
-                    MoveCharacterToTile(movingChar, originalTile);
-                    TileManager.Instance.CreatePlaceTileChild(originalTile);
-                }
                 return;
             }
         }
 
-        Debug.Log($"[CharacterMovementManager] 드래그 드롭: {movingChar.characterName} -> {newTile.name}");
-
+        // 원래 타일 백업
         Tile oldTile = movingChar.currentTile;
-        
-        if (oldTile != null)
+
+        // ★★★ 수정: 새 타일에 캐릭터 배치 가능한지 확인
+        if (!newTile.CanPlaceCharacter(movingChar))
         {
-            Debug.Log($"[CharacterMovementManager] {movingChar.characterName}의 이전 타일 {oldTile.name} 참조 정리");
+            Debug.LogWarning($"[CharacterMovementManager] {newTile.name}에 {movingChar.characterName}을(를) 배치할 수 없습니다.");
             
-            if (oldTile.IsPlaceTile() || oldTile.IsPlaced2())
+            // 원래 위치로 복귀
+            if (oldTile != null)
             {
-                Character[] allChars = Object.FindObjectsByType<Character>(FindObjectsSortMode.None);
-                bool hasOtherCharacter = false;
-                foreach (var c in allChars)
-                {
-                    if (c != null && c != movingChar && c.currentTile == oldTile)
-                    {
-                        hasOtherCharacter = true;
-                        break;
-                    }
-                }
-                
-                if (!hasOtherCharacter)
-                {
-                    oldTile.RefreshTileVisual();
-                    Debug.Log($"[CharacterMovementManager] placed tile {oldTile.name}에서 캐릭터 제거됨");
-                }
+                MoveCharacterToTile(movingChar, oldTile);
+            }
+            return;
+        }
+
+        // 타일에 있는 캐릭터들 확인
+        List<Character> targetChars = newTile.GetOccupyingCharacters();
+        
+        // 같은 캐릭터가 2개 있고, 이동 캐릭터까지 합치면 3개가 되는 경우
+        if (targetChars.Count == 2 && 
+            targetChars[0].characterName == movingChar.characterName && 
+            targetChars[0].star == movingChar.star &&
+            movingChar.star != CharacterStar.ThreeStar) // 3성은 합성 불가
+        {
+            // 합성 처리를 PlacementManager에 위임
+            if (PlacementManager.Instance != null)
+            {
+                PlacementManager.Instance.OnDropCharacter(movingChar, newTile);
+                return;
+            }
+        }
+
+        // 일반 이동 처리
+        ProcessCharacterMovement(movingChar, oldTile, newTile);
+    }
+
+    /// <summary>
+    /// 캐릭터 이동 처리
+    /// </summary>
+    private void ProcessCharacterMovement(Character movingChar, Tile oldTile, Tile newTile)
+    {
+        // walkable 타일로 이동하는 경우
+        if (newTile.IsWalkable() || newTile.IsWalkableLeft() || newTile.IsWalkableCenter() || newTile.IsWalkableRight())
+        {
+            if (movingChar.areaIndex == 1)
+            {
+                HandleWalkableMovement(movingChar, oldTile, newTile, false);
             }
             else
+            {
+                // walkable은 지역1 전용이므로 지역2 캐릭터는 이동 불가
+                Debug.LogWarning("[CharacterMovementManager] 지역2 캐릭터는 walkable 타일로 이동할 수 없습니다.");
+                RestoreCharacterPosition(movingChar, oldTile);
+            }
+        }
+        // walkable2 타일로 이동하는 경우
+        else if (newTile.IsWalkable2() || newTile.IsWalkable2Left() || newTile.IsWalkable2Center() || newTile.IsWalkable2Right())
+        {
+            if (movingChar.areaIndex == 2)
+            {
+                HandleWalkableMovement(movingChar, oldTile, newTile, true);
+            }
+            else
+            {
+                // walkable2는 지역2 전용이므로 지역1 캐릭터는 이동 불가
+                Debug.LogWarning("[CharacterMovementManager] 지역1 캐릭터는 walkable2 타일로 이동할 수 없습니다.");
+                RestoreCharacterPosition(movingChar, oldTile);
+            }
+        }
+        else
+        {
+            // 일반 타일로 이동
+            MoveCharacterToTile(movingChar, newTile);
+            movingChar.currentWaypointIndex = -1;
+            movingChar.maxWaypointIndex = -1;
+            movingChar.isCharAttack = false;
+        }
+    }
+
+    /// <summary>
+    /// Walkable 타일로의 이동 처리
+    /// </summary>
+    private void HandleWalkableMovement(Character movingChar, Tile oldTile, Tile newTile, bool isArea2)
+    {
+        // 기존 타일에서 캐릭터 제거
+        if (oldTile != null)
+        {
+            oldTile.RemoveOccupyingCharacter(movingChar);
+            if (oldTile.GetOccupyingCharacters().Count == 0)
             {
                 TileManager.Instance.RemovePlaceTileChild(oldTile);
             }
         }
 
-        bool occupantExists = TileManager.Instance.CheckAnyCharacterHasCurrentTile(newTile);
-
-        if (occupantExists)
+        // RouteManager를 통해 루트 설정
+        if (RouteManager.Instance != null)
         {
-            // 기획서: 같은 캐릭터 3개가 모이면 합성
-            bool success = CheckAndMergeIfPossible(movingChar, newTile);
-            if (!success)
+            RouteType selectedRoute;
+            if (isArea2)
             {
-                if (oldTile != null)
-                {
-                    MoveCharacterToTile(movingChar, oldTile);
-                    TileManager.Instance.CreatePlaceTileChild(oldTile);
-                }
+                selectedRoute = RouteManager.Instance.DetermineRouteFromTile(newTile, GameSceneManager.Instance.spawner2);
             }
-        }
-        else
-        {
-            if (!newTile.CanPlaceCharacter())
+            else
             {
-                if (oldTile != null)
-                {
-                    MoveCharacterToTile(movingChar, oldTile);
-                    TileManager.Instance.CreatePlaceTileChild(oldTile);
-                }
-                return;
+                selectedRoute = RouteManager.Instance.DetermineRouteFromTile(newTile, GameSceneManager.Instance.spawner);
             }
 
-            // 기획서: 드래그로 3라인(좌/중/우) 변경 가능
-            if (newTile.IsWalkable() || newTile.IsWalkableLeft() || newTile.IsWalkableCenter() || newTile.IsWalkableRight())
+            GameObject[] waypoints = null;
+            if (isArea2)
             {
-                // 히어로는 walkable 타일로 이동 불가
-                if (movingChar.isHero)
+                waypoints = RouteManager.Instance.GetWaypointsForRegion2(selectedRoute);
+                if (waypoints != null && waypoints.Length > 0)
                 {
-                    Debug.LogWarning($"[CharacterMovementManager] 히어로 {movingChar.characterName}은(는) walkable 타일로 이동할 수 없습니다!");
-                    if (oldTile != null)
-                    {
-                        MoveCharacterToTile(movingChar, oldTile);
-                        TileManager.Instance.CreatePlaceTileChild(oldTile);
-                    }
-                    return;
-                }
-                
-                WaveSpawner spawner = FindFirstObjectByType<WaveSpawner>();
-                if (spawner != null && CoreDataManager.Instance.ourMonsterPanel != null)
-                {
-                    RouteType selectedRoute = RouteManager.Instance.DetermineRouteFromTile(newTile, spawner);
-                    Transform[] waypoints = RouteManager.Instance.GetWaypointsForRoute(spawner, selectedRoute);
-                    
-                    if (waypoints == null || waypoints.Length == 0)
-                    {
-                        Debug.LogWarning($"[CharacterMovementManager] {selectedRoute} 루트의 웨이포인트가 없습니다.");
-                        if (oldTile != null)
-                        {
-                            MoveCharacterToTile(movingChar, oldTile);
-                            TileManager.Instance.CreatePlaceTileChild(oldTile);
-                        }
-                        return;
-                    }
-                    
-                    Vector3 spawnPos = waypoints[0].position;
-
-                    RectTransform charRect = movingChar.GetComponent<RectTransform>();
-                    if (charRect != null)
-                    {
-                        Vector2 localPos = CoreDataManager.Instance.ourMonsterPanel.InverseTransformPoint(spawnPos);
-                        charRect.SetParent(CoreDataManager.Instance.ourMonsterPanel, false);
-                        charRect.anchoredPosition = localPos;
-                        charRect.localRotation = Quaternion.identity;
-                    }
-                    else
-                    {
-                        movingChar.transform.SetParent(null);
-                        movingChar.transform.position = spawnPos;
-                        movingChar.transform.localRotation = Quaternion.identity;
-                    }
-
                     movingChar.currentTile = null;
                     movingChar.currentWaypointIndex = 0;
-                    movingChar.pathWaypoints = waypoints;
-                    movingChar.maxWaypointIndex = waypoints.Length - 1;
-                    movingChar.areaIndex = 1;
-                    movingChar.selectedRoute = selectedRoute;
-                    movingChar.isCharAttack = !movingChar.isHero;
-
-                    Debug.Log($"[CharacterMovementManager] 드래그로 (placable→walkable) 이동 => {selectedRoute} 루트 선택, waypoint[0]에서 시작");
-                }
-                else
-                {
-                    if (oldTile != null)
-                    {
-                        MoveCharacterToTile(movingChar, oldTile);
-                        TileManager.Instance.CreatePlaceTileChild(oldTile);
-                    }
-                    return;
-                }
-            }
-            else if (newTile.IsWalkable2() || newTile.IsWalkable2Left() || newTile.IsWalkable2Center() || newTile.IsWalkable2Right())
-            {
-                // 히어로는 walkable2 타일로 이동 불가
-                if (movingChar.isHero)
-                {
-                    Debug.LogWarning($"[CharacterMovementManager] 히어로 {movingChar.characterName}은(는) walkable2 타일로 이동할 수 없습니다!");
-                    if (oldTile != null)
-                    {
-                        MoveCharacterToTile(movingChar, oldTile);
-                        TileManager.Instance.CreatePlaceTileChild(oldTile);
-                    }
-                    return;
-                }
-                
-                WaveSpawnerRegion2 spawner2 = FindFirstObjectByType<WaveSpawnerRegion2>();
-                if (spawner2 != null && CoreDataManager.Instance.opponentOurMonsterPanel != null)
-                {
-                    RouteType selectedRoute = RouteManager.Instance.DetermineRouteFromTile(newTile, spawner2);
-                    Transform[] waypoints = RouteManager.Instance.GetWaypointsForRoute(spawner2, selectedRoute);
-                    
-                    if (waypoints == null || waypoints.Length == 0)
-                    {
-                        Debug.LogWarning($"[CharacterMovementManager] {selectedRoute} 루트의 웨이포인트가 없습니다.");
-                        if (oldTile != null)
-                        {
-                            MoveCharacterToTile(movingChar, oldTile);
-                            TileManager.Instance.CreatePlaceTileChild(oldTile);
-                        }
-                        return;
-                    }
-                    
-                    Vector3 spawnPos2 = waypoints[0].position;
-
-                    RectTransform charRect = movingChar.GetComponent<RectTransform>();
-                    if (charRect != null)
-                    {
-                        Vector2 localPos = CoreDataManager.Instance.opponentOurMonsterPanel.InverseTransformPoint(spawnPos2);
-                        charRect.SetParent(CoreDataManager.Instance.opponentOurMonsterPanel, false);
-                        charRect.localRotation = Quaternion.identity;
-                        charRect.anchoredPosition = localPos;
-                    }
-                    else
-                    {
-                        movingChar.transform.SetParent(null);
-                        movingChar.transform.position = spawnPos2;
-                        movingChar.transform.localRotation = Quaternion.identity;
-                    }
-
-                    movingChar.currentTile = null;
-                    movingChar.currentWaypointIndex = 0;
-                    movingChar.pathWaypoints = waypoints;
+                    movingChar.pathWaypoints = ConvertGameObjectsToTransforms(waypoints);
                     movingChar.maxWaypointIndex = waypoints.Length - 1;
                     movingChar.areaIndex = 2;
                     movingChar.selectedRoute = selectedRoute;
                     movingChar.isCharAttack = !movingChar.isHero;
 
-                    Debug.Log($"[CharacterMovementManager] 드래그로 (placable→walkable2) 이동 => {selectedRoute} 루트 선택, waypoint[0]에서 시작");
-                }
-                else
-                {
-                    if (oldTile != null)
-                    {
-                        MoveCharacterToTile(movingChar, oldTile);
-                        TileManager.Instance.CreatePlaceTileChild(oldTile);
-                    }
-                    return;
+                    Debug.Log($"[CharacterMovementManager] 지역2 walkable 이동 => {selectedRoute} 루트 선택");
                 }
             }
             else
             {
-                MoveCharacterToTile(movingChar, newTile);
-                movingChar.currentWaypointIndex = -1;
-                movingChar.maxWaypointIndex = -1;
-                movingChar.isCharAttack = false;
-            }
+                waypoints = RouteManager.Instance.GetWaypointsForRegion1(selectedRoute);
+                if (waypoints != null && waypoints.Length > 0)
+                {
+                    movingChar.currentTile = null;
+                    movingChar.currentWaypointIndex = 0;
+                    movingChar.pathWaypoints = ConvertGameObjectsToTransforms(waypoints);
+                    movingChar.maxWaypointIndex = waypoints.Length - 1;
+                    movingChar.areaIndex = 1;
+                    movingChar.selectedRoute = selectedRoute;
+                    movingChar.isCharAttack = !movingChar.isHero;
 
-            TileManager.Instance.CreatePlaceTileChild(newTile);
-            Debug.Log("[CharacterMovementManager] 캐릭터가 새 타일로 이동(또는 웨이포인트 모드) 완료");
+                    Debug.Log($"[CharacterMovementManager] 지역1 walkable 이동 => {selectedRoute} 루트 선택");
+                }
+            }
+        }
+        else
+        {
+            Debug.LogError("[CharacterMovementManager] RouteManager.Instance가 없습니다!");
+            RestoreCharacterPosition(movingChar, oldTile);
         }
     }
 
     /// <summary>
-    /// 타일에 같은 캐릭터가 2개 있고, 이동 캐릭터까지 합치면 3개가 되는지 확인
+    /// ★★★ 수정: 캐릭터를 타일로 이동
+    /// </summary>
+    private void MoveCharacterToTile(Character character, Tile newTile)
+    {
+        if (character == null || newTile == null) return;
+        
+        // 이전 타일에서 캐릭터 제거
+        if (character.currentTile != null)
+        {
+            character.currentTile.RemoveOccupyingCharacter(character);
+            
+            // 이전 타일이 비었으면 정리
+            if (character.currentTile.GetOccupyingCharacters().Count == 0)
+            {
+                TileManager.Instance.OnCharacterRemovedFromTile(character.currentTile);
+            }
+        }
+        
+        // 새 타일에 캐릭터 추가
+        if (!newTile.AddOccupyingCharacter(character))
+        {
+            Debug.LogError($"[CharacterMovementManager] {character.characterName}을(를) {newTile.name}에 추가할 수 없습니다!");
+            return;
+        }
+        
+        // 캐릭터의 타일 참조 업데이트
+        character.currentTile = newTile;
+        
+        // 타일 상태 업데이트
+        if (!newTile.IsPlaceTile() && !newTile.IsPlaced2())
+        {
+            TileManager.Instance.CreatePlaceTileChild(newTile);
+        }
+        
+        Debug.Log($"[CharacterMovementManager] {character.characterName}을(를) {newTile.name}으로 이동");
+    }
+
+    /// <summary>
+    /// 캐릭터를 원래 위치로 복귀
+    /// </summary>
+    private void RestoreCharacterPosition(Character character, Tile originalTile)
+    {
+        if (character == null) return;
+
+        if (originalTile != null)
+        {
+            MoveCharacterToTile(character, originalTile);
+        }
+        else
+        {
+            // 원래 타일이 없으면 캐릭터 패널의 원래 위치로
+            RectTransform charRect = character.GetComponent<RectTransform>();
+            if (charRect != null)
+            {
+                charRect.anchoredPosition = Vector2.zero;
+            }
+        }
+    }
+
+    /// <summary>
+    /// ★★★ 수정: 타일에 같은 캐릭터가 2개 있고, 이동 캐릭터까지 합치면 3개가 되는지 확인
     /// 기획서: 1성×3 → 2성, 2성×3 → 3성
     /// </summary>
     private bool CheckAndMergeIfPossible(Character movingChar, Tile tile)
     {
-        Character[] allChars = FindObjectsByType<Character>(FindObjectsSortMode.None);
         List<Character> sameCharacters = new List<Character>();
+        List<Character> tileChars = tile.GetOccupyingCharacters();
         
         // 타일에서 같은 캐릭터 찾기
-        foreach (var otherChar in allChars)
+        foreach (var otherChar in tileChars)
         {
             if (otherChar == null || otherChar == movingChar) continue;
             
-            if (otherChar.currentTile == tile)
+            if (otherChar.star == movingChar.star && otherChar.characterName == movingChar.characterName)
             {
-                if (otherChar.star == movingChar.star && otherChar.characterName == movingChar.characterName)
-                {
-                    sameCharacters.Add(otherChar);
-                }
+                sameCharacters.Add(otherChar);
             }
         }
         
@@ -321,57 +313,29 @@ public class CharacterMovementManager : MonoBehaviour
                 return false;
             }
             
-            // MergeManager를 통해 합성 실행
-            return MergeManager.Instance.TryMergeCharacter(movingChar, tile);
+            // 합성 처리를 PlacementManager에 위임
+            if (PlacementManager.Instance != null)
+            {
+                PlacementManager.Instance.OnDropCharacter(movingChar, tile);
+                return true;
+            }
         }
         
         return false;
     }
 
-    private void MoveCharacterToTile(Character character, Tile tile)
+    /// <summary>
+    /// GameObject 배열을 Transform 배열로 변환
+    /// </summary>
+    private Transform[] ConvertGameObjectsToTransforms(GameObject[] gameObjects)
     {
-        if (tile == null) return;
-
-        bool isArea2 = tile.IsWalkable2() || tile.IsWalkable2Left() || tile.IsWalkable2Center() || tile.IsWalkable2Right() || tile.IsPlacable2() || tile.IsPlaced2();
-
-        RectTransform charRect = character.GetComponent<RectTransform>();
-        if (charRect != null)
+        if (gameObjects == null) return null;
+        
+        Transform[] transforms = new Transform[gameObjects.Length];
+        for (int i = 0; i < gameObjects.Length; i++)
         {
-            RectTransform targetParent;
-            if ((tile.IsWalkable() || tile.IsWalkableLeft() || tile.IsWalkableCenter() || tile.IsWalkableRight() || 
-                 tile.IsWalkable2() || tile.IsWalkable2Left() || tile.IsWalkable2Center() || tile.IsWalkable2Right()) && CoreDataManager.Instance.ourMonsterPanel != null)
-            {
-                targetParent = CoreDataManager.Instance.ourMonsterPanel;
-            }
-            else
-            {
-                targetParent = isArea2
-                    ? (CoreDataManager.Instance.opponentCharacterPanel != null ? CoreDataManager.Instance.opponentCharacterPanel : CoreDataManager.Instance.characterPanel)
-                    : CoreDataManager.Instance.characterPanel;
-            }
-
-            RectTransform tileRect = tile.GetComponent<RectTransform>();
-            if (tileRect != null)
-            {
-                Vector2 localPos = targetParent.InverseTransformPoint(tileRect.transform.position);
-                charRect.SetParent(targetParent, false);
-                charRect.anchoredPosition = localPos;
-                charRect.localRotation = Quaternion.identity;
-            }
-            else
-            {
-                character.transform.SetParent(targetParent, false);
-                character.transform.position = tile.transform.position;
-                character.transform.localRotation = Quaternion.identity;
-            }
+            transforms[i] = gameObjects[i] != null ? gameObjects[i].transform : null;
         }
-        else
-        {
-            character.transform.position = tile.transform.position;
-            character.transform.localRotation = Quaternion.identity;
-        }
-
-        character.currentTile = tile;
-        character.areaIndex = isArea2 ? 2 : 1;
+        return transforms;
     }
 }

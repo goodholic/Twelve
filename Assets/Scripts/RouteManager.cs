@@ -423,6 +423,60 @@ public class RouteManager : MonoBehaviour
         return fallbackWaypoints.ToArray();
     }
 
+    /// <summary>
+    /// 지역1용 웨이포인트 반환 (GameObject 배열)
+    /// </summary>
+    public GameObject[] GetWaypointsForRegion1(RouteType route)
+    {
+        WaveSpawner spawner = FindFirstObjectByType<WaveSpawner>();
+        if (spawner == null)
+        {
+            Debug.LogError("[RouteManager] WaveSpawner를 찾을 수 없습니다!");
+            return new GameObject[0];
+        }
+
+        Transform[] waypoints = GetWaypointsForRoute(spawner, route);
+        if (waypoints == null || waypoints.Length == 0)
+        {
+            return new GameObject[0];
+        }
+
+        GameObject[] gameObjects = new GameObject[waypoints.Length];
+        for (int i = 0; i < waypoints.Length; i++)
+        {
+            gameObjects[i] = waypoints[i] != null ? waypoints[i].gameObject : null;
+        }
+
+        return gameObjects;
+    }
+
+    /// <summary>
+    /// 지역2용 웨이포인트 반환 (GameObject 배열)
+    /// </summary>
+    public GameObject[] GetWaypointsForRegion2(RouteType route)
+    {
+        WaveSpawnerRegion2 spawner2 = FindFirstObjectByType<WaveSpawnerRegion2>();
+        if (spawner2 == null)
+        {
+            Debug.LogError("[RouteManager] WaveSpawnerRegion2를 찾을 수 없습니다!");
+            return new GameObject[0];
+        }
+
+        Transform[] waypoints = GetWaypointsForRoute(spawner2, route);
+        if (waypoints == null || waypoints.Length == 0)
+        {
+            return new GameObject[0];
+        }
+
+        GameObject[] gameObjects = new GameObject[waypoints.Length];
+        for (int i = 0; i < waypoints.Length; i++)
+        {
+            gameObjects[i] = waypoints[i] != null ? waypoints[i].gameObject : null;
+        }
+
+        return gameObjects;
+    }
+
     public Transform[] GetWaypointsForRoute(WaveSpawnerRegion2 spawner, RouteType route)
     {
         Transform[] waypoints = null;

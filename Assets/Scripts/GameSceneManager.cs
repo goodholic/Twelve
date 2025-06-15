@@ -8,6 +8,22 @@ using System.Collections.Generic;
 
 public class GameSceneManager : MonoBehaviour
 {
+    private static GameSceneManager instance;
+    public static GameSceneManager Instance
+    {
+        get
+        {
+            if (instance == null)
+            {
+                instance = FindFirstObjectByType<GameSceneManager>();
+            }
+            return instance;
+        }
+    }
+
+    [Header("스포너 참조")]
+    public WaveSpawner spawner;
+    public WaveSpawnerRegion2 spawner2;
     [Header("게임씬의 9개 캐릭터 슬롯(이미지/텍스트)")]
     [SerializeField] private Image[] slotImages9;          
     [SerializeField] private TextMeshProUGUI[] slotTexts9; 
@@ -47,6 +63,16 @@ public class GameSceneManager : MonoBehaviour
     private int humanCount = 0;
     private int orcCount = 0;
     private int elfCount = 0;
+
+    private void Awake()
+    {
+        if (instance != null && instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        instance = this;
+    }
 
     private void OnEnable()
     {

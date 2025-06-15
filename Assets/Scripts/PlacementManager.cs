@@ -4,6 +4,7 @@ using System.Linq;
 
 /// <summary>
 /// 캐릭터 배치, 합성, 제거 등 전반적인 관리
+/// ★★★ 수정: 같은 캐릭터끼리는 한 타일에 최대 3개까지 배치 가능
 /// </summary>
 public class PlacementManager : MonoBehaviour
 {
@@ -89,13 +90,13 @@ public class PlacementManager : MonoBehaviour
     }
 
     public bool SummonCharacterOnTile(int characterIndex, Tile tile, bool forceEnemyArea2 = false)
-{
-    if (summonManager != null)
     {
-        return summonManager.SummonCharacterOnTile(characterIndex, tile, forceEnemyArea2);
+        if (summonManager != null)
+        {
+            return summonManager.SummonCharacterOnTile(characterIndex, tile, forceEnemyArea2);
+        }
+        return false;
     }
-    return false;
-}
 
     public void RemoveCharacterOnTile(Tile tile)
     {
@@ -105,28 +106,27 @@ public class PlacementManager : MonoBehaviour
         }
     }
 
-    // 드래그 드롭 시 합성 체크 및 처리
+    /// <summary>
+    /// ★★★ 수정: 드래그 드롭 시 합성 체크 및 처리
+    /// </summary>
     public void OnDropCharacter(Character droppedChar, Tile targetTile)
     {
         if (droppedChar == null || targetTile == null) return;
 
-        // 타겟 타일에 이미 캐릭터가 있는지 확인
-        Character targetChar = null;
-        Character[] allChars = FindObjectsByType<Character>(FindObjectsSortMode.None);
-        foreach (var c in allChars)
-        {
-            if (c != null && c != droppedChar && c.currentTile == targetTile)
-            {
-                targetChar = c;
-                break;
-            }
-        }
+        // 타겟 타일에 있는 캐릭터들 확인
+        List<Character> targetChars = targetTile.GetOccupyingCharacters();
 
-        if (targetChar != null)
+        if (targetChars.Count == 0)
         {
-            // 같은 캐릭터인지 확인 (이름과 별 등급으로 판단)
-            if (droppedChar.characterName == targetChar.characterName && 
-                droppedChar.star == targetChar.star)
+            // 빈 타일이면 단순 이동
+            MoveCharacterToTile(droppedChar, targetTile);
+        }
+        else
+        {
+            // 같은 캐릭터인지 확인
+            Character firstChar = targetChars[0];
+            if (droppedChar.characterName == firstChar.characterName && 
+                droppedChar.star == firstChar.star)
             {
                 // 3성은 합성 불가
                 if (droppedChar.star == CharacterStar.ThreeStar)
@@ -135,28 +135,40 @@ public class PlacementManager : MonoBehaviour
                     return;
                 }
 
-                // 자동으로 3개째 찾기
-                Character thirdChar = FindThirdCharacterForMerge(droppedChar.characterName, droppedChar.star, droppedChar, targetChar);
-                
-                if (thirdChar != null)
+                // 타일에 이미 2개가 있고, 드롭된 캐릭터까지 합치면 3개
+                if (targetChars.Count == 2)
                 {
                     // 3개 합성 실행
-                    MergeThreeCharacters(droppedChar, targetChar, thirdChar);
+                    MergeThreeCharacters(targetChars[0], targetChars[1], droppedChar);
+                }
+                else if (targetChars.Count < 3)
+                {
+                    // 아직 3개가 안되므로 타일에 추가
+                    MoveCharacterToTile(droppedChar, targetTile);
                 }
                 else
                 {
-                    Debug.Log("[PlacementManager] 같은 종류의 세 번째 캐릭터를 찾을 수 없습니다.");
+                    Debug.Log("[PlacementManager] 타일이 가득 찼습니다.");
                 }
             }
             else
             {
-                Debug.Log("[PlacementManager] 다른 종류의 캐릭터는 합성할 수 없습니다.");
+                Debug.Log("[PlacementManager] 다른 종류의 캐릭터는 같은 타일에 배치할 수 없습니다.");
             }
         }
-        else
+    }
+
+    /// <summary>
+    /// ★★★ 추가: 같은 타일에 있는 캐릭터들 중 3개 찾아서 합성
+    /// </summary>
+    private void CheckAndMergeOnTile(Tile tile)
+    {
+        List<Character> chars = tile.GetOccupyingCharacters();
+        
+        if (chars.Count >= 3)
         {
-            // 빈 타일이면 이동
-            MoveCharacterToTile(droppedChar, targetTile);
+            // 같은 종류인지 확인 (이미 타일에 추가될 때 체크했으므로 여기서는 바로 합성)
+            MergeThreeCharacters(chars[0], chars[1], chars[2]);
         }
     }
 
@@ -191,6 +203,17 @@ public class PlacementManager : MonoBehaviour
         // 합성 전 타일 정보 백업
         Tile[] oldTiles = new Tile[] { char1.currentTile, char2.currentTile, char3.currentTile };
         
+        // 3개 캐릭터를 타일에서 제거
+        foreach (var tile in oldTiles)
+        {
+            if (tile != null)
+            {
+                tile.RemoveOccupyingCharacter(char1);
+                tile.RemoveOccupyingCharacter(char2);
+                tile.RemoveOccupyingCharacter(char3);
+            }
+        }
+        
         // 3개 캐릭터 제거
         DestroyCharacterForMerge(char1);
         DestroyCharacterForMerge(char2);
@@ -202,9 +225,13 @@ public class PlacementManager : MonoBehaviour
         // 타일 상태 정리
         foreach (var tile in oldTiles)
         {
-            if (tile != null && tile != mergeTargetTile)
+            if (tile != null)
             {
-                tileManager.OnCharacterRemovedFromTile(tile);
+                // 타일이 비었으면 원래 상태로
+                if (tile.GetOccupyingCharacters().Count == 0)
+                {
+                    tileManager.OnCharacterRemovedFromTile(tile);
+                }
             }
         }
     }
@@ -235,8 +262,9 @@ public class PlacementManager : MonoBehaviour
     {
         // StarMergeDatabase에서 새 캐릭터 데이터 가져오기
         var coreData = CoreDataManager.Instance;
-        StarMergeDatabaseObject mergeDB = (areaIndex == 2) ? coreData.starMergeDatabaseRegion2 : coreData.starMergeDatabase;
-        
+        StarMergeDatabaseObject mergeDB = (areaIndex == 2) ?
+            coreData.starMergeDatabaseRegion2 : coreData.starMergeDatabase;
+            
         if (mergeDB == null)
         {
             Debug.LogError("[PlacementManager] StarMergeDatabase가 설정되지 않았습니다!");
@@ -247,9 +275,9 @@ public class PlacementManager : MonoBehaviour
         
         // 원본 캐릭터의 종족 찾기
         CharacterRace originalRace = CharacterRace.Human;
-        if (characterDatabase != null && characterDatabase.currentRegisteredCharacters != null)
+        if (coreData.characterDatabase != null && coreData.characterDatabase.currentRegisteredCharacters != null)
         {
-            foreach (var data in characterDatabase.currentRegisteredCharacters)
+            foreach (var data in coreData.characterDatabase.currentRegisteredCharacters)
             {
                 if (data != null && data.characterName == baseName)
                 {
@@ -318,6 +346,12 @@ public class PlacementManager : MonoBehaviour
             {
                 mergedChar.SetBulletPanel(coreData.bulletPanel);
             }
+
+            // ★★★ 추가: 타일에 새 캐릭터 추가
+            if (targetTile != null)
+            {
+                targetTile.AddOccupyingCharacter(mergedChar);
+            }
         }
 
         Debug.Log($"[PlacementManager] 합성 성공! {baseName} -> {newCharData.characterName} ({newStar})");
@@ -335,29 +369,36 @@ public class PlacementManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// ★★★ 수정: 캐릭터를 타일로 이동
+    /// </summary>
     private void MoveCharacterToTile(Character character, Tile newTile)
     {
         if (character == null || newTile == null) return;
         
-        // 이전 타일 정리
+        // 이전 타일에서 캐릭터 제거
         if (character.currentTile != null)
         {
-            tileManager.OnCharacterRemovedFromTile(character.currentTile);
+            character.currentTile.RemoveOccupyingCharacter(character);
+            
+            // 이전 타일이 비었으면 정리
+            if (character.currentTile.GetOccupyingCharacters().Count == 0)
+            {
+                tileManager.OnCharacterRemovedFromTile(character.currentTile);
+            }
         }
         
-        // 새 타일로 이동
+        // 새 타일에 캐릭터 추가
+        if (!newTile.AddOccupyingCharacter(character))
+        {
+            Debug.LogError($"[PlacementManager] {character.characterName}을(를) {newTile.name}에 추가할 수 없습니다!");
+            return;
+        }
+        
+        // 캐릭터의 타일 참조 업데이트
         character.currentTile = newTile;
         
-        RectTransform charRect = character.GetComponent<RectTransform>();
-        RectTransform tileRect = newTile.GetComponent<RectTransform>();
-        
-        if (charRect != null && tileRect != null)
-        {
-            // 부모 패널 확인
-            RectTransform targetParent = charRect.parent as RectTransform;
-            Vector2 localPos = targetParent.InverseTransformPoint(tileRect.transform.position);
-            charRect.anchoredPosition = localPos;
-        }
+        // 위치 업데이트는 타일의 UpdateCharacterSizes()에서 처리됨
         
         // 타일 상태 업데이트
         if (!newTile.IsPlaceTile() && !newTile.IsPlaced2())
@@ -365,7 +406,13 @@ public class PlacementManager : MonoBehaviour
             tileManager.CreatePlaceTileChild(newTile);
         }
         
-        Debug.Log($"[PlacementManager] {character.characterName}을(를) {newTile.name}으로 이동");
+        Debug.Log($"[PlacementManager] {character.characterName}을(를) {newTile.name}으로 이동 (타일의 캐릭터 수: {newTile.GetOccupyingCharacters().Count})");
+
+        // 이동 후 3개가 모였는지 확인
+        if (newTile.GetOccupyingCharacters().Count == 3)
+        {
+            CheckAndMergeOnTile(newTile);
+        }
     }
 
     public void ClearCharacterTileReference(Character character)
@@ -406,11 +453,10 @@ public class PlacementManager : MonoBehaviour
         {
             summonManager.OnClickSelectUnit(index);
         }
-        Debug.Log($"[PlacementManager] 캐릭터 {index}번 선택됨");
     }
-    
+
     /// <summary>
-    /// 자동 배치 (CharacterSelectUI에서 호출)
+    /// 자동 배치 메서드
     /// </summary>
     public void OnClickAutoPlace()
     {
@@ -418,36 +464,9 @@ public class PlacementManager : MonoBehaviour
         {
             summonManager.OnClickAutoPlace();
         }
-    }
-    
-    /// <summary>
-    /// 보상 캐릭터 배치 (WaveSpawner에서 호출)
-    /// </summary>
-    public void PlaceRewardCharacterOnTile(CharacterData characterData, Tile tile)
-    {
-        if (characterData == null || tile == null) return;
-        
-        // 캐릭터 데이터베이스에서 인덱스 찾기
-        int characterIndex = -1;
-        if (characterDatabase != null && characterDatabase.currentRegisteredCharacters != null)
-        {
-            for (int i = 0; i < characterDatabase.currentRegisteredCharacters.Length; i++)
-            {
-                if (characterDatabase.currentRegisteredCharacters[i] == characterData)
-                {
-                    characterIndex = i;
-                    break;
-                }
-            }
-        }
-        
-        if (characterIndex >= 0)
-        {
-            SummonCharacterOnTile(characterIndex, tile);
-        }
         else
         {
-            Debug.LogWarning($"[PlacementManager] 보상 캐릭터 {characterData.characterName}의 인덱스를 찾을 수 없습니다.");
+            Debug.LogError("[PlacementManager] SummonManager가 null입니다!");
         }
     }
 }

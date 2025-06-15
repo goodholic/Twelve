@@ -5,6 +5,7 @@ using System.Linq;
 /// <summary>
 /// 타일 상태 관리, 타일 참조 정리
 /// 게임 기획서: 타일 기반 소환, 3라인 시스템 관리
+/// ★★★ 수정: 같은 캐릭터끼리는 한 타일에 최대 3개까지 배치 가능
 /// </summary>
 public class TileManager : MonoBehaviour
 {
@@ -93,7 +94,7 @@ public class TileManager : MonoBehaviour
     }
 
     /// <summary>
-    /// 3라인별로 타일 분류
+    /// 3라인 시스템을 위한 타일 분류
     /// </summary>
     private void CategorizeRouteTiles()
     {
@@ -105,7 +106,6 @@ public class TileManager : MonoBehaviour
         
         foreach (var tile in allTiles)
         {
-            // Walkable 타일들을 라인별로 분류
             if (tile.IsWalkableLeft() || tile.IsWalkable2Left())
             {
                 leftRouteTiles.Add(tile);
@@ -123,11 +123,11 @@ public class TileManager : MonoBehaviour
             }
         }
         
-        Debug.Log($"[TileManager] 라인별 타일 분류 완료 - 왼쪽: {leftRouteTiles.Count}, 중앙: {centerRouteTiles.Count}, 오른쪽: {rightRouteTiles.Count}");
+        Debug.Log($"[TileManager] 라인별 타일 분류 완료 - 좌:{leftRouteTiles.Count}, 중앙:{centerRouteTiles.Count}, 우:{rightRouteTiles.Count}");
     }
 
     /// <summary>
-    /// 소환 가능한 타일 분류
+    /// 소환 가능 타일 분류
     /// </summary>
     private void CategorizeSummonableTiles()
     {
@@ -138,116 +138,27 @@ public class TileManager : MonoBehaviour
         
         foreach (var tile in allTiles)
         {
-            if (tile.IsPlacable() || tile.IsPlacable2() || tile.IsPlaceTile() || tile.IsPlaced2())
+            if (tile.IsPlacable() || tile.IsPlaceTile())
             {
-                if (tile.isRegion2)
-                {
-                    aiSummonableTiles.Add(tile);
-                }
-                else
-                {
-                    playerSummonableTiles.Add(tile);
-                }
+                playerSummonableTiles.Add(tile);
+            }
+            else if (tile.IsPlacable2() || tile.IsPlaced2())
+            {
+                aiSummonableTiles.Add(tile);
             }
         }
         
-        Debug.Log($"[TileManager] 소환 가능 타일 분류 완료 - 플레이어: {playerSummonableTiles.Count}, AI: {aiSummonableTiles.Count}");
+        Debug.Log($"[TileManager] 소환 가능 타일 분류 완료 - 플레이어:{playerSummonableTiles.Count}, AI:{aiSummonableTiles.Count}");
     }
 
     /// <summary>
-    /// 랜덤한 빈 소환 가능 타일 찾기 (게임 기획서: 원 버튼 소환)
-    /// </summary>
-    public Tile GetRandomEmptySummonableTile(bool isAI)
-    {
-        List<Tile> availableTiles = new List<Tile>();
-        List<Tile> targetTiles = isAI ? aiSummonableTiles : playerSummonableTiles;
-        
-        foreach (var tile in targetTiles)
-        {
-            if (tile != null && tile.CanPlaceCharacter())
-            {
-                availableTiles.Add(tile);
-            }
-        }
-        
-        if (availableTiles.Count > 0)
-        {
-            return availableTiles[Random.Range(0, availableTiles.Count)];
-        }
-        
-        Debug.LogWarning($"[TileManager] {(isAI ? "AI" : "플레이어")}의 빈 소환 타일이 없습니다!");
-        return null;
-    }
-
-    /// <summary>
-    /// 특정 라인의 랜덤 타일 찾기 (게임 기획서: 3라인 시스템)
-    /// </summary>
-    public Tile GetRandomTileFromRoute(RouteType route, bool isRegion2)
-    {
-        List<Tile> routeTiles = null;
-        
-        switch (route)
-        {
-            case RouteType.Left:
-                routeTiles = leftRouteTiles;
-                break;
-            case RouteType.Center:
-                routeTiles = centerRouteTiles;
-                break;
-            case RouteType.Right:
-                routeTiles = rightRouteTiles;
-                break;
-        }
-        
-        if (routeTiles != null && routeTiles.Count > 0)
-        {
-            var filteredTiles = routeTiles.Where(t => t.isRegion2 == isRegion2).ToList();
-            if (filteredTiles.Count > 0)
-            {
-                return filteredTiles[Random.Range(0, filteredTiles.Count)];
-            }
-        }
-        
-        return null;
-    }
-
-    /// <summary>
-    /// 캐릭터가 타일을 점유하고 있는지 확인
+    /// ★★★ 수정: 특정 타일에 캐릭터가 있는지 확인
     /// </summary>
     public bool CheckAnyCharacterHasCurrentTile(Tile tile)
     {
         if (tile == null) return false;
-
-        Character[] allChars = Object.FindObjectsByType<Character>(FindObjectsSortMode.None);
-        List<Character> occupyingChars = new List<Character>();
         
-        foreach (var c in allChars)
-        {
-            if (c != null && c.currentTile == tile)
-            {
-                occupyingChars.Add(c);
-            }
-        }
-        
-        // 중복 참조 정리 - 첫 번째 캐릭터만 유지
-        if (occupyingChars.Count > 1)
-        {
-            Debug.LogWarning($"[TileManager] {tile.name} 타일에 {occupyingChars.Count}개의 중복 참조 감지! 정리합니다.");
-            
-            // 첫 번째 캐릭터를 제외한 나머지의 currentTile을 null로 설정
-            for (int i = 1; i < occupyingChars.Count; i++)
-            {
-                if (occupyingChars[i] != null)
-                {
-                    occupyingChars[i].currentTile = null;
-                    Debug.Log($"[TileManager] {occupyingChars[i].characterName}의 중복 타일 참조 제거");
-                }
-            }
-            
-            return true; // 첫 번째 캐릭터가 점유중
-        }
-        
-        return occupyingChars.Count > 0;
+        return tile.GetOccupyingCharacters().Count > 0;
     }
 
     /// <summary>
@@ -257,10 +168,18 @@ public class TileManager : MonoBehaviour
     {
         if (character == null) return;
         
-        // 이 캐릭터가 참조하는 타일 초기화
+        // 이 캐릭터가 참조하는 타일에서 제거
         if (character.currentTile != null)
         {
+            character.currentTile.RemoveOccupyingCharacter(character);
             Debug.Log($"[TileManager] {character.characterName}의 타일 참조 정리: {character.currentTile.name}");
+            
+            // 타일이 비었으면 원래 상태로
+            if (character.currentTile.GetOccupyingCharacters().Count == 0)
+            {
+                OnCharacterRemovedFromTile(character.currentTile);
+            }
+            
             character.currentTile = null;
         }
     }
@@ -317,7 +236,7 @@ public class TileManager : MonoBehaviour
     }
 
     /// <summary>
-    /// 파괴된 캐릭터 참조 정리
+    /// ★★★ 수정: 파괴된 캐릭터 참조 정리
     /// </summary>
     private void CleanupDestroyedCharacterReferences()
     {
@@ -329,30 +248,39 @@ public class TileManager : MonoBehaviour
         {
             if (tile == null) continue;
             
-            // 이 타일을 참조하는 캐릭터가 있는지 확인
-            bool hasValidCharacter = false;
-            foreach (var c in allChars)
+            // 타일의 캐릭터 리스트 정리
+            List<Character> validChars = new List<Character>();
+            foreach (var c in tile.GetOccupyingCharacters())
             {
-                if (c != null && c.currentTile == tile)
+                if (c != null && allChars.Contains(c))
                 {
-                    hasValidCharacter = true;
-                    break;
+                    validChars.Add(c);
                 }
             }
             
-            // PlaceTile인데 캐릭터가 없으면 상태 업데이트
-            if (!hasValidCharacter && (tile.IsPlaceTile() || tile.IsPlaced2()))
+            // 유효하지 않은 캐릭터가 있었다면 리스트 재구성
+            if (validChars.Count != tile.GetOccupyingCharacters().Count)
             {
-                if (tile.IsPlaceTile())
+                tile.RemoveAllOccupyingCharacters();
+                foreach (var c in validChars)
                 {
-                    tile.SetPlacable();
+                    tile.AddOccupyingCharacter(c);
                 }
-                else if (tile.IsPlaced2())
+                
+                // 타일이 비었으면 상태 업데이트
+                if (validChars.Count == 0 && (tile.IsPlaceTile() || tile.IsPlaced2()))
                 {
-                    tile.SetPlacable2();
+                    if (tile.IsPlaceTile())
+                    {
+                        tile.SetPlacable();
+                    }
+                    else if (tile.IsPlaced2())
+                    {
+                        tile.SetPlacable2();
+                    }
+                    tile.RefreshTileVisual();
+                    Debug.Log($"[TileManager] {tile.name} 타일의 캐릭터가 없어져서 상태 업데이트");
                 }
-                tile.RefreshTileVisual();
-                Debug.Log($"[TileManager] {tile.name} 타일의 캐릭터가 없어져서 상태 업데이트");
             }
         }
     }
@@ -383,22 +311,26 @@ public class TileManager : MonoBehaviour
     {
         if (tile == null) return;
         
-        // 타일 상태 업데이트
-        if (tile.IsPlaceTile() || tile.IsPlaced2())
+        // 타일이 완전히 비었을 때만 상태 변경
+        if (tile.GetOccupyingCharacters().Count == 0)
         {
-            // PlaceTile/Placed2는 Placable/Placable2로 변경
-            if (tile.IsPlaceTile())
+            // 타일 상태 업데이트
+            if (tile.IsPlaceTile() || tile.IsPlaced2())
             {
-                tile.SetPlacable();
+                // PlaceTile/Placed2는 Placable/Placable2로 변경
+                if (tile.IsPlaceTile())
+                {
+                    tile.SetPlacable();
+                }
+                else if (tile.IsPlaced2())
+                {
+                    tile.SetPlacable2();
+                }
             }
-            else if (tile.IsPlaced2())
-            {
-                tile.SetPlacable2();
-            }
+            
+            tile.RefreshTileVisual();
+            Debug.Log($"[TileManager] {tile.name} 타일에서 모든 캐릭터 제거 후 상태 업데이트");
         }
-        
-        tile.RefreshTileVisual();
-        Debug.Log($"[TileManager] {tile.name} 타일에서 캐릭터 제거 후 상태 업데이트");
     }
 
     /// <summary>
@@ -407,53 +339,72 @@ public class TileManager : MonoBehaviour
     public Tile FindEmptyPlacedOrPlacableTile(bool isRegion2)
     {
         List<Tile> targetTiles = isRegion2 ? aiSummonableTiles : playerSummonableTiles;
-        List<Tile> emptyTiles = new List<Tile>();
         
         foreach (var tile in targetTiles)
         {
             if (tile != null && tile.CanPlaceCharacter())
             {
-                emptyTiles.Add(tile);
+                return tile;
             }
-        }
-        
-        if (emptyTiles.Count > 0)
-        {
-            return emptyTiles[Random.Range(0, emptyTiles.Count)];
         }
         
         return null;
     }
 
     /// <summary>
-    /// 특정 지역의 빈 Walkable 타일 찾기 (게임 기획서: 3라인 시스템)
+    /// 특정 지역의 빈 walkable 타일 찾기
     /// </summary>
     public Tile FindEmptyWalkableTile(bool isRegion2)
     {
-        RouteType selectedRoute = (RouteType)Random.Range(0, 3);
-        Debug.Log($"[TileManager] placed/placable 타일이 꽉 찼으므로 {selectedRoute} 루트의 walkable 타일로 배치");
+        List<Tile> allTiles = new List<Tile>();
+        allTiles.AddRange(leftRouteTiles);
+        allTiles.AddRange(centerRouteTiles);
+        allTiles.AddRange(rightRouteTiles);
         
-        List<Tile> routeTiles = null;
+        // 지역별 필터링
+        var regionTiles = allTiles.Where(t => t != null && t.isRegion2 == isRegion2).ToList();
+        
+        // 빈 타일 찾기
+        foreach (var tile in regionTiles)
+        {
+            if (tile.CanPlaceCharacter())
+            {
+                return tile;
+            }
+        }
+        
+        return null;
+    }
+
+    /// <summary>
+    /// 특정 라인과 지역의 랜덤 walkable 타일 가져오기
+    /// </summary>
+    public Tile GetRandomWalkableTileFromRoute(RouteType selectedRoute, bool isRegion2)
+    {
+        List<Tile> candidateTiles = new List<Tile>();
+        
         switch (selectedRoute)
         {
             case RouteType.Left:
-                routeTiles = leftRouteTiles;
+                candidateTiles = leftRouteTiles.Where(t => t.isRegion2 == isRegion2).ToList();
                 break;
             case RouteType.Center:
-                routeTiles = centerRouteTiles;
+                candidateTiles = centerRouteTiles.Where(t => t.isRegion2 == isRegion2).ToList();
                 break;
             case RouteType.Right:
-                routeTiles = rightRouteTiles;
+                candidateTiles = rightRouteTiles.Where(t => t.isRegion2 == isRegion2).ToList();
                 break;
+            default:
+                Debug.LogWarning($"[TileManager] 잘못된 라인 타입: {selectedRoute}");
+                return null;
         }
         
-        if (routeTiles != null && routeTiles.Count > 0)
+        // 배치 가능한 타일만 필터링
+        candidateTiles = candidateTiles.Where(t => t.CanPlaceCharacter()).ToList();
+        
+        if (candidateTiles.Count > 0)
         {
-            var filteredTiles = routeTiles.Where(t => t.isRegion2 == isRegion2).ToList();
-            if (filteredTiles.Count > 0)
-            {
-                return filteredTiles[Random.Range(0, filteredTiles.Count)];
-            }
+            return candidateTiles[Random.Range(0, candidateTiles.Count)];
         }
         
         Debug.LogWarning($"[TileManager] 지역{(isRegion2 ? 2 : 1)}에 {selectedRoute} 라인의 walkable 타일이 없습니다!");
@@ -474,17 +425,20 @@ public class TileManager : MonoBehaviour
         // 같은 지역의 새로운 라인에서 빈 타일 찾기
         Tile newTile = GetRandomEmptyTileFromRoute(newRoute, currentTile.isRegion2);
         
-        if (newTile != null && newTile.CanPlaceCharacter())
+        if (newTile != null && newTile.CanPlaceCharacter(character))
         {
             // 기존 타일에서 캐릭터 제거
-            currentTile.RemoveOccupyingCharacter();
+            currentTile.RemoveOccupyingCharacter(character);
             
-            // 새 타일로 캐릭터 이동
+            // 타일이 비었으면 정리
+            if (currentTile.GetOccupyingCharacters().Count == 0)
+            {
+                OnCharacterRemovedFromTile(currentTile);
+            }
+            
+            // 새 타일에 캐릭터 추가
+            newTile.AddOccupyingCharacter(character);
             character.currentTile = newTile;
-            newTile.SetOccupyingCharacter(character);
-            
-            // 캐릭터 위치 업데이트
-            character.transform.position = newTile.transform.position;
             
             Debug.Log($"[TileManager] {character.characterName}을 {newRoute} 라인으로 이동 완료");
             return true;

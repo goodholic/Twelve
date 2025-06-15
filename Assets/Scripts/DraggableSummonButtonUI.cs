@@ -7,6 +7,7 @@ using TMPro;
 /// <summary>
 /// 캐릭터 '소환 버튼'을 드래그 -> 타일 위 드롭하면
 /// PlacementManager.SummonCharacterOnTile(...)로 즉시 소환.
+/// ★★★ 수정: 같은 캐릭터끼리는 한 타일에 최대 3개까지 배치 가능
 /// 
 /// => "마우스 중심"을 맞추기 위해
 ///    드래그 시작 시점에 offset( rectPos - pointerPos )을 계산하여 사용
@@ -164,167 +165,159 @@ public class DraggableSummonButtonUI : MonoBehaviour, IBeginDragHandler, IDragHa
         }
 
         // (4) "마우스 중심" 계산
-        RectTransform basePanel = (dragParent != null) ? dragParent : (RectTransform)canvas.transform;
-        RectTransformUtility.ScreenPointToLocalPointInRectangle(
-            basePanel,
-            eventData.position,
-            eventData.pressEventCamera,
-            out var localPoint
-        );
-        dragOffset = rectTrans.anchoredPosition - localPoint;
+        RectTransform basePanel = (dragParent != null) ? dragParent : (canvas != null ? canvas.transform as RectTransform : null);
+        if (basePanel != null)
+        {
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(basePanel, eventData.position, eventData.pressEventCamera, out Vector2 pointerLocalPos);
+            dragOffset = rectTrans.anchoredPosition - pointerLocalPos;
+        }
+        else
+        {
+            dragOffset = Vector2.zero;
+        }
 
-        // *** 드래그 시작 시 원래 스케일 저장 후 축소
+        // (5) 드래그 시작 시 버튼 크기 축소 (효과)
         originalScale = rectTrans.localScale;
         rectTrans.localScale = originalScale * dragScaleFactor;
 
-        // ================================
-        // == (수정 추가) 공격범위 표시 ==
-        // ================================
+        // =====================================================
+        // == (수정추가) 드래그 시작 시 dragInfoPanel 활성화 ==
+        // =====================================================
         if (dragInfoPanel != null)
         {
-            // 현재 summonCharacterIndex로부터 CharacterData를 찾는다
-            if (PlacementManager.Instance != null && 
-                PlacementManager.Instance.characterDatabase != null && 
-                summonCharacterIndex >= 0)
+            dragInfoPanel.SetActive(true);
+
+            // 캐릭터 데이터 가져와서 정보 표시
+            ShowCharacterInfo();
+        }
+    }
+
+    /// <summary>
+    /// ★★★ 추가: 드래그 중인 캐릭터 정보 표시
+    /// </summary>
+    private void ShowCharacterInfo()
+    {
+        if (dragInfoText == null) return;
+
+        var coreData = CoreDataManager.Instance;
+        if (coreData == null || coreData.characterDatabase == null) return;
+
+        if (summonCharacterIndex >= 0 && summonCharacterIndex < coreData.characterDatabase.currentRegisteredCharacters.Length)
+        {
+            CharacterData charData = coreData.characterDatabase.currentRegisteredCharacters[summonCharacterIndex];
+            if (charData != null)
             {
-                // characterDatabase.currentRegisteredCharacters 내에 접근
-                var dbArr = PlacementManager.Instance.characterDatabase.currentRegisteredCharacters;
-                if (dbArr != null && summonCharacterIndex < dbArr.Length)
+                string info = $"<b>{charData.characterName}</b>\n";
+                info += $"공격력: {charData.attackPower}\n";
+                info += $"사거리: {charData.attackRange}\n";
+                info += $"비용: {charData.cost} 미네랄\n";
+                
+                if (charData.isAreaAttack)
                 {
-                    var cData = dbArr[summonCharacterIndex];
-                    if (cData != null)
-                    {
-                        // Panel 켜고, 텍스트 표시
-                        dragInfoPanel.SetActive(true);
-                        if (dragInfoText != null)
-                        {
-                            dragInfoText.text = $"공격 범위: {cData.attackRange}\n" +
-                                                $"공격 형태: {cData.rangeType}";
-                        }
-                    }
+                    info += $"<color=yellow>범위 공격 (반경: {charData.areaAttackRadius})</color>";
                 }
+                else
+                {
+                    info += "단일 공격";
+                }
+                
+                dragInfoText.text = info;
             }
         }
     }
 
     public void OnDrag(PointerEventData eventData)
     {
-        if (canvas == null) return;
+        if (canvas == null || summonCharacterIndex < 0) return;
 
-        RectTransform basePanel = (dragParent != null) ? dragParent : (RectTransform)canvas.transform;
-        if (RectTransformUtility.ScreenPointToLocalPointInRectangle(
-            basePanel,
-            eventData.position,
-            eventData.pressEventCamera,
-            out var localPos))
+        // dragParent 또는 canvas 기준으로 마우스 위치 얻기
+        RectTransform basePanel = (dragParent != null) ? dragParent : canvas.transform as RectTransform;
+        if (basePanel != null)
         {
-            // "마우스 중심"을 맞추기 위해 offset 적용
-            rectTrans.anchoredPosition = localPos + dragOffset;
-        }
-
-        // (수정추가) dragInfoPanel도 마우스 근처로 이동시키고 싶다면:
-        if (dragInfoPanel != null)
-        {
-            dragInfoPanel.transform.position = eventData.position; 
-            // → UI 좌표계에서 직접 위치 이동 (ex: ScreenPoint)
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(basePanel, eventData.position, eventData.pressEventCamera, out Vector2 localPointerPos);
+            rectTrans.anchoredPosition = localPointerPos + dragOffset;
         }
     }
 
     public void OnEndDrag(PointerEventData eventData)
     {
-        // (1) 다시 Raycast 유효화
+        if (summonCharacterIndex < 0) return;
+
+        // (1) Raycast로 드롭 타겟 찾기
+        List<RaycastResult> raycastResults = new List<RaycastResult>();
+        EventSystem.current.RaycastAll(eventData, raycastResults);
+
+        Tile droppedTile = null;
+        foreach (var result in raycastResults)
+        {
+            Tile tile = result.gameObject.GetComponent<Tile>();
+            if (tile != null)
+            {
+                droppedTile = tile;
+                break;
+            }
+        }
+
+        // (2) 타일에 드롭했을 때
+        if (droppedTile != null)
+        {
+            // ★★★ 수정: 같은 캐릭터 체크를 위해 PlacementManager가 처리하도록 함
+            bool summonSuccess = PlacementManager.Instance.SummonCharacterOnTile(summonCharacterIndex, droppedTile);
+            
+            if (summonSuccess)
+            {
+                // next unit 로직
+                if (parentSelectUI != null)
+                {
+                    parentSelectUI.OnDragUseCard(summonCharacterIndex);
+                }
+            }
+        }
+
+        // (3) 원래 위치로 복귀
+        rectTrans.anchoredPosition = originalPos;
+
+        // (4) 크기 복원
+        rectTrans.localScale = originalScale;
+
+        // (5) Raycast 다시 활성화
         if (canvasGroup != null)
         {
             canvasGroup.blocksRaycasts = true;
         }
 
-        // (2) 드래그 종료 시 스케일 복귀
-        rectTrans.localScale = originalScale;
-
-        // (3) 타일 찾기
-        Tile tile = FindTileUnderPointer(eventData);
-        if (tile != null && summonCharacterIndex >= 0)
-        {
-            // PlacementManager로 즉시 소환
-            PlacementManager.Instance.SummonCharacterOnTile(summonCharacterIndex, tile);
-
-            // next unit 로직
-            if (parentSelectUI != null)
-            {
-                parentSelectUI.OnDragUseCard(summonCharacterIndex);
-            }
-        }
-
-        // (4) 버튼은 원래 자리로 복귀
-        rectTrans.anchoredPosition = originalPos;
-
-        // ===========================
-        // == (수정추가) 표시 종료 ==
-        // ===========================
+        // =====================================================
+        // == (수정추가) 드래그 종료 시 dragInfoPanel 비활성화 ==
+        // =====================================================
         if (dragInfoPanel != null)
         {
             dragInfoPanel.SetActive(false);
         }
+
+        isDragging = false;
     }
 
     /// <summary>
-    /// PointerEventData로 UI RaycastAll을 수행하여
-    /// Tile 컴포넌트가 있는지 확인
-    /// </summary>
-    private Tile FindTileUnderPointer(PointerEventData eventData)
-    {
-        var results = new List<RaycastResult>();
-        EventSystem.current.RaycastAll(eventData, results);
-        foreach (var r in results)
-        {
-            Tile t = r.gameObject.GetComponent<Tile>();
-            if (t != null)
-            {
-                return t;
-            }
-        }
-        return null;
-    }
-
-    /// <summary>
-    /// [게임 기획서] 랜덤 빈 타일 찾기
-    /// 원 버튼 소환 시 사용
+    /// 랜덤 빈 타일 찾기 (원 버튼 소환용)
     /// </summary>
     private Tile FindRandomEmptyTile()
     {
-        // TileManager를 통해 빈 타일 찾기
-        if (TileManager.Instance != null)
+        if (TileManager.Instance == null) return null;
+        
+        // 플레이어 소환 가능 타일 중에서 빈 타일 찾기
+        List<Tile> emptyTiles = new List<Tile>();
+        
+        foreach (var tile in TileManager.Instance.playerSummonableTiles)
         {
-            // 지역1의 빈 placed/placable 타일 찾기
-            Tile emptyTile = TileManager.Instance.FindEmptyPlacedOrPlacableTile(false);
-            if (emptyTile != null)
+            if (tile != null && tile.CanPlaceCharacter())
             {
-                return emptyTile;
-            }
-            
-            // placed/placable이 꽉 찼다면 walkable 타일 찾기
-            emptyTile = TileManager.Instance.FindEmptyWalkableTile(false);
-            if (emptyTile != null)
-            {
-                return emptyTile;
+                emptyTiles.Add(tile);
             }
         }
         
-        // 대체 방법: 모든 타일 중에서 배치 가능한 빈 타일 찾기
-        Tile[] allTiles = FindObjectsByType<Tile>(FindObjectsSortMode.None);
-        List<Tile> availableTiles = new List<Tile>();
-        
-        foreach (var tile in allTiles)
+        if (emptyTiles.Count > 0)
         {
-            if (tile.CanPlaceCharacter() && !TileManager.Instance.CheckAnyCharacterHasCurrentTile(tile))
-            {
-                availableTiles.Add(tile);
-            }
-        }
-        
-        if (availableTiles.Count > 0)
-        {
-            return availableTiles[Random.Range(0, availableTiles.Count)];
+            return emptyTiles[Random.Range(0, emptyTiles.Count)];
         }
         
         return null;

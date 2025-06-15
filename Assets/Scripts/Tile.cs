@@ -2,6 +2,8 @@
 using UnityEngine;
 using UnityEngine.UI;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 #if UNITY_EDITOR
 using UnityEditor;
 #endif
@@ -47,8 +49,9 @@ public class Tile : MonoBehaviour
     [HideInInspector] public int column;
     [HideInInspector] public int tileIndex;
 
-    // 타일 위의 캐릭터 참조 (게임 기획서: 타일 기반 소환)
-    private Character occupyingCharacter;
+    // ★★★ 수정: 타일 위의 캐릭터들 리스트로 관리 (최대 3개까지)
+    private List<Character> occupyingCharacters = new List<Character>();
+    private const int MAX_CHARACTERS_PER_TILE = 3;
 
     private void Start()
     {
@@ -64,55 +67,36 @@ public class Tile : MonoBehaviour
 
         if (tileButton != null)
         {
-            if (tileButton.targetGraphic == null && tileImage != null)
+            if (tileButton.targetGraphic == null)
             {
                 tileButton.targetGraphic = tileImage;
             }
-            tileButton.onClick.RemoveAllListeners();
             tileButton.onClick.AddListener(OnClickPlacableTile);
         }
-
-        if (Application.isPlaying)
-        {
-            UpdateTileVisual_Runtime();
-        }
-        
-        // 타일 타입에 따른 라인 자동 설정
-        UpdateBelongingRoute();
     }
 
-    /// <summary>
-    /// 타일 타입에 따라 속한 라인을 자동으로 설정
-    /// </summary>
-    private void UpdateBelongingRoute()
-    {
-        if (IsWalkableLeft() || IsWalkable2Left())
-        {
-            belongingRoute = RouteType.Left;
-        }
-        else if (IsWalkableCenter() || IsWalkable2Center())
-        {
-            belongingRoute = RouteType.Center;
-        }
-        else if (IsWalkableRight() || IsWalkable2Right())
-        {
-            belongingRoute = RouteType.Right;
-        }
-    }
-
-    /// <summary>
-    /// 이 타일이 'Placable' 형태인지 체크 (소환 가능 타일)
-    /// </summary>
+    // ========================== Tile Type Checking ==========================
     public bool IsPlacable()
     {
-        return (transform.Find("Placable") != null);
+        string n = gameObject.name.ToLower();
+        bool inName = n.Contains("placable") && !n.Contains("placable2");
+        
+        for (int i = 0; i < transform.childCount; i++)
+        {
+            string childName = transform.GetChild(i).name.ToLower();
+            if (childName.Contains("placable") && !childName.Contains("placable2"))
+            {
+                return true;
+            }
+        }
+        return inName;
     }
 
-    /// <summary>
-    /// 이 타일이 'Placable2' 형태인지 체크
-    /// </summary>
     public bool IsPlacable2()
     {
+        string n = gameObject.name.ToLower();
+        bool inName = n.Contains("placable2");
+        
         for (int i = 0; i < transform.childCount; i++)
         {
             string childName = transform.GetChild(i).name.ToLower();
@@ -121,44 +105,30 @@ public class Tile : MonoBehaviour
                 return true;
             }
         }
-        return false;
+        return inName;
     }
 
-    /// <summary>
-    /// 이 타일이 'PlaceTile' 형태인지 (캐릭터가 배치된 타일)
-    /// </summary>
     public bool IsPlaceTile()
     {
-        // 자기 자신의 이름이 PlacedTile인 경우
-        if (gameObject.name.ToLower().Contains("placedtile") || gameObject.name.ToLower().Contains("placetile"))
-        {
-            return true;
-        }
+        string n = gameObject.name.ToLower();
+        bool inName = n.Contains("placetile");
         
-        // 자식 중에 PlaceTile이 있는 경우
         for (int i = 0; i < transform.childCount; i++)
         {
             string childName = transform.GetChild(i).name.ToLower();
-            if (childName.Contains("placetile") && !childName.Contains("placed2"))
+            if (childName.Contains("placetile"))
             {
                 return true;
             }
         }
-        return false;
+        return inName;
     }
 
-    /// <summary>
-    /// 이 타일이 'Placed2' 형태인지
-    /// </summary>
     public bool IsPlaced2()
     {
-        // 자기 자신의 이름이 Placed2인 경우
-        if (gameObject.name.ToLower().Contains("placed2"))
-        {
-            return true;
-        }
+        string n = gameObject.name.ToLower();
+        bool inName = n.Contains("placed2");
         
-        // 자식 중에 Placed2가 있는 경우
         for (int i = 0; i < transform.childCount; i++)
         {
             string childName = transform.GetChild(i).name.ToLower();
@@ -167,86 +137,98 @@ public class Tile : MonoBehaviour
                 return true;
             }
         }
-        return false;
+        return inName;
     }
 
-    /// <summary>
-    /// 이 타일이 'Walkable' 형태인지 (몬스터 이동 경로)
-    /// </summary>
     public bool IsWalkable()
     {
-        return (transform.Find("Walkable") != null);
+        string n = gameObject.name.ToLower();
+        bool inName = n.Contains("walkable") && !n.Contains("walkable2") &&
+                     !n.Contains("walkableleft") && !n.Contains("walkablecenter") && !n.Contains("walkableright");
+        
+        for (int i = 0; i < transform.childCount; i++)
+        {
+            string childName = transform.GetChild(i).name.ToLower();
+            if (childName.Contains("walkable") && !childName.Contains("walkable2") &&
+                !childName.Contains("walkableleft") && !childName.Contains("walkablecenter") && !childName.Contains("walkableright"))
+            {
+                return true;
+            }
+        }
+        return inName;
     }
 
-    /// <summary>
-    /// 이 타일이 'Walkable2' 형태인지
-    /// </summary>
     public bool IsWalkable2()
     {
+        string n = gameObject.name.ToLower();
+        bool inName = n.Contains("walkable2") && !n.Contains("walkable2left") && 
+                     !n.Contains("walkable2center") && !n.Contains("walkable2right");
+        
         for (int i = 0; i < transform.childCount; i++)
         {
             string childName = transform.GetChild(i).name.ToLower();
-            if (childName.Contains("walkable2"))
+            if (childName.Contains("walkable2") && !childName.Contains("walkable2left") &&
+                !childName.Contains("walkable2center") && !childName.Contains("walkable2right"))
             {
                 return true;
             }
         }
-        return false;
+        return inName;
     }
 
-    /// <summary>
-    /// 이 타일이 'WalkableLeft' 형태인지 (왼쪽 라인)
-    /// </summary>
     public bool IsWalkableLeft()
     {
+        string n = gameObject.name.ToLower();
+        bool inName = n.Contains("walkableleft");
+        
         for (int i = 0; i < transform.childCount; i++)
         {
             string childName = transform.GetChild(i).name.ToLower();
-            if (childName.Contains("walkableleft") && !childName.Contains("walkable2"))
+            if (childName.Contains("walkableleft"))
             {
                 return true;
             }
         }
-        return false;
+        return inName;
     }
 
-    /// <summary>
-    /// 이 타일이 'WalkableCenter' 형태인지 (중앙 라인)
-    /// </summary>
     public bool IsWalkableCenter()
     {
+        string n = gameObject.name.ToLower();
+        bool inName = n.Contains("walkablecenter");
+        
         for (int i = 0; i < transform.childCount; i++)
         {
             string childName = transform.GetChild(i).name.ToLower();
-            if (childName.Contains("walkablecenter") && !childName.Contains("walkable2"))
+            if (childName.Contains("walkablecenter"))
             {
                 return true;
             }
         }
-        return false;
+        return inName;
     }
 
-    /// <summary>
-    /// 이 타일이 'WalkableRight' 형태인지 (오른쪽 라인)
-    /// </summary>
     public bool IsWalkableRight()
     {
+        string n = gameObject.name.ToLower();
+        bool inName = n.Contains("walkableright");
+        
         for (int i = 0; i < transform.childCount; i++)
         {
             string childName = transform.GetChild(i).name.ToLower();
-            if (childName.Contains("walkableright") && !childName.Contains("walkable2"))
+            if (childName.Contains("walkableright"))
             {
                 return true;
             }
         }
-        return false;
+        return inName;
     }
 
-    /// <summary>
-    /// 이 타일이 'Walkable2Left' 형태인지
-    /// </summary>
     public bool IsWalkable2Left()
     {
+        string n = gameObject.name.ToLower();
+        bool inName = n.Contains("walkable2left");
+        
         for (int i = 0; i < transform.childCount; i++)
         {
             string childName = transform.GetChild(i).name.ToLower();
@@ -255,14 +237,14 @@ public class Tile : MonoBehaviour
                 return true;
             }
         }
-        return false;
+        return inName;
     }
 
-    /// <summary>
-    /// 이 타일이 'Walkable2Center' 형태인지
-    /// </summary>
     public bool IsWalkable2Center()
     {
+        string n = gameObject.name.ToLower();
+        bool inName = n.Contains("walkable2center");
+        
         for (int i = 0; i < transform.childCount; i++)
         {
             string childName = transform.GetChild(i).name.ToLower();
@@ -271,14 +253,14 @@ public class Tile : MonoBehaviour
                 return true;
             }
         }
-        return false;
+        return inName;
     }
 
-    /// <summary>
-    /// 이 타일이 'Walkable2Right' 형태인지
-    /// </summary>
     public bool IsWalkable2Right()
     {
+        string n = gameObject.name.ToLower();
+        bool inName = n.Contains("walkable2right");
+        
         for (int i = 0; i < transform.childCount; i++)
         {
             string childName = transform.GetChild(i).name.ToLower();
@@ -287,22 +269,36 @@ public class Tile : MonoBehaviour
                 return true;
             }
         }
-        return false;
+        return inName;
     }
 
     /// <summary>
-    /// 이 타일이 캐릭터 배치 가능한 상태인지 (게임 기획서: 타일 기반 소환)
+    /// ★★★ 수정: 이 타일에 캐릭터를 배치할 수 있는지 확인
     /// </summary>
-    public bool CanPlaceCharacter()
+    public bool CanPlaceCharacter(Character characterToPlace = null)
     {
-        // 이미 캐릭터가 있으면 배치 불가
-        if (occupyingCharacter != null) return false;
-
         // Placable 타일이거나 빈 PlaceTile만 배치 가능
         bool isPlacableType = IsPlacable() || IsPlacable2();
-        bool isEmptyPlacedType = (IsPlaceTile() || IsPlaced2()) && occupyingCharacter == null;
+        bool isEmptyPlacedType = (IsPlaceTile() || IsPlaced2());
 
-        return isPlacableType || isEmptyPlacedType;
+        if (!isPlacableType && !isEmptyPlacedType) return false;
+
+        // 빈 타일이면 배치 가능
+        if (occupyingCharacters.Count == 0) return true;
+
+        // 캐릭터가 있는 경우
+        if (occupyingCharacters.Count >= MAX_CHARACTERS_PER_TILE) return false;
+
+        // 배치하려는 캐릭터가 있고, 이미 있는 캐릭터와 같은 종류인지 확인
+        if (characterToPlace != null && occupyingCharacters.Count > 0)
+        {
+            Character firstChar = occupyingCharacters[0];
+            // 같은 이름과 같은 별 등급인지 확인
+            return firstChar.characterName == characterToPlace.characterName && 
+                   firstChar.star == characterToPlace.star;
+        }
+
+        return false;
     }
 
     /// <summary>
@@ -313,7 +309,7 @@ public class Tile : MonoBehaviour
         Debug.Log($"[Tile] 클릭됨: {name} (Index={tileIndex}, row={row}, col={column}, Route={belongingRoute})");
         
         // 타일 상태 디버그 정보
-        Debug.Log($"[Tile] 타일 상태 - CanPlace:{CanPlaceCharacter()}, HasCharacter:{occupyingCharacter != null}");
+        Debug.Log($"[Tile] 타일 상태 - CanPlace:{CanPlaceCharacter()}, CharacterCount:{occupyingCharacters.Count}");
 
         // 추가: 만약 removeMode가 true라면 제거 로직
         if (PlacementManager.Instance != null && PlacementManager.Instance.removeMode)
@@ -338,34 +334,138 @@ public class Tile : MonoBehaviour
         }
         else
         {
-            Debug.Log($"[Tile] 배치 불가 상태. (이미 캐릭터가 있거나 소환 불가능한 타일)");
+            Debug.Log($"[Tile] 배치 불가 상태. (이미 캐릭터가 {occupyingCharacters.Count}개 있거나 소환 불가능한 타일)");
         }
     }
 
     /// <summary>
-    /// 타일에 캐릭터 설정
+    /// ★★★ 수정: 타일에 캐릭터 추가
     /// </summary>
-    public void SetOccupyingCharacter(Character character)
+    public bool AddOccupyingCharacter(Character character)
     {
-        occupyingCharacter = character;
+        if (character == null) return false;
+
+        // 최대 개수 체크
+        if (occupyingCharacters.Count >= MAX_CHARACTERS_PER_TILE) return false;
+
+        // 같은 캐릭터 체크
+        if (occupyingCharacters.Count > 0)
+        {
+            Character firstChar = occupyingCharacters[0];
+            if (firstChar.characterName != character.characterName || firstChar.star != character.star)
+            {
+                Debug.Log($"[Tile] 다른 종류의 캐릭터는 같은 타일에 배치할 수 없습니다.");
+                return false;
+            }
+        }
+
+        occupyingCharacters.Add(character);
+        UpdateCharacterSizes();
+        UpdateTileColor();
+        return true;
+    }
+
+    /// <summary>
+    /// ★★★ 수정: 타일에서 특정 캐릭터 제거
+    /// </summary>
+    public void RemoveOccupyingCharacter(Character character)
+    {
+        if (character != null && occupyingCharacters.Contains(character))
+        {
+            occupyingCharacters.Remove(character);
+            UpdateCharacterSizes();
+            UpdateTileColor();
+        }
+    }
+
+    /// <summary>
+    /// ★★★ 추가: 타일의 모든 캐릭터 제거
+    /// </summary>
+    public void RemoveAllOccupyingCharacters()
+    {
+        occupyingCharacters.Clear();
         UpdateTileColor();
     }
 
     /// <summary>
-    /// 타일의 캐릭터 제거
+    /// ★★★ 수정: 타일에 있는 캐릭터들 반환
     /// </summary>
-    public void RemoveOccupyingCharacter()
+    public List<Character> GetOccupyingCharacters()
     {
-        occupyingCharacter = null;
-        UpdateTileColor();
+        return new List<Character>(occupyingCharacters);
     }
 
     /// <summary>
-    /// 타일에 있는 캐릭터 반환
+    /// ★★★ 추가: 타일에 있는 첫 번째 캐릭터 반환 (기존 코드 호환성)
     /// </summary>
     public Character GetOccupyingCharacter()
     {
-        return occupyingCharacter;
+        return occupyingCharacters.Count > 0 ? occupyingCharacters[0] : null;
+    }
+
+    /// <summary>
+    /// ★★★ 추가: 캐릭터 크기 업데이트 (3명이 들어간 것처럼 보이도록)
+    /// </summary>
+    private void UpdateCharacterSizes()
+    {
+        if (occupyingCharacters.Count == 0) return;
+
+        float scaleFactor = 1.0f;
+        Vector2[] positions = null;
+
+        switch (occupyingCharacters.Count)
+        {
+            case 1:
+                scaleFactor = 1.0f;
+                positions = new Vector2[] { Vector2.zero };
+                break;
+            case 2:
+                scaleFactor = 0.8f;
+                positions = new Vector2[] { 
+                    new Vector2(-20f, 0), 
+                    new Vector2(20f, 0) 
+                };
+                break;
+            case 3:
+                scaleFactor = 0.65f;
+                positions = new Vector2[] { 
+                    new Vector2(-25f, 10f), 
+                    new Vector2(25f, 10f), 
+                    new Vector2(0, -20f) 
+                };
+                break;
+        }
+
+        // 각 캐릭터의 크기와 위치 조정
+        for (int i = 0; i < occupyingCharacters.Count; i++)
+        {
+            if (occupyingCharacters[i] != null)
+            {
+                RectTransform charRect = occupyingCharacters[i].GetComponent<RectTransform>();
+                if (charRect != null)
+                {
+                    // 크기 조정
+                    charRect.localScale = Vector3.one * scaleFactor;
+                    
+                    // 위치 조정 (타일 내에서 분산 배치)
+                    if (positions != null && i < positions.Length)
+                    {
+                        // 타일의 RectTransform 가져오기
+                        RectTransform tileRect = GetComponent<RectTransform>();
+                        if (tileRect != null)
+                        {
+                            // 타일의 월드 좌표를 캐릭터의 부모 좌표계로 변환
+                            RectTransform charParent = charRect.parent as RectTransform;
+                            if (charParent != null)
+                            {
+                                Vector2 localPos = charParent.InverseTransformPoint(tileRect.transform.position);
+                                charRect.anchoredPosition = localPos + positions[i];
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     /// <summary>
@@ -375,7 +475,7 @@ public class Tile : MonoBehaviour
     {
         if (tileImage == null) return;
 
-        if (occupyingCharacter != null)
+        if (occupyingCharacters.Count > 0)
         {
             // 캐릭터가 있는 타일
             tileImage.color = blockedColor;
@@ -392,107 +492,101 @@ public class Tile : MonoBehaviour
         }
     }
 
+    // ========================== State Changes ==========================
+    public void SetPlacable()
+    {
+        string n = gameObject.name.ToLower();
+        
+        if (n.Contains("walkable2left") || n.Contains("walkable2center") || n.Contains("walkable2right") || n.Contains("walkable2"))
+        {
+            Debug.Log($"[Tile] {name}은 walkable2 타일이므로 placable로 변경 불가");
+            return;
+        }
+        
+        // 자식 오브젝트 정리
+        for (int i = transform.childCount - 1; i >= 0; i--)
+        {
+            GameObject child = transform.GetChild(i).gameObject;
+            if (!IsAssetObject(child))
+            {
+                DestroyImmediate(child, false);
+            }
+        }
+        
+        // placable 프리팹 생성
+        if (placablePrefab != null)
+        {
+            currentVisual = (GameObject)PrefabUtility.InstantiatePrefab(placablePrefab, transform);
+            SetupVisualObject(currentVisual);
+        }
+        
+        UpdateTileColor();
+    }
+
+    public void SetPlacable2()
+    {
+        // 자식 오브젝트 정리
+        for (int i = transform.childCount - 1; i >= 0; i--)
+        {
+            GameObject child = transform.GetChild(i).gameObject;
+            if (!IsAssetObject(child))
+            {
+                DestroyImmediate(child, false);
+            }
+        }
+        
+        // placable2 프리팹 생성
+        if (placable2Prefab != null)
+        {
+            currentVisual = (GameObject)PrefabUtility.InstantiatePrefab(placable2Prefab, transform);
+            SetupVisualObject(currentVisual);
+        }
+        
+        UpdateTileColor();
+    }
+
+    // ========================== Visual Management ==========================
+    private void SetupVisualObject(GameObject obj)
+    {
+        if (obj == null) return;
+        
+        RectTransform rt = obj.GetComponent<RectTransform>();
+        if (rt != null)
+        {
+            rt.anchorMin = Vector2.zero;
+            rt.anchorMax = Vector2.one;
+            rt.anchoredPosition = Vector2.zero;
+            rt.sizeDelta = Vector2.zero;
+            rt.localScale = Vector3.one;
+        }
+    }
+
+    private bool IsAssetObject(GameObject obj)
+    {
+        if (obj == null) return false;
+        
 #if UNITY_EDITOR
-    public void RefreshInEditor()
-    {
-        if (Application.isPlaying)
-        {
-            UpdateTileVisual_Runtime();
-        }
-        else
-        {
-            UpdateTileVisual_Editor();
-        }
-    }
-
-    private void UpdateTileVisual_Editor()
-    {
-        if (currentVisual != null)
-        {
-            if (!IsAssetObject(currentVisual))
-            {
-                DestroyImmediate(currentVisual, false);
-            }
-            currentVisual = null;
-        }
-
-        GameObject prefabToUse = SelectVisualPrefab();
-        if (prefabToUse != null)
-        {
-            GameObject newObj = (GameObject)PrefabUtility.InstantiatePrefab(prefabToUse, transform);
-            if (newObj.TryGetComponent<RectTransform>(out RectTransform rt))
-            {
-                rt.anchoredPosition = Vector2.zero;
-                rt.localRotation = Quaternion.identity;
-            }
-            RemoveTileScriptsInEditor(newObj);
-            currentVisual = newObj;
-        }
-    }
-
-    private bool IsAssetObject(UnityEngine.Object obj)
-    {
-        return PrefabUtility.IsPartOfPrefabAsset(obj) || AssetDatabase.Contains(obj);
-    }
-
-    private void RemoveTileScriptsInEditor(GameObject root)
-    {
-        Tile[] tiles = root.GetComponentsInChildren<Tile>(true);
-        foreach (Tile t in tiles)
-        {
-            if (t != this)
-            {
-                DestroyImmediate(t, false);
-            }
-        }
-    }
+        return EditorUtility.IsPersistent(obj) || 
+               PrefabUtility.IsPartOfPrefabAsset(obj) || 
+               PrefabUtility.IsPartOfPrefabInstance(obj);
+#else
+        return false;
 #endif
+    }
 
     private void UpdateTileVisual_Runtime()
     {
         if (currentVisual != null)
         {
-#if UNITY_EDITOR
-            if (!IsPrefabAsset(currentVisual))
-            {
-                Destroy(currentVisual);
-            }
-#else
             Destroy(currentVisual);
-#endif
             currentVisual = null;
         }
 
         GameObject prefabToUse = SelectVisualPrefab();
         if (prefabToUse != null)
         {
-            GameObject newObj = Instantiate(prefabToUse, transform);
-            if (newObj.TryGetComponent<RectTransform>(out RectTransform rt))
-            {
-                rt.anchoredPosition = Vector2.zero;
-                rt.localRotation = Quaternion.identity;
-            }
-            RemoveTileScriptsAtRuntime(newObj);
-            currentVisual = newObj;
-        }
-    }
-
-#if UNITY_EDITOR
-    private bool IsPrefabAsset(GameObject obj)
-    {
-        return PrefabUtility.IsPartOfPrefabAsset(obj) || AssetDatabase.Contains(obj);
-    }
-#endif
-
-    private void RemoveTileScriptsAtRuntime(GameObject root)
-    {
-        Tile[] tiles = root.GetComponentsInChildren<Tile>(true);
-        foreach (Tile t in tiles)
-        {
-            if (t != this)
-            {
-                Destroy(t);
-            }
+            currentVisual = Instantiate(prefabToUse, transform);
+            SetupVisualObject(currentVisual);
         }
     }
 
@@ -552,83 +646,49 @@ public class Tile : MonoBehaviour
         }
     }
 
-    public void ResetHighlight()
+    public void UnhighlightTile()
     {
-        if (tileImage != null)
+        UpdateTileColor();
+    }
+
+#if UNITY_EDITOR
+    public void RefreshInEditor()
+    {
+        if (Application.isPlaying)
         {
-            UpdateTileColor();
+            UpdateTileVisual_Runtime();
+        }
+        else
+        {
+            UpdateTileVisual_Editor();
         }
     }
 
-    /// <summary>
-    /// 타일을 Placable 상태로 변경
-    /// </summary>
-    public void SetPlacable()
-    {
-        // 기존 자식 제거
-        ClearCurrentVisual();
-        
-        // Placable 프리팹 생성
-        if (placablePrefab != null)
-        {
-            currentVisual = Instantiate(placablePrefab, transform);
-            RemoveTileScriptsAtRuntime(currentVisual);
-        }
-        
-        Debug.Log($"[Tile] {name}을 Placable 상태로 변경");
-    }
-    
-    /// <summary>
-    /// 타일을 Placable2 상태로 변경
-    /// </summary>
-    public void SetPlacable2()
-    {
-        // 기존 자식 제거
-        ClearCurrentVisual();
-        
-        // Placable2 프리팹 생성
-        if (placable2Prefab != null)
-        {
-            currentVisual = Instantiate(placable2Prefab, transform);
-            RemoveTileScriptsAtRuntime(currentVisual);
-        }
-        
-        Debug.Log($"[Tile] {name}을 Placable2 상태로 변경");
-    }
-    
-    /// <summary>
-    /// 현재 비주얼을 제거
-    /// </summary>
-    private void ClearCurrentVisual()
+    private void UpdateTileVisual_Editor()
     {
         if (currentVisual != null)
         {
-            if (Application.isPlaying)
+            if (!IsAssetObject(currentVisual))
             {
-                Destroy(currentVisual);
-            }
-            else
-            {
-                DestroyImmediate(currentVisual);
+                DestroyImmediate(currentVisual, false);
             }
             currentVisual = null;
         }
-        
-        // 모든 자식 프리팹 제거 (Placable, PlaceTile 등)
-        for (int i = transform.childCount - 1; i >= 0; i--)
+
+        GameObject prefabToUse = SelectVisualPrefab();
+        if (prefabToUse != null)
         {
-            Transform child = transform.GetChild(i);
-            if (child.gameObject != currentVisual)
+            GameObject newObj = (GameObject)PrefabUtility.InstantiatePrefab(prefabToUse, transform);
+            if (newObj.TryGetComponent<RectTransform>(out RectTransform rt))
             {
-                if (Application.isPlaying)
-                {
-                    Destroy(child.gameObject);
-                }
-                else
-                {
-                    DestroyImmediate(child.gameObject);
-                }
+                rt.anchoredPosition = Vector2.zero;
+                rt.sizeDelta = Vector2.zero;
+                rt.anchorMin = Vector2.zero;
+                rt.anchorMax = Vector2.one;
+                rt.localScale = Vector3.one;
             }
+            currentVisual = newObj;
         }
     }
+#endif
 }

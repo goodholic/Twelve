@@ -1,9 +1,12 @@
 using UnityEngine;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 
 /// <summary>
-/// 주사위 버튼 클릭 시 자동으로 같은 등급 3개씩 합성하는 매니저
+/// 주사위 버튼 자동 합성 관리
+/// 게임 기획서: 같은 등급 3개 자동 합성
+/// ★★★ 수정: 같은 타일에 있는 캐릭터들도 합성 대상으로 고려
 /// </summary>
 public class AutoMergeManager : MonoBehaviour
 {
@@ -25,24 +28,13 @@ public class AutoMergeManager : MonoBehaviour
         }
     }
 
-    [Header("합성 설정")]
-    [Tooltip("한 번에 처리할 최대 합성 횟수")]
-    public int maxMergesPerClick = 10;
+    [Header("자동 합성 설정")]
+    [Tooltip("한 번에 합성할 최대 그룹 수")]
+    public int maxMergeGroupsPerTurn = 5;
     
-    [Tooltip("합성 간 딜레이 (초)")]
-    public float mergeDelay = 0.3f; // 빠른 합성을 위해 딜레이 축소
-    
-    [Header("효과")]
-    [Tooltip("합성 시 이펙트 프리팹")]
-    public GameObject mergeEffectPrefab;
-    
-    [Tooltip("합성 시 사운드")]
-    public AudioClip mergeSound;
-    
-    [Header("주사위 버튼")]
-    [Tooltip("주사위 버튼 UI")]
-    public UnityEngine.UI.Button diceButton;
-    
+    [Tooltip("합성 애니메이션 간격")]
+    public float mergeAnimationDelay = 0.5f;
+
     private bool isProcessingMerge = false;
 
     private void Awake()
@@ -55,24 +47,14 @@ public class AutoMergeManager : MonoBehaviour
         instance = this;
     }
 
-    private void Start()
-    {
-        // 주사위 버튼 이벤트 연결
-        if (diceButton != null)
-        {
-            diceButton.onClick.RemoveAllListeners();
-            diceButton.onClick.AddListener(() => OnDiceButtonClick(1)); // 기본 지역1
-        }
-    }
-
     /// <summary>
-    /// 주사위 버튼 클릭 시 호출 - 자동 합성 실행
+    /// 자동 합성 실행 (주사위 버튼에서 호출)
     /// </summary>
-    public void OnDiceButtonClick(int areaIndex = 1)
+    public void StartAutoMerge(int areaIndex = 1)
     {
         if (isProcessingMerge)
         {
-            Debug.Log("[AutoMergeManager] 이미 합성 처리 중입니다.");
+            Debug.Log("[AutoMergeManager] 이미 합성이 진행 중입니다.");
             return;
         }
 
@@ -80,41 +62,44 @@ public class AutoMergeManager : MonoBehaviour
     }
 
     /// <summary>
-    /// 자동 합성 처리 코루틴
+    /// 주사위 버튼 클릭 시 호출되는 메서드
     /// </summary>
-    private System.Collections.IEnumerator ProcessAutoMerge(int areaIndex)
+    public void OnDiceButtonClick(int areaIndex = 1)
+    {
+        Debug.Log($"[AutoMergeManager] 주사위 버튼 클릭 - 지역{areaIndex} 자동 합성 시작");
+        StartAutoMerge(areaIndex);
+    }
+
+    /// <summary>
+    /// 자동 합성 프로세스
+    /// </summary>
+    private IEnumerator ProcessAutoMerge(int areaIndex)
     {
         isProcessingMerge = true;
-        int mergeCount = 0;
-
-        Debug.Log($"[AutoMergeManager] 지역 {areaIndex} 자동 합성 시작! (주사위 버튼 클릭)");
 
         // 합성 가능한 그룹 찾기
         List<MergeGroup> mergeGroups = FindMergeableGroups(areaIndex);
         
-        while (mergeGroups.Count > 0 && mergeCount < maxMergesPerClick)
+        if (mergeGroups.Count == 0)
         {
-            // 첫 번째 그룹 합성
-            MergeGroup group = mergeGroups[0];
-            
-            // 합성 효과 표시
-            ShowMergeEffect(group);
-            
-            // 실제 합성 수행
-            PerformMerge(group);
-            
-            mergeCount++;
-            
-            // 딜레이
-            yield return new WaitForSeconds(mergeDelay);
-            
-            // 다시 합성 가능한 그룹 찾기
-            mergeGroups = FindMergeableGroups(areaIndex);
+            Debug.Log("[AutoMergeManager] 합성 가능한 캐릭터가 없습니다.");
+            isProcessingMerge = false;
+            yield break;
         }
 
-        if (mergeCount == 0)
+        // 최대 그룹 수만큼 합성
+        int mergeCount = Mathf.Min(mergeGroups.Count, maxMergeGroupsPerTurn);
+        
+        for (int i = 0; i < mergeCount; i++)
         {
-            Debug.Log("[AutoMergeManager] 합성 가능한 캐릭터가 없습니다. (같은 등급 3개 이상 필요)");
+            PerformMerge(mergeGroups[i]);
+            yield return new WaitForSeconds(mergeAnimationDelay);
+        }
+
+        // 합성 후 메시지
+        if (mergeCount < mergeGroups.Count)
+        {
+            Debug.Log($"[AutoMergeManager] {mergeCount}개 그룹 합성 완료. 추가 합성 가능: {mergeGroups.Count - mergeCount}개 (같은 등급 3개 이상 필요)");
         }
         else
         {
@@ -125,7 +110,7 @@ public class AutoMergeManager : MonoBehaviour
     }
 
     /// <summary>
-    /// 합성 가능한 그룹 찾기 (게임 기획서: 같은 등급 3개)
+    /// ★★★ 수정: 합성 가능한 그룹 찾기 (같은 타일의 캐릭터들도 고려)
     /// </summary>
     private List<MergeGroup> FindMergeableGroups(int areaIndex)
     {
@@ -141,14 +126,51 @@ public class AutoMergeManager : MonoBehaviour
             !c.isHero // 히어로는 합성 제외
         ).ToList();
 
-        // 캐릭터를 이름과 별 등급으로 그룹화
-        var groupedChars = areaCharacters
-            .GroupBy(c => new { c.characterName, c.star })
-            .Where(g => g.Count() >= 3); // 3개 이상인 그룹만
+        // 이미 처리한 캐릭터 추적
+        HashSet<Character> processedCharacters = new HashSet<Character>();
 
-        foreach (var group in groupedChars)
+        // 1. 먼저 같은 타일에 3개가 모인 경우 찾기
+        Tile[] allTiles = FindObjectsByType<Tile>(FindObjectsSortMode.None);
+        foreach (var tile in allTiles)
         {
-            var chars = group.Take(3).ToList(); // 3개씩만 가져오기
+            if (tile == null) continue;
+            
+            List<Character> tileChars = tile.GetOccupyingCharacters();
+            if (tileChars.Count >= 3)
+            {
+                // 같은 캐릭터 종류별로 그룹화
+                var tileGroups = tileChars.GroupBy(c => new { c.characterName, c.star })
+                                          .Where(g => g.Count() >= 3);
+
+                foreach (var group in tileGroups)
+                {
+                    var chars = group.Take(3).ToList(); // 3개씩만
+                    
+                    // 이미 처리한 캐릭터가 포함되어 있으면 스킵
+                    if (chars.Any(c => processedCharacters.Contains(c))) continue;
+                    
+                    MergeGroup mergeGroup = new MergeGroup
+                    {
+                        characterName = group.Key.characterName,
+                        star = group.Key.star,
+                        characters = chars
+                    };
+                    
+                    groups.Add(mergeGroup);
+                    chars.ForEach(c => processedCharacters.Add(c));
+                }
+            }
+        }
+
+        // 2. 다른 타일에 흩어진 같은 캐릭터들 찾기
+        var ungroupedChars = areaCharacters.Where(c => !processedCharacters.Contains(c)).ToList();
+        var scatteredGroups = ungroupedChars
+            .GroupBy(c => new { c.characterName, c.star })
+            .Where(g => g.Count() >= 3);
+
+        foreach (var group in scatteredGroups)
+        {
+            var chars = group.Take(3).ToList(); // 3개씩만
             
             MergeGroup mergeGroup = new MergeGroup
             {
@@ -189,6 +211,17 @@ public class AutoMergeManager : MonoBehaviour
         // 합성 전 타일 정보 백업
         Tile[] oldTiles = new Tile[] { char1.currentTile, char2.currentTile, char3.currentTile };
         
+        // ★★★ 수정: 타일에서 캐릭터 제거
+        foreach (var tile in oldTiles)
+        {
+            if (tile != null)
+            {
+                tile.RemoveOccupyingCharacter(char1);
+                tile.RemoveOccupyingCharacter(char2);
+                tile.RemoveOccupyingCharacter(char3);
+            }
+        }
+        
         // 3개 캐릭터 제거
         DestroyCharacterForMerge(char1);
         DestroyCharacterForMerge(char2);
@@ -200,7 +233,7 @@ public class AutoMergeManager : MonoBehaviour
         // 타일 상태 정리
         foreach (var tile in oldTiles)
         {
-            if (tile != null && tile != mergeTargetTile)
+            if (tile != null && tile.GetOccupyingCharacters().Count == 0)
             {
                 TileManager.Instance.OnCharacterRemovedFromTile(tile);
             }
@@ -238,7 +271,7 @@ public class AutoMergeManager : MonoBehaviour
     }
 
     /// <summary>
-    /// 합성된 새 캐릭터 생성 (게임 기획서: 종족 시스템 고려)
+    /// ★★★ 수정: 합성된 새 캐릭터 생성
     /// </summary>
     private void CreateMergedCharacter(string baseName, CharacterStar newStar, Tile targetTile, int areaIndex)
     {
@@ -326,12 +359,17 @@ public class AutoMergeManager : MonoBehaviour
             {
                 mergedChar.SetBulletPanel(coreData.bulletPanel);
             }
+
+            // ★★★ 추가: 타일에 새 캐릭터 추가
+            if (targetTile != null)
+            {
+                targetTile.AddOccupyingCharacter(mergedChar);
+            }
         }
+
+        Debug.Log($"[AutoMergeManager] 합성 완료: {baseName} -> {newCharData.characterName} ({newStar})");
     }
 
-    /// <summary>
-    /// 종족 변환 (게임 기획서: 휴먼, 오크, 엘프, 언데드)
-    /// </summary>
     private RaceType ConvertCharacterRaceToRaceType(CharacterRace charRace)
     {
         switch (charRace)
@@ -345,42 +383,20 @@ public class AutoMergeManager : MonoBehaviour
     }
 
     /// <summary>
-    /// 합성 효과 표시
-    /// </summary>
-    private void ShowMergeEffect(MergeGroup group)
-    {
-        // 이펙트 프리팹이 있으면 생성
-        if (mergeEffectPrefab != null)
-        {
-            foreach (var character in group.characters)
-            {
-                if (character != null && character.transform != null)
-                {
-                    GameObject effect = Instantiate(mergeEffectPrefab, character.transform.position, Quaternion.identity);
-                    Destroy(effect, 2f); // 2초 후 제거
-                }
-            }
-        }
-
-        // 사운드 재생
-        if (mergeSound != null)
-        {
-            AudioSource audioSource = GetComponent<AudioSource>();
-            if (audioSource == null)
-            {
-                audioSource = gameObject.AddComponent<AudioSource>();
-            }
-            audioSource.PlayOneShot(mergeSound);
-        }
-    }
-
-    /// <summary>
-    /// 합성 그룹 데이터 구조
+    /// 합성 그룹 정보
     /// </summary>
     private class MergeGroup
     {
         public string characterName;
         public CharacterStar star;
         public List<Character> characters;
+    }
+
+    /// <summary>
+    /// 특정 지역에 합성 가능한 그룹이 있는지 확인
+    /// </summary>
+    public bool HasMergeableGroups(int areaIndex = 1)
+    {
+        return FindMergeableGroups(areaIndex).Count > 0;
     }
 }
