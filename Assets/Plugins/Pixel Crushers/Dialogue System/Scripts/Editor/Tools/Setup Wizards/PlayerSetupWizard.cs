@@ -134,7 +134,7 @@ namespace PixelCrushers.DialogueSystem
             DrawNavigationButtons(false, (pcObject != null), false);
         }
 
-        private Editor dialogueActorEditor = null;
+        private UnityEditor.Editor dialogueActorEditor = null;
 
         private void DrawActorStage()
         {
@@ -157,7 +157,7 @@ namespace PixelCrushers.DialogueSystem
             }
             if (hasDialogueActor)
             {
-                if (dialogueActorEditor == null) dialogueActorEditor = Editor.CreateEditor(dialogueActor);
+                if (dialogueActorEditor == null) dialogueActorEditor = UnityEditor.Editor.CreateEditor(dialogueActor);
                 dialogueActorEditor.OnInspectorGUI();
             }
 
@@ -200,8 +200,8 @@ namespace PixelCrushers.DialogueSystem
             Custom
         };
 
-        private Editor simpleControllerEditor = null;
-        private Editor navMouseClickEditor = null;
+        private UnityEditor.Editor simpleControllerEditor = null;
+        private UnityEditor.Editor navMouseClickEditor = null;
 
         private void DrawControlStage()
         {
@@ -245,7 +245,7 @@ namespace PixelCrushers.DialogueSystem
         private void DrawSimpleControllerSection(PixelCrushers.DialogueSystem.Demo.SimpleController simpleController)
         {
             EditorWindowTools.StartIndentedSection();
-            if (simpleControllerEditor == null) simpleControllerEditor = Editor.CreateEditor(simpleController);
+            if (simpleControllerEditor == null) simpleControllerEditor = UnityEditor.Editor.CreateEditor(simpleController);
             simpleControllerEditor.OnInspectorGUI();
             EditorWindowTools.EndIndentedSection();
         }
@@ -253,7 +253,7 @@ namespace PixelCrushers.DialogueSystem
         private void DrawNavigateOnMouseClickSection(PixelCrushers.DialogueSystem.Demo.NavigateOnMouseClick navigateOnMouseClick)
         {
             EditorWindowTools.StartIndentedSection();
-            if (navMouseClickEditor == null) navMouseClickEditor = Editor.CreateEditor(navigateOnMouseClick);
+            if (navMouseClickEditor == null) navMouseClickEditor = UnityEditor.Editor.CreateEditor(navigateOnMouseClick);
             navMouseClickEditor.OnInspectorGUI();
             EditorWindowTools.EndIndentedSection();
         }
@@ -612,7 +612,7 @@ namespace PixelCrushers.DialogueSystem
             }
         }
 
-        private Editor positionSaverEditor = null;
+        private UnityEditor.Editor positionSaverEditor = null;
 
         private void DrawPersistenceStage()
         {
@@ -631,7 +631,7 @@ namespace PixelCrushers.DialogueSystem
                     positionSaver = pcObject.AddComponent(TypeUtility.GetWrapperType(typeof(PixelCrushers.PositionSaver))) as PositionSaver;
                     positionSaver.key = "Player";
                 }
-                if (positionSaverEditor == null) positionSaverEditor = Editor.CreateEditor(positionSaver);
+                if (positionSaverEditor == null) positionSaverEditor = UnityEditor.Editor.CreateEditor(positionSaver);
                 positionSaverEditor.OnInspectorGUI();
             }
             else

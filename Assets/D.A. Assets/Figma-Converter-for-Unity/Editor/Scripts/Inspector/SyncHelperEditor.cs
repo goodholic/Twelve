@@ -6,7 +6,7 @@ using UnityEngine;
 namespace DA_Assets.FCU
 {
     [CustomEditor(typeof(SyncHelper)), CanEditMultipleObjects]
-    internal class SyncHelperEditor : Editor
+    internal class SyncHelperEditor : UnityEditor.Editor
     {
         [SerializeField] DAInspector gui;
         private FigmaConverterUnity fcu;

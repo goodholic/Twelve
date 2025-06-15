@@ -11,11 +11,11 @@ namespace DA_Assets.FCU
 {
     internal class DebugTab : MonoBehaviourLinkerEditor<FcuSettingsWindow, FigmaConverterUnity>
     {
-        private Editor fcuConfigEditor;
+        private UnityEditor.Editor fcuConfigEditor;
 
         public override void OnLink()
         {
-            fcuConfigEditor = Editor.CreateEditor(FcuConfig.Instance);
+            fcuConfigEditor = UnityEditor.Editor.CreateEditor(FcuConfig.Instance);
         }
 
         public void Draw()

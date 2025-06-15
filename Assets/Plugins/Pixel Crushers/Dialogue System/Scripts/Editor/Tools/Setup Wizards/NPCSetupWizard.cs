@@ -159,7 +159,7 @@ namespace PixelCrushers.DialogueSystem
             DrawNavigationButtons(true, (database != null), false);
         }
 
-        private Editor dialogueActorEditor = null;
+        private UnityEditor.Editor dialogueActorEditor = null;
 
         private void DrawActorStage()
         {
@@ -185,7 +185,7 @@ namespace PixelCrushers.DialogueSystem
             }
             if (hasDialogueActor)
             {
-                if (dialogueActorEditor == null) dialogueActorEditor = Editor.CreateEditor(dialogueActor);
+                if (dialogueActorEditor == null) dialogueActorEditor = UnityEditor.Editor.CreateEditor(dialogueActor);
                 dialogueActorEditor.OnInspectorGUI();
             }
 
@@ -221,7 +221,7 @@ namespace PixelCrushers.DialogueSystem
             DrawNavigationButtons(true, (database != null), false);
         }
 
-        private Editor barkOnIdleEditor = null;
+        private UnityEditor.Editor barkOnIdleEditor = null;
 
         private bool DrawBarkOnIdleSection()
         {
@@ -233,7 +233,7 @@ namespace PixelCrushers.DialogueSystem
             if (hasBarkOnIdle)
             {
                 if (barkOnIdle == null) barkOnIdle = npcObject.AddComponent(TypeUtility.GetWrapperType(typeof(PixelCrushers.DialogueSystem.BarkOnIdle))) as BarkOnIdle;
-                if (barkOnIdleEditor == null) barkOnIdleEditor = Editor.CreateEditor(barkOnIdle);
+                if (barkOnIdleEditor == null) barkOnIdleEditor = UnityEditor.Editor.CreateEditor(barkOnIdle);
                 barkOnIdleEditor.OnInspectorGUI();
             }
             else
@@ -329,7 +329,7 @@ namespace PixelCrushers.DialogueSystem
             }
         }
 
-        private Editor dialogueSystemTriggerEditor = null;
+        private UnityEditor.Editor dialogueSystemTriggerEditor = null;
 
         private void DrawActionsStage()
         {
@@ -353,7 +353,7 @@ namespace PixelCrushers.DialogueSystem
             }
             if (hasDialogueSystemTrigger)
             {
-                if (dialogueSystemTriggerEditor == null) dialogueSystemTriggerEditor = Editor.CreateEditor(dialogueSystemTrigger);
+                if (dialogueSystemTriggerEditor == null) dialogueSystemTriggerEditor = UnityEditor.Editor.CreateEditor(dialogueSystemTrigger);
                 dialogueSystemTriggerEditor.OnInspectorGUI();
             }
 
@@ -392,7 +392,7 @@ namespace PixelCrushers.DialogueSystem
         private enum Dimension { In2D, In3D }
         private Dimension dimension = Dimension.In3D;
         private bool lookedUpDimension = false;
-        private Editor usableEditor = null;
+        private UnityEditor.Editor usableEditor = null;
 
         private void DrawTargetingStage()
         {
@@ -421,7 +421,7 @@ namespace PixelCrushers.DialogueSystem
             }
             if (usable != null)
             {
-                if (usableEditor == null) usableEditor = Editor.CreateEditor(usable);
+                if (usableEditor == null) usableEditor = UnityEditor.Editor.CreateEditor(usable);
                 usableEditor.OnInspectorGUI();
             }
 
