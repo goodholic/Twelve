@@ -99,47 +99,43 @@ public class MiddleCastle : MonoBehaviour, IDamageable
         if (isDestroyed) return;
         isDestroyed = true;
         
-        Debug.Log($"[MiddleCastle] {gameObject.name} 파괴됨! (지역{areaIndex}, {routeType} 라인)");
+        Debug.Log($"[MiddleCastle] {gameObject.name} 파괴됨!");
+        
+        // CastleHealthManager에 알림
+        if (CastleHealthManager.Instance != null)
+        {
+            switch (routeType)
+            {
+                case RouteType.Left:
+                    CastleHealthManager.Instance.isLeftMidCastleDestroyed = true;
+                    break;
+                case RouteType.Center:
+                    CastleHealthManager.Instance.isCenterMidCastleDestroyed = true;
+                    break;
+                case RouteType.Right:
+                    CastleHealthManager.Instance.isRightMidCastleDestroyed = true;
+                    break;
+            }
+        }
         
         // 파괴 이펙트 생성
         if (destroyEffectPrefab != null)
         {
             GameObject effect = Instantiate(destroyEffectPrefab, transform.position, Quaternion.identity);
-            Destroy(effect, 2f);
+            Destroy(effect, 3f);
         }
         
         // 이벤트 호출
         OnMiddleCastleDestroyed?.Invoke(routeType, areaIndex);
         
-        // HP바 비활성화
+        // HP바 비활성화 (성 자체는 비활성화하지 않음)
         if (hpBarCanvas != null)
         {
             hpBarCanvas.gameObject.SetActive(false);
         }
         
-        // 시각적으로 파괴된 모습 표현 (투명도 조절)
-        SpriteRenderer sr = GetComponent<SpriteRenderer>();
-        if (sr != null)
-        {
-            Color c = sr.color;
-            c.a = 0.3f;
-            sr.color = c;
-        }
-        
-        Image img = GetComponent<Image>();
-        if (img != null)
-        {
-            Color c = img.color;
-            c.a = 0.3f;
-            img.color = c;
-        }
-        
-        // 콜라이더 비활성화
-        Collider2D col = GetComponent<Collider2D>();
-        if (col != null)
-        {
-            col.enabled = false;
-        }
+        // 성 오브젝트는 비활성화하지 않음
+        // gameObject.SetActive(false);
     }
     
     public bool IsDestroyed()

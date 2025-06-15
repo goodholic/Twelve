@@ -15,7 +15,6 @@ GameObject:
   - component: {fileID: -1737592762919421349}
   - component: {fileID: 5272046658125502278}
   - component: {fileID: -3937458683028160175}
-  - component: {fileID: -8463918573549946590}
   - component: {fileID: 3719533550651234974}
   - component: {fileID: 1476811543640783455}
   - component: {fileID: -2617331537504487052}
@@ -202,25 +201,6 @@ CircleCollider2D:
   m_CompositeOrder: 0
   m_Offset: {x: 0, y: 0}
   m_Radius: 0.5
---- !u!114 &-8463918573549946590
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1970497639547063621}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: -1552182283, guid: e725a070cec140c4caffb81624c8c787, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  SortKey: 1843513723
-  ObjectInterest: 1
-  Flags: 262145
-  NestedObjects: []
-  NetworkedBehaviours:
-  - {fileID: -1737592762919421349}
-  ForceRemoteRenderTimeframe: 0
 --- !u!61 &3719533550651234974
 BoxCollider2D:
   m_ObjectHideFlags: 0

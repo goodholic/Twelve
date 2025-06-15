@@ -207,7 +207,7 @@ public class Monster : MonoBehaviour, IDamageable
     /// </summary>
     private void SwitchToMiddleCastleTarget()
     {
-        if (isTargetingCastle) return;
+        if (isTargetingCastle || hasReachedEnd || isDead) return;
         
         // 해당 라인의 중간성 찾기
         MiddleCastle[] middleCastles = UnityEngine.Object.FindObjectsByType<MiddleCastle>(FindObjectsSortMode.None);
@@ -219,7 +219,7 @@ public class Monster : MonoBehaviour, IDamageable
                 {
                     targetMiddleCastle = castle;
                     isTargetingCastle = true;
-                    Debug.Log($"[Monster] {gameObject.name} 중간성 타겟팅 시작: {castle.gameObject.name}");
+                    Debug.Log($"[Monster] {gameObject.name} 중간성 타겟팅 시작: {castle.gameObject.name} (지역{castle.areaIndex})");
                     return;
                 }
             }
@@ -234,7 +234,7 @@ public class Monster : MonoBehaviour, IDamageable
     /// </summary>
     private void SwitchToFinalCastleTarget()
     {
-        if (targetFinalCastle != null) return;
+        if (targetFinalCastle != null || hasReachedEnd || isDead) return;
         
         FinalCastle[] finalCastles = UnityEngine.Object.FindObjectsByType<FinalCastle>(FindObjectsSortMode.None);
         foreach (var castle in finalCastles)
@@ -244,10 +244,14 @@ public class Monster : MonoBehaviour, IDamageable
                 targetFinalCastle = castle;
                 targetMiddleCastle = null;
                 isTargetingCastle = true;
-                Debug.Log($"[Monster] {gameObject.name} 최종성 타겟팅 시작: {castle.gameObject.name}");
+                Debug.Log($"[Monster] {gameObject.name} 최종성 타겟팅 시작: {castle.gameObject.name} (지역{castle.areaIndex})");
                 return;
             }
         }
+        
+        // 최종성도 없으면 몬스터 제거
+        Debug.LogWarning($"[Monster] {gameObject.name} 타겟 성을 찾을 수 없음. 몬스터 제거.");
+        Die();
     }
 
     /// <summary>
@@ -255,6 +259,8 @@ public class Monster : MonoBehaviour, IDamageable
     /// </summary>
     private void MoveTowardsCastle()
     {
+        if (hasReachedEnd || isDead) return;
+        
         GameObject targetCastle = null;
         
         if (targetMiddleCastle != null && !targetMiddleCastle.IsDestroyed())
@@ -290,19 +296,49 @@ public class Monster : MonoBehaviour, IDamageable
 
     private void OnReachCastle()
     {
-        if (hasReachedEnd || isDead) return;  // 추가: isDead 체크도 추가
-        hasReachedEnd = true;  // 추가: 도달 플래그 설정
+        if (hasReachedEnd || isDead) return;
+        hasReachedEnd = true;  // 중복 처리 방지
+        
+        Debug.Log($"[Monster] {gameObject.name} 성에 도달! (지역{areaIndex})");
         
         // 성에 데미지 주기
+        bool damageDealt = false;
+        
         if (targetMiddleCastle != null && !targetMiddleCastle.IsDestroyed())
         {
             targetMiddleCastle.TakeDamage(damageToCastle);
-            Debug.Log($"[Monster] {gameObject.name}이 중간성 공격! 데미지: {damageToCastle}");
+            Debug.Log($"[Monster] {gameObject.name}이 중간성 공격! 데미지: {damageToCastle} (지역{targetMiddleCastle.areaIndex})");
+            damageDealt = true;
         }
         else if (targetFinalCastle != null && !targetFinalCastle.IsDestroyed())
         {
             targetFinalCastle.TakeDamage(damageToCastle);
-            Debug.Log($"[Monster] {gameObject.name}이 최종성 공격! 데미지: {damageToCastle}");
+            Debug.Log($"[Monster] {gameObject.name}이 최종성 공격! 데미지: {damageToCastle} (지역{targetFinalCastle.areaIndex})");
+            damageDealt = true;
+            
+            // 최종성을 공격한 경우 GameManager에도 알림
+            if (targetFinalCastle.areaIndex == 1)
+            {
+                // 지역1 최종성 공격
+                if (GameManager.Instance != null)
+                {
+                    GameManager.Instance.TakeDamageToRegion1(damageToCastle);
+                }
+            }
+            else if (targetFinalCastle.areaIndex == 2)
+            {
+                // 지역2 최종성 공격
+                WaveSpawnerRegion2 spawner2 = FindFirstObjectByType<WaveSpawnerRegion2>();
+                if (spawner2 != null)
+                {
+                    spawner2.TakeDamageToRegion2(damageToCastle);
+                }
+            }
+        }
+        
+        if (!damageDealt)
+        {
+            Debug.LogWarning($"[Monster] {gameObject.name} 성에 도달했지만 타겟을 찾을 수 없음");
         }
         
         // 이벤트 호출 후 죽음 처리
@@ -310,41 +346,19 @@ public class Monster : MonoBehaviour, IDamageable
         Die();
     }
 
+    // OnReachEndPoint 메서드는 제거하거나 다음과 같이 수정
     private void OnReachEndPoint()
     {
-        if (hasReachedEnd || isDead) return;  // 추가: isDead 체크도 추가
-        hasReachedEnd = true;  // 추가: 도달 플래그 설정
+        // 이미 처리됨
+        if (hasReachedEnd || isDead) return;
         
-        // 기존 코드 유지 (웨이포인트 끝 도달 시)
-        OnReachedCastle?.Invoke(this);
-        OnDeath?.Invoke();
-
-        if (areaIndex == 1)
+        Debug.LogWarning($"[Monster] {gameObject.name} OnReachEndPoint 호출됨 (구 버전 호환)");
+        
+        // 중간성이나 최종성 타겟팅으로 전환
+        if (!isTargetingCastle)
         {
-            // 지역1 캐슬 - CastleHealthManager를 통해 처리
-            CastleHealthManager castleHealthMgr = FindFirstObjectByType<CastleHealthManager>();
-            if (castleHealthMgr != null)
-            {
-                castleHealthMgr.TakeDamageToMidCastle(monsterRoute, damageToCastle);
-            }
-            else
-            {
-                // 구버전 호환
-                CastleHealthManager.Instance?.TakeDamage(damageToCastle);
-            }
+            SwitchToMiddleCastleTarget();
         }
-        else if (areaIndex == 2)
-        {
-            // 지역2 체력 감소
-            var wave2 = FindFirstObjectByType<WaveSpawnerRegion2>();
-            if (wave2 != null)
-            {
-                wave2.TakeDamageToRegion2(damageToCastle);
-            }
-        }
-
-        // Fusion 네트워킹 코드 제거 - 일반 Unity 오브젝트 파괴로 변경
-        Destroy(gameObject);
     }
 
     public void TakeDamage(float damageAmount)
@@ -374,6 +388,8 @@ public class Monster : MonoBehaviour, IDamageable
         if (isDead) return;
         isDead = true;
 
+        Debug.Log($"[Monster] {gameObject.name} 사망!");
+
         // OnDeath 이벤트 호출
         OnDeath?.Invoke();
 
@@ -383,7 +399,7 @@ public class Monster : MonoBehaviour, IDamageable
             Destroy(hpBarCanvas.gameObject);
         }
 
-        // Fusion 네트워킹 코드 제거 - 일반 Unity 오브젝트 파괴로 변경
+        // 즉시 파괴
         Destroy(gameObject);
     }
 

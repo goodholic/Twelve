@@ -109,14 +109,14 @@ public class FinalCastle : MonoBehaviour, IDamageable
             GameManager.Instance.SetGameOver(isVictory);
         }
         
-        // HP바 비활성화
+        // HP바 비활성화 (성 자체는 비활성화하지 않음)
         if (hpBarCanvas != null)
         {
             hpBarCanvas.gameObject.SetActive(false);
         }
         
-        // 오브젝트 비활성화
-        gameObject.SetActive(false);
+        // 최종성 오브젝트는 비활성화하지 않음
+        // gameObject.SetActive(false);
     }
     
     public bool IsDestroyed()

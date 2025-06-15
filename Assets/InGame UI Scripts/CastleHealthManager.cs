@@ -150,18 +150,21 @@ public class CastleHealthManager : MonoBehaviour
         {
             case RouteType.Left:
                 isLeftMidCastleDestroyed = true;
-                if (leftMidCastle != null)
-                    leftMidCastle.SetActive(false);
+                // 성을 비활성화하지 않고 파괴 상태만 표시
+                // if (leftMidCastle != null)
+                //     leftMidCastle.SetActive(false);
                 break;
             case RouteType.Center:
                 isCenterMidCastleDestroyed = true;
-                if (centerMidCastle != null)
-                    centerMidCastle.SetActive(false);
+                // 성을 비활성화하지 않고 파괴 상태만 표시
+                // if (centerMidCastle != null)
+                //     centerMidCastle.SetActive(false);
                 break;
             case RouteType.Right:
                 isRightMidCastleDestroyed = true;
-                if (rightMidCastle != null)
-                    rightMidCastle.SetActive(false);
+                // 성을 비활성화하지 않고 파괴 상태만 표시
+                // if (rightMidCastle != null)
+                //     rightMidCastle.SetActive(false);
                 break;
         }
 
@@ -178,6 +181,10 @@ public class CastleHealthManager : MonoBehaviour
     private void OnFinalCastleDestroyed()
     {
         Debug.LogWarning("[CastleHealthManager] 최종성 파괴됨! (HP=0)");
+        // 최종성도 비활성화하지 않음
+        // if (finalCastle != null)
+        //     finalCastle.SetActive(false);
+        
         GameManager.Instance.SetGameOver(false); // false -> 패배
     }
 
