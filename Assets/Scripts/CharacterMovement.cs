@@ -499,4 +499,37 @@ public class CharacterMovement : MonoBehaviour
             StartMoving();
         }
     }
+    
+    /// <summary>
+    /// 라우트 설정 (PlacementManager에서 호출)
+    /// </summary>
+    public void SetRoute(RouteType route)
+    {
+        character.selectedRoute = (int)route;
+        
+        // RouteManager를 통해 웨이포인트 설정
+        RouteManager routeManager = RouteManager.Instance;
+        if (routeManager != null)
+        {
+            // 현재 지역에 맞는 스포너 찾기
+            if (character.areaIndex == 1)
+            {
+                WaveSpawner spawner = FindFirstObjectByType<WaveSpawner>();
+                if (spawner != null)
+                {
+                    routeManager.OnRouteSelected(character, character.currentTile, route, spawner);
+                }
+            }
+            else if (character.areaIndex == 2)
+            {
+                WaveSpawnerRegion2 spawner2 = FindFirstObjectByType<WaveSpawnerRegion2>();
+                if (spawner2 != null)
+                {
+                    routeManager.OnRouteSelectedRegion2(character, character.currentTile, route, spawner2);
+                }
+            }
+        }
+        
+        Debug.Log($"[CharacterMovement] {character.characterName}의 라우트를 {route}로 설정");
+    }
 }

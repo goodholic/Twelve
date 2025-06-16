@@ -608,4 +608,47 @@ public class CharacterInventoryManager : MonoBehaviour
     {
         public List<SaveData> characters;
     }
+    
+    // ===================================================================
+    // 덱 등록 관련 메서드 (DeckPanelManager와의 연동용)
+    // ===================================================================
+    
+    /// <summary>
+    /// 등록된 캐릭터 배열 가져오기 (10칸 덱)
+    /// </summary>
+    public CharacterData[] GetRegisteredCharacters()
+    {
+        CharacterData[] registeredChars = new CharacterData[10];
+        
+        // deckCharacters에서 10칸에 맞게 변환
+        for (int i = 0; i < 10 && i < deckCharacters.Count; i++)
+        {
+            registeredChars[i] = deckCharacters[i];
+        }
+        
+        return registeredChars;
+    }
+    
+    /// <summary>
+    /// 등록된 캐릭터 배열 저장하기 (10칸 덱)
+    /// </summary>
+    public void SaveRegisteredCharacters(CharacterData[] registeredChars)
+    {
+        if (registeredChars == null) return;
+        
+        deckCharacters.Clear();
+        
+        for (int i = 0; i < registeredChars.Length && i < 10; i++)
+        {
+            if (registeredChars[i] != null)
+            {
+                deckCharacters.Add(registeredChars[i]);
+            }
+        }
+        
+        Debug.Log($"[CharacterInventoryManager] 덱 캐릭터 저장 완료: {deckCharacters.Count}개");
+        
+        // 변경사항을 PlayerPrefs에 저장
+        SaveCharacters();
+    }
 }

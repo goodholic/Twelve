@@ -4,6 +4,7 @@ using System.Linq;
 
 /// <summary>
 /// 캐릭터 배치 및 관리를 담당하는 매니저
+/// Missing Script 문제를 자동으로 해결하는 기능 추가
 /// </summary>
 public class PlacementManager : MonoBehaviour
 {
@@ -61,7 +62,7 @@ public class PlacementManager : MonoBehaviour
     }
     
     /// <summary>
-    /// 캐릭터를 타일에 소환
+    /// 캐릭터를 타일에 소환 (Missing Script 자동 수정 기능 포함)
     /// </summary>
     public Character SummonCharacterOnTile(CharacterData data, Tile tile, bool forceEnemyArea2 = false)
     {
@@ -109,16 +110,81 @@ public class PlacementManager : MonoBehaviour
         Transform parent = forceEnemyArea2 ? opponentCharacterParent : characterParent;
         GameObject charObj = Instantiate(data.spawnPrefab, tile.transform.position, Quaternion.identity, parent);
         
+        // RectTransform이 있다면 일반 Transform으로 변환 (월드 공간용)
+        RectTransform rectTrans = charObj.GetComponent<RectTransform>();
+        if (rectTrans != null)
+        {
+            Debug.Log($"[PlacementManager] {data.characterName} 프리팹에 RectTransform이 있어 Transform으로 변환합니다.");
+            Vector3 pos = charObj.transform.position;
+            Vector3 scale = charObj.transform.localScale;
+            
+            // RectTransform 제거 (자동으로 Transform으로 변경됨)
+            DestroyImmediate(rectTrans);
+            
+            // 위치/스케일 복원
+            charObj.transform.position = pos;
+            charObj.transform.localScale = scale;
+        }
+        
+        // Character 컴포넌트 확인 및 자동 추가
         Character character = charObj.GetComponent<Character>();
         if (character == null)
         {
-            Debug.LogError($"[PlacementManager] {data.characterName}의 프리팹에 Character 컴포넌트가 없습니다!");
-            Destroy(charObj);
-            return null;
+            Debug.LogWarning($"[PlacementManager] {data.characterName}의 프리팹에 Character 컴포넌트가 없어서 추가합니다!");
+            character = charObj.AddComponent<Character>();
+        }
+        
+        // SpriteRenderer 확인 및 자동 추가
+        SpriteRenderer spriteRenderer = charObj.GetComponent<SpriteRenderer>();
+        if (spriteRenderer == null)
+        {
+            spriteRenderer = charObj.GetComponentInChildren<SpriteRenderer>();
+            if (spriteRenderer == null)
+            {
+                Debug.LogWarning($"[PlacementManager] {data.characterName}의 프리팹에 SpriteRenderer가 없어서 추가합니다!");
+                spriteRenderer = charObj.AddComponent<SpriteRenderer>();
+                
+                // 스프라이트 설정 (우선순위: characterSprite > frontSprite > buttonIcon)
+                if (data.characterSprite != null)
+                    spriteRenderer.sprite = data.characterSprite;
+                else if (data.frontSprite != null)
+                    spriteRenderer.sprite = data.frontSprite;
+                else if (data.buttonIcon != null)
+                    spriteRenderer.sprite = data.buttonIcon;
+                
+                // 렌더러 설정
+                spriteRenderer.sortingLayerName = "Characters";
+                spriteRenderer.sortingOrder = 10;
+            }
+        }
+        
+        // Collider2D 확인 및 자동 추가
+        Collider2D collider = charObj.GetComponent<Collider2D>();
+        if (collider == null)
+        {
+            Debug.LogWarning($"[PlacementManager] {data.characterName}의 프리팹에 Collider2D가 없어서 추가합니다!");
+            BoxCollider2D boxCollider = charObj.AddComponent<BoxCollider2D>();
+            boxCollider.size = new Vector2(0.8f, 0.8f);
+            boxCollider.isTrigger = true;
         }
         
         // 캐릭터 데이터 설정
         character.characterData = data;
+        character.characterName = data.characterName;
+        character.cost = data.cost;
+        character.star = data.star;
+        character.attackPower = data.attackPower;
+        character.attackSpeed = data.attackSpeed;
+        character.health = data.health;
+        character.maxHealth = data.maxHealth;
+        character.range = data.range;
+        character.attackRange = data.attackRange;
+        character.tribe = data.tribe;
+        character.race = data.race;
+        character.attackShapeType = data.attackShapeType;
+        character.level = data.level;
+        
+        // 타일 및 영역 설정
         character.currentTile = tile;
         character.areaIndex = forceEnemyArea2 ? 2 : 1;
         
@@ -145,98 +211,26 @@ public class PlacementManager : MonoBehaviour
             playerCharacters.Add(character);
         }
         
-        // ★★★ 웨이포인트 설정 - 타일 위치에 따라 라우트 결정
+        // 웨이포인트 설정
         SetCharacterRoute(character, tile, forceEnemyArea2);
+        
+        // 플레이어 캐릭터인 경우 DraggableCharacter 컴포넌트 추가
+        if (!forceEnemyArea2)
+        {
+            DraggableCharacter draggable = charObj.GetComponent<DraggableCharacter>();
+            if (draggable == null)
+            {
+                draggable = charObj.AddComponent<DraggableCharacter>();
+            }
+        }
         
         // 타일에서 자동 합성 체크
         CheckAndMergeOnTile(tile);
         
-        Debug.Log($"[PlacementManager] {data.characterName}을(를) {tile.name}에 소환 완료!");
+        Debug.Log($"[PlacementManager] {data.characterName}을(를) {tile.name}에 소환 완료! " +
+                  $"(별: {character.star}, 레벨: {character.level}, 공격력: {character.attackPower})");
         
         return character;
-    }
-    
-    /// <summary>
-    /// ★★★ 캐릭터의 라우트를 설정하는 메서드
-    /// </summary>
-    private void SetCharacterRoute(Character character, Tile tile, bool isRegion2)
-    {
-        RouteManager routeManager = RouteManager.Instance;
-        if (routeManager == null)
-        {
-            Debug.LogWarning("[PlacementManager] RouteManager를 찾을 수 없습니다!");
-            return;
-        }
-        
-        // 웨이브 스포너 찾기
-        WaveSpawner waveSpawner = isRegion2 ? null : FindFirstObjectByType<WaveSpawner>();
-        WaveSpawnerRegion2 waveSpawnerRegion2 = isRegion2 ? FindFirstObjectByType<WaveSpawnerRegion2>() : null;
-        
-        if (!isRegion2 && waveSpawner == null)
-        {
-            Debug.LogWarning("[PlacementManager] WaveSpawner를 찾을 수 없습니다!");
-            return;
-        }
-        else if (isRegion2 && waveSpawnerRegion2 == null)
-        {
-            Debug.LogWarning("[PlacementManager] WaveSpawnerRegion2를 찾을 수 없습니다!");
-            return;
-        }
-        
-        // 타일 위치에 따라 라우트 결정
-        RouteType selectedRoute;
-        if (isRegion2)
-        {
-            selectedRoute = routeManager.DetermineRouteFromTile(tile, waveSpawnerRegion2);
-        }
-        else
-        {
-            selectedRoute = routeManager.DetermineRouteFromTile(tile, waveSpawner);
-        }
-        
-        Debug.Log($"[PlacementManager] {character.characterName}의 라우트: {selectedRoute} (타일: {tile.name})");
-        
-        // 웨이포인트 가져오기
-        Transform[] waypoints = null;
-        
-        if (isRegion2)
-        {
-            waypoints = routeManager.GetWaypointsForRoute(waveSpawnerRegion2, selectedRoute);
-        }
-        else
-        {
-            waypoints = routeManager.GetWaypointsForRoute(waveSpawner, selectedRoute);
-        }
-        
-        if (waypoints == null || waypoints.Length == 0)
-        {
-            Debug.LogWarning($"[PlacementManager] {selectedRoute} 루트의 웨이포인트를 찾을 수 없습니다!");
-            return;
-        }
-        
-        // CharacterMovement 컴포넌트 찾기
-        CharacterMovement movement = character.GetComponent<CharacterMovement>();
-        if (movement == null)
-        {
-            Debug.LogWarning($"[PlacementManager] {character.characterName}에 CharacterMovement 컴포넌트가 없습니다!");
-            return;
-        }
-        
-        // 웨이포인트 설정
-        movement.SetWaypoints(waypoints, 0);
-        character.selectedRoute = (int)selectedRoute;
-        
-        // 캐릭터 스탯 초기화
-        CharacterStats stats = character.GetComponent<CharacterStats>();
-        if (stats != null)
-        {
-            movement.Initialize(character, stats);
-        }
-        
-        // 이동 시작
-        movement.StartMoving();
-        
-        Debug.Log($"[PlacementManager] {character.characterName}에게 {waypoints.Length}개의 웨이포인트 설정 완료");
     }
     
     /// <summary>
@@ -244,13 +238,13 @@ public class PlacementManager : MonoBehaviour
     /// </summary>
     public bool CanSummonCharacter(bool isOpponent)
     {
-        int currentCount = GetCharacterCount(isOpponent);
+        int currentCount = isOpponent ? opponentCharacters.Count : playerCharacters.Count;
         int maxCount = isOpponent ? maxOpponentCharacters : maxPlayerCharacters;
         return currentCount < maxCount;
     }
     
     /// <summary>
-    /// 현재 캐릭터 수 확인
+    /// 현재 캐릭터 수 반환
     /// </summary>
     public int GetCharacterCount(bool isOpponent)
     {
@@ -258,94 +252,84 @@ public class PlacementManager : MonoBehaviour
     }
     
     /// <summary>
-    /// 캐릭터를 특정 인덱스로 타일에 소환
+    /// 캐릭터 제거
     /// </summary>
-    public bool SummonCharacterByIndex(int characterIndex, Tile tile, bool forceEnemyArea2 = false)
-    {
-        if (CoreDataManager.Instance == null || CoreDataManager.Instance.characterDatabase == null)
-        {
-            Debug.LogError("[PlacementManager] CoreDataManager 또는 characterDatabase가 null입니다!");
-            return false;
-        }
-        
-        CharacterData[] characters = CoreDataManager.Instance.characterDatabase.currentRegisteredCharacters;
-        if (characterIndex < 0 || characterIndex >= characters.Length)
-        {
-            Debug.LogError($"[PlacementManager] 잘못된 캐릭터 인덱스: {characterIndex}");
-            return false;
-        }
-        
-        CharacterData data = characters[characterIndex];
-        if (data == null)
-        {
-            Debug.LogError($"[PlacementManager] 캐릭터 데이터[{characterIndex}]가 null입니다!");
-            return false;
-        }
-        
-        Character newChar = SummonCharacterOnTile(data, tile, forceEnemyArea2);
-        return newChar != null;
-    }
-    
-    /// <summary>
-    /// 캐릭터를 타일에서 제거할 때 참조 정리
-    /// </summary>
-    public void ClearCharacterTileReference(Character character)
+    public void RemoveCharacter(Character character)
     {
         if (character == null) return;
         
+        // 타일에서 제거
         if (character.currentTile != null)
         {
             character.currentTile.RemoveOccupyingCharacter(character);
-            character.currentTile = null;
         }
         
         // 리스트에서 제거
-        playerCharacters.Remove(character);
-        opponentCharacters.Remove(character);
-    }
-    
-    /// <summary>
-    /// 캐릭터가 타일에서 제거되었을 때 호출
-    /// </summary>
-    public void OnCharacterRemovedFromTile(Tile tile)
-    {
-        if (tile == null) return;
-        
-        // 타일 상태 업데이트는 TileManager에서 처리
-        if (tileManager != null)
+        if (character.areaIndex == 2)
         {
-            tileManager.OnCharacterRemovedFromTile(tile);
+            opponentCharacters.Remove(character);
         }
+        else
+        {
+            playerCharacters.Remove(character);
+        }
+        
+        // 오브젝트 제거
+        Destroy(character.gameObject);
     }
     
     /// <summary>
-    /// ★★★ 타일의 자동 합성 체크
+    /// 캐릭터 라우트 설정
+    /// </summary>
+    private void SetCharacterRoute(Character character, Tile tile, bool isOpponent)
+    {
+        // 타일 위치에 따라 라우트 결정
+        Vector3 tilePos = tile.transform.position;
+        
+        // Y 좌표로 라인 판단 (왼쪽, 중앙, 오른쪽)
+        RouteType route;
+        if (tilePos.y > 1.5f)
+        {
+            route = RouteType.Left;
+        }
+        else if (tilePos.y < -1.5f)
+        {
+            route = RouteType.Right;
+        }
+        else
+        {
+            route = RouteType.Center;
+        }
+        
+        // 웨이포인트 설정은 CharacterMovement 컴포넌트에서 처리
+        CharacterMovement movement = character.GetComponent<CharacterMovement>();
+        if (movement != null)
+        {
+            movement.SetRoute(route);
+        }
+        
+        Debug.Log($"[PlacementManager] {character.characterName}의 라우트 설정: {route}");
+    }
+    
+    /// <summary>
+    /// 타일에서 자동 합성 체크
     /// </summary>
     private void CheckAndMergeOnTile(Tile tile)
     {
-        if (tile == null || autoMergeManager == null) return;
+        if (autoMergeManager == null) return;
         
         List<Character> characters = tile.GetOccupyingCharacters();
-        
-        // 같은 종류의 캐릭터가 3개 있는지 확인
         if (characters.Count >= 3)
         {
+            // 같은 캐릭터, 같은 별 등급인지 확인
             Character first = characters[0];
+            bool canMerge = characters.All(c => 
+                c.characterName == first.characterName && 
+                c.star == first.star);
             
-            // 모두 같은 종류인지 확인
-            bool allSame = true;
-            foreach (var c in characters)
+            if (canMerge && first.star != CharacterStar.ThreeStar)
             {
-                if (c.characterName != first.characterName || c.star != first.star)
-                {
-                    allSame = false;
-                    break;
-                }
-            }
-            
-            if (allSame && first.star < CharacterStar.ThreeStar) // 3성은 합성 불가
-            {
-                Debug.Log($"[PlacementManager] {tile.name}에서 자동 합성 조건 충족! {first.characterName} {first.star}성 3개");
+                Debug.Log($"[PlacementManager] 자동 합성 가능: {first.characterName} {first.star}성 3개");
                 
                 // 자동 합성 실행
                 List<Character> mergeTargets = new List<Character>();
@@ -362,9 +346,9 @@ public class PlacementManager : MonoBehaviour
             }
         }
     }
-
+    
     /// <summary>
-    /// 캐릭터 생성 (월드 좌표)
+    /// 캐릭터 생성 (월드 좌표) - 간단한 버전
     /// </summary>
     public Character CreateCharacterAtPosition(CharacterData data, Vector3 position, bool isOpponent = false)
     {
@@ -414,148 +398,12 @@ public class PlacementManager : MonoBehaviour
         GameObject bulletObj = Instantiate(bulletPrefab, position, Quaternion.identity, parent);
         
         Bullet bullet = bulletObj.GetComponent<Bullet>();
-        if (bullet == null)
+        if (bullet != null)
         {
-            bullet = bulletObj.AddComponent<Bullet>();
-        }
-        
-        // 총알 초기화 (Bullet 클래스의 실제 메서드에 맞게 수정)
-        if (target is MonoBehaviour targetMono)
-        {
-            bullet.Initialize(owner.attackPower, 10f, targetMono.gameObject, owner.areaIndex, false);
+            bullet.SetTarget(target, owner.attackPower);
         }
         
         return bullet;
-    }
-    
-    /// <summary>
-    /// 타일에서 캐릭터 제거
-    /// </summary>
-    public void RemoveCharacterFromTile(Character character, Tile tile)
-    {
-        if (character == null || tile == null) return;
-        
-        tile.RemoveOccupyingCharacter(character);
-        
-        // 타일 상태 업데이트
-        if (tile.GetOccupyingCharacters().Count == 0)
-        {
-            if (tile.IsPlaceTile())
-            {
-                tile.SetTileType(Tile.TileType.Placeable);
-            }
-            else if (tile.IsPlaced2())
-            {
-                tile.SetTileType(Tile.TileType.Placeable2);
-            }
-        }
-        
-        Debug.Log($"[PlacementManager] {character.characterName}을(를) {tile.name}에서 제거");
-    }
-    
-    /// <summary>
-    /// 특정 타일로 캐릭터 이동
-    /// </summary>
-    public void MoveCharacterToTile(Character character, Tile newTile)
-    {
-        if (character == null || newTile == null) return;
-        
-        // 기존 타일에서 제거
-        if (character.currentTile != null)
-        {
-            RemoveCharacterFromTile(character, character.currentTile);
-        }
-        
-        // 새 타일에 추가
-        if (newTile.CanPlaceCharacter(character))
-        {
-            newTile.AddOccupyingCharacter(character);
-            character.currentTile = newTile;
-            character.SetPositionToTile(newTile);
-            
-            Debug.Log($"[PlacementManager] {character.characterName}을(를) {newTile.name}으로 이동");
-            
-            // 이동 후 합성 체크
-            CheckAndMergeOnTile(newTile);
-        }
-        else
-        {
-            Debug.LogWarning($"[PlacementManager] {newTile.name}에 {character.characterName}을(를) 배치할 수 없습니다!");
-        }
-    }
-    
-    /// <summary>
-    /// 제거 모드 토글
-    /// </summary>
-    public void ToggleRemoveMode()
-    {
-        removeMode = !removeMode;
-        Debug.Log($"[PlacementManager] 제거 모드: {(removeMode ? "활성화" : "비활성화")}");
-    }
-    
-    /// <summary>
-    /// 제거 모드 상태 가져오기
-    /// </summary>
-    public bool IsRemoveMode()
-    {
-        return removeMode;
-    }
-    
-    /// <summary>
-    /// 캐릭터 제거
-    /// </summary>
-    public void RemoveCharacter(Character character)
-    {
-        if (character == null) return;
-        
-        // 타일에서 제거
-        ClearCharacterTileReference(character);
-        
-        // 오브젝트 파괴
-        Destroy(character.gameObject);
-        
-        Debug.Log($"[PlacementManager] {character.characterName} 제거 완료");
-    }
-    
-    /// <summary>
-    /// 모든 캐릭터 가져오기
-    /// </summary>
-    public List<Character> GetAllCharacters(bool includeOpponents = true)
-    {
-        List<Character> allCharacters = new List<Character>(playerCharacters);
-        
-        if (includeOpponents)
-        {
-            allCharacters.AddRange(opponentCharacters);
-        }
-        
-        return allCharacters;
-    }
-    
-    /// <summary>
-    /// 특정 지역의 캐릭터만 가져오기
-    /// </summary>
-    public List<Character> GetCharactersInArea(int areaIndex)
-    {
-        List<Character> areaCharacters = new List<Character>();
-        
-        foreach (var character in playerCharacters)
-        {
-            if (character.areaIndex == areaIndex)
-            {
-                areaCharacters.Add(character);
-            }
-        }
-        
-        foreach (var character in opponentCharacters)
-        {
-            if (character.areaIndex == areaIndex)
-            {
-                areaCharacters.Add(character);
-            }
-        }
-        
-        return areaCharacters;
     }
     
     /// <summary>
@@ -565,6 +413,43 @@ public class PlacementManager : MonoBehaviour
     {
         if (tile == null) return new List<Character>();
         return tile.GetOccupyingCharacters();
+    }
+    
+    /// <summary>
+    /// 캐릭터의 타일 참조 정리 (CharacterMovement에서 호출)
+    /// </summary>
+    public void ClearCharacterTileReference(Character character)
+    {
+        if (character != null && character.currentTile != null)
+        {
+            character.currentTile.RemoveOccupyingCharacter(character);
+            character.currentTile = null;
+        }
+    }
+    
+    /// <summary>
+    /// 캐릭터가 타일에서 제거되었을 때 호출 (Character, CharacterMovement에서 호출)
+    /// </summary>
+    public void OnCharacterRemovedFromTile(Tile tile)
+    {
+        if (tile == null) return;
+        
+        // 타일이 완전히 비었을 때만 상태 변경
+        if (tile.GetOccupyingCharacters().Count == 0)
+        {
+            // 타일 상태 업데이트
+            if (tile.IsPlaceTile())
+            {
+                tile.SetPlacable();
+            }
+            else if (tile.IsPlaced2())
+            {
+                tile.SetPlacable2();
+            }
+            
+            tile.RefreshTileVisual();
+            Debug.Log($"[PlacementManager] {tile.name} 타일에서 모든 캐릭터 제거 후 상태 업데이트");
+        }
     }
     
     /// <summary>
@@ -582,30 +467,23 @@ public class PlacementManager : MonoBehaviour
     /// </summary>
     public void OnClickAutoPlace()
     {
-        Debug.Log("[PlacementManager] 자동 배치 실행");
-        
-        // 자동 배치 로직 구현
-        // 예: 현재 선택된 캐릭터를 적절한 빈 타일에 자동으로 배치
+        Debug.Log("[PlacementManager] 자동 배치 모드 활성화");
         
         // 빈 배치 가능한 타일 찾기
-        Tile[] allTiles = FindObjectsByType<Tile>(FindObjectsSortMode.None);
         List<Tile> availableTiles = new List<Tile>();
+        Tile[] allTiles = FindObjectsByType<Tile>(FindObjectsSortMode.None);
         
-        foreach (var tile in allTiles)
+        foreach (Tile tile in allTiles)
         {
-            if (tile != null && !tile.isRegion2 && tile.CanPlaceCharacter())
+            if (tile != null && !tile.isRegion2 && (tile.IsPlacable() || tile.IsPlaceTile()) && tile.CanPlaceCharacter())
             {
-                if (tile.IsPlaceableType())
-                {
-                    availableTiles.Add(tile);
-                }
+                availableTiles.Add(tile);
             }
         }
         
         if (availableTiles.Count > 0)
         {
             Debug.Log($"[PlacementManager] 자동 배치 가능한 타일 {availableTiles.Count}개 발견");
-            // 실제 자동 배치 로직은 필요에 따라 CharacterSelectUI와 연동하여 구현
         }
         else
         {

@@ -269,4 +269,43 @@ public class Bullet : MonoBehaviour
         float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
         transform.rotation = Quaternion.AngleAxis(angle - 90f, Vector3.forward);
     }
+    
+    /// <summary>
+    /// 타겟 설정 (PlacementManager에서 호출)
+    /// </summary>
+    public void SetTarget(object target, float damage)
+    {
+        this.damage = damage;
+        
+        if (target is GameObject)
+        {
+            targetObject = (GameObject)target;
+        }
+        else if (target is Character)
+        {
+            targetObject = ((Character)target).gameObject;
+        }
+        else if (target is Monster)
+        {
+            targetObject = ((Monster)target).gameObject;
+        }
+        else if (target is MiddleCastle)
+        {
+            targetObject = ((MiddleCastle)target).gameObject;
+        }
+        else if (target is FinalCastle)
+        {
+            targetObject = ((FinalCastle)target).gameObject;
+        }
+        
+        // 타겟이 설정되면 방향 설정
+        if (targetObject != null)
+        {
+            direction = (targetObject.transform.position - transform.position).normalized;
+            
+            // 회전 업데이트
+            float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
+            transform.rotation = Quaternion.AngleAxis(angle - 90f, Vector3.forward);
+        }
+    }
 }
