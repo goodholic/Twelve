@@ -54,6 +54,10 @@ public class GameSceneManager : MonoBehaviour
     [Header("리사이클 매니저")]
     [SerializeField] private RaceRecycleManager raceRecycleManager;
 
+    [Header("★★★ 캐릭터 수 표시")]
+    [SerializeField] private TextMeshProUGUI playerCharacterCountText;
+    [SerializeField] private TextMeshProUGUI aiCharacterCountText;
+
     private CharacterData[] deckFromLobby = new CharacterData[9]; 
     private CharacterData heroCharacter = null; 
 
@@ -91,45 +95,67 @@ public class GameSceneManager : MonoBehaviour
             return;
         }
 
-        // 1) 1~9 캐릭터
-        if (GameManager.Instance != null && 
+        // (기존 코드) GameManager에서 1~9 캐릭터 정보 가져오기
+        if (GameManager.Instance != null &&
             GameManager.Instance.currentRegisteredCharacters != null &&
-            GameManager.Instance.currentRegisteredCharacters.Length >= 9)
+            GameManager.Instance.currentRegisteredCharacters.Length >= 10)
         {
             for (int i = 0; i < 9; i++)
             {
                 deckFromLobby[i] = GameManager.Instance.currentRegisteredCharacters[i];
             }
-            
-            // 2) 10번째 Hero (인덱스 9)
-            if (GameManager.Instance.currentRegisteredCharacters.Length > 9)
+
+            // 10번째(인덱스 9) 캐릭터가 있으면 히어로로 설정
+            if (GameManager.Instance.currentRegisteredCharacters[9] != null)
             {
                 heroCharacter = GameManager.Instance.currentRegisteredCharacters[9];
+                Debug.Log($"[GameSceneManager] 히어로 캐릭터 설정: {heroCharacter.characterName}");
             }
-            Debug.Log("[GameSceneManager] GameManager.currentRegisteredCharacters에서 캐릭터 9개 + Hero 로드 완료");
         }
-        else
+
+        // CoreDataManager에 슬롯 정보 업데이트
+        if (CoreDataManager.Instance.characterDatabase != null)
         {
-            Debug.LogWarning("[GameSceneManager] GameManager.currentRegisteredCharacters가 없거나 초기화되지 않음");
+            for (int i = 0; i < 9 && i < deckFromLobby.Length; i++)
+            {
+                if (deckFromLobby[i] != null)
+                {
+                    CoreDataManager.Instance.characterDatabase.currentRegisteredCharacters[i] = deckFromLobby[i];
+                }
+            }
         }
 
-        // 종족별 카운트 계산
-        CountCharactersByRace();
+        // 미네랄 바 참조
+        if (CoreDataManager.Instance.region1MineralBar == null)
+        {
+            GameObject mineralBar1 = GameObject.Find("MineralBar");
+            if (mineralBar1 != null)
+            {
+                CoreDataManager.Instance.region1MineralBar = mineralBar1.GetComponent<MineralBar>();
+            }
+        }
 
-        // 3) 1~9 -> UI 슬롯
+        if (CoreDataManager.Instance.region2MineralBar == null)
+        {
+            GameObject mineralBar2 = GameObject.Find("Region2MineralBar");
+            if (mineralBar2 != null)
+            {
+                CoreDataManager.Instance.region2MineralBar = mineralBar2.GetComponent<MineralBar>();
+            }
+        }
+
+        // UI 업데이트
         if (slotImages9 != null && slotTexts9 != null)
         {
             for (int i = 0; i < 9; i++)
             {
-                if (i >= deckFromLobby.Length) continue;
-                CharacterData c = deckFromLobby[i];
-
-                if (slotImages9.Length > i && slotTexts9.Length > i)
+                if (i < deckFromLobby.Length && deckFromLobby[i] != null)
                 {
-                    if (c != null)
+                    CharacterData c = deckFromLobby[i];
+                    if (slotImages9[i] != null)
                     {
                         slotImages9[i].gameObject.SetActive(true);
-                        slotImages9[i].sprite = (c.buttonIcon != null) ? c.buttonIcon : null;
+                        slotImages9[i].sprite = c.buttonIcon != null ? c.buttonIcon : null;
 
                         slotTexts9[i].gameObject.SetActive(true);
                         slotTexts9[i].text = $"{c.characterName}\nLv.{c.level}\n{GetRaceString(c.race)}";
@@ -238,51 +264,34 @@ public class GameSceneManager : MonoBehaviour
 
                 // HeroPanel 생성
                 heroPanel = new GameObject("HeroPanel");
-                RectTransform heroPanelRect = heroPanel.AddComponent<RectTransform>();
                 heroPanel.transform.SetParent(canvas.transform, false);
                 
-                // 위치 설정 (화면 중앙 하단)
-                heroPanelRect.anchorMin = new Vector2(0.5f, 0f);
-                heroPanelRect.anchorMax = new Vector2(0.5f, 0f);
-                heroPanelRect.pivot = new Vector2(0.5f, 0f);
-                heroPanelRect.anchoredPosition = new Vector2(0, 100);
+                RectTransform heroPanelRect = heroPanel.AddComponent<RectTransform>();
+                heroPanelRect.anchorMin = new Vector2(0, 0);
+                heroPanelRect.anchorMax = new Vector2(0, 0);
+                heroPanelRect.pivot = new Vector2(0.5f, 0.5f);
+                heroPanelRect.anchoredPosition = new Vector2(200, 100);
                 heroPanelRect.sizeDelta = new Vector2(100, 100);
                 
                 Debug.Log("[GameSceneManager] HeroPanel을 새로 생성했습니다.");
             }
         }
 
-        // 히어로 인스턴스 생성
-        GameObject heroObj = Instantiate(heroCharacter.spawnPrefab);
-        if (heroObj == null)
+        // 히어로 캐릭터 생성
+        GameObject heroObj = Instantiate(heroCharacter.spawnPrefab, heroPanel.transform);
+        heroObj.name = $"Hero_{heroCharacter.characterName}";
+        
+        // RectTransform 설정
+        RectTransform heroRect = heroObj.GetComponent<RectTransform>();
+        if (heroRect == null)
         {
-            Debug.LogError("[GameSceneManager] 히어로 인스턴스화 실패");
-            return;
+            heroRect = heroObj.AddComponent<RectTransform>();
         }
-
-        // 히어로를 heroPanel의 자식으로 설정
-        heroObj.transform.SetParent(heroPanel.transform, false);
-
-        // UI 위치 설정
-        RectTransform rt = heroObj.GetComponent<RectTransform>();
-        if (rt != null)
-        {
-            rt.anchoredPosition = Vector2.zero;
-            rt.localRotation = Quaternion.identity;
-            rt.localScale = Vector3.one;
-        }
-        else
-        {
-            heroObj.transform.localPosition = Vector3.zero;
-            heroObj.transform.localRotation = Quaternion.identity;
-            heroObj.transform.localScale = Vector3.one;
-        }
-
-        // Hero가 자동 이동/공격
-        if (heroObj.GetComponent<HeroAutoMover>() == null)
-        {
-            heroObj.AddComponent<HeroAutoMover>();
-        }
+        heroRect.anchorMin = new Vector2(0.5f, 0.5f);
+        heroRect.anchorMax = new Vector2(0.5f, 0.5f);
+        heroRect.pivot = new Vector2(0.5f, 0.5f);
+        heroRect.anchoredPosition = Vector2.zero;
+        heroRect.localScale = Vector3.one;
 
         // Character 컴포넌트 설정
         Character heroComp = heroObj.GetComponent<Character>();
@@ -320,6 +329,47 @@ public class GameSceneManager : MonoBehaviour
         if (gameTimeText != null)
         {
             gameTimeText.text = $"{elapsedTime:F1}s";
+        }
+
+        // ★★★ 캐릭터 수 업데이트
+        UpdateCharacterCountUI();
+    }
+
+    /// <summary>
+    /// ★★★ 캐릭터 수 UI 업데이트
+    /// </summary>
+    private void UpdateCharacterCountUI()
+    {
+        if (PlacementManager.Instance != null)
+        {
+            int playerCount = PlacementManager.Instance.GetCharacterCount(false);
+            int aiCount = PlacementManager.Instance.GetCharacterCount(true);
+
+            if (playerCharacterCountText != null)
+            {
+                playerCharacterCountText.text = $"플레이어: {playerCount}/50";
+                
+                // 제한에 가까워지면 색상 변경
+                if (playerCount >= 45)
+                    playerCharacterCountText.color = Color.red;
+                else if (playerCount >= 40)
+                    playerCharacterCountText.color = Color.yellow;
+                else
+                    playerCharacterCountText.color = Color.white;
+            }
+
+            if (aiCharacterCountText != null)
+            {
+                aiCharacterCountText.text = $"AI: {aiCount}/50";
+                
+                // 제한에 가까워지면 색상 변경
+                if (aiCount >= 45)
+                    aiCharacterCountText.color = Color.red;
+                else if (aiCount >= 40)
+                    aiCharacterCountText.color = Color.yellow;
+                else
+                    aiCharacterCountText.color = Color.white;
+            }
         }
     }
 
@@ -367,68 +417,53 @@ public class GameSceneManager : MonoBehaviour
             return false;
         }
         
-        bool hasIssues = false;
-        List<string> missingScripts = new List<string>();
-        
-        // 프리팹의 모든 컴포넌트 확인
         Component[] components = prefab.GetComponents<Component>();
-        for (int i = 0; i < components.Length; i++)
+        foreach (var comp in components)
         {
-            if (components[i] == null)
+            if (comp == null)
             {
-                hasIssues = true;
-                missingScripts.Add($"Root object component {i}");
+                Debug.LogError($"[GameSceneManager] 프리팹 '{prefab.name}'에 Missing Script가 발견되었습니다!");
+                return false;
             }
         }
         
-        // 자식 오브젝트의 컴포넌트도 확인
-        Transform[] allChildren = prefab.GetComponentsInChildren<Transform>(true);
-        foreach (Transform child in allChildren)
+        Component[] childComponents = prefab.GetComponentsInChildren<Component>(true);
+        foreach (var comp in childComponents)
         {
-            if (child == null) continue;
-            
-            Component[] childComponents = child.GetComponents<Component>();
-            for (int i = 0; i < childComponents.Length; i++)
+            if (comp == null)
             {
-                if (childComponents[i] == null)
-                {
-                    hasIssues = true;
-                    missingScripts.Add($"{child.name} component {i}");
-                }
+                Debug.LogError($"[GameSceneManager] 프리팹 '{prefab.name}'의 자식에 Missing Script가 발견되었습니다!");
+                return false;
             }
-        }
-        
-        if (hasIssues)
-        {
-            Debug.LogError($"[GameSceneManager] 프리팹 '{prefab.name}'에 Missing Script 참조가 있습니다:");
-            foreach (string missing in missingScripts)
-            {
-                Debug.LogError($"  - {missing}");
-            }
-            Debug.LogError("[GameSceneManager] 프리팹을 수정하거나 다른 프리팹을 사용해주세요.");
-            
-            // Missing Script가 있어도 기본 컴포넌트들이 있으면 사용 시도
-            if (prefab.GetComponent<Character>() != null || prefab.GetComponent<RectTransform>() != null)
-            {
-                Debug.LogWarning($"[GameSceneManager] 프리팹 '{prefab.name}'에 필수 컴포넌트가 있어서 사용을 시도합니다.");
-                return true; // 경고만 하고 사용 허용
-            }
-            
-            return false;
         }
         
         return true;
     }
 
-    // 종족별 캐릭터 카운트
-    private void CountCharactersByRace()
+    private string GetRaceString(CharacterRace race)
     {
+        switch (race)
+        {
+            case CharacterRace.Human: return "휴먼";
+            case CharacterRace.Orc: return "오크";
+            case CharacterRace.Elf: return "엘프";
+            case CharacterRace.Undead: return "언데드";
+            default: return "기타";
+        }
+    }
+
+    /// <summary>
+    /// 종족별 카운트 UI 업데이트
+    /// </summary>
+    private void UpdateRaceCountUI()
+    {
+        // 종족별 카운트 초기화
         humanCount = 0;
         orcCount = 0;
         elfCount = 0;
 
-        // 1~9번 캐릭터 카운트
-        for (int i = 0; i < 9; i++)
+        // 현재 덱에서 종족별 카운트
+        for (int i = 0; i < 9 && i < deckFromLobby.Length; i++)
         {
             if (deckFromLobby[i] != null)
             {
@@ -447,53 +482,12 @@ public class GameSceneManager : MonoBehaviour
             }
         }
 
-        // 히어로(10번째) 카운트
-        if (heroCharacter != null)
-        {
-            switch (heroCharacter.race)
-            {
-                case CharacterRace.Human:
-                    humanCount++;
-                    break;
-                case CharacterRace.Orc:
-                    orcCount++;
-                    break;
-                case CharacterRace.Elf:
-                    elfCount++;
-                    break;
-            }
-        }
-
-        Debug.Log($"[GameSceneManager] 종족별 카운트 - 휴먼: {humanCount}, 오크: {orcCount}, 엘프: {elfCount}");
-
-        // 게임 기획서 검증: 각 종족 3명 + 자유 1명 = 10명
-        if (humanCount + orcCount + elfCount != 10)
-        {
-            Debug.LogWarning($"[GameSceneManager] 덱 구성이 10명이 아닙니다! (현재: {humanCount + orcCount + elfCount}명)");
-        }
-    }
-
-    private void UpdateRaceCountUI()
-    {
+        // UI 텍스트 업데이트
         if (humanCountText != null)
             humanCountText.text = $"휴먼: {humanCount}";
-        
         if (orcCountText != null)
             orcCountText.text = $"오크: {orcCount}";
-        
         if (elfCountText != null)
             elfCountText.text = $"엘프: {elfCount}";
-    }
-
-    private string GetRaceString(CharacterRace race)
-    {
-        switch (race)
-        {
-            case CharacterRace.Human: return "휴먼";
-            case CharacterRace.Orc: return "오크";
-            case CharacterRace.Elf: return "엘프";
-            case CharacterRace.Undead: return "언데드";
-            default: return "기타";
-        }
     }
 }

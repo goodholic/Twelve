@@ -8,6 +8,7 @@ using TMPro;
 /// 캐릭터 '소환 버튼'을 드래그 -> 타일 위 드롭하면
 /// PlacementManager.SummonCharacterOnTile(...)로 즉시 소환.
 /// ★★★ 수정: 같은 캐릭터끼리는 한 타일에 최대 3개까지 배치 가능
+/// ★★★ 추가: 50마리 제한 체크
 /// 
 /// => "마우스 중심"을 맞추기 위해
 ///    드래그 시작 시점에 offset( rectPos - pointerPos )을 계산하여 사용
@@ -87,57 +88,48 @@ public class DraggableSummonButtonUI : MonoBehaviour, IBeginDragHandler, IDragHa
             Debug.LogWarning("[DraggableSummonButtonUI] 부모 Canvas가 없습니다!");
         }
 
-        // (수정추가) dragInfoPanel이 있으면 기본적으로 비활성
-        if (dragInfoPanel != null)
+        if (dragParent == null)
         {
-            dragInfoPanel.SetActive(false);
+            dragParent = canvas?.transform as RectTransform;
         }
+
+        // 원래 스케일 저장
+        originalScale = transform.localScale;
     }
 
     /// <summary>
-    /// CharacterSelectUI에서 이 버튼에 캐릭터 인덱스를 세팅해줄 때 사용
-    /// </summary>
-    public void SetSummonData(int index)
-    {
-        summonCharacterIndex = index;
-    }
-
-    /// <summary>
-    /// [게임 기획서] 원 버튼 소환 구현
-    /// 클릭 시 랜덤 위치에 캐릭터 소환
+    /// OnPointerClick: 원 버튼 소환 구현 (옵션)
     /// </summary>
     public void OnPointerClick(PointerEventData eventData)
     {
-        // 드래그 중이었다면 클릭 이벤트 무시
-        if (isDragging)
-        {
-            isDragging = false;
-            return;
-        }
-
-        // 원 버튼 소환이 활성화되어 있고, 유효한 캐릭터 인덱스인 경우
+        // 드래그 중이면 클릭 이벤트 무시
+        if (isDragging) return;
+        
         if (enableOneClickSummon && summonCharacterIndex >= 0)
         {
-            Debug.Log($"[DraggableSummonButtonUI] 원 버튼 소환 시도: 캐릭터 인덱스 {summonCharacterIndex}");
+            Debug.Log($"[DraggableSummonButtonUI] 원 버튼 소환 - 캐릭터 인덱스: {summonCharacterIndex}");
             
-            // PlacementManager를 통해 랜덤 위치에 소환
-            if (PlacementManager.Instance != null)
+            // ★★★ 50마리 제한 체크
+            bool isHost = CoreDataManager.Instance?.isHost ?? true;
+            if (PlacementManager.Instance != null && !PlacementManager.Instance.CanSummonCharacter(!isHost))
             {
-                // 랜덤 타일 찾기
-                Tile randomTile = FindRandomEmptyTile();
-                if (randomTile != null)
+                int currentCount = PlacementManager.Instance.GetCharacterCount(!isHost);
+                Debug.LogWarning($"[DraggableSummonButtonUI] 캐릭터 수 제한 도달! 현재: {currentCount}/50");
+                return;
+            }
+            
+            // SummonManager를 통해 랜덤 위치에 소환
+            SummonManager summonManager = SummonManager.Instance;
+            if (summonManager != null)
+            {
+                // 현재 선택된 캐릭터로 자동 배치
+                CoreDataManager.Instance.currentCharacterIndex = summonCharacterIndex;
+                summonManager.OnClickAutoPlace();
+                
+                // 카드 사용 처리
+                if (parentSelectUI != null)
                 {
-                    PlacementManager.Instance.SummonCharacterOnTile(summonCharacterIndex, randomTile);
-                    
-                    // next unit 로직
-                    if (parentSelectUI != null)
-                    {
-                        parentSelectUI.OnDragUseCard(summonCharacterIndex);
-                    }
-                }
-                else
-                {
-                    Debug.LogWarning("[DraggableSummonButtonUI] 빈 타일을 찾을 수 없습니다!");
+                    parentSelectUI.OnDragUseCard(summonCharacterIndex);
                 }
             }
         }
@@ -145,243 +137,260 @@ public class DraggableSummonButtonUI : MonoBehaviour, IBeginDragHandler, IDragHa
 
     public void OnBeginDrag(PointerEventData eventData)
     {
-        // (1) 만약 인덱스가 -1이면 "빈 버튼" 취급 → 드래그 취소
-        if (summonCharacterIndex < 0)
+        isDragging = true;
+        Debug.Log($"[DraggableSummonButtonUI] 드래그 시작 - 캐릭터 인덱스: {summonCharacterIndex}");
+
+        // ★★★ 50마리 제한 체크
+        bool isHost = CoreDataManager.Instance?.isHost ?? true;
+        if (PlacementManager.Instance != null && !PlacementManager.Instance.CanSummonCharacter(!isHost))
         {
-            // 이벤트를 소모시켜 드래그를 무효화
-            eventData.Use();
+            int currentCount = PlacementManager.Instance.GetCharacterCount(!isHost);
+            Debug.LogWarning($"[DraggableSummonButtonUI] 캐릭터 수 제한 도달! 현재: {currentCount}/50");
+            isDragging = false;
             return;
         }
 
-        isDragging = true;
-
-        // (2) 드래그 시작 시 위치 기억
+        // 원래 위치 저장
         originalPos = rectTrans.anchoredPosition;
 
-        // (3) 드래그 중 자기 자신에 대한 Raycast 차단
-        if (canvasGroup != null)
+        // 오프셋 계산
+        Vector2 localPointerPos;
+        RectTransformUtility.ScreenPointToLocalPointInRectangle(
+            dragParent,
+            eventData.position,
+            eventData.pressEventCamera,
+            out localPointerPos
+        );
+        dragOffset = rectTrans.anchoredPosition - localPointerPos;
+
+        // 레이캐스트 무시
+        canvasGroup.blocksRaycasts = false;
+
+        // 드래그 시 크기 축소
+        transform.localScale = originalScale * dragScaleFactor;
+
+        // 부모를 dragParent로 변경
+        transform.SetParent(dragParent, false);
+
+        // =====================================
+        // == 공격 정보 표시 ==
+        // =====================================
+        if (dragInfoPanel != null && dragInfoText != null)
         {
-            canvasGroup.blocksRaycasts = false;
-        }
-
-        // (4) "마우스 중심" 계산
-        RectTransform basePanel = (dragParent != null) ? dragParent : (canvas != null ? canvas.transform as RectTransform : null);
-        if (basePanel != null)
-        {
-            RectTransformUtility.ScreenPointToLocalPointInRectangle(basePanel, eventData.position, eventData.pressEventCamera, out Vector2 pointerLocalPos);
-            dragOffset = rectTrans.anchoredPosition - pointerLocalPos;
-        }
-        else
-        {
-            dragOffset = Vector2.zero;
-        }
-
-        // (5) 드래그 시작 시 버튼 크기 축소 (효과)
-        originalScale = rectTrans.localScale;
-        rectTrans.localScale = originalScale * dragScaleFactor;
-
-        // =====================================================
-        // == (수정추가) 드래그 시작 시 dragInfoPanel 활성화 ==
-        // =====================================================
-        if (dragInfoPanel != null)
-        {
-            dragInfoPanel.SetActive(true);
-
-            // 캐릭터 데이터 가져와서 정보 표시
-            ShowCharacterInfo();
-        }
-    }
-
-    /// <summary>
-    /// ★★★ 추가: 드래그 중인 캐릭터 정보 표시
-    /// </summary>
-    private void ShowCharacterInfo()
-    {
-        if (dragInfoText == null) return;
-
-        var coreData = CoreDataManager.Instance;
-        if (coreData == null || coreData.characterDatabase == null) return;
-
-        if (summonCharacterIndex >= 0 && summonCharacterIndex < coreData.characterDatabase.currentRegisteredCharacters.Length)
-        {
-            CharacterData charData = coreData.characterDatabase.currentRegisteredCharacters[summonCharacterIndex];
-            if (charData != null)
+            var coreData = CoreDataManager.Instance;
+            if (coreData != null && coreData.characterDatabase != null)
             {
-                string info = $"<b>{charData.characterName}</b>\n";
-                info += $"공격력: {charData.attackPower}\n";
-                info += $"사거리: {charData.attackRange}\n";
-                info += $"비용: {charData.cost} 미네랄\n";
-                
-                if (charData.isAreaAttack)
+                var allChars = coreData.characterDatabase.currentRegisteredCharacters;
+                if (summonCharacterIndex >= 0 && summonCharacterIndex < allChars.Length)
                 {
-                    info += $"<color=yellow>범위 공격 (반경: {charData.areaAttackRadius})</color>";
+                    var charData = allChars[summonCharacterIndex];
+                    if (charData != null)
+                    {
+                        dragInfoPanel.SetActive(true);
+                        dragInfoText.text = $"{charData.characterName}\n" +
+                                          $"공격력: {charData.attackPower}\n" +
+                                          $"사거리: {charData.attackRange}\n" +
+                                          $"타입: {charData.rangeType}\n" +
+                                          $"범위공격: {(charData.isAreaAttack ? "O" : "X")}";
+                    }
                 }
-                else
-                {
-                    info += "단일 공격";
-                }
-                
-                dragInfoText.text = info;
             }
         }
     }
 
     public void OnDrag(PointerEventData eventData)
     {
-        if (canvas == null || summonCharacterIndex < 0) return;
+        if (!isDragging) return;
 
-        // dragParent 또는 canvas 기준으로 마우스 위치 얻기
-        RectTransform basePanel = (dragParent != null) ? dragParent : canvas.transform as RectTransform;
-        if (basePanel != null)
+        // 마우스 중심으로 버튼 이동
+        Vector2 localPointerPos;
+        if (RectTransformUtility.ScreenPointToLocalPointInRectangle(
+            dragParent,
+            eventData.position,
+            eventData.pressEventCamera,
+            out localPointerPos))
         {
-            RectTransformUtility.ScreenPointToLocalPointInRectangle(basePanel, eventData.position, eventData.pressEventCamera, out Vector2 localPointerPos);
             rectTrans.anchoredPosition = localPointerPos + dragOffset;
         }
+
+        // (수정) 마우스 아래의 타일 체크
+        CheckTileUnderPointer(eventData);
     }
 
     public void OnEndDrag(PointerEventData eventData)
     {
-        if (summonCharacterIndex < 0) return;
+        if (!isDragging) return;
+        
+        isDragging = false;
+        Debug.Log("[DraggableSummonButtonUI] 드래그 종료");
 
-        // (1) Raycast로 드롭 타겟 찾기
-        List<RaycastResult> raycastResults = new List<RaycastResult>();
-        EventSystem.current.RaycastAll(eventData, raycastResults);
+        // 레이캐스트 복원
+        canvasGroup.blocksRaycasts = true;
 
-        Tile droppedTile = null;
-        foreach (var result in raycastResults)
-        {
-            Tile tile = result.gameObject.GetComponent<Tile>();
-            if (tile != null)
-            {
-                droppedTile = tile;
-                break;
-            }
-        }
+        // 크기 복원
+        transform.localScale = originalScale;
 
-        // (2) 타일에 드롭했을 때
-        if (droppedTile != null)
-        {
-            // ★★★ 수정: 같은 캐릭터 체크를 위해 PlacementManager가 처리하도록 함
-            bool summonSuccess = PlacementManager.Instance.SummonCharacterOnTile(summonCharacterIndex, droppedTile);
-            
-            if (summonSuccess)
-            {
-                // next unit 로직
-                if (parentSelectUI != null)
-                {
-                    parentSelectUI.OnDragUseCard(summonCharacterIndex);
-                }
-            }
-        }
-
-        // (3) 원래 위치로 복귀
-        rectTrans.anchoredPosition = originalPos;
-
-        // (4) 크기 복원
-        rectTrans.localScale = originalScale;
-
-        // (5) Raycast 다시 활성화
-        if (canvasGroup != null)
-        {
-            canvasGroup.blocksRaycasts = true;
-        }
-
-        // =====================================================
-        // == (수정추가) 드래그 종료 시 dragInfoPanel 비활성화 ==
-        // =====================================================
+        // 드래그 정보 패널 숨기기
         if (dragInfoPanel != null)
         {
             dragInfoPanel.SetActive(false);
         }
 
-        isDragging = false;
-    }
+        // 드롭한 위치 체크 (UI + 월드 타일)
+        bool droppedOnTile = false;
 
-    /// <summary>
-    /// 랜덤 빈 타일 찾기 (원 버튼 소환용)
-    /// </summary>
-    private Tile FindRandomEmptyTile()
-    {
-        if (TileManager.Instance == null) return null;
-        
-        // 플레이어 소환 가능 타일 중에서 빈 타일 찾기
-        List<Tile> emptyTiles = new List<Tile>();
-        
-        foreach (var tile in TileManager.Instance.playerSummonableTiles)
-        {
-            if (tile != null && tile.CanPlaceCharacter())
-            {
-                emptyTiles.Add(tile);
-            }
-        }
-        
-        if (emptyTiles.Count > 0)
-        {
-            return emptyTiles[Random.Range(0, emptyTiles.Count)];
-        }
-        
-        return null;
-    }
+        // 1) 월드 타일 체크
+        Vector2 worldPos = Camera.main.ScreenToWorldPoint(eventData.position);
+        Collider2D[] hits = Physics2D.OverlapPointAll(worldPos);
 
-    /// <summary>
-    /// OnClickOneButtonSummon 메서드 수정
-    /// </summary>
-    private void OnClickOneButtonSummon()
-    {
-        Debug.Log($"[DraggableSummonButtonUI] 원 버튼 소환 클릭! 캐릭터 인덱스: {summonCharacterIndex}");
-        
-        if (summonCharacterIndex < 0)
+        foreach (var hit in hits)
         {
-            Debug.LogWarning("[DraggableSummonButtonUI] 소환할 캐릭터 인덱스가 설정되지 않았습니다!");
-            return;
-        }
-        
-        // SummonManager를 통해 랜덤 위치에 소환
-        SummonManager summonManager = SummonManager.Instance;
-        if (summonManager != null)
-        {
-            // CoreDataManager에서 캐릭터 데이터 가져오기
-            CoreDataManager coreData = CoreDataManager.Instance;
-            if (coreData != null && coreData.characterDatabase != null)
+            Tile tile = hit.GetComponent<Tile>();
+            if (tile != null)
             {
-                CharacterData[] characters = coreData.characterDatabase.currentRegisteredCharacters;
-                if (summonCharacterIndex >= 0 && summonCharacterIndex < characters.Length)
+                Debug.Log($"[DraggableSummonButtonUI] 타일 감지: {tile.name}, CanPlace: {tile.CanPlaceCharacter()}");
+
+                if (tile.CanPlaceCharacter())
                 {
-                    CharacterData charData = characters[summonCharacterIndex];
-                    if (charData != null)
-                    {
-                        summonManager.OnClickRandomSummon();
-                    }
+                    TrySummonOnTile(tile);
+                    droppedOnTile = true;
+                    break;
                 }
             }
         }
-        
-        // CharacterSelectUI에 알림
-        if (parentSelectUI != null)
+
+        // 2) UI 레이캐스트로도 체크
+        if (!droppedOnTile)
         {
-            parentSelectUI.OnDragUseCard(summonCharacterIndex);
+            List<RaycastResult> results = new List<RaycastResult>();
+            eventData.module.GetComponent<GraphicRaycaster>().Raycast(eventData, results);
+
+            foreach (var result in results)
+            {
+                GameObject go = result.gameObject;
+                Tile tile = go.GetComponent<Tile>();
+                
+                if (tile != null && tile.CanPlaceCharacter())
+                {
+                    Debug.Log($"[DraggableSummonButtonUI] UI 타일 감지: {tile.name}");
+                    TrySummonOnTile(tile);
+                    droppedOnTile = true;
+                    break;
+                }
+            }
+        }
+
+        // 타일에 드롭하지 않은 경우 원위치로
+        if (!droppedOnTile)
+        {
+            Debug.Log("[DraggableSummonButtonUI] 유효한 타일이 아님 - 원위치로 복귀");
+            if (parentSelectUI != null)
+            {
+                transform.SetParent(parentSelectUI.selectButtonParent.transform, false);
+            }
+            rectTrans.anchoredPosition = originalPos;
         }
     }
 
     /// <summary>
-    /// GetCharacterDataFromIndex 메서드 수정
+    /// (수정 추가) 드래그 중 마우스 아래의 타일을 체크
     /// </summary>
-    private CharacterData GetCharacterDataFromIndex(int index)
+    private void CheckTileUnderPointer(PointerEventData eventData)
     {
-        CoreDataManager coreData = CoreDataManager.Instance;
+        // 월드 좌표로 변환
+        Vector2 worldPos = Camera.main.ScreenToWorldPoint(eventData.position);
+        Collider2D[] hits = Physics2D.OverlapPointAll(worldPos);
+
+        bool foundValidTile = false;
+        foreach (var hit in hits)
+        {
+            Tile tile = hit.GetComponent<Tile>();
+            if (tile != null && tile.CanPlaceCharacter())
+            {
+                foundValidTile = true;
+                break;
+            }
+        }
+
+        // 유효한 타일 위에 있으면 시각적 피드백 (예: 색상 변경)
+        Image buttonImage = GetComponent<Image>();
+        if (buttonImage != null)
+        {
+            buttonImage.color = foundValidTile ? Color.green : Color.white;
+        }
+    }
+
+    /// <summary>
+    /// 타일에 캐릭터 소환 시도
+    /// </summary>
+    private void TrySummonOnTile(Tile tile)
+    {
+        if (summonCharacterIndex < 0)
+        {
+            Debug.LogError("[DraggableSummonButtonUI] summonCharacterIndex가 유효하지 않습니다!");
+            return;
+        }
+
+        var coreData = CoreDataManager.Instance;
         if (coreData == null || coreData.characterDatabase == null)
         {
             Debug.LogError("[DraggableSummonButtonUI] CoreDataManager 또는 characterDatabase가 null입니다!");
-            return null;
+            return;
         }
-        
-        CharacterData[] characters = coreData.characterDatabase.currentRegisteredCharacters;
-        if (index < 0 || index >= characters.Length)
+
+        var allChars = coreData.characterDatabase.currentRegisteredCharacters;
+        if (summonCharacterIndex >= allChars.Length)
         {
-            Debug.LogError($"[DraggableSummonButtonUI] 잘못된 캐릭터 인덱스: {index}");
-            return null;
+            Debug.LogError($"[DraggableSummonButtonUI] 인덱스 초과: {summonCharacterIndex} >= {allChars.Length}");
+            return;
         }
+
+        CharacterData charData = allChars[summonCharacterIndex];
+        if (charData == null)
+        {
+            Debug.LogError($"[DraggableSummonButtonUI] 캐릭터 데이터[{summonCharacterIndex}]가 null입니다!");
+            return;
+        }
+
+        Debug.Log($"[DraggableSummonButtonUI] {charData.characterName}을(를) {tile.name}에 소환 시도");
+
+        // 미네랄 확인
+        bool isHost = coreData.isHost;
+        MineralBar mineralBar = isHost ? coreData.region1MineralBar : coreData.region2MineralBar;
         
-        return characters[index];
+        if (mineralBar == null || mineralBar.GetMineral() < charData.cost)
+        {
+            Debug.LogWarning($"[DraggableSummonButtonUI] 미네랄 부족! 필요: {charData.cost}, 현재: {mineralBar?.GetMineral() ?? 0}");
+            return;
+        }
+
+        // PlacementManager를 통해 소환
+        if (PlacementManager.Instance != null)
+        {
+            // 미네랄 소모
+            mineralBar.UseMineral(charData.cost);
+            
+            Character newChar = PlacementManager.Instance.SummonCharacterOnTile(charData, tile, !isHost);
+            
+            if (newChar != null)
+            {
+                Debug.Log($"[DraggableSummonButtonUI] {charData.characterName} 소환 성공!");
+                
+                // CharacterSelectUI에 드래그 사용 알림
+                if (parentSelectUI != null)
+                {
+                    parentSelectUI.OnDragUseCard(summonCharacterIndex);
+                }
+                
+                // 버튼 제거
+                Destroy(gameObject);
+            }
+            else
+            {
+                // 소환 실패 시 미네랄 환불
+                mineralBar.AddMineral(charData.cost);
+                Debug.LogError("[DraggableSummonButtonUI] 캐릭터 소환 실패!");
+            }
+        }
     }
 }

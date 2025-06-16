@@ -4,6 +4,7 @@ using UnityEngine;
 /// <summary>
 /// 월드 좌표 기반 캐릭터 배치 관리자
 /// 게임 기획서: 타일 기반 소환 시스템
+/// ★★★ 50마리 제한 추가
 /// </summary>
 public class PlacementManager : MonoBehaviour
 {
@@ -24,6 +25,12 @@ public class PlacementManager : MonoBehaviour
             return instance;
         }
     }
+    
+    [Header("캐릭터 소환 제한")]
+    [Tooltip("플레이어가 소환할 수 있는 최대 캐릭터 수")]
+    public int maxPlayerCharacters = 50;
+    [Tooltip("AI가 소환할 수 있는 최대 캐릭터 수")]
+    public int maxOpponentCharacters = 50;
     
     [Header("캐릭터/총알 부모 오브젝트")]
     public Transform characterParent;
@@ -155,6 +162,36 @@ public class PlacementManager : MonoBehaviour
     }
     
     /// <summary>
+    /// ★★★ 캐릭터 소환 가능 여부 체크
+    /// </summary>
+    public bool CanSummonCharacter(bool isOpponent)
+    {
+        if (isOpponent)
+        {
+            return opponentCharacters.Count < maxOpponentCharacters;
+        }
+        else
+        {
+            return playerCharacters.Count < maxPlayerCharacters;
+        }
+    }
+    
+    /// <summary>
+    /// ★★★ 현재 캐릭터 수 반환
+    /// </summary>
+    public int GetCharacterCount(bool isOpponent)
+    {
+        if (isOpponent)
+        {
+            return opponentCharacters.Count;
+        }
+        else
+        {
+            return playerCharacters.Count;
+        }
+    }
+    
+    /// <summary>
     /// 타일에 캐릭터 소환
     /// </summary>
     public Character SummonCharacterOnTile(CharacterData data, Tile tile, bool isOpponent = false)
@@ -162,6 +199,15 @@ public class PlacementManager : MonoBehaviour
         if (data == null || tile == null)
         {
             Debug.LogError("[PlacementManager] CharacterData 또는 Tile이 null입니다!");
+            return null;
+        }
+        
+        // ★★★ 50마리 제한 체크
+        if (!CanSummonCharacter(isOpponent))
+        {
+            int currentCount = GetCharacterCount(isOpponent);
+            int maxCount = isOpponent ? maxOpponentCharacters : maxPlayerCharacters;
+            Debug.LogWarning($"[PlacementManager] 캐릭터 수 제한 도달! 현재: {currentCount}/{maxCount}");
             return null;
         }
         
@@ -188,7 +234,7 @@ public class PlacementManager : MonoBehaviour
             else
                 playerCharacters.Add(newCharacter);
             
-            Debug.Log($"[PlacementManager] {data.characterName}을(를) {tile.name}에 소환 성공!");
+            Debug.Log($"[PlacementManager] {data.characterName}을(를) {tile.name}에 소환 성공! (현재 {(isOpponent ? "AI" : "플레이어")} 캐릭터: {GetCharacterCount(isOpponent)}/{(isOpponent ? maxOpponentCharacters : maxPlayerCharacters)})");
             
             // 자동 합성 체크
             CheckAndMergeOnTile(tile);
