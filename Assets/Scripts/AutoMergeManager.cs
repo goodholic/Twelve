@@ -399,4 +399,53 @@ public class AutoMergeManager : MonoBehaviour
     {
         return FindMergeableGroups(areaIndex).Count > 0;
     }
+    
+    /// <summary>
+    /// 캐릭터 배열을 직접 합성 (PlacementManager에서 호출)
+    /// </summary>
+    public void MergeCharacters(Character[] characters)
+    {
+        if (characters == null || characters.Length < 3)
+        {
+            Debug.LogWarning("[AutoMergeManager] 합성할 캐릭터가 3개 미만입니다.");
+            return;
+        }
+        
+        Character first = characters[0];
+        if (first == null)
+        {
+            Debug.LogWarning("[AutoMergeManager] 첫 번째 캐릭터가 null입니다.");
+            return;
+        }
+        
+        // 같은 종류인지 확인
+        bool allSame = true;
+        for (int i = 1; i < characters.Length; i++)
+        {
+            if (characters[i] == null || 
+                characters[i].characterName != first.characterName || 
+                characters[i].star != first.star)
+            {
+                allSame = false;
+                break;
+            }
+        }
+        
+        if (!allSame)
+        {
+            Debug.LogWarning("[AutoMergeManager] 같은 종류의 캐릭터가 아닙니다.");
+            return;
+        }
+        
+        // 합성 그룹 생성 및 실행
+        MergeGroup group = new MergeGroup
+        {
+            characterName = first.characterName,
+            star = first.star,
+            characters = new List<Character>(characters)
+        };
+        
+        PerformMerge(group);
+        Debug.Log($"[AutoMergeManager] 직접 합성 완료: {first.characterName} {first.star}성 3개 → {(CharacterStar)((int)first.star + 1)}성");
+    }
 }

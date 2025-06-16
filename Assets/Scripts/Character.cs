@@ -59,13 +59,24 @@ public class Character : MonoBehaviour, IDamageable
     [Header("전투 스탯")]
     public float attackPower = 10f;
     public float attackRange = 3f;
+    public float range = 3f; // attackRange와 동일
     public float attackSpeed = 1f;
     public float currentHP = 100f;
+    public float health = 100f; // currentHP와 동일
     public float maxHP = 100f;
+    public float maxHealth = 100f; // maxHP와 동일
     public AttackTargetType attackTargetType = AttackTargetType.Both;
+    public AttackShapeType attackShapeType = AttackShapeType.Single;
+    public RaceType tribe = RaceType.Human; // race와 동일한 의미
     public bool isAreaAttack = false;
     public float areaAttackRadius = 1.5f;
     public bool isDraggable = true;
+    
+    // ================================
+    // 비용
+    // ================================
+    [Header("비용")]
+    public int cost = 10;
     
     // ================================
     // 이동 스탯
@@ -392,6 +403,28 @@ public class Character : MonoBehaviour, IDamageable
             }
             visual.ApplyStarVisual(star);
         }
+    }
+
+    /// <summary>
+    /// 웨이포인트 설정 (이동 경로)
+    /// </summary>
+    public void SetWaypoints(Transform[] waypoints)
+    {
+        pathWaypoints = waypoints;
+        if (waypoints != null && waypoints.Length > 0)
+        {
+            maxWaypointIndex = waypoints.Length - 1;
+            currentWaypointIndex = 0;
+        }
+        
+        // CharacterMovementManager가 있으면 경로 설정
+        CharacterMovementManager movementManager = GetComponent<CharacterMovementManager>();
+        if (movementManager != null)
+        {
+            movementManager.SetPath(waypoints);
+        }
+        
+        Debug.Log($"[Character] {characterName}의 웨이포인트 설정 완료: {waypoints?.Length ?? 0}개");
     }
 
     // 디버그용

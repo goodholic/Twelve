@@ -329,7 +329,7 @@ public class CharacterSelectUI : MonoBehaviour
         // PlacementManager에 "이 캐릭터 인덱스 선택" 알림
         if (placementManager != null)
         {
-            placementManager.OnClickSelectUnit(clickedIndex);
+            placementManager.OnClickSelectUnit();
             
             // ▼▼ [추가] 자동 배치 호출 (placed/placable 꽉 차면 walkable로) ▼▼
             placementManager.OnClickAutoPlace();

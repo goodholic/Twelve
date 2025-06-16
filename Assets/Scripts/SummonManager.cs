@@ -6,6 +6,7 @@ using System.Linq;
 /// 월드 좌표 기반 캐릭터 소환 관리자
 /// 기획서: 원 버튼 소환 - 미네랄 소모하여 랜덤 캐릭터, 랜덤 위치 소환
 /// ★★★ 50마리 제한 추가
+/// ★★★ 같은 캐릭터끼리는 한 타일에 3개까지 배치 가능
 /// </summary>
 public class SummonManager : MonoBehaviour
 {
@@ -101,10 +102,10 @@ public class SummonManager : MonoBehaviour
         }
         
         // 랜덤 캐릭터 선택
-        CharacterData randomCharData = GetRandomCharacter();
-        if (randomCharData == null)
+        CharacterData randomChar = GetRandomCharacter();
+        if (randomChar == null)
         {
-            Debug.LogError("[SummonManager] 랜덤 캐릭터 데이터를 가져올 수 없습니다!");
+            Debug.LogWarning("[SummonManager] 사용 가능한 캐릭터가 없습니다!");
             return;
         }
         
@@ -112,12 +113,12 @@ public class SummonManager : MonoBehaviour
         mineralBar.UseMineral(summonCost);
         
         // 캐릭터 생성
-        Character newChar = CreateCharacterOnTile(randomCharData, randomTile, targetRegion2);
+        Character newChar = CreateCharacterOnTile(randomChar, randomTile, targetRegion2);
         
         if (newChar != null)
         {
             PlaySummonEffect(randomTile.transform.position);
-            Debug.Log($"[SummonManager] 랜덤 소환 성공: {randomCharData.characterName} at {randomTile.name}");
+            Debug.Log($"[SummonManager] 랜덤 소환 성공: {randomChar.characterName} at {randomTile.name}");
         }
         else
         {
@@ -128,19 +129,16 @@ public class SummonManager : MonoBehaviour
     }
 
     /// <summary>
-    /// 특정 캐릭터를 특정 타일에 소환
+    /// 특정 캐릭터를 자동으로 빈 타일에 배치
     /// </summary>
-    public void SummonCharacterAtTile(CharacterData data, Tile tile)
+    public void AutoPlaceCharacter(int characterIndex)
     {
         var coreData = CoreDataManager.Instance;
-        if (coreData == null)
-        {
-            Debug.LogError("[SummonManager] CoreDataManager가 없습니다!");
-            return;
-        }
+        if (coreData == null || characterDatabase == null) return;
+
+        bool isHost = coreData.isHost;
         
         // ★★★ 50마리 제한 체크
-        bool isHost = coreData.isHost;
         if (placementManager != null && !placementManager.CanSummonCharacter(!isHost))
         {
             int currentCount = placementManager.GetCharacterCount(!isHost);
@@ -149,52 +147,123 @@ public class SummonManager : MonoBehaviour
             return;
         }
         
+        // 선택된 캐릭터 가져오기
+        if (characterIndex < 0 || characterIndex >= characterDatabase.currentRegisteredCharacters.Length)
+        {
+            Debug.LogError($"[SummonManager] 잘못된 캐릭터 인덱스: {characterIndex}");
+            return;
+        }
+        
+        CharacterData selectedChar = characterDatabase.currentRegisteredCharacters[characterIndex];
+        if (selectedChar == null) return;
+        
         // 미네랄 확인
         MineralBar mineralBar = isHost ? coreData.region1MineralBar : coreData.region2MineralBar;
-        
-        if (mineralBar == null || mineralBar.GetMineral() < summonCost)
+        if (mineralBar == null || mineralBar.GetMineral() < selectedChar.cost)
         {
-            Debug.LogWarning($"[SummonManager] 미네랄 부족! 필요: {summonCost}, 현재: {mineralBar?.GetMineral() ?? 0}");
+            Debug.LogWarning($"[SummonManager] 미네랄 부족! 필요: {selectedChar.cost}, 현재: {mineralBar?.GetMineral() ?? 0}");
+            return;
+        }
+        
+        // 빈 타일 찾기
+        bool targetRegion2 = !isHost;
+        Tile randomTile = FindRandomEmptyTile(targetRegion2);
+        
+        if (randomTile == null)
+        {
+            Debug.LogWarning("[SummonManager] 소환 가능한 빈 타일이 없습니다!");
             return;
         }
         
         // 미네랄 소모
-        mineralBar.UseMineral(summonCost);
+        mineralBar.UseMineral(selectedChar.cost);
         
         // 캐릭터 생성
-        Character newChar = CreateCharacterOnTile(data, tile, !isHost);
+        Character newChar = CreateCharacterOnTile(selectedChar, randomTile, targetRegion2);
         
         if (newChar != null)
         {
-            PlaySummonEffect(tile.transform.position);
-            Debug.Log($"[SummonManager] [{coreData.currentCharacterIndex}] {data.characterName} 소환 성공");
+            PlaySummonEffect(randomTile.transform.position);
+            Debug.Log($"[SummonManager] 자동 배치 성공: {selectedChar.characterName} at {randomTile.name}");
+        }
+        else
+        {
+            // 소환 실패 시 미네랄 환불
+            mineralBar.AddMineral(selectedChar.cost);
+            Debug.LogError("[SummonManager] 캐릭터 생성 실패!");
         }
     }
 
     /// <summary>
-    /// ★★★ 특정 캐릭터를 타일에 소환
+    /// ★★★ 수정: 랜덤 빈 타일 찾기 - 같은 캐릭터가 있는 타일도 포함
     /// </summary>
-    public bool SummonCharacterOnTile(int summonIndex, Tile tile, bool forceEnemyArea2 = false)
+    private Tile FindRandomEmptyTile(bool isRegion2)
     {
-        var coreData = CoreDataManager.Instance;
-        if (coreData == null)
+        if (tileManager == null) return null;
+        
+        List<Tile> availableTiles = new List<Tile>();
+        List<Tile> targetTiles = isRegion2 ? tileManager.aiSummonableTiles : tileManager.playerSummonableTiles;
+        
+        foreach (var tile in targetTiles)
         {
-            Debug.LogError("[SummonManager] CoreDataManager가 없습니다!");
-            return false;
+            if (tile != null && tile.CanPlaceCharacter())
+            {
+                availableTiles.Add(tile);
+            }
         }
         
-        // ★★★ 50마리 제한 체크
-        if (placementManager != null && !placementManager.CanSummonCharacter(forceEnemyArea2))
+        if (availableTiles.Count == 0)
         {
-            int currentCount = placementManager.GetCharacterCount(forceEnemyArea2);
-            int maxCount = 50;
-            Debug.LogWarning($"[SummonManager] 캐릭터 수 제한 도달! 현재: {currentCount}/{maxCount}");
-            return false;
+            Debug.LogWarning($"[SummonManager] {(isRegion2 ? "AI" : "플레이어")} 지역에 빈 타일이 없습니다!");
+            return null;
         }
         
-        if (characterDatabase == null || characterDatabase.currentRegisteredCharacters == null)
+        return availableTiles[Random.Range(0, availableTiles.Count)];
+    }
+
+    /// <summary>
+    /// 랜덤 캐릭터 선택
+    /// </summary>
+    private CharacterData GetRandomCharacter()
+    {
+        if (characterDatabase == null || characterDatabase.currentRegisteredCharacters.Length == 0)
+            return null;
+        
+        List<CharacterData> validCharacters = new List<CharacterData>();
+        foreach (var charData in characterDatabase.currentRegisteredCharacters)
         {
-            Debug.LogError("[SummonManager] characterDatabase가 없습니다!");
+            if (charData != null && charData.spawnPrefab != null)
+            {
+                validCharacters.Add(charData);
+            }
+        }
+        
+        if (validCharacters.Count == 0)
+            return null;
+        
+        return validCharacters[Random.Range(0, validCharacters.Count)];
+    }
+
+    /// <summary>
+    /// 소환 효과 재생
+    /// </summary>
+    private void PlaySummonEffect(Vector3 position)
+    {
+        if (summonEffectPrefab != null)
+        {
+            GameObject effect = Instantiate(summonEffectPrefab, position, Quaternion.identity);
+            Destroy(effect, 2f);
+        }
+    }
+
+    /// <summary>
+    /// 특정 타일에 캐릭터 소환 (드래그 소환용)
+    /// </summary>
+    public bool SummonOnTile(int summonIndex, Tile tile, bool forceEnemyArea2 = false)
+    {
+        if (placementManager == null || characterDatabase == null || tile == null)
+        {
+            Debug.LogError("[SummonManager] 필수 컴포넌트가 없습니다!");
             return false;
         }
         
@@ -225,11 +294,30 @@ public class SummonManager : MonoBehaviour
     }
 
     /// <summary>
-    /// 캐릭터를 타일에 생성
+    /// ★★★ 수정: 캐릭터를 타일에 생성 - 같은 캐릭터끼리는 3개까지 가능
     /// </summary>
     private Character CreateCharacterOnTile(CharacterData data, Tile tile, bool isOpponent)
     {
         if (data == null || tile == null || placementManager == null) return null;
+        
+        // 같은 캐릭터가 이미 있는지 확인
+        List<Character> existingChars = tile.GetOccupyingCharacters();
+        if (existingChars.Count > 0)
+        {
+            Character first = existingChars[0];
+            // 다른 종류의 캐릭터가 있으면 배치 불가
+            if (first.characterName != data.characterName || first.star != data.star)
+            {
+                Debug.LogWarning($"[SummonManager] {tile.name}에 다른 종류의 캐릭터가 있어 배치할 수 없습니다!");
+                return null;
+            }
+            // 이미 3개가 있으면 배치 불가
+            if (existingChars.Count >= 3)
+            {
+                Debug.LogWarning($"[SummonManager] {tile.name}에 이미 3개의 캐릭터가 있습니다!");
+                return null;
+            }
+        }
         
         Vector3 position = tile.transform.position;
         Character newChar = placementManager.CreateCharacterAtPosition(data, position, isOpponent);
@@ -282,141 +370,8 @@ public class SummonManager : MonoBehaviour
         
         if (waypoints != null && waypoints.Length > 0)
         {
-            character.pathWaypoints = waypoints;
-            character.currentWaypointIndex = 0;
-            character.maxWaypointIndex = waypoints.Length - 1;
-            
-            // CharacterMovement 컴포넌트에도 설정
-            CharacterMovement movement = character.GetComponent<CharacterMovement>();
-            if (movement != null)
-            {
-                movement.SetWaypoints(waypoints, 0);
-                movement.StartMoving();
-            }
+            character.SetWaypoints(waypoints);
         }
-    }
-
-    /// <summary>
-    /// 자동 배치 메서드 (PlacementManager에서 호출)
-    /// </summary>
-    public void OnClickAutoPlace()
-    {
-        var coreData = CoreDataManager.Instance;
-        if (coreData == null)
-        {
-            Debug.LogError("[SummonManager] CoreDataManager가 없습니다!");
-            return;
-        }
-        
-        if (coreData.currentCharacterIndex < 0)
-        {
-            Debug.LogWarning("[SummonManager] 캐릭터를 먼저 선택하세요!");
-            return;
-        }
-        
-        // ★★★ 50마리 제한 체크
-        bool isHost = coreData.isHost;
-        if (placementManager != null && !placementManager.CanSummonCharacter(!isHost))
-        {
-            int currentCount = placementManager.GetCharacterCount(!isHost);
-            int maxCount = 50;
-            Debug.LogWarning($"[SummonManager] 캐릭터 수 제한 도달! 현재: {currentCount}/{maxCount}");
-            return;
-        }
-        
-        CharacterData selectedChar = characterDatabase.currentRegisteredCharacters[coreData.currentCharacterIndex];
-        if (selectedChar == null)
-        {
-            Debug.LogError($"[SummonManager] 선택된 캐릭터 데이터[{coreData.currentCharacterIndex}]가 null입니다!");
-            return;
-        }
-        
-        // 미네랄 확인
-        MineralBar mineralBar = isHost ? coreData.region1MineralBar : coreData.region2MineralBar;
-        if (mineralBar == null || mineralBar.GetMineral() < selectedChar.cost)
-        {
-            Debug.LogWarning($"[SummonManager] 미네랄 부족! 필요: {selectedChar.cost}, 현재: {mineralBar?.GetMineral() ?? 0}");
-            return;
-        }
-        
-        // 빈 타일 찾기
-        bool targetRegion2 = !isHost;
-        Tile randomTile = FindRandomEmptyTile(targetRegion2);
-        
-        if (randomTile == null)
-        {
-            Debug.LogWarning("[SummonManager] 소환 가능한 빈 타일이 없습니다!");
-            return;
-        }
-        
-        // 미네랄 소모
-        mineralBar.UseMineral(selectedChar.cost);
-        
-        // 캐릭터 생성
-        Character newChar = CreateCharacterOnTile(selectedChar, randomTile, targetRegion2);
-        
-        if (newChar != null)
-        {
-            PlaySummonEffect(randomTile.transform.position);
-            Debug.Log($"[SummonManager] 자동 배치 성공: {selectedChar.characterName} at {randomTile.name}");
-        }
-        else
-        {
-            // 소환 실패 시 미네랄 환불
-            mineralBar.AddMineral(selectedChar.cost);
-            Debug.LogError("[SummonManager] 캐릭터 생성 실패!");
-        }
-    }
-
-    /// <summary>
-    /// 랜덤 빈 타일 찾기
-    /// </summary>
-    private Tile FindRandomEmptyTile(bool isRegion2)
-    {
-        if (tileManager == null) return null;
-        
-        List<Tile> availableTiles = new List<Tile>();
-        List<Tile> targetTiles = isRegion2 ? tileManager.aiSummonableTiles : tileManager.playerSummonableTiles;
-        
-        foreach (var tile in targetTiles)
-        {
-            if (tile != null && tile.CanPlaceCharacter())
-            {
-                availableTiles.Add(tile);
-            }
-        }
-        
-        if (availableTiles.Count == 0)
-        {
-            Debug.LogWarning($"[SummonManager] {(isRegion2 ? "AI" : "플레이어")} 지역에 빈 타일이 없습니다!");
-            return null;
-        }
-        
-        return availableTiles[UnityEngine.Random.Range(0, availableTiles.Count)];
-    }
-
-    /// <summary>
-    /// 랜덤 캐릭터 선택
-    /// </summary>
-    private CharacterData GetRandomCharacter()
-    {
-        if (characterDatabase == null || characterDatabase.currentRegisteredCharacters == null)
-            return null;
-            
-        List<CharacterData> validCharacters = new List<CharacterData>();
-        
-        foreach (var character in characterDatabase.currentRegisteredCharacters)
-        {
-            if (character != null && character.spawnPrefab != null)
-            {
-                validCharacters.Add(character);
-            }
-        }
-        
-        if (validCharacters.Count == 0)
-            return null;
-            
-        return validCharacters[UnityEngine.Random.Range(0, validCharacters.Count)];
     }
 
     /// <summary>
@@ -424,39 +379,68 @@ public class SummonManager : MonoBehaviour
     /// </summary>
     private Transform[] ConvertToTransforms(GameObject[] gameObjects)
     {
-        if (gameObjects == null) return null;
+        if (gameObjects == null) return new Transform[0];
         
         Transform[] transforms = new Transform[gameObjects.Length];
         for (int i = 0; i < gameObjects.Length; i++)
         {
-            transforms[i] = gameObjects[i] != null ? gameObjects[i].transform : null;
+            if (gameObjects[i] != null)
+            {
+                transforms[i] = gameObjects[i].transform;
+            }
         }
         return transforms;
     }
 
     /// <summary>
-    /// 소환 효과 재생
+    /// 캐릭터를 특정 타일에 배치 (Tile.cs에서 호출)
     /// </summary>
-    private void PlaySummonEffect(Vector3 position)
+    public Character PlaceCharacterOnTile(CharacterData data, Tile tile, bool isOpponent)
     {
-        if (summonEffectPrefab != null)
+        if (data == null || tile == null)
         {
-            GameObject effect = Instantiate(summonEffectPrefab, position, Quaternion.identity);
-            Destroy(effect, 2f);
+            Debug.LogError("[SummonManager] PlaceCharacterOnTile: data 또는 tile이 null입니다!");
+            return null;
         }
+        
+        // ★★★ 50마리 제한 체크
+        if (placementManager != null && !placementManager.CanSummonCharacter(isOpponent))
+        {
+            int currentCount = placementManager.GetCharacterCount(isOpponent);
+            int maxCount = 50;
+            Debug.LogWarning($"[SummonManager] 캐릭터 수 제한 도달! 현재: {currentCount}/{maxCount}");
+            return null;
+        }
+        
+        return CreateCharacterOnTile(data, tile, isOpponent);
     }
 
     /// <summary>
-    /// enemyDatabase에서 캐릭터 인덱스 찾기
+    /// 캐릭터 인덱스 찾기
     /// </summary>
-    public int FindCharacterIndexInEnemyDatabase(CharacterData character)
+    public int FindCharacterIndex(Character character)
     {
-        var coreData = CoreDataManager.Instance;
-        if (coreData == null) return -1;
-        
-        if (coreData.enemyDatabase == null || coreData.enemyDatabase.currentRegisteredCharacters == null)
+        if (character == null || characterDatabase == null)
         {
-            Debug.LogWarning("[SummonManager] enemyDatabase가 null이거나 비어있습니다.");
+            Debug.LogError("[SummonManager] FindCharacterIndex: 캐릭터 또는 데이터베이스가 null입니다!");
+            return -1;
+        }
+
+        // 아군 데이터베이스에서 검색
+        for (int i = 0; i < characterDatabase.currentRegisteredCharacters.Length; i++)
+        {
+            CharacterData data = characterDatabase.currentRegisteredCharacters[i];
+            if (data != null && data.characterName == character.characterName)
+            {
+                return i;
+            }
+        }
+
+        // 적 데이터베이스에서도 검색
+        var coreData = CoreDataManager.Instance;
+        if (coreData != null && coreData.enemyDatabase != null)
+        {
+            Debug.Log("[SummonManager] 아군 데이터베이스에서 찾지 못해 적 데이터베이스 검색 중...");
             return -1;
         }
 
@@ -526,37 +510,5 @@ public class SummonManager : MonoBehaviour
                 Debug.Log($"  - {tile.name}: 배치 가능");
             }
         }
-    }
-
-    /// <summary>
-    /// 캐릭터를 특정 타일에 배치 (Tile.cs에서 호출)
-    /// </summary>
-    public Character PlaceCharacterOnTile(CharacterData data, Tile tile, bool isOpponent)
-    {
-        if (data == null || tile == null)
-        {
-            Debug.LogError("[SummonManager] PlaceCharacterOnTile: data 또는 tile이 null입니다!");
-            return null;
-        }
-        
-        // ★★★ 50마리 제한 체크
-        if (placementManager != null && !placementManager.CanSummonCharacter(isOpponent))
-        {
-            int currentCount = placementManager.GetCharacterCount(isOpponent);
-            int maxCount = 50;
-            Debug.LogWarning($"[SummonManager] 캐릭터 수 제한 도달! 현재: {currentCount}/{maxCount}");
-            return null;
-        }
-        
-        // 캐릭터 생성
-        Character newChar = CreateCharacterOnTile(data, tile, isOpponent);
-        
-        if (newChar != null)
-        {
-            PlaySummonEffect(tile.transform.position);
-            Debug.Log($"[SummonManager] {data.characterName} 배치 성공 at {tile.name}");
-        }
-        
-        return newChar;
     }
 }

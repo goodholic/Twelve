@@ -3,6 +3,7 @@ using System.Collections.Generic;
 
 /// <summary>
 /// 타일 클래스 - 게임 기획서: 타일 기반 소환 시스템
+/// ★★★ 수정: 같은 캐릭터끼리는 한 타일에 최대 3개까지 배치 가능
 /// </summary>
 public class Tile : MonoBehaviour
 {
@@ -189,6 +190,7 @@ public class Tile : MonoBehaviour
     
     /// <summary>
     /// 캐릭터 배치 가능 여부 확인
+    /// ★★★ 수정: 같은 캐릭터끼리는 3개까지 가능
     /// </summary>
     public bool CanPlaceCharacter(Character character = null)
     {
@@ -263,12 +265,11 @@ public class Tile : MonoBehaviour
     }
 
     // ================================
-    // 타일 상태 설정 메서드 (이미 위에 정의됨)
-    // ================================
-
-    // ================================
     // 시각적 업데이트
     // ================================
+    /// <summary>
+    /// ★★★ 수정: 캐릭터 위치와 크기 조정
+    /// </summary>
     private void UpdateCharacterPositions()
     {
         // 캐릭터가 여러 개일 때 위치 조정
@@ -279,20 +280,44 @@ public class Tile : MonoBehaviour
         {
             if (occupyingCharacters[i] != null)
             {
-                // 타일 중심에서 약간씩 offset
-                Vector3 offset = Vector3.zero;
-                if (count > 1)
+                Vector3 pos = transform.position;
+                float scale = 1f;
+                
+                // 캐릭터 수에 따른 위치와 크기 조정
+                switch (count)
                 {
-                    float angle = (360f / count) * i;
-                    offset = new Vector3(Mathf.Cos(angle * Mathf.Deg2Rad), Mathf.Sin(angle * Mathf.Deg2Rad), 0) * 0.3f;
+                    case 1:
+                        // 1개일 때: 타일 중앙, 원래 크기
+                        pos = transform.position;
+                        scale = 1f;
+                        break;
+                        
+                    case 2:
+                        // 2개일 때: 좌우로 배치, 80% 크기
+                        if (i == 0)
+                            pos = transform.position + new Vector3(-0.2f, 0, 0);
+                        else
+                            pos = transform.position + new Vector3(0.2f, 0, 0);
+                        scale = 0.8f;
+                        break;
+                        
+                    case 3:
+                        // 3개일 때: 삼각형 배치, 70% 크기
+                        if (i == 0)
+                            pos = transform.position + new Vector3(0, 0.2f, 0);
+                        else if (i == 1)
+                            pos = transform.position + new Vector3(-0.2f, -0.2f, 0);
+                        else
+                            pos = transform.position + new Vector3(0.2f, -0.2f, 0);
+                        scale = 0.7f;
+                        break;
                 }
                 
-                Vector3 pos = transform.position + offset;
-                pos.z = -1f - (i * 0.1f); // 깊이 조정
-                occupyingCharacters[i].transform.position = pos;
+                // Z 위치 조정 (깊이)
+                pos.z = -1f - (i * 0.1f);
                 
-                // 크기 조정 (여러 개일수록 작게)
-                float scale = 1f - (occupyingCharacters.Count - 1) * 0.1f;
+                // 위치와 크기 적용
+                occupyingCharacters[i].transform.position = pos;
                 occupyingCharacters[i].transform.localScale = Vector3.one * scale;
             }
         }

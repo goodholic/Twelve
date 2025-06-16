@@ -17,11 +17,15 @@ public class CharacterData
     [Header("전투 스탯")]
     public float attackPower = 10f;
     public float attackRange = 3f;
+    public float range = 3f; // attackRange와 동일한 값
     public float attackSpeed = 1f;
     public float health = 100f;
+    public float maxHealth = 100f; // maxHP와 동일한 값
     public float maxHP = 100f;
     public AttackTargetType attackTargetType = AttackTargetType.Both;
+    public AttackShapeType attackShapeType = AttackShapeType.Single;
     public RangeType rangeType = RangeType.Melee;
+    public RaceType tribe = RaceType.Human; // race와 동일한 의미
     public bool isAreaAttack = false;
     public float areaAttackRadius = 1.5f;
     public bool isBuffSupport = false;

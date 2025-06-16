@@ -40,3 +40,15 @@ public enum AttackTargetType
     CastleOnly,     // 성만
     All             // 모든 타겟
 }
+
+/// <summary>
+/// 공격 형태 타입
+/// </summary>
+[System.Serializable]
+public enum AttackShapeType
+{
+    Single,         // 단일 타겟
+    Circle,         // 원형 범위
+    Rectangle,      // 사각형 범위
+    Sector          // 부채꼴 범위
+}

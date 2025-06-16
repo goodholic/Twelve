@@ -5,6 +5,7 @@ using UnityEngine;
 /// 월드 좌표 기반 캐릭터 배치 관리자
 /// 게임 기획서: 타일 기반 소환 시스템
 /// ★★★ 50마리 제한 추가
+/// ★★★ 같은 캐릭터 3개 자동 합성 추가
 /// </summary>
 public class PlacementManager : MonoBehaviour
 {
@@ -55,7 +56,7 @@ public class PlacementManager : MonoBehaviour
     private TileManager tileManager;
     private AutoMergeManager autoMergeManager;
     
-    // 캐릭터 관리
+    // 캐릭터 리스트
     private List<Character> playerCharacters = new List<Character>();
     private List<Character> opponentCharacters = new List<Character>();
     
@@ -73,126 +74,54 @@ public class PlacementManager : MonoBehaviour
     {
         tileManager = TileManager.Instance;
         autoMergeManager = AutoMergeManager.Instance;
-        
-        // 부모 오브젝트가 없으면 생성
+        SetupParentObjects();
+    }
+    
+    /// <summary>
+    /// 부모 오브젝트 설정
+    /// </summary>
+    private void SetupParentObjects()
+    {
         if (characterParent == null)
-        {
-            GameObject charParentObj = new GameObject("CharacterParent");
-            characterParent = charParentObj.transform;
-        }
-        
+            characterParent = new GameObject("CharacterParent").transform;
         if (bulletParent == null)
-        {
-            GameObject bulletParentObj = new GameObject("BulletParent");
-            bulletParent = bulletParentObj.transform;
-        }
-        
-        if (bulletPanel == null)
-        {
-            GameObject bulletPanelObj = new GameObject("BulletPanel");
-            bulletPanel = bulletPanelObj.transform;
-        }
-        
+            bulletParent = new GameObject("BulletParent").transform;
         if (opponentCharacterParent == null)
-        {
-            GameObject oppCharParentObj = new GameObject("OpponentCharacterParent");
-            opponentCharacterParent = oppCharParentObj.transform;
-        }
-        
-        if (opponentCharacterPanel == null)
-        {
-            GameObject oppCharPanelObj = new GameObject("OpponentCharacterPanel");
-            opponentCharacterPanel = oppCharPanelObj.transform;
-        }
-        
+            opponentCharacterParent = new GameObject("OpponentCharacterParent").transform;
         if (opponentBulletParent == null)
-        {
-            GameObject oppBulletParentObj = new GameObject("OpponentBulletParent");
-            opponentBulletParent = oppBulletParentObj.transform;
-        }
-        
-        if (opponentBulletPanel == null)
-        {
-            GameObject oppBulletPanelObj = new GameObject("OpponentBulletPanel");
-            opponentBulletPanel = oppBulletPanelObj.transform;
-        }
-        
-        if (opponentOurMonsterPanel == null)
-        {
-            GameObject oppMonsterPanelObj = new GameObject("OpponentOurMonsterPanel");
-            opponentOurMonsterPanel = oppMonsterPanelObj.transform;
-        }
-        
-        if (ourMonsterPanel == null)
-        {
-            GameObject ourMonsterPanelObj = new GameObject("OurMonsterPanel");
-            ourMonsterPanel = ourMonsterPanelObj.transform;
-        }
+            opponentBulletParent = new GameObject("OpponentBulletParent").transform;
     }
     
     /// <summary>
-    /// 캐릭터 선택 (CharacterSelectUI에서 호출)
-    /// </summary>
-    public void OnClickSelectUnit(int characterIndex)
-    {
-        if (CoreDataManager.Instance != null)
-        {
-            CoreDataManager.Instance.currentCharacterIndex = characterIndex;
-            Debug.Log($"[PlacementManager] 캐릭터 {characterIndex}번 선택됨");
-        }
-    }
-    
-    /// <summary>
-    /// 자동 배치 (CharacterSelectUI에서 호출)
-    /// </summary>
-    public void OnClickAutoPlace()
-    {
-        if (CoreDataManager.Instance == null || CoreDataManager.Instance.currentCharacterIndex < 0)
-        {
-            Debug.LogWarning("[PlacementManager] 캐릭터를 먼저 선택하세요!");
-            return;
-        }
-        
-        // SummonManager의 자동 배치 호출
-        SummonManager summonManager = SummonManager.Instance;
-        if (summonManager != null)
-        {
-            summonManager.OnClickAutoPlace();
-        }
-    }
-    
-    /// <summary>
-    /// ★★★ 캐릭터 소환 가능 여부 체크
-    /// </summary>
-    public bool CanSummonCharacter(bool isOpponent)
-    {
-        if (isOpponent)
-        {
-            return opponentCharacters.Count < maxOpponentCharacters;
-        }
-        else
-        {
-            return playerCharacters.Count < maxPlayerCharacters;
-        }
-    }
-    
-    /// <summary>
-    /// ★★★ 현재 캐릭터 수 반환
+    /// 캐릭터 수 확인
     /// </summary>
     public int GetCharacterCount(bool isOpponent)
     {
+        // null 캐릭터 제거
         if (isOpponent)
         {
+            opponentCharacters.RemoveAll(c => c == null);
             return opponentCharacters.Count;
         }
         else
         {
+            playerCharacters.RemoveAll(c => c == null);
             return playerCharacters.Count;
         }
     }
     
     /// <summary>
-    /// 타일에 캐릭터 소환
+    /// 캐릭터 소환 가능 여부 확인
+    /// </summary>
+    public bool CanSummonCharacter(bool isOpponent)
+    {
+        int currentCount = GetCharacterCount(isOpponent);
+        int maxCount = isOpponent ? maxOpponentCharacters : maxPlayerCharacters;
+        return currentCount < maxCount;
+    }
+    
+    /// <summary>
+    /// 캐릭터를 타일에 소환
     /// </summary>
     public Character SummonCharacterOnTile(CharacterData data, Tile tile, bool isOpponent = false)
     {
@@ -305,7 +234,7 @@ public class PlacementManager : MonoBehaviour
     }
     
     /// <summary>
-    /// 타일의 자동 합성 체크
+    /// ★★★ 타일의 자동 합성 체크
     /// </summary>
     private void CheckAndMergeOnTile(Tile tile)
     {
@@ -329,10 +258,19 @@ public class PlacementManager : MonoBehaviour
                 }
             }
             
-            if (allSame)
+            if (allSame && first.star < CharacterStar.ThreeStar) // 3성은 합성 불가
             {
+                Debug.Log($"[PlacementManager] {tile.name}에서 자동 합성 조건 충족! {first.characterName} {first.star}성 3개");
+                
                 // 자동 합성 실행
-                Debug.Log($"[PlacementManager] {tile.name}에서 자동 합성 조건 충족!");
+                List<Character> mergeTargets = new List<Character>();
+                for (int i = 0; i < 3; i++)
+                {
+                    mergeTargets.Add(characters[i]);
+                }
+                
+                // AutoMergeManager를 통해 합성
+                autoMergeManager.MergeCharacters(mergeTargets.ToArray());
                 
                 // 합성 후 다시 체크 (연쇄 합성 가능)
                 CheckAndMergeOnTile(tile);
@@ -360,42 +298,26 @@ public class PlacementManager : MonoBehaviour
             character = charObj.AddComponent<Character>();
         }
         
-        // 캐릭터 데이터 설정
+        // 캐릭터 초기화
         character.characterName = data.characterName;
-        character.characterIndex = data.characterIndex;
-        character.race = data.race;
+        character.cost = data.cost;
         character.star = data.star;
         character.attackPower = data.attackPower;
-        character.attackRange = data.attackRange;
+        character.health = data.health;
+        character.maxHealth = data.health;
         character.attackSpeed = data.attackSpeed;
-        character.currentHP = data.health;
-        character.maxHP = data.health;
-        character.level = data.level;
-        character.characterSprite = data.characterSprite;
-        character.frontSprite = data.frontSprite;
-        character.backSprite = data.backSprite;
+        character.range = data.range;
+        character.tribe = data.tribe;
+        character.attackShapeType = data.attackShapeType;
         character.areaIndex = isOpponent ? 2 : 1;
-        
-        // 스프라이트 설정
-        SpriteRenderer spriteRenderer = character.GetComponentInChildren<SpriteRenderer>();
-        if (spriteRenderer != null && data.characterSprite != null)
-        {
-            spriteRenderer.sprite = data.characterSprite;
-        }
-        
-        // DraggableCharacter 컴포넌트 추가 (플레이어 캐릭터만)
-        if (!isOpponent && character.GetComponent<DraggableCharacter>() == null)
-        {
-            character.gameObject.AddComponent<DraggableCharacter>();
-        }
         
         return character;
     }
     
     /// <summary>
-    /// 총알 생성 (월드 좌표)
+    /// 총알 생성
     /// </summary>
-    public Bullet CreateBullet(Vector3 position, IDamageable target, Character owner, bool isOpponent = false)
+    public Bullet CreateBullet(Vector3 position, Character owner, object target, bool isOpponent = false)
     {
         if (bulletPrefab == null)
         {
@@ -483,24 +405,47 @@ public class PlacementManager : MonoBehaviour
     public void ToggleRemoveMode()
     {
         removeMode = !removeMode;
-        Debug.Log($"[PlacementManager] 제거 모드: {(removeMode ? "켜짐" : "꺼짐")}");
+        Debug.Log($"[PlacementManager] 제거 모드: {(removeMode ? "ON" : "OFF")}");
     }
     
     /// <summary>
-    /// 모든 플레이어 캐릭터 가져오기
+    /// 캐릭터 제거
     /// </summary>
-    public List<Character> GetPlayerCharacters()
+    public void RemoveCharacter(Character character)
     {
-        playerCharacters.RemoveAll(c => c == null);
-        return new List<Character>(playerCharacters);
+        if (character == null) return;
+        
+        // 타일에서 제거
+        if (character.currentTile != null)
+        {
+            RemoveCharacterFromTile(character, character.currentTile);
+        }
+        
+        // 리스트에서 제거
+        playerCharacters.Remove(character);
+        opponentCharacters.Remove(character);
+        
+        // 오브젝트 파괴
+        Destroy(character.gameObject);
+        
+        Debug.Log($"[PlacementManager] {character.characterName} 제거 완료");
     }
     
     /// <summary>
-    /// 모든 상대방 캐릭터 가져오기
+    /// 유닛 선택 버튼 클릭 처리
     /// </summary>
-    public List<Character> GetOpponentCharacters()
+    public void OnClickSelectUnit()
     {
-        opponentCharacters.RemoveAll(c => c == null);
-        return new List<Character>(opponentCharacters);
+        Debug.Log("[PlacementManager] 유닛 선택 모드 활성화");
+        // 유닛 선택 모드 로직 구현
+    }
+    
+    /// <summary>
+    /// 자동 배치 버튼 클릭 처리
+    /// </summary>
+    public void OnClickAutoPlace()
+    {
+        Debug.Log("[PlacementManager] 자동 배치 실행");
+        // 자동 배치 로직 구현
     }
 }
