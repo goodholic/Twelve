@@ -490,4 +490,5 @@ public class PlacementManager : MonoBehaviour
             Debug.LogWarning("[PlacementManager] 자동 배치 가능한 타일이 없습니다");
         }
     }
+
 }

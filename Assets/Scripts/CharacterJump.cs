@@ -50,8 +50,8 @@ public class CharacterJump : MonoBehaviour
         Debug.Log($"[Character] {character.characterName} 점프 체크: 지역{character.areaIndex}, 선택된 루트: {selectedRoute} → JumpController 루트: {jumpRoute}");
         
         // 현재 지역의 점프 시작 지점과 도착 지점 모두 확인
-        RectTransform jumpStartPoint = jumpController.GetJumpStartPoint(character.areaIndex, jumpRoute);
-        RectTransform jumpEndPoint = jumpController.GetJumpEndPoint(character.areaIndex == 1 ? 2 : 1, jumpRoute);
+        Transform jumpStartPoint = jumpController.GetJumpStartPoint(character.areaIndex, jumpRoute);
+        Transform jumpEndPoint = jumpController.GetJumpEndPoint(character.areaIndex == 1 ? 2 : 1, jumpRoute);
         
         // 점프 지점이 제대로 설정되지 않았으면 기본 점프 조건 사용
         if (jumpStartPoint == null || jumpEndPoint == null)
@@ -95,7 +95,7 @@ public class CharacterJump : MonoBehaviour
         RouteType currentRoute = DetermineCurrentRoute();
         
         // 점프 목표 지점 가져오기
-        RectTransform jumpEnd = jumpController.GetJumpEndPoint(targetRegion, currentRoute);
+        Transform jumpEnd = jumpController.GetJumpEndPoint(targetRegion, currentRoute);
         
         if (jumpEnd == null)
         {

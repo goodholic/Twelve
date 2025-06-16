@@ -444,4 +444,5 @@ public class Character : MonoBehaviour, IDamageable
             Gizmos.DrawLine(transform.position, currentCharTarget.transform.position);
         }
     }
+
 }
