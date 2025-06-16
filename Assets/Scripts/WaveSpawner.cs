@@ -505,4 +505,33 @@ public class WaveSpawner : MonoBehaviour
         isSpawning = false;
         autoStarted = false;
     }
+
+    /// <summary>
+    /// 몬스터가 죽었을 때 호출되는 메서드
+    /// </summary>
+    public void OnMonsterKilled(Monster killedMonster)
+    {
+        if (killedMonster != null)
+        {
+            Debug.Log($"[WaveSpawner] 몬스터 {killedMonster.monsterName} 처치됨");
+            
+            // 몬스터 카운트 감소
+            aliveMonsters--;
+            
+            // 웨이브 완료 체크
+            CheckWaveCompletion();
+        }
+    }
+
+    /// <summary>
+    /// 웨이브 완료 체크
+    /// </summary>
+    private void CheckWaveCompletion()
+    {
+        if (aliveMonsters <= 0 && !isSpawning)
+        {
+            Debug.Log($"[WaveSpawner] Wave {currentWave} 완료!");
+            OnWaveClear();
+        }
+    }
 }

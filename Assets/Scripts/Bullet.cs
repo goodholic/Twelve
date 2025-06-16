@@ -1,56 +1,36 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// 총알 컴포넌트
-/// 게임 기획서: 타워형 캐릭터의 원거리 공격 투사체
+/// 총알 클래스 - 캐릭터와 성이 발사하는 투사체
 /// </summary>
 public class Bullet : MonoBehaviour
 {
-    // 기본 속성
-    [HideInInspector] public IDamageable target;
-    [HideInInspector] public Character owner;
-    [HideInInspector] public float damage;
-    
     [Header("총알 설정")]
+    public float damage = 10f;
     public float speed = 5f;
-    public float maxLifetime = 5f;
+    public float lifetime = 5f;
+    public GameObject targetObject;
+    public Vector3 direction;
     
-    // 방향별 스프라이트
-    [HideInInspector] public Sprite bulletUpDirectionSprite;
-    [HideInInspector] public Sprite bulletDownDirectionSprite;
+    [Header("소유자 정보")]
+    public bool isFromCastle = false;
+    public int ownerAreaIndex = 1;
     
-    // 범위 공격
-    private bool isAreaAttack = false;
-    private float areaRadius = 1.5f;
-    private int ownerAreaIndex = 1;
+    [Header("이펙트")]
+    public GameObject hitEffectPrefab;
+    public GameObject trailEffectPrefab;
     
-    // 특수 효과
-    [Header("특수 효과")]
-    public bool hasPoisonEffect = false;
-    public float poisonDamage = 2f;
-    public float poisonDuration = 3f;
+    [Header("방향별 스프라이트")]
+    public Sprite bulletUpDirectionSprite;
+    public Sprite bulletDownDirectionSprite;
     
-    public bool hasSlowEffect = false;
-    public float slowAmount = 0.5f;
-    public float slowDuration = 2f;
+    [Header("소유자 및 타겟 정보")]
+    public GameObject target;
+    public Character owner;
     
-    public bool hasBleedEffect = false;
-    public float bleedDamage = 3f;
-    public float bleedDuration = 5f;
-    
-    public bool hasStunEffect = false;
-    public float stunDuration = 1f;
-    
-    // VFX 패널
-    private static Transform vfxPanel;
-    
-    // 컴포넌트
+    private float spawnTime;
     private SpriteRenderer spriteRenderer;
-    private Character sourceCharacter;
-    private Vector3 targetPosition;
-    private float lifetime = 0f;
+    private TrailRenderer trailRenderer;
     
     private void Awake()
     {
@@ -60,336 +40,249 @@ public class Bullet : MonoBehaviour
             spriteRenderer = gameObject.AddComponent<SpriteRenderer>();
         }
         
-        // 콜라이더 설정
+        // Layer 설정
+        gameObject.layer = LayerMask.NameToLayer("Bullet");
+        
+        // Collider 설정
         CircleCollider2D collider = GetComponent<CircleCollider2D>();
         if (collider == null)
         {
             collider = gameObject.AddComponent<CircleCollider2D>();
-            collider.radius = 0.2f;
-            collider.isTrigger = true;
         }
+        collider.isTrigger = true;
+        collider.radius = 0.1f;
         
-        // Rigidbody 설정
-        Rigidbody2D rb = GetComponent<Rigidbody2D>();
-        if (rb == null)
+        // Trail 효과 추가
+        if (trailEffectPrefab == null)
         {
-            rb = gameObject.AddComponent<Rigidbody2D>();
-            rb.bodyType = RigidbodyType2D.Kinematic;
+            trailRenderer = gameObject.AddComponent<TrailRenderer>();
+            trailRenderer.time = 0.2f;
+            trailRenderer.startWidth = 0.1f;
+            trailRenderer.endWidth = 0f;
+            trailRenderer.material = new Material(Shader.Find("Sprites/Default"));
+            
+            // 소유자에 따른 색상 설정
+            if (isFromCastle)
+            {
+                trailRenderer.startColor = new Color(1f, 0.8f, 0f, 1f); // 황금색
+                trailRenderer.endColor = new Color(1f, 0.8f, 0f, 0f);
+            }
+            else
+            {
+                trailRenderer.startColor = new Color(0f, 1f, 1f, 1f); // 청록색
+                trailRenderer.endColor = new Color(0f, 1f, 1f, 0f);
+            }
         }
     }
     
-    /// <summary>
-    /// 총알 초기화
-    /// </summary>
-    public void Init(IDamageable target, float damage, float speed, bool isAreaAttack, float areaRadius, int ownerAreaIndex)
+    private void Start()
     {
-        this.target = target;
-        this.damage = damage;
-        this.speed = speed;
-        this.isAreaAttack = isAreaAttack;
-        this.areaRadius = areaRadius;
-        this.ownerAreaIndex = ownerAreaIndex;
+        spawnTime = Time.time;
         
-        // 타겟 위치 저장
-        MonoBehaviour targetMono = target as MonoBehaviour;
-        if (targetMono != null)
+        // Sorting Layer 설정
+        if (spriteRenderer != null)
         {
-            targetPosition = targetMono.transform.position;
+            spriteRenderer.sortingLayerName = "Bullets";
+            spriteRenderer.sortingOrder = 10;
         }
-        
-        // 총알 방향 설정
-        SetBulletDirection((targetPosition - transform.position).normalized);
-        
-        Debug.Log($"[Bullet] 총알 생성 - 데미지: {damage}, 속도: {speed}, 범위공격: {isAreaAttack}");
-    }
-    
-    /// <summary>
-    /// 소스 캐릭터 설정
-    /// </summary>
-    public void SetSourceCharacter(Character character)
-    {
-        sourceCharacter = character;
-        owner = character;
-    }
-    
-    /// <summary>
-    /// VFX 패널 설정 (정적 메서드)
-    /// </summary>
-    public static void SetVfxPanel(Transform panel)
-    {
-        vfxPanel = panel;
     }
     
     private void Update()
     {
-        lifetime += Time.deltaTime;
-        
-        // 최대 생존 시간 체크
-        if (lifetime >= maxLifetime)
+        // 수명 체크
+        if (Time.time - spawnTime > lifetime)
         {
-            Destroy(gameObject);
+            DestroyBullet();
             return;
         }
         
-        // 타겟이 없으면 파괴
-        if (target == null)
+        // 타겟이 있으면 추적
+        if (targetObject != null && targetObject.activeInHierarchy)
         {
-            Destroy(gameObject);
-            return;
+            direction = (targetObject.transform.position - transform.position).normalized;
+            
+            // 회전 업데이트
+            float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
+            transform.rotation = Quaternion.AngleAxis(angle - 90f, Vector3.forward);
         }
         
-        // 타겟 위치로 이동
-        Vector3 direction = (targetPosition - transform.position).normalized;
+        // 이동
         transform.position += direction * speed * Time.deltaTime;
+    }
+    
+    private void OnTriggerEnter2D(Collider2D other)
+    {
+        if (other == null) return;
         
-        // 타겟에 도달했는지 체크
-        if (Vector3.Distance(transform.position, targetPosition) < 0.2f)
+        // 같은 지역의 오브젝트는 무시
+        bool shouldIgnore = false;
+        
+        // 몬스터 체크
+        Monster monster = other.GetComponent<Monster>();
+        if (monster != null)
         {
-            OnReachTarget();
+            if (monster.areaIndex == ownerAreaIndex)
+            {
+                shouldIgnore = true;
+            }
+            else if (monster.IsAlive())
+            {
+                monster.TakeDamage(damage);
+                CreateHitEffect(other.transform.position);
+                DestroyBullet();
+                return;
+            }
+        }
+        
+        // 캐릭터 체크
+        Character character = other.GetComponent<Character>();
+        if (character != null)
+        {
+            if (character.areaIndex == ownerAreaIndex)
+            {
+                shouldIgnore = true;
+            }
+            else if (character.currentHP > 0)
+            {
+                character.TakeDamage(damage);
+                CreateHitEffect(other.transform.position);
+                DestroyBullet();
+                return;
+            }
+        }
+        
+        // 성 체크 (성에서 발사한 총알은 성을 맞추지 않음)
+        if (!isFromCastle)
+        {
+            MiddleCastle middleCastle = other.GetComponent<MiddleCastle>();
+            if (middleCastle != null)
+            {
+                if (middleCastle.areaIndex != ownerAreaIndex && !middleCastle.IsDestroyed())
+                {
+                    middleCastle.TakeDamage(damage);
+                    CreateHitEffect(other.transform.position);
+                    DestroyBullet();
+                    return;
+                }
+            }
+            
+            FinalCastle finalCastle = other.GetComponent<FinalCastle>();
+            if (finalCastle != null)
+            {
+                if (finalCastle.areaIndex != ownerAreaIndex && !finalCastle.IsDestroyed())
+                {
+                    finalCastle.TakeDamage(damage);
+                    CreateHitEffect(other.transform.position);
+                    DestroyBullet();
+                    return;
+                }
+            }
+        }
+        
+        // 장애물이나 벽에 부딪힌 경우
+        if (other.gameObject.layer == LayerMask.NameToLayer("Obstacle"))
+        {
+            DestroyBullet();
         }
     }
     
     /// <summary>
-    /// 타겟에 도달했을 때
+    /// 타격 이펙트 생성
     /// </summary>
-    private void OnReachTarget()
+    private void CreateHitEffect(Vector3 position)
     {
-        if (isAreaAttack)
+        if (hitEffectPrefab != null)
         {
-            // 범위 공격
-            ApplyAreaDamage();
+            GameObject effect = Instantiate(hitEffectPrefab, position, Quaternion.identity);
+            Destroy(effect, 1f);
         }
-        else
+    }
+    
+    /// <summary>
+    /// 총알 제거
+    /// </summary>
+    private void DestroyBullet()
+    {
+        // 트레일이 자연스럽게 사라지도록
+        if (trailRenderer != null)
         {
-            // 단일 타겟 공격
-            if (target != null)
-            {
-                ApplyDamageToTarget(target);
-            }
+            trailRenderer.transform.SetParent(null);
+            Destroy(trailRenderer.gameObject, trailRenderer.time);
         }
         
-        // 폭발 효과 재생
-        PlayHitEffect();
-        
-        // 총알 파괴
         Destroy(gameObject);
     }
     
     /// <summary>
-    /// 충돌 처리
+    /// 총알 초기화 (외부에서 호출)
     /// </summary>
-    private void OnTriggerEnter2D(Collider2D other)
+    public void Initialize(float damage, float speed, GameObject target, int areaIndex, bool fromCastle = false)
     {
-        // 타겟과 충돌했는지 확인
-        IDamageable damageable = other.GetComponent<IDamageable>();
-        if (damageable != null && damageable == target)
-        {
-            OnReachTarget();
-        }
-    }
-    
-    /// <summary>
-    /// 단일 타겟에 데미지 적용
-    /// </summary>
-    private void ApplyDamageToTarget(IDamageable target)
-    {
-        if (target == null) return;
+        this.damage = damage;
+        this.speed = speed;
+        this.targetObject = target;
+        this.ownerAreaIndex = areaIndex;
+        this.isFromCastle = fromCastle;
         
-        target.TakeDamage(damage);
-        
-        // 특수 효과 적용
-        if (hasPoisonEffect)
-            ApplyPoisonEffect(target);
-        
-        if (hasSlowEffect)
-            ApplySlowEffect(target);
-            
-        if (hasBleedEffect)
-            ApplyBleedEffect(target);
-            
-        if (hasStunEffect)
-            ApplyStunEffect(target);
-    }
-    
-    /// <summary>
-    /// 범위 데미지 적용
-    /// </summary>
-    private void ApplyAreaDamage()
-    {
-        Collider2D[] colliders = Physics2D.OverlapCircleAll(transform.position, areaRadius);
-        
-        foreach (var collider in colliders)
+        if (target != null)
         {
-            IDamageable damageable = collider.GetComponent<IDamageable>();
-            if (damageable != null)
-            {
-                // 적 타겟인지 확인
-                Character targetChar = collider.GetComponent<Character>();
-                Monster targetMonster = collider.GetComponent<Monster>();
-                
-                bool isValidTarget = false;
-                
-                if (targetChar != null && targetChar.areaIndex != ownerAreaIndex)
-                    isValidTarget = true;
-                    
-                if (targetMonster != null && targetMonster.areaIndex != ownerAreaIndex)
-                    isValidTarget = true;
-                
-                if (isValidTarget)
-                {
-                    ApplyDamageToTarget(damageable);
-                }
-            }
-        }
-    }
-    
-    /// <summary>
-    /// 타격 효과 재생
-    /// </summary>
-    private void PlayHitEffect()
-    {
-        // VFX 재생 (구현 필요)
-        Debug.Log($"[Bullet] 타격 효과 재생 at {transform.position}");
-    }
-    
-    /// <summary>
-    /// 독 효과 적용
-    /// </summary>
-    private void ApplyPoisonEffect(IDamageable target)
-    {
-        MonoBehaviour targetMono = target as MonoBehaviour;
-        if (targetMono != null)
-        {
-            targetMono.StartCoroutine(PoisonCoroutine(target));
-        }
-    }
-    
-    private IEnumerator PoisonCoroutine(IDamageable target)
-    {
-        float elapsed = 0f;
-        int ticks = 0;
-        
-        while (elapsed < poisonDuration && target != null)
-        {
-            if (ticks > 0) // 첫 틱은 건너뛰기
-            {
-                target.TakeDamage(poisonDamage);
-            }
-            
-            ticks++;
-            yield return new WaitForSeconds(1f);
-            elapsed += 1f;
-        }
-    }
-    
-    /// <summary>
-    /// 슬로우 효과 적용
-    /// </summary>
-    private void ApplySlowEffect(IDamageable target)
-    {
-        MonoBehaviour targetMono = target as MonoBehaviour;
-        if (targetMono != null)
-        {
-            StartCoroutine(SlowCoroutine(targetMono));
-        }
-    }
-    
-    private IEnumerator SlowCoroutine(MonoBehaviour target)
-    {
-        CharacterMovement movement = target.GetComponent<CharacterMovement>();
-        if (movement != null)
-        {
-            float originalSpeed = movement.moveSpeed;
-            movement.moveSpeed *= slowAmount;
-            
-            yield return new WaitForSeconds(slowDuration);
-            
-            if (movement != null)
-                movement.moveSpeed = originalSpeed;
-        }
-    }
-    
-    /// <summary>
-    /// 출혈 효과 적용
-    /// </summary>
-    private void ApplyBleedEffect(IDamageable target)
-    {
-        StartCoroutine(BleedCoroutine(target));
-    }
-    
-    private IEnumerator BleedCoroutine(IDamageable target)
-    {
-        float elapsed = 0f;
-        int ticks = 0;
-        
-        while (elapsed < bleedDuration && target != null)
-        {
-            if (ticks > 0) // 첫 틱은 건너뛰기
-            {
-                target.TakeDamage(bleedDamage);
-            }
-            
-            ticks++;
-            yield return new WaitForSeconds(0.5f);
-            elapsed += 0.5f;
-        }
-    }
-    
-    /// <summary>
-    /// 기절 효과 적용
-    /// </summary>
-    private void ApplyStunEffect(IDamageable target)
-    {
-        MonoBehaviour targetMono = target as MonoBehaviour;
-        if (targetMono != null)
-        {
-            CharacterMovement movement = targetMono.GetComponent<CharacterMovement>();
-            if (movement != null)
-            {
-                movement.StopMoving();
-                targetMono.StartCoroutine(StunRecoveryCoroutine(movement));
-            }
-        }
-    }
-    
-    private IEnumerator StunRecoveryCoroutine(CharacterMovement movement)
-    {
-        yield return new WaitForSeconds(stunDuration);
-        
-        if (movement != null)
-        {
-            movement.StartMoving();
+            direction = (target.transform.position - transform.position).normalized;
         }
     }
     
     /// <summary>
     /// 총알 방향 설정
     /// </summary>
-    public void SetBulletDirection(Vector3 direction)
+    public void SetBulletDirection(Vector3 dir)
     {
-        if (spriteRenderer == null) return;
+        direction = dir.normalized;
         
-        // 위/아래 방향에 따른 스프라이트 변경
-        if (direction.y > 0 && bulletUpDirectionSprite != null)
+        // 방향에 따른 스프라이트 변경
+        if (spriteRenderer != null)
         {
-            spriteRenderer.sprite = bulletUpDirectionSprite;
-        }
-        else if (direction.y < 0 && bulletDownDirectionSprite != null)
-        {
-            spriteRenderer.sprite = bulletDownDirectionSprite;
+            if (dir.y > 0 && bulletUpDirectionSprite != null)
+            {
+                spriteRenderer.sprite = bulletUpDirectionSprite;
+            }
+            else if (dir.y < 0 && bulletDownDirectionSprite != null)
+            {
+                spriteRenderer.sprite = bulletDownDirectionSprite;
+            }
         }
         
-        // 총알 회전
-        float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
+        // 회전 설정
+        float angle = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg;
         transform.rotation = Quaternion.AngleAxis(angle - 90f, Vector3.forward);
     }
     
-    private void OnDrawGizmos()
+    /// <summary>
+    /// 총알 초기화 (CharacterCombat에서 호출)
+    /// </summary>
+    public void Init(float damage, float speed, GameObject targetObj, int areaIndex, bool fromCastle = false)
     {
-        if (isAreaAttack)
+        this.damage = damage;
+        this.speed = speed;
+        this.target = targetObj;
+        this.targetObject = targetObj;
+        this.ownerAreaIndex = areaIndex;
+        this.isFromCastle = fromCastle;
+        
+        if (targetObj != null)
         {
-            Gizmos.color = Color.red;
-            Gizmos.DrawWireSphere(transform.position, areaRadius);
+            direction = (targetObj.transform.position - transform.position).normalized;
+            SetBulletDirection(direction);
+        }
+    }
+    
+    /// <summary>
+    /// 소스 캐릭터 설정
+    /// </summary>
+    public void SetSourceCharacter(Character sourceCharacter)
+    {
+        owner = sourceCharacter;
+        if (sourceCharacter != null)
+        {
+            ownerAreaIndex = sourceCharacter.areaIndex;
         }
     }
 }

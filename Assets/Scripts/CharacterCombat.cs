@@ -342,8 +342,7 @@ public class CharacterCombat : MonoBehaviour
                     }
                     
                     // 총알 초기화
-                    bullet.Init(target, character.attackPower, bulletSpeed,
-                        character.isAreaAttack, character.areaAttackRadius, character.areaIndex);
+                    bullet.Init(character.attackPower, bulletSpeed, targetGameObject, character.areaIndex);
                     bullet.SetSourceCharacter(character);
                     
                     // 시각 효과

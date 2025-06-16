@@ -412,7 +412,12 @@ public class PlacementManager : MonoBehaviour
             bullet = bulletObj.AddComponent<Bullet>();
         }
         
-        bullet.target = target;
+        // IDamageable을 GameObject로 변환
+        if (target is MonoBehaviour targetMono)
+        {
+            bullet.target = targetMono.gameObject;
+            bullet.targetObject = targetMono.gameObject;
+        }
         bullet.owner = owner;
         bullet.damage = owner.attackPower;
         
