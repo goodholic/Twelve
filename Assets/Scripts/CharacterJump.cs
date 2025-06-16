@@ -45,7 +45,7 @@ public class CharacterJump : MonoBehaviour
         }
         
         // CharacterJumpController의 점프 지점 확인
-        RouteType jumpRoute = ConvertRouteType(selectedRoute);
+        RouteType jumpRoute = selectedRoute;
         
         Debug.Log($"[Character] {character.characterName} 점프 체크: 지역{character.areaIndex}, 선택된 루트: {selectedRoute} → JumpController 루트: {jumpRoute}");
         
@@ -56,179 +56,138 @@ public class CharacterJump : MonoBehaviour
         // 점프 지점이 제대로 설정되지 않았으면 기본 점프 조건 사용
         if (jumpStartPoint == null || jumpEndPoint == null)
         {
-            Debug.LogWarning($"[Character] {character.characterName} - 점프 지점 미설정! 지역{character.areaIndex}, {jumpRoute} 루트");
+            Debug.LogWarning($"[Character] {character.characterName} - 점프 지점 미설정! jumpStartPoint={jumpStartPoint}, jumpEndPoint={jumpEndPoint}");
             
-            // 웨이포인트 진행률로 점프 허용
+            // 기본 점프 조건: 현재 웨이포인트 인덱스가 일정 비율 이상
             if (movement.pathWaypoints != null && movement.pathWaypoints.Length > 0)
             {
-                float progressRatio = (float)movement.currentWaypointIndex / (float)movement.pathWaypoints.Length;
-                // 진행률 70% 이상일 때 점프 (기획서: 캐릭터가 상대 진영으로 진격)
-                if (progressRatio >= 0.7f)
-                {
-                    Debug.Log($"[Character] {character.characterName} - 점프 지점 미설정이지만 진행률 {progressRatio:F2}로 점프 허용");
-                    return true;
-                }
+                float progress = (float)movement.currentWaypointIndex / movement.pathWaypoints.Length;
+                return progress >= 0.8f; // 80% 이상 진행했으면 점프
             }
-            return false;
         }
         
-        // UI 좌표계에서 거리 계산
-        RectTransform charRect = GetComponent<RectTransform>();
-        if (charRect == null)
+        // 점프 지점이 있으면 현재 위치와 비교
+        if (jumpStartPoint != null)
         {
-            return false;
-        }
-        
-        Vector2 currentUIPos = charRect.anchoredPosition;
-        Vector2 jumpUIPos = jumpStartPoint.anchoredPosition;
-        float distToJumpPoint = Vector2.Distance(currentUIPos, jumpUIPos);
-        
-        // 점프 거리를 더 멀리 설정 (3라인 시스템에 맞게)
-        if (distToJumpPoint < 800f)
-        {
-            Debug.Log($"[Character] {character.characterName}이(가) 지역{character.areaIndex} 점프 포인트에 도달!");
-            return true;
+            float distance = Vector3.Distance(transform.position, jumpStartPoint.position);
+            if (distance < 1.0f) // 점프 지점 근처에 있으면
+            {
+                Debug.Log($"[Character] {character.characterName} 점프 지점 도달!");
+                return true;
+            }
         }
         
         return false;
     }
     
-    public void StartJumpToOtherRegion(System.Action<int> onComplete)
+    /// <summary>
+    /// 점프 시작
+    /// </summary>
+    public void StartJumpToRegion(int targetRegion)
     {
-        if (movement.IsJumpingAcross()) return;
-        
-        // 히어로는 점프 불가
-        if (character.isHero)
+        if (jumpController == null)
         {
-            Debug.Log($"[Character] 히어로 {character.characterName}은(는) 타 지역으로 점프할 수 없습니다!");
+            Debug.LogWarning($"[CharacterJump] CharacterJumpController가 없습니다!");
             return;
         }
         
-        // CharacterJumpController 사용
-        if (jumpController != null)
+        // 현재 라우트 확인
+        RouteType currentRoute = DetermineCurrentRoute();
+        
+        // 점프 목표 지점 가져오기
+        RectTransform jumpEnd = jumpController.GetJumpEndPoint(targetRegion, currentRoute);
+        
+        if (jumpEnd == null)
         {
-            RouteType jumpRoute = ConvertRouteType(character.selectedRoute);
-            
-            // 점프 지점이 제대로 설정되어 있는지 미리 확인
-            int targetRegion = (character.areaIndex == 1) ? 2 : 1;
-            RectTransform startPoint = jumpController.GetJumpStartPoint(character.areaIndex, jumpRoute);
-            RectTransform endPoint = jumpController.GetJumpEndPoint(character.areaIndex, jumpRoute);
-            
-            Debug.Log($"[Character] {character.characterName} 점프 지점 확인: 지역{character.areaIndex}→{targetRegion}, {jumpRoute} 루트");
-            
-            if (startPoint == null || endPoint == null)
-            {
-                // 점프 지점이 설정되지 않았어도 기본 점프 실행
-                Debug.LogWarning($"[Character] {character.characterName} - 점프 지점이 설정되지 않았지만 기본 점프를 실행합니다.");
-                
-                // 웨이포인트 정보 백업
-                Transform[] backupWaypoints = movement.pathWaypoints;
-                int backupCurrentIndex = movement.currentWaypointIndex;
-                int backupMaxIndex = movement.maxWaypointIndex;
-                
-                movement.SetHasJumped(true);
-                
-                // 패널 변경
-                UpdatePanelForRegion(targetRegion);
-                
-                // 웨이포인트 정보 복원
-                movement.pathWaypoints = backupWaypoints;
-                movement.currentWaypointIndex = backupCurrentIndex;
-                movement.maxWaypointIndex = backupMaxIndex;
-                
-                movement.SetWaypointsForNewRegion(targetRegion);
-                
-                onComplete?.Invoke(targetRegion);
-                return;
-            }
-            
-            movement.SetJumpingAcross(true);
-            
-            // 지역1 → 지역2로 점프
-            if (character.areaIndex == 1)
-            {
-                jumpController.onJumpComplete = () => onComplete?.Invoke(2);
-                jumpController.JumpBetweenRegions(1, 2, jumpRoute);
-                Debug.Log($"[Character] {character.characterName} CharacterJumpController로 지역1→지역2 점프 시작 (루트: {jumpRoute})");
-            }
-            // 지역2 → 지역1로 점프
-            else if (character.areaIndex == 2)
-            {
-                jumpController.onJumpComplete = () => onComplete?.Invoke(1);
-                jumpController.JumpBetweenRegions(2, 1, jumpRoute);
-                Debug.Log($"[Character] {character.characterName} CharacterJumpController로 지역2→지역1 점프 시작 (루트: {jumpRoute})");
-            }
+            Debug.LogWarning($"[CharacterJump] 점프 목표 지점을 찾을 수 없습니다! 지역: {targetRegion}, 루트: {currentRoute}");
+            return;
         }
-        else
-        {
-            // CharacterJumpController가 없으면 점프 건너뛰기
-            Debug.LogWarning($"[Character] {character.characterName}에 CharacterJumpController가 없어 점프를 건너뜁니다.");
-            movement.SetJumpingAcross(false);
-        }
+        
+        StartCoroutine(JumpCoroutine(jumpEnd.position));
     }
     
-    private RouteType ConvertRouteType(RouteType route)
+    /// <summary>
+    /// 현재 라우트 결정
+    /// </summary>
+    private RouteType DetermineCurrentRoute()
     {
-        // 이제 동일한 타입이므로 변환 없이 그대로 반환
-        return route;
+        // 캐릭터의 selectedRoute 사용
+        if (character.selectedRoute >= 0)
+        {
+            return (RouteType)character.selectedRoute;
+        }
+        
+        // 위치 기반으로 결정
+        if (transform.position.x < -2f)
+            return RouteType.Left;
+        else if (transform.position.x > 2f)
+            return RouteType.Right;
+        else
+            return RouteType.Center;
     }
     
-    private void UpdatePanelForRegion(int newAreaIndex)
+    /// <summary>
+    /// 점프 코루틴
+    /// </summary>
+    private IEnumerator JumpCoroutine(Vector3 targetPosition)
     {
-        RectTransform charRect = GetComponent<RectTransform>();
-        if (charRect != null)
+        Debug.Log($"[CharacterJump] {character.characterName} 점프 시작!");
+        
+        movement.SetJumpingAcross(true);
+        
+        Vector3 startPos = transform.position;
+        float jumpDuration = 2f;
+        float jumpHeight = 3f;
+        float elapsed = 0f;
+        
+        while (elapsed < jumpDuration)
         {
-            PlacementManager pm = PlacementManager.Instance;
-            if (pm == null)
-            {
-                Debug.LogError($"[Character] {character.characterName} PlacementManager.Instance가 null!");
-                return;
-            }
+            elapsed += Time.deltaTime;
+            float t = elapsed / jumpDuration;
             
-            if (newAreaIndex == 1)
-            {
-                // 지역1로 이동 시 ourMonsterPanel로 변경
-                if (pm.ourMonsterPanel != null)
-                {
-                    Debug.Log($"[Character] {character.characterName} 지역1 패널로 이동 (원래 지역: {character.areaIndex})");
-                    charRect.SetParent(pm.ourMonsterPanel, false);
-                    
-                    Vector3 worldPos = transform.position;
-                    Vector2 localPos = pm.ourMonsterPanel.InverseTransformPoint(worldPos);
-                    charRect.anchoredPosition = localPos;
-                    charRect.localRotation = Quaternion.identity;
-                    
-                    Debug.Log($"[Character] {character.characterName} 지역1 패널 이동 완료 - 월드 위치: {worldPos}, 로컬 위치: {localPos}");
-                }
-                else
-                {
-                    Debug.LogError($"[Character] {character.characterName} ourMonsterPanel이 null!");
-                }
-            }
-            else if (newAreaIndex == 2)
-            {
-                // 지역2로 이동 시 opponentOurMonsterPanel로 변경
-                if (pm.opponentOurMonsterPanel != null)
-                {
-                    Debug.Log($"[Character] {character.characterName} 지역2 패널로 이동 (원래 지역: {character.areaIndex})");
-                    charRect.SetParent(pm.opponentOurMonsterPanel, false);
-                    
-                    Vector3 worldPos = transform.position;
-                    Vector2 localPos = pm.opponentOurMonsterPanel.InverseTransformPoint(worldPos);
-                    charRect.anchoredPosition = localPos;
-                    charRect.localRotation = Quaternion.identity;
-                    
-                    Debug.Log($"[Character] {character.characterName} 지역2 패널 이동 완료 - 월드 위치: {worldPos}, 로컬 위치: {localPos}");
-                }
-                else
-                {
-                    Debug.LogError($"[Character] {character.characterName} opponentOurMonsterPanel이 null!");
-                }
-            }
+            // 수평 이동
+            Vector3 horizontalPos = Vector3.Lerp(startPos, targetPosition, t);
+            
+            // 수직 이동 (포물선)
+            float height = jumpHeight * 4f * t * (1f - t);
+            
+            transform.position = new Vector3(horizontalPos.x, horizontalPos.y + height, horizontalPos.z);
+            
+            yield return null;
         }
-        else
+        
+        transform.position = targetPosition;
+        movement.SetJumpingAcross(false);
+        movement.SetHasJumped(true);
+        
+        // 지역 변경
+        character.areaIndex = (character.areaIndex == 1) ? 2 : 1;
+        
+        // 새로운 웨이포인트 설정
+        UpdateWaypointsAfterJump();
+        
+        Debug.Log($"[CharacterJump] {character.characterName} 점프 완료! 새 지역: {character.areaIndex}");
+    }
+    
+    /// <summary>
+    /// 점프 후 웨이포인트 업데이트
+    /// </summary>
+    private void UpdateWaypointsAfterJump()
+    {
+        WaypointManager waypointManager = WaypointManager.Instance;
+        if (waypointManager == null)
         {
-            Debug.LogError($"[Character] {character.characterName} RectTransform이 null!");
+            Debug.LogWarning("[CharacterJump] WaypointManager를 찾을 수 없습니다!");
+            return;
+        }
+        
+        RouteType route = DetermineCurrentRoute();
+        Transform[] newWaypoints = waypointManager.GetWaypointsForRoute(character.areaIndex, route);
+        
+        if (newWaypoints != null && newWaypoints.Length > 0)
+        {
+            movement.SetWaypoints(newWaypoints, 0);
+            movement.StartMoving();
         }
     }
 }

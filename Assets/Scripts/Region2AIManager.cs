@@ -50,51 +50,110 @@ public class Region2AIManager : MonoBehaviour
         if (PlacementManager.Instance != null)
         {
             Debug.Log("[Region2AIManager] PlacementManager 연결 확인 완료.");
-            
-            // UI 패널 상태 확인
-            RectTransform opponentCharPanel = PlacementManager.Instance.opponentCharacterPanel;
-            RectTransform opponentBulletPanel = PlacementManager.Instance.opponentBulletPanel;
-            RectTransform opponentMonsterPanel = PlacementManager.Instance.opponentOurMonsterPanel;
-            
-            Debug.Log(""
-                + "[Region2AIManager] UI 패널 상태: "
-                + $"opponentCharPanel={(opponentCharPanel != null)}, "
-                + $"opponentBulletPanel={(opponentBulletPanel != null)}, "
-                + $"opponentMonsterPanel={(opponentMonsterPanel != null)}"
-            );
-            
-            // 씬의 모든 Canvas 확인(디버그)
-            Canvas[] allCanvases = GameObject.FindObjectsByType<Canvas>(FindObjectsSortMode.None);
-            Debug.Log($"[Region2AIManager] 씬에 존재하는 Canvas 개수: {allCanvases.Length}");
-            for (int i = 0; i < allCanvases.Length; i++)
-            {
-                Canvas c = allCanvases[i];
-                Debug.Log($"[Region2AIManager] Canvas[{i}]: {c.name}, RenderMode={c.renderMode}, "
-                         + $"OverrideSorting={c.overrideSorting}, SortingOrder={c.sortingOrder}");
-            }
+        }
+        else
+        {
+            Debug.LogError("[Region2AIManager] PlacementManager.Instance가 null입니다!");
         }
 
-        // (B) 지역2 히어로(인덱스=9) 즉시 생성 시도
-        SpawnRegion2HeroImmediately();
+        // (B) opponentCharacterDatabase 유효성 체크
+        if (opponentCharacterDatabase == null)
+        {
+            Debug.LogError("[Region2AIManager] opponentCharacterDatabase가 null입니다!");
+            return;
+        }
+        if (opponentCharacterDatabase.characters == null || opponentCharacterDatabase.characters.Length == 0)
+        {
+            Debug.LogError("[Region2AIManager] opponentCharacterDatabase.characters가 비어있습니다!");
+            return;
+        }
 
-        // (C) 일반 AI 루틴(0~8번) 시작
+        // (C) 타일 자동 검색 (Inspector에서 설정하지 않은 경우)
+        if (walkable2LeftTiles.Count == 0 && walkable2CenterTiles.Count == 0 && walkable2RightTiles.Count == 0)
+        {
+            CollectWalkable2Tiles();
+        }
+        if (placable2Tiles.Count == 0)
+        {
+            CollectPlacable2Tiles();
+        }
+
+        // (D) AI 루틴 시작
         StartCoroutine(AIRoutine());
-        
-        // (D) AI 합성 루틴 시작
         StartCoroutine(AIMergeRoutine());
+
+        // (E) 지역2 히어로 캐릭터 즉시 생성
+        CreateRegion2HeroCharacter();
     }
 
     /// <summary>
-    /// 인덱스 0~8은 일반 유닛 / 9번은 히어로
-    /// 여기서 9번 캐릭터(히어로)가 null이 아니면 즉시 생성 후 계속 유지
+    /// Walkable2 타일들을 자동으로 수집
     /// </summary>
-    private void SpawnRegion2HeroImmediately()
+    private void CollectWalkable2Tiles()
     {
-        // 1) DB 및 배열 길이 확인
-        if (opponentCharacterDatabase == null || opponentCharacterDatabase.characters == null)
+        Tile[] allTiles = Object.FindObjectsByType<Tile>(FindObjectsSortMode.None);
+        
+        foreach (var tile in allTiles)
         {
-            Debug.LogWarning("[Region2AIManager] opponentCharacterDatabase 또는 .characters가 null입니다. (지역2 히어로 생성 불가)");
-            return;
+            if (tile == null) continue;
+            
+            if (tile.IsWalkable2Left())
+                walkable2LeftTiles.Add(tile);
+            else if (tile.IsWalkable2Center())
+                walkable2CenterTiles.Add(tile);
+            else if (tile.IsWalkable2Right())
+                walkable2RightTiles.Add(tile);
+        }
+        
+        Debug.Log($"[Region2AIManager] Walkable2 타일 수집 완료 - 좌:{walkable2LeftTiles.Count}, 중앙:{walkable2CenterTiles.Count}, 우:{walkable2RightTiles.Count}");
+    }
+
+    /// <summary>
+    /// Placable2 타일들을 자동으로 수집
+    /// </summary>
+    private void CollectPlacable2Tiles()
+    {
+        Tile[] allTiles = Object.FindObjectsByType<Tile>(FindObjectsSortMode.None);
+        
+        foreach (var tile in allTiles)
+        {
+            if (tile == null) continue;
+            
+            if (tile.IsPlacable2() || tile.IsPlaced2())
+            {
+                placable2Tiles.Add(tile);
+            }
+        }
+        
+        Debug.Log($"[Region2AIManager] Placable2 타일 수집 완료: {placable2Tiles.Count}개");
+    }
+
+    /// <summary>
+    /// 지역2 히어로 캐릭터 생성
+    /// </summary>
+    private void CreateRegion2HeroCharacter()
+    {
+        // 1) 패널 확인
+        if (opponentHeroPanel == null)
+        {
+            Debug.LogWarning("[Region2AIManager] opponentHeroPanel이 null => 지역2 히어로 생성 불가");
+            
+            // 자동으로 찾기 시도
+            GameObject heroPanel = GameObject.Find("OpponentHeroPanel");
+            if (heroPanel != null)
+            {
+                opponentHeroPanel = heroPanel.GetComponent<RectTransform>();
+                if (opponentHeroPanel == null)
+                {
+                    opponentHeroPanel = heroPanel.transform as RectTransform;
+                }
+            }
+            
+            if (opponentHeroPanel == null)
+            {
+                Debug.LogError("[Region2AIManager] OpponentHeroPanel을 찾을 수 없습니다! (지역2 히어로 생성 불가)");
+                return;
+            }
         }
         if (opponentCharacterDatabase.characters.Length < 10)
         {
@@ -115,14 +174,7 @@ public class Region2AIManager : MonoBehaviour
             return;
         }
 
-        // 3) opponentHeroPanel 체크
-        if (opponentHeroPanel == null)
-        {
-            Debug.LogWarning("[Region2AIManager] opponentHeroPanel이 null => 지역2 히어로 생성 불가");
-            return;
-        }
-
-        // 4) 실제 생성
+        // 3) 실제 생성
         GameObject heroObj = Instantiate(heroCandidate.spawnPrefab, opponentHeroPanel);
 
         RectTransform rt = heroObj.GetComponent<RectTransform>();
@@ -138,7 +190,7 @@ public class Region2AIManager : MonoBehaviour
             heroObj.transform.localRotation = Quaternion.identity;
         }
 
-        // 5) 캐릭터 설정
+        // 4) 캐릭터 설정
         Character heroComp = heroObj.GetComponent<Character>();
         if (heroComp != null)
         {
@@ -148,8 +200,8 @@ public class Region2AIManager : MonoBehaviour
             heroComp.attackPower = heroCandidate.attackPower;
             heroComp.attackSpeed = heroCandidate.attackSpeed;
             heroComp.attackRange = heroCandidate.attackRange;
-            heroComp.currentHP   = heroCandidate.maxHP;
-            heroComp.star        = heroCandidate.initialStar;
+            heroComp.currentHP = heroCandidate.maxHP;
+            heroComp.star = heroCandidate.initialStar;
             
             // visual 컴포넌트가 초기화될 때까지 잠시 대기 후 ApplyStarVisual 호출
             StartCoroutine(ApplyStarVisualDelayed(heroComp));
@@ -257,42 +309,42 @@ public class Region2AIManager : MonoBehaviour
             return;
         }
     }
-    
+
     /// <summary>
-    /// 특정 스타 레벨의 캐릭터 3개를 찾아 합성
+    /// 특정 별 등급의 캐릭터들을 합성 시도
     /// </summary>
     private bool TryMergeByStarLevel(List<Character> characters, CharacterStar starLevel)
     {
-        // 같은 스타 레벨의 캐릭터들 찾기
-        List<Character> sameStarChars = characters.FindAll(c => c.star == starLevel);
+        // 같은 별 등급의 캐릭터들을 이름별로 그룹화
+        Dictionary<string, List<Character>> sameTypeCharacters = new Dictionary<string, List<Character>>();
         
-        if (sameStarChars.Count >= 3)
+        foreach (var character in characters)
         {
-            // 캐릭터 이름별로 그룹화
-            Dictionary<string, List<Character>> charGroups = new Dictionary<string, List<Character>>();
-            
-            foreach (var character in sameStarChars)
+            if (character.star == starLevel)
             {
-                string charName = character.characterName;
-                if (!charGroups.ContainsKey(charName))
+                if (!sameTypeCharacters.ContainsKey(character.characterName))
                 {
-                    charGroups[charName] = new List<Character>();
+                    sameTypeCharacters[character.characterName] = new List<Character>();
                 }
-                charGroups[charName].Add(character);
+                sameTypeCharacters[character.characterName].Add(character);
             }
-            
-            // 3개 이상인 그룹 찾기
-            foreach (var group in charGroups)
+        }
+        
+        // 3개 이상인 그룹 찾기
+        foreach (var kvp in sameTypeCharacters)
+        {
+            if (kvp.Value.Count >= 3)
             {
-                if (group.Value.Count >= 3)
+                // 합성할 3개 선택
+                List<Character> toMerge = kvp.Value.GetRange(0, 3);
+                
+                // 가장 위쪽(Y값이 큰) 캐릭터의 타일 찾기
+                Character topMostChar = null;
+                float highestY = float.MinValue;
+                
+                foreach (var character in toMerge)
                 {
-                    List<Character> toMerge = group.Value.GetRange(0, 3);
-                    
-                    // 가장 위쪽(y좌표가 큰) 캐릭터 찾기
-                    Character topMostChar = null;
-                    float highestY = float.MinValue;
-                    
-                    foreach (var character in toMerge)
+                    if (character.currentTile != null)
                     {
                         RectTransform rect = character.GetComponent<RectTransform>();
                         float y = rect != null ? rect.anchoredPosition.y : character.transform.position.y;
@@ -303,13 +355,13 @@ public class Region2AIManager : MonoBehaviour
                             topMostChar = character;
                         }
                     }
-                    
-                    if (topMostChar != null && topMostChar.currentTile != null)
-                    {
-                        // MergeManager를 통해 합성 실행
-                        ExecuteAIMerge(toMerge, topMostChar.currentTile);
-                        return true;
-                    }
+                }
+                
+                if (topMostChar != null && topMostChar.currentTile != null)
+                {
+                    // MergeManager를 통해 합성 실행
+                    ExecuteAIMerge(toMerge, topMostChar.currentTile);
+                    return true;
                 }
             }
         }
@@ -388,26 +440,29 @@ public class Region2AIManager : MonoBehaviour
         List<CharacterData> validList = new List<CharacterData>();
         for (int i = 0; i < 9; i++)
         {
-            CharacterData c = opponentCharacterDatabase.characters[i];
-            if (c != null)
+            if (i < opponentCharacterDatabase.characters.Length)
             {
-                // 프리팹 유효성 검사
-                if (c.spawnPrefab != null)
+                CharacterData c = opponentCharacterDatabase.characters[i];
+                if (c != null)
                 {
-                    // Character 컴포넌트 확인
-                    Character charComp = c.spawnPrefab.GetComponent<Character>();
-                    if (charComp != null)
+                    // 프리팹 유효성 검사
+                    if (c.spawnPrefab != null)
                     {
-                        validList.Add(c);
+                        // Character 컴포넌트 확인
+                        Character charComp = c.spawnPrefab.GetComponent<Character>();
+                        if (charComp != null)
+                        {
+                            validList.Add(c);
+                        }
+                        else
+                        {
+                            Debug.LogWarning($"[Region2AIManager] 캐릭터({c.characterName})의 spawnPrefab에 Character 컴포넌트가 없음 => 소환 목록에서 제외");
+                        }
                     }
                     else
                     {
-                        Debug.LogWarning($"[Region2AIManager] 캐릭터({c.characterName})의 spawnPrefab에 Character 컴포넌트가 없음 => 소환 목록에서 제외");
+                        Debug.LogWarning($"[Region2AIManager] 캐릭터({c.characterName})의 spawnPrefab이 null => 소환 목록에서 제외");
                     }
-                }
-                else
-                {
-                    Debug.LogWarning($"[Region2AIManager] 캐릭터({c.characterName})의 spawnPrefab이 null => 소환 목록에서 제외");
                 }
             }
         }
@@ -508,6 +563,17 @@ public class Region2AIManager : MonoBehaviour
         // forceEnemyArea2=true를 전달하여 지역2에 강제 소환
         if (PlacementManager.Instance != null)
         {
+            // 미네랄 소비
+            CoreDataManager coreData = CoreDataManager.Instance;
+            if (coreData != null && coreData.region2MineralBar != null)
+            {
+                if (!coreData.region2MineralBar.TrySpend(chosen.cost))
+                {
+                    Debug.LogWarning($"[Region2AIManager] 미네랄 부족으로 소환 실패");
+                    return false;
+                }
+            }
+            
             bool success = PlacementManager.Instance.SummonCharacterOnTile(foundIndex, tile, true);
             
             if (success)
@@ -517,6 +583,12 @@ public class Region2AIManager : MonoBehaviour
             else
             {
                 Debug.Log($"[Region2AIManager] 소환 실패 => {chosen.characterName}, tile={tile.name}");
+                
+                // 소환 실패 시 미네랄 환불
+                if (coreData != null && coreData.region2MineralBar != null)
+                {
+                    coreData.region2MineralBar.Refund(chosen.cost);
+                }
             }
             
             return success;

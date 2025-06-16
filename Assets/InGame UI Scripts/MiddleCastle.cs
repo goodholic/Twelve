@@ -153,3 +153,76 @@ public class MiddleCastle : MonoBehaviour, IDamageable
         return maxHealth;
     }
 }
+
+/// <summary>
+/// 중간성 클래스 - 게임 기획서: 체력 500
+/// </summary>
+public class MiddleCastle : MonoBehaviour, IDamageable
+{
+    [Header("성 정보")]
+    public string castleName = "중간성";
+    public int maxHealth = 500;
+    public int currentHealth = 500;
+    
+    [Header("UI")]
+    public Slider healthBar;
+    public TextMeshProUGUI healthText;
+    
+    [Header("효과")]
+    public GameObject damageEffect;
+    public GameObject destroyEffect;
+    
+    private void Start()
+    {
+        UpdateHealthUI();
+    }
+    
+    public void TakeDamage(float damage)
+    {
+        currentHealth -= Mathf.RoundToInt(damage);
+        currentHealth = Mathf.Max(0, currentHealth);
+        
+        UpdateHealthUI();
+        
+        if (damageEffect != null)
+        {
+            GameObject effect = Instantiate(damageEffect, transform.position, Quaternion.identity);
+            Destroy(effect, 2f);
+        }
+        
+        Debug.Log($"[MiddleCastle] {castleName}이(가) {damage} 데미지를 받았습니다! 남은 체력: {currentHealth}/{maxHealth}");
+        
+        if (currentHealth <= 0)
+        {
+            OnDestroyed();
+        }
+    }
+    
+    private void UpdateHealthUI()
+    {
+        if (healthBar != null)
+        {
+            healthBar.maxValue = maxHealth;
+            healthBar.value = currentHealth;
+        }
+        
+        if (healthText != null)
+        {
+            healthText.text = $"{currentHealth}/{maxHealth}";
+        }
+    }
+    
+    private void OnDestroyed()
+    {
+        Debug.Log($"[MiddleCastle] {castleName}이(가) 파괴되었습니다!");
+        
+        if (destroyEffect != null)
+        {
+            GameObject effect = Instantiate(destroyEffect, transform.position, Quaternion.identity);
+            Destroy(effect, 3f);
+        }
+        
+        // 게임 기획서: 중간성이 파괴되면 최종성을 목표로
+        gameObject.SetActive(false);
+    }
+}

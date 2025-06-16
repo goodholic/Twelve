@@ -366,3 +366,70 @@ public class CharacterCombat : MonoBehaviour
         visual?.PlayAttackAnimation();
     }
 }
+
+// CharacterCombat.cs 수정 부분 (105번 줄 근처)
+// GetBulletPrefab 메서드 수정
+private GameObject GetBulletPrefab()
+{
+    var coreData = CoreDataManager.Instance;
+    if (coreData == null)
+    {
+        Debug.LogError("[CharacterCombat] CoreDataManager.Instance가 null입니다!");
+        return null;
+    }
+    
+    // 기본 총알 프리팹 사용 (defaultBulletPrefab이 CoreDataManager에 추가됨)
+    if (coreData.defaultBulletPrefab != null)
+    {
+        return coreData.defaultBulletPrefab;
+    }
+    
+    // bulletPrefab이 이미 설정되어 있으면 사용
+    if (bulletPrefab != null)
+    {
+        return bulletPrefab;
+    }
+    
+    return null;
+}
+
+// CharacterCombat.cs 수정 부분 (121번 줄 근처)
+// 공격 체크 수정
+private bool CanAttackTarget()
+{
+    // 이동 중인지 확인
+    if (movement != null)
+    {
+        // isMoving 프로퍼티 사용
+        if (movement.isMoving)
+        {
+            return false;
+        }
+    }
+    
+    // 점프 중인지 확인
+    if (jumpSystem != null && movement != null)
+    {
+        if (movement.IsJumping() || movement.IsJumpingAcross())
+        {
+            return false;
+        }
+    }
+    
+    return true;
+}
+
+// CharacterCombat.cs 수정 부분 (358번 줄 근처)
+// 범위 공격 체크 수정
+private void CheckAreaAttack()
+{
+    if (!character.isAreaAttack) return;
+    
+    // 이동 중이면 범위 공격 안함
+    if (movement != null && movement.isMoving)
+    {
+        return;
+    }
+    
+    // 범위 공격 로직...
+}

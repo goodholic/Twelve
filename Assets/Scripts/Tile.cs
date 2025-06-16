@@ -1,15 +1,43 @@
-using System.Collections.Generic;
 using UnityEngine;
+using System.Collections.Generic;
 
 /// <summary>
-/// 월드 좌표 기반 타일 컴포넌트
-/// 게임 기획서: 타일 기반 소환 시스템
+/// 타일 클래스 - 게임 기획서: 타일 기반 소환 시스템
 /// </summary>
 public class Tile : MonoBehaviour
 {
-    // ================================
-    // 타일 타입 정의
-    // ================================
+    [Header("타일 상태")]
+    public TileType tileType = TileType.None;
+    public bool isBlocked = false;
+    public bool isRegion2 = false; // 지역2 타일인지 여부
+
+    [Header("타일 인덱스")]
+    public int row;
+    public int column;
+    public int tileIndex;
+
+    [Header("캐릭터 정보")]
+    [SerializeField] private List<Character> occupyingCharacters = new List<Character>();
+    
+    [Header("라우트 정보")]
+    public RouteType belongingRoute = RouteType.Center;
+
+    [Header("타일 프리팹")]
+    public GameObject walkableTilePrefab;
+    public GameObject placeableTilePrefab;
+    public GameObject placedTilePrefab;
+    public GameObject blockedTilePrefab;
+
+    private GameObject currentVisual;
+    private SpriteRenderer spriteRenderer;
+    
+    // 하이라이트 효과용
+    private Color originalColor;
+    private bool isHighlighted = false;
+
+    /// <summary>
+    /// 타일 타입 열거형
+    /// </summary>
     public enum TileType
     {
         None,
@@ -24,34 +52,10 @@ public class Tile : MonoBehaviour
         Placeable,
         Placeable2,
         PlaceTile,
-        Placed2
+        Placed2,
+        Blocked
     }
 
-    [Header("타일 설정")]
-    [SerializeField] private TileType tileType = TileType.None;
-    [SerializeField] private bool isBlocked = false;
-    
-    [Header("타일 위치 정보")]
-    public int row;
-    public int column;
-    public int tileIndex;
-    public int belongingRoute = -1; // 소속 루트 (0: 왼쪽, 1: 중앙, 2: 오른쪽)
-    
-    [Header("시각적 표현")]
-    [SerializeField] private GameObject walkableTilePrefab;
-    [SerializeField] private GameObject placeableTilePrefab;
-    [SerializeField] public GameObject placeTilePrefab;  // public으로 변경
-    [SerializeField] private GameObject placedTilePrefab;
-    [SerializeField] private GameObject blockedTilePrefab;
-    
-    // 캐릭터 관리
-    private List<Character> occupyingCharacters = new List<Character>();
-    private const int maxCharactersPerTile = 3; // 같은 종류 캐릭터 최대 3개
-    
-    // 시각적 오브젝트 참조
-    private GameObject currentVisual;
-    private SpriteRenderer spriteRenderer;
-    
     private void Awake()
     {
         spriteRenderer = GetComponent<SpriteRenderer>();
@@ -59,37 +63,41 @@ public class Tile : MonoBehaviour
         {
             spriteRenderer = gameObject.AddComponent<SpriteRenderer>();
         }
-        
-        // 타일 기본 설정
-        gameObject.layer = LayerMask.NameToLayer("Default");
-        
-        // 콜라이더 설정
-        BoxCollider2D collider = GetComponent<BoxCollider2D>();
-        if (collider == null)
-        {
-            collider = gameObject.AddComponent<BoxCollider2D>();
-        }
-        collider.isTrigger = true;
-        
+        originalColor = spriteRenderer.color;
+    }
+
+    private void Start()
+    {
         UpdateTileVisual();
     }
 
     // ================================
     // 타일 타입 확인 메서드들
     // ================================
+    
+    // 지역1 타일 타입
     public bool IsWalkable() => tileType == TileType.Walkable;
-    public bool IsWalkable2() => tileType == TileType.Walkable2;
     public bool IsWalkableLeft() => tileType == TileType.WalkableLeft;
     public bool IsWalkableCenter() => tileType == TileType.WalkableCenter;
     public bool IsWalkableRight() => tileType == TileType.WalkableRight;
+    public bool IsPlacable() => tileType == TileType.Placeable;
+    public bool IsPlaceable() => tileType == TileType.Placeable;
+    public bool IsPlaceTile() => tileType == TileType.PlaceTile;
+    
+    // 지역2 타일 타입
+    public bool IsWalkable2() => tileType == TileType.Walkable2;
     public bool IsWalkable2Left() => tileType == TileType.Walkable2Left;
     public bool IsWalkable2Center() => tileType == TileType.Walkable2Center;
     public bool IsWalkable2Right() => tileType == TileType.Walkable2Right;
-    public bool IsPlaceable() => tileType == TileType.Placeable;
+    public bool IsPlacable2() => tileType == TileType.Placeable2;
     public bool IsPlaceable2() => tileType == TileType.Placeable2;
-    public bool IsPlaceTile() => tileType == TileType.PlaceTile;
     public bool IsPlaced2() => tileType == TileType.Placed2;
     
+    // 추가 메서드들
+    public bool IsTowerPlaceable() => IsPlacable() || IsPlaceTile();
+    public bool IsTower2Placeable() => IsPlacable2() || IsPlaced2();
+    
+    // 통합 확인 메서드
     public bool IsWalkableType()
     {
         return IsWalkable() || IsWalkable2() || 
@@ -162,52 +170,119 @@ public class Tile : MonoBehaviour
     public void RemoveAllOccupyingCharacters()
     {
         occupyingCharacters.Clear();
-        Debug.Log($"[Tile] {name}의 모든 캐릭터 제거");
+        UpdateCharacterPositions();
     }
-
+    
     /// <summary>
     /// 캐릭터 배치 가능 여부 확인
     /// </summary>
-    public bool CanPlaceCharacter(Character newCharacter = null)
+    public bool CanPlaceCharacter(Character character = null)
     {
+        // 블록된 타일은 배치 불가
         if (isBlocked) return false;
-        if (!IsPlaceableType()) return false;
         
-        // 같은 종류의 캐릭터는 3개까지 가능
-        if (newCharacter != null && occupyingCharacters.Count > 0)
+        // 타워 배치 가능 타일
+        if (IsPlaceableType())
         {
-            Character firstChar = occupyingCharacters[0];
-            if (firstChar.characterName == newCharacter.characterName && 
-                firstChar.star == newCharacter.star)
+            // 같은 캐릭터끼리는 3개까지 가능
+            if (character != null && occupyingCharacters.Count > 0)
             {
-                return occupyingCharacters.Count < maxCharactersPerTile;
+                // 첫 번째 캐릭터와 같은 종류인지 확인
+                Character first = occupyingCharacters[0];
+                if (first.characterName == character.characterName && first.star == character.star)
+                {
+                    return occupyingCharacters.Count < 3; // 같은 종류는 3개까지
+                }
+                return false; // 다른 종류는 불가
             }
-            else
-            {
-                return false; // 다른 종류의 캐릭터는 배치 불가
-            }
+            return occupyingCharacters.Count < 3; // 빈 타일이거나 3개 미만
         }
         
-        // 빈 타일이거나 새 캐릭터가 없으면 배치 가능
-        return occupyingCharacters.Count < 1;
+        // Walkable 타일은 1개만
+        if (IsWalkableType())
+        {
+            return occupyingCharacters.Count == 0;
+        }
+        
+        return false;
     }
 
     /// <summary>
-    /// 타일 위의 캐릭터들 위치 업데이트
+    /// 타일에 캐릭터가 있는지 확인
     /// </summary>
+    public bool IsOccupiedByCharacter()
+    {
+        return occupyingCharacters.Count > 0;
+    }
+
+    /// <summary>
+    /// 단일 캐릭터 설정 (이전 버전 호환성)
+    /// </summary>
+    public void SetOccupyingCharacter(Character character)
+    {
+        occupyingCharacters.Clear();
+        if (character != null)
+        {
+            AddOccupyingCharacter(character);
+        }
+    }
+
+    // ================================
+    // 타일 하이라이트
+    // ================================
+    public void HighlightTile()
+    {
+        if (!isHighlighted && spriteRenderer != null)
+        {
+            isHighlighted = true;
+            spriteRenderer.color = new Color(originalColor.r * 1.5f, originalColor.g * 1.5f, originalColor.b * 1.5f, 1f);
+        }
+    }
+    
+    public void UnhighlightTile()
+    {
+        if (isHighlighted && spriteRenderer != null)
+        {
+            isHighlighted = false;
+            spriteRenderer.color = originalColor;
+        }
+    }
+
+    // ================================
+    // 타일 상태 설정 메서드
+    // ================================
+    public void SetPlacable()
+    {
+        SetTileType(TileType.Placeable);
+    }
+    
+    public void SetPlacable2()
+    {
+        SetTileType(TileType.Placeable2);
+    }
+
+    // ================================
+    // 시각적 업데이트
+    // ================================
     private void UpdateCharacterPositions()
     {
-        if (occupyingCharacters.Count == 0) return;
+        // 캐릭터가 여러 개일 때 위치 조정
+        int count = occupyingCharacters.Count;
+        if (count == 0) return;
         
-        float spacing = 0.3f;
-        float startX = -(occupyingCharacters.Count - 1) * spacing * 0.5f;
-        
-        for (int i = 0; i < occupyingCharacters.Count; i++)
+        for (int i = 0; i < count; i++)
         {
             if (occupyingCharacters[i] != null)
             {
-                Vector3 pos = transform.position;
-                pos.x += startX + (i * spacing);
+                // 타일 중심에서 약간씩 offset
+                Vector3 offset = Vector3.zero;
+                if (count > 1)
+                {
+                    float angle = (360f / count) * i;
+                    offset = new Vector3(Mathf.Cos(angle * Mathf.Deg2Rad), Mathf.Sin(angle * Mathf.Deg2Rad), 0) * 0.3f;
+                }
+                
+                Vector3 pos = transform.position + offset;
                 pos.z = -1f - (i * 0.1f); // 깊이 조정
                 occupyingCharacters[i].transform.position = pos;
                 
@@ -292,19 +367,6 @@ public class Tile : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// 타일 상태 설정 메서드들
-    /// </summary>
-    public void SetPlacable()
-    {
-        SetTileType(TileType.Placeable);
-    }
-    
-    public void SetPlacable2()
-    {
-        SetTileType(TileType.Placeable2);
-    }
-    
     /// <summary>
     /// 타일 시각 효과 갱신
     /// </summary>

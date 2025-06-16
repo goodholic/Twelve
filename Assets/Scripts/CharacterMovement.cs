@@ -19,9 +19,9 @@ public class CharacterMovement : MonoBehaviour
     public float stoppingDistance = 0.1f;
     
     [Header("웨이포인트")]
-    private Transform[] pathWaypoints;
-    private int currentWaypointIndex = -1;
-    private int maxWaypointIndex = -1;
+    public Transform[] pathWaypoints;
+    public int currentWaypointIndex = -1;
+    public int maxWaypointIndex = -1;
     
     [Header("점프 설정")]
     public float jumpHeight = 2f;
@@ -33,6 +33,9 @@ public class CharacterMovement : MonoBehaviour
     [Header("전투 중 이동")]
     private bool isInCombat = false;
     private Vector3 combatStartPosition;
+    
+    // 이동 상태 프로퍼티 추가
+    public bool isMoving { get; private set; }
     
     // 코루틴 참조
     private Coroutine moveCoroutine;
@@ -94,6 +97,8 @@ public class CharacterMovement : MonoBehaviour
             return;
         }
         
+        isMoving = true;
+        
         if (moveCoroutine != null)
         {
             StopCoroutine(moveCoroutine);
@@ -107,6 +112,8 @@ public class CharacterMovement : MonoBehaviour
     /// </summary>
     public void StopMoving()
     {
+        isMoving = false;
+        
         if (moveCoroutine != null)
         {
             StopCoroutine(moveCoroutine);
@@ -127,7 +134,7 @@ public class CharacterMovement : MonoBehaviour
     /// </summary>
     private IEnumerator MoveAlongPath()
     {
-        while (pathWaypoints != null && currentWaypointIndex >= 0 && currentWaypointIndex < pathWaypoints.Length)
+        while (pathWaypoints != null && currentWaypointIndex >= 0 && currentWaypointIndex < pathWaypoints.Length && isMoving)
         {
             Transform currentWaypoint = pathWaypoints[currentWaypointIndex];
             
@@ -138,69 +145,36 @@ public class CharacterMovement : MonoBehaviour
                 continue;
             }
             
-            // 타겟이 있으면 전투 모드
-            if (character.currentTarget != null || character.currentCharTarget != null)
+            // 목표 지점으로 이동
+            while (Vector3.Distance(transform.position, currentWaypoint.position) > stoppingDistance && isMoving)
             {
-                isInCombat = true;
-                combatStartPosition = transform.position;
-                
-                // 전투 중에도 웨이포인트 방향으로 이동
-                yield return MoveTowardsTarget(currentWaypoint.position);
-            }
-            else
-            {
-                isInCombat = false;
-                
-                // 웨이포인트로 이동
-                yield return MoveTowardsTarget(currentWaypoint.position);
-                
-                // 웨이포인트 도달
-                if (Vector3.Distance(transform.position, currentWaypoint.position) <= stoppingDistance)
+                if (!isInCombat)
                 {
-                    OnReachWaypoint();
+                    Vector3 direction = (currentWaypoint.position - transform.position).normalized;
+                    transform.position += direction * moveSpeed * Time.deltaTime;
                     
-                    // 다음 웨이포인트로
-                    currentWaypointIndex++;
-                    character.currentWaypointIndex = currentWaypointIndex;
-                    
-                    // 마지막 웨이포인트 도달 시 처리
-                    if (currentWaypointIndex > maxWaypointIndex)
-                    {
-                        OnReachFinalWaypoint();
-                        yield break;
-                    }
+                    // 방향 업데이트
+                    UpdateCharacterDirectionSprite();
                 }
+                
+                yield return null;
             }
             
-            yield return null;
-        }
-    }
-    
-    /// <summary>
-    /// 목표 위치로 이동
-    /// </summary>
-    private IEnumerator MoveTowardsTarget(Vector3 targetPosition)
-    {
-        while (Vector3.Distance(transform.position, targetPosition) > stoppingDistance)
-        {
-            // 이동 방향 계산
-            Vector3 direction = (targetPosition - transform.position).normalized;
+            // 현재 웨이포인트 도달
+            OnReachWaypoint();
             
-            // 위치 이동
-            transform.position += direction * moveSpeed * Time.deltaTime;
+            // 다음 웨이포인트로
+            currentWaypointIndex++;
             
-            // 회전 (선택적)
-            if (direction != Vector3.zero)
+            // 경로 끝에 도달
+            if (currentWaypointIndex >= pathWaypoints.Length)
             {
-                Quaternion targetRotation = Quaternion.LookRotation(Vector3.forward, direction);
-                transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
+                OnReachFinalWaypoint();
+                break;
             }
-            
-            // 스프라이트 방향 업데이트
-            UpdateCharacterDirectionSprite();
-            
-            yield return null;
         }
+        
+        isMoving = false;
     }
     
     /// <summary>
@@ -232,7 +206,7 @@ public class CharacterMovement : MonoBehaviour
                 GameManager gameManager = FindFirstObjectByType<GameManager>();
                 if (gameManager != null)
                 {
-                    gameManager.TakeDamageToRegion2(1);
+                    gameManager.TakeDamageToRegion1(1);
                     Debug.Log($"[CharacterMovement] 지역1 캐릭터 {character.characterName}이(가) 지역2 성에 1 데미지를 입혔습니다!");
                 }
                 
@@ -319,76 +293,43 @@ public class CharacterMovement : MonoBehaviour
             return;
         }
         
-        Transform jumpStart = null;
+        // 현재 캐릭터의 지역과 라우트 확인
+        RouteType route = DetermineRouteFromPosition();
         Transform jumpEnd = null;
         
-        // 현재 위치에서 가장 가까운 점프 지점 찾기
-        GetNearestJumpPoints(jumpController, out jumpStart, out jumpEnd);
-        
-        if (jumpStart != null && jumpEnd != null)
+        if (character.areaIndex == 1)
         {
+            // 지역1 → 지역2로 점프
+            jumpEnd = jumpController.GetJumpEndPoint(2, route);
+        }
+        else if (character.areaIndex == 2)
+        {
+            // 지역2 → 지역1로 점프
+            jumpEnd = jumpController.GetJumpEndPoint(1, route);
+        }
+        
+        if (jumpEnd != null)
+        {
+            isJumping = true;
+            isJumpingAcross = true;
+            hasJumped = true;
+            
             if (jumpCoroutine != null)
             {
                 StopCoroutine(jumpCoroutine);
             }
             
-            jumpCoroutine = StartCoroutine(JumpToPosition(jumpStart.position, jumpEnd.position));
+            jumpCoroutine = StartCoroutine(JumpToPosition(jumpEnd.position));
         }
     }
     
     /// <summary>
-    /// 가장 가까운 점프 지점 찾기
+    /// 점프 코루틴
     /// </summary>
-    private void GetNearestJumpPoints(CharacterJumpController jumpController, out Transform jumpStart, out Transform jumpEnd)
+    private IEnumerator JumpToPosition(Vector3 endPos)
     {
-        jumpStart = null;
-        jumpEnd = null;
-        
-        float minDistance = float.MaxValue;
-        
-        if (character.areaIndex == 1)
-        {
-            // 지역1 → 지역2 점프
-            CheckJumpPoint(jumpController.region1LeftJumpStart, jumpController.region1LeftJumpEnd, ref jumpStart, ref jumpEnd, ref minDistance);
-            CheckJumpPoint(jumpController.region1CenterJumpStart, jumpController.region1CenterJumpEnd, ref jumpStart, ref jumpEnd, ref minDistance);
-            CheckJumpPoint(jumpController.region1RightJumpStart, jumpController.region1RightJumpEnd, ref jumpStart, ref jumpEnd, ref minDistance);
-        }
-        else if (character.areaIndex == 2)
-        {
-            // 지역2 → 지역1 점프
-            CheckJumpPoint(jumpController.region2LeftJumpStart, jumpController.region2LeftJumpEnd, ref jumpStart, ref jumpEnd, ref minDistance);
-            CheckJumpPoint(jumpController.region2CenterJumpStart, jumpController.region2CenterJumpEnd, ref jumpStart, ref jumpEnd, ref minDistance);
-            CheckJumpPoint(jumpController.region2RightJumpStart, jumpController.region2RightJumpEnd, ref jumpStart, ref jumpEnd, ref minDistance);
-        }
-    }
-    
-    /// <summary>
-    /// 점프 지점 확인
-    /// </summary>
-    private void CheckJumpPoint(Transform start, Transform end, ref Transform jumpStart, ref Transform jumpEnd, ref float minDistance)
-    {
-        if (start == null || end == null) return;
-        
-        float distance = Vector3.Distance(transform.position, start.position);
-        if (distance < minDistance)
-        {
-            minDistance = distance;
-            jumpStart = start;
-            jumpEnd = end;
-        }
-    }
-    
-    /// <summary>
-    /// 포물선 점프 코루틴
-    /// </summary>
-    private IEnumerator JumpToPosition(Vector3 startPos, Vector3 endPos)
-    {
-        isJumping = true;
-        isJumpingAcross = true;
-        hasJumped = true;
-        
+        Vector3 startPos = transform.position;
         float elapsed = 0f;
-        Vector3 initialPos = transform.position;
         
         Debug.Log($"[CharacterMovement] {character.characterName}이(가) 점프 시작! {startPos} → {endPos}");
         
@@ -542,6 +483,7 @@ public class CharacterMovement : MonoBehaviour
     }
     
     // Public 접근자들
+    public bool IsJumping() => isJumping;
     public bool IsJumpingAcross() => isJumpingAcross;
     public bool HasJumped() => hasJumped;
     public bool IsInCombat() => isInCombat;
@@ -549,4 +491,23 @@ public class CharacterMovement : MonoBehaviour
     
     public void SetJumpingAcross(bool value) => isJumpingAcross = value;
     public void SetHasJumped(bool value) => hasJumped = value;
+    
+    /// <summary>
+    /// 새로운 지역으로 웨이포인트 변경
+    /// </summary>
+    public void SetWaypointsForNewRegion(Transform[] newWaypoints)
+    {
+        pathWaypoints = newWaypoints;
+        currentWaypointIndex = 0;
+        maxWaypointIndex = newWaypoints.Length - 1;
+        
+        Debug.Log($"[CharacterMovement] 새로운 웨이포인트로 변경 - 총 {newWaypoints.Length}개");
+        
+        // 이동 재시작
+        if (isMoving)
+        {
+            StopMoving();
+            StartMoving();
+        }
+    }
 }

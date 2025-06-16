@@ -546,3 +546,30 @@ public class CharacterSelectUI : MonoBehaviour
         Debug.Log($"[CharacterSelectUI] 자동 배치 완료: {placedCount}개 캐릭터 배치됨");
     }
 }
+
+// CharacterSelectUI.cs의 수정 부분 (530번 줄 근처)
+private void SummonCharacterAtTile(int characterIndex, Tile tile)
+{
+    if (characterIndex < 0 || characterIndex >= deckFromLobby.Length)
+    {
+        Debug.LogError($"[CharacterSelectUI] 잘못된 캐릭터 인덱스: {characterIndex}");
+        return;
+    }
+    
+    CharacterData charData = deckFromLobby[characterIndex];
+    if (charData == null)
+    {
+        Debug.LogError($"[CharacterSelectUI] 캐릭터 데이터[{characterIndex}]가 null입니다!");
+        return;
+    }
+    
+    // PlacementManager를 통해 소환
+    if (PlacementManager.Instance != null)
+    {
+        Character newChar = PlacementManager.Instance.SummonCharacterOnTile(charData, tile, false);
+        if (newChar != null)
+        {
+            Debug.Log($"[CharacterSelectUI] {charData.characterName}을(를) {tile.name}에 소환 성공!");
+        }
+    }
+}

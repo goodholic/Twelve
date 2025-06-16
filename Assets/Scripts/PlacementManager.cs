@@ -42,6 +42,9 @@ public class PlacementManager : MonoBehaviour
     public GameObject characterPrefab;
     public GameObject bulletPrefab;
     
+    [Header("제거 모드")]
+    public bool removeMode = false;
+    
     private TileManager tileManager;
     private AutoMergeManager autoMergeManager;
     
@@ -121,6 +124,37 @@ public class PlacementManager : MonoBehaviour
     }
     
     /// <summary>
+    /// 캐릭터 선택 (CharacterSelectUI에서 호출)
+    /// </summary>
+    public void OnClickSelectUnit(int characterIndex)
+    {
+        if (CoreDataManager.Instance != null)
+        {
+            CoreDataManager.Instance.currentCharacterIndex = characterIndex;
+            Debug.Log($"[PlacementManager] 캐릭터 {characterIndex}번 선택됨");
+        }
+    }
+    
+    /// <summary>
+    /// 자동 배치 (CharacterSelectUI에서 호출)
+    /// </summary>
+    public void OnClickAutoPlace()
+    {
+        if (CoreDataManager.Instance == null || CoreDataManager.Instance.currentCharacterIndex < 0)
+        {
+            Debug.LogWarning("[PlacementManager] 캐릭터를 먼저 선택하세요!");
+            return;
+        }
+        
+        // SummonManager의 자동 배치 호출
+        SummonManager summonManager = SummonManager.Instance;
+        if (summonManager != null)
+        {
+            summonManager.OnClickAutoPlace();
+        }
+    }
+    
+    /// <summary>
     /// 타일에 캐릭터 소환
     /// </summary>
     public Character SummonCharacterOnTile(CharacterData data, Tile tile, bool isOpponent = false)
@@ -161,6 +195,35 @@ public class PlacementManager : MonoBehaviour
         }
         
         return newCharacter;
+    }
+    
+    /// <summary>
+    /// 인덱스로 캐릭터 소환 (Region2AIManager에서 호출)
+    /// </summary>
+    public bool SummonCharacterOnTile(int characterIndex, Tile tile, bool forceEnemyArea2 = false)
+    {
+        if (CoreDataManager.Instance == null || CoreDataManager.Instance.characterDatabase == null)
+        {
+            Debug.LogError("[PlacementManager] CoreDataManager 또는 characterDatabase가 null입니다!");
+            return false;
+        }
+        
+        CharacterData[] characters = CoreDataManager.Instance.characterDatabase.currentRegisteredCharacters;
+        if (characterIndex < 0 || characterIndex >= characters.Length)
+        {
+            Debug.LogError($"[PlacementManager] 잘못된 캐릭터 인덱스: {characterIndex}");
+            return false;
+        }
+        
+        CharacterData data = characters[characterIndex];
+        if (data == null)
+        {
+            Debug.LogError($"[PlacementManager] 캐릭터 데이터[{characterIndex}]가 null입니다!");
+            return false;
+        }
+        
+        Character newChar = SummonCharacterOnTile(data, tile, forceEnemyArea2);
+        return newChar != null;
     }
     
     /// <summary>
@@ -230,7 +293,7 @@ public class PlacementManager : MonoBehaviour
             }
         }
     }
-    
+
     /// <summary>
     /// 캐릭터 생성 (월드 좌표)
     /// </summary>
@@ -362,46 +425,34 @@ public class PlacementManager : MonoBehaviour
         }
         else
         {
-            Debug.LogWarning($"[PlacementManager] {newTile.name}에 {character.characterName}을(를) 배치할 수 없습니다.");
+            Debug.LogWarning($"[PlacementManager] {newTile.name}에 {character.characterName}을(를) 배치할 수 없습니다!");
         }
     }
     
     /// <summary>
-    /// 모든 캐릭터 가져오기
+    /// 제거 모드 토글
     /// </summary>
-    public List<Character> GetAllCharacters(bool includeOpponent = true)
+    public void ToggleRemoveMode()
     {
-        List<Character> allCharacters = new List<Character>(playerCharacters);
-        
-        if (includeOpponent)
-        {
-            allCharacters.AddRange(opponentCharacters);
-        }
-        
-        // null 제거
-        allCharacters.RemoveAll(c => c == null);
-        
-        return allCharacters;
+        removeMode = !removeMode;
+        Debug.Log($"[PlacementManager] 제거 모드: {(removeMode ? "켜짐" : "꺼짐")}");
     }
     
     /// <summary>
-    /// 특정 타일 타입의 빈 타일 찾기
+    /// 모든 플레이어 캐릭터 가져오기
     /// </summary>
-    public Tile FindEmptyTileOfType(Tile.TileType tileType)
+    public List<Character> GetPlayerCharacters()
     {
-        if (tileManager == null) return null;
-        
-        Tile[] allTiles = Object.FindObjectsByType<Tile>(FindObjectsSortMode.None);
-        
-        foreach (var tile in allTiles)
-        {
-            if (tile.GetOccupyingCharacters().Count == 0 && 
-                tile.GetType().Equals(tileType))
-            {
-                return tile;
-            }
-        }
-        
-        return null;
+        playerCharacters.RemoveAll(c => c == null);
+        return new List<Character>(playerCharacters);
+    }
+    
+    /// <summary>
+    /// 모든 상대방 캐릭터 가져오기
+    /// </summary>
+    public List<Character> GetOpponentCharacters()
+    {
+        opponentCharacters.RemoveAll(c => c == null);
+        return new List<Character>(opponentCharacters);
     }
 }

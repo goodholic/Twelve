@@ -320,3 +320,45 @@ public class MergeManager : MonoBehaviour
         }
     }
 }
+
+// MergeManager.cs의 수정 부분들
+
+// 1. GetCharacterDataForUpgrade 메서드 수정 (169번 줄 근처)
+private CharacterData GetCharacterDataForUpgrade(string baseName, CharacterRace race, CharacterStar targetStar)
+{
+    CoreDataManager coreData = CoreDataManager.Instance;
+    if (coreData == null || coreData.characterDatabase == null)
+    {
+        Debug.LogError("[MergeManager] CoreDataManager 또는 characterDatabase가 null입니다!");
+        return null;
+    }
+    
+    // characterDatabase의 characters 배열에서 찾기
+    foreach (var data in coreData.characterDatabase.characters)
+    {
+        if (data != null && 
+            data.characterName == baseName && 
+            data.race == race && 
+            data.star == targetStar)
+        {
+            return data;
+        }
+    }
+    
+    Debug.LogWarning($"[MergeManager] {baseName} {race} {targetStar} 캐릭터 데이터를 찾을 수 없습니다!");
+    return null;
+}
+
+// 2. 프로퍼티 사용 수정 (179-187번 줄 근처)
+// health 프로퍼티가 없으므로 maxHP 사용
+float statMultiplier = GetStatMultiplier(newStar);
+
+newCharacter.attackPower = newCharData.attackPower * statMultiplier;
+newCharacter.attackSpeed = newCharData.attackSpeed * (newStar == CharacterStar.TwoStar ? 1.1f : 1.2f);
+newCharacter.attackRange = newCharData.attackRange * (newStar == CharacterStar.TwoStar ? 1.1f : 1.2f);
+newCharacter.currentHP = newCharData.maxHP * statMultiplier;  // health 대신 maxHP 사용
+newCharacter.maxHP = newCharData.maxHP * statMultiplier;
+newCharacter.level = baseChar.level; // 레벨 유지
+
+// CharacterRace enum에 Undead 추가가 필요한 경우
+// CharacterData.cs 또는 GameEnums.cs에서 CharacterRace enum 확인하여 Undead 추가

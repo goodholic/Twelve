@@ -59,6 +59,9 @@ public class Character : MonoBehaviour, IDamageable
     
     [Tooltip("캐릭터 공격 / 몬스터 공격 여부")]
     public bool isCharAttack = false;
+    
+    [Tooltip("타워형 캐릭터 여부")]
+    public bool isTower = false;
 
     // ================================
     // 컴포넌트 참조
@@ -125,7 +128,7 @@ public class Character : MonoBehaviour, IDamageable
             visual.Initialize(this, spriteRenderer);
             
         if (movement != null)
-            movement.Initialize(this, stats, visual);
+            movement.Initialize(this, stats);
             
         if (combat != null)
             combat.Initialize(this, stats, visual, movement, jumpSystem);
@@ -174,39 +177,48 @@ public class Character : MonoBehaviour, IDamageable
             hpBarBg.transform.localPosition = Vector3.zero;
             
             UnityEngine.UI.Image bgImage = hpBarBg.AddComponent<UnityEngine.UI.Image>();
-            bgImage.color = new Color(0.2f, 0.2f, 0.2f, 0.8f);
+            bgImage.color = new Color(0.2f, 0.2f, 0.2f, 0.8f); // 어두운 회색
             
             RectTransform bgRect = hpBarBg.GetComponent<RectTransform>();
-            bgRect.anchorMin = Vector2.zero;
-            bgRect.anchorMax = Vector2.one;
-            bgRect.sizeDelta = Vector2.zero;
+            bgRect.sizeDelta = new Vector2(1f, 0.1f);
             bgRect.anchoredPosition = Vector2.zero;
             
-            // HP바 채움
+            // HP바 Fill
             GameObject hpBarFill = new GameObject("HPBarFill");
-            hpBarFill.transform.SetParent(hpBarObj.transform);
+            hpBarFill.transform.SetParent(hpBarBg.transform);
             hpBarFill.transform.localPosition = Vector3.zero;
             
             hpBarFillImage = hpBarFill.AddComponent<UnityEngine.UI.Image>();
-            hpBarFillImage.color = Color.green;
+            hpBarFillImage.color = GetHPBarColor();
             
             RectTransform fillRect = hpBarFill.GetComponent<RectTransform>();
-            fillRect.anchorMin = Vector2.zero;
-            fillRect.anchorMax = new Vector2(1f, 1f);
-            fillRect.sizeDelta = Vector2.zero;
+            fillRect.sizeDelta = new Vector2(1f, 0.1f);
             fillRect.anchoredPosition = Vector2.zero;
+            fillRect.pivot = new Vector2(0, 0.5f);
+            fillRect.anchorMin = new Vector2(0, 0.5f);
+            fillRect.anchorMax = new Vector2(0, 0.5f);
             
-            // 캔버스가 항상 카메라를 바라보도록 설정
-            hpBarObj.AddComponent<LookAtCamera>();
+            UpdateHPBar();
         }
-        
-        UpdateHPBar();
+    }
+
+    /// <summary>
+    /// HP바 색상
+    /// </summary>
+    private Color GetHPBarColor()
+    {
+        if (areaIndex == 1)
+            return Color.green;
+        else if (areaIndex == 2)
+            return Color.red;
+        else
+            return Color.yellow;
     }
 
     /// <summary>
     /// HP바 업데이트
     /// </summary>
-    public void UpdateHPBar()
+    private void UpdateHPBar()
     {
         if (hpBarFillImage != null)
         {
@@ -214,8 +226,8 @@ public class Character : MonoBehaviour, IDamageable
             hpBarFillImage.fillAmount = hpRatio;
             
             // HP 비율에 따른 색상 변경
-            if (hpRatio > 0.7f)
-                hpBarFillImage.color = Color.green;
+            if (hpRatio > 0.6f)
+                hpBarFillImage.color = GetHPBarColor();
             else if (hpRatio > 0.3f)
                 hpBarFillImage.color = Color.yellow;
             else
@@ -224,101 +236,118 @@ public class Character : MonoBehaviour, IDamageable
     }
 
     /// <summary>
-    /// 타일 위치로 이동
+    /// 데미지 받기
+    /// </summary>
+    public void TakeDamage(float damage)
+    {
+        if (isHero) 
+        {
+            Debug.Log($"[Character] 히어로 {characterName}은(는) 무적입니다!");
+            return;
+        }
+        
+        currentHP = Mathf.Max(0, currentHP - damage);
+        UpdateHPBar();
+        
+        if (currentHP <= 0)
+        {
+            Die();
+        }
+    }
+
+    /// <summary>
+    /// 캐릭터 사망
+    /// </summary>
+    private void Die()
+    {
+        Debug.Log($"[Character] {characterName} 사망!");
+        
+        // 타일에서 제거
+        if (currentTile != null)
+        {
+            currentTile.RemoveOccupyingCharacter(this);
+            
+            // PlacementManager에 알림
+            if (PlacementManager.Instance != null)
+            {
+                PlacementManager.Instance.OnCharacterRemovedFromTile(currentTile);
+            }
+        }
+        
+        // HP바 제거
+        if (hpBarCanvas != null)
+        {
+            Destroy(hpBarCanvas.gameObject);
+        }
+        
+        // 오브젝트 제거
+        Destroy(gameObject);
+    }
+
+    /// <summary>
+    /// 타일로 위치 설정
     /// </summary>
     public void SetPositionToTile(Tile tile)
     {
         if (tile != null)
         {
             transform.position = tile.transform.position;
-            currentTile = tile;
         }
-    }
-
-    /// <summary>
-    /// IDamageable 인터페이스 구현
-    /// </summary>
-    public void TakeDamage(float damage)
-    {
-        if (stats != null)
-        {
-            stats.TakeDamage(damage);
-        }
-    }
-
-    /// <summary>
-    /// 최대 HP 설정
-    /// </summary>
-    public void SetMaxHP(float hp)
-    {
-        maxHP = hp;
-        if (currentHP > maxHP)
-            currentHP = maxHP;
-        UpdateHPBar();
     }
 
     /// <summary>
     /// 총알 패널 설정
     /// </summary>
-    public void SetBulletPanel(Transform bulletPanel)
+    public void SetBulletPanel(Transform panel)
     {
-        opponentBulletPanel = bulletPanel;
+        opponentBulletPanel = panel;
     }
 
-    private void OnDestroy()
+    /// <summary>
+    /// 캐릭터 스프라이트 설정
+    /// </summary>
+    public void SetSprite(Sprite sprite)
     {
-        // 타일에서 참조 제거
-        if (currentTile != null)
+        if (spriteRenderer != null && sprite != null)
         {
-            currentTile.RemoveOccupyingCharacter(this);
+            spriteRenderer.sprite = sprite;
         }
     }
-}
 
-/// <summary>
-/// 캐릭터 종족 열거형
-/// </summary>
-[System.Serializable]
-public enum CharacterRace
-{
-    Human,
-    Orc,
-    Elf
-}
-
-/// <summary>
-/// 캐릭터 별 등급 열거형
-/// </summary>
-[System.Serializable]
-public enum CharacterStar
-{
-    OneStar = 1,
-    TwoStar = 2,
-    ThreeStar = 3
-}
-
-/// <summary>
-/// 공격 타겟 타입 열거형
-/// </summary>
-[System.Serializable]
-public enum AttackTargetType
-{
-    CharacterOnly,
-    MonsterOnly,
-    Both
-}
-
-/// <summary>
-/// 카메라를 바라보는 컴포넌트 (HP바용)
-/// </summary>
-public class LookAtCamera : MonoBehaviour
-{
-    private void LateUpdate()
+    /// <summary>
+    /// 별 등급에 따른 시각 효과 적용
+    /// </summary>
+    public void ApplyStarVisual()
     {
-        if (Camera.main != null)
+        if (visual != null)
         {
-            transform.LookAt(Camera.main.transform);
-            transform.Rotate(0, 180, 0);
+            visual.ApplyStarVisual();
+        }
+        else
+        {
+            // visual 컴포넌트가 없으면 생성 후 적용
+            visual = GetComponent<CharacterVisual>();
+            if (visual == null)
+            {
+                visual = gameObject.AddComponent<CharacterVisual>();
+                visual.Initialize(this, spriteRenderer);
+            }
+            visual.ApplyStarVisual();
+        }
+    }
+
+    // 디버그용
+    private void OnDrawGizmosSelected()
+    {
+        // 공격 범위 표시
+        Gizmos.color = new Color(1, 0, 0, 0.3f);
+        Gizmos.DrawWireSphere(transform.position, attackRange);
+        
+        // 현재 타겟 표시
+        if (currentCharTarget != null)
+        {
+            Gizmos.color = Color.red;
+            Gizmos.DrawLine(transform.position, currentCharTarget.transform.position);
         }
     }
 }

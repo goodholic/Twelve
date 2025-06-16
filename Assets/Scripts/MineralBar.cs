@@ -1,158 +1,100 @@
-using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using System;
 
 /// <summary>
-/// 미네랄 바 컨트롤러: 0부터 시작해서 1초에 1씩 자동으로 채워지는 미네랄 시스템
-/// 게임 기획서: 원 버튼 소환에 미네랄 소모
+/// 미네랄 바 UI 관리
+/// 게임 기획서: 미네랄 소모하여 캐릭터 소환
 /// </summary>
 public class MineralBar : MonoBehaviour
 {
-    [Header("미네랄 바 설정")]
-    public RectTransform fillBar;            // 채워지는 바 이미지의 RectTransform
-    public int maxMinerals = 10;             // 최대 미네랄 수
-    public float fillDelay = 1.0f;           // 1 미네랄 채워지는데 걸리는 시간(초)
-    public float barMaxWidth = 1080f;        // 바의 최대 너비
+    [Header("미네랄 설정")]
+    [SerializeField] private int maxMinerals = 100;
+    [SerializeField] private int currentMinerals = 50;
+    [SerializeField] private float mineralRegenRate = 5f; // 초당 미네랄 회복량
+    [SerializeField] private int defaultSummonCost = 10;
     
-    [Header("미네랄 표시")]
-    public TextMeshProUGUI mineralText;      // 현재 미네랄 수 표시 텍스트
-    public Image mineralIcon;                // 미네랄 아이콘 이미지
+    [Header("UI 요소")]
+    [SerializeField] private Slider mineralSlider;
+    [SerializeField] private TextMeshProUGUI mineralText;
+    [SerializeField] private Image fillImage;
+    
+    [Header("색상 설정")]
+    [SerializeField] private Color normalColor = Color.blue;
+    [SerializeField] private Color lowColor = Color.yellow;
+    [SerializeField] private Color criticalColor = Color.red;
     
     [Header("효과")]
-    public GameObject mineralGainEffect;     // 미네랄 획득 시 효과
-    public GameObject mineralSpendEffect;    // 미네랄 소비 시 효과
-    
-    [Header("소환 비용")]
-    [Tooltip("캐릭터 소환에 필요한 기본 미네랄 비용")]
-    public int defaultSummonCost = 3;        // 기본 소환 비용
-
-    private int currentMinerals = 0;         // 현재 미네랄 수
-    private Coroutine fillCoroutine;         // 미네랄 채우기 코루틴 참조
+    [SerializeField] private GameObject mineralGainEffect;
+    [SerializeField] private GameObject mineralSpendEffect;
     
     // 이벤트
-    public System.Action<int> OnMineralChanged;  // 미네랄 변경 시 호출
-    public System.Action OnMineralFull;          // 미네랄 최대치 도달 시 호출
-
-    private void Start()
+    public event Action<int> OnMineralChanged;
+    
+    private float regenTimer = 0f;
+    
+    private void Awake()
     {
-        // 미네랄 바를 0으로 초기화
-        currentMinerals = 0;
-        UpdateVisual();
-        
-        // 자동 채우기 시작
-        StartFilling();
-        
-        Debug.Log("[MineralBar] 미네랄 시스템 초기화 완료. 1초에 1씩 자동 충전됩니다.");
-    }
-
-    /// <summary>
-    /// 미네랄 바를 자동으로 채우는 코루틴
-    /// </summary>
-    private IEnumerator FillMineralRoutine()
-    {
-        while (true)
+        // 슬라이더 초기 설정
+        if (mineralSlider != null)
         {
-            // 최대치에 도달하지 않았다면 미네랄 증가
-            if (currentMinerals < maxMinerals)
-            {
-                yield return new WaitForSeconds(fillDelay);
-                
-                // 게임이 일시정지 상태가 아닐 때만 증가
-                if (Time.timeScale > 0)
-                {
-                    currentMinerals++;
-                    UpdateVisual();
-                    PlayMineralGainEffect();
-                    
-                    // 이벤트 호출
-                    OnMineralChanged?.Invoke(currentMinerals);
-                    
-                    // 최대치 도달 체크
-                    if (currentMinerals >= maxMinerals)
-                    {
-                        OnMineralFull?.Invoke();
-                        Debug.Log("[MineralBar] 미네랄이 최대치에 도달했습니다!");
-                    }
-                }
-            }
-            else
-            {
-                // 최대치에 도달하면 대기
-                yield return null;
-            }
+            mineralSlider.maxValue = maxMinerals;
+            mineralSlider.value = currentMinerals;
+        }
+        
+        UpdateVisual();
+    }
+    
+    private void Update()
+    {
+        // 미네랄 자동 회복
+        regenTimer += Time.deltaTime;
+        if (regenTimer >= 1f)
+        {
+            regenTimer = 0f;
+            AddMineral(Mathf.RoundToInt(mineralRegenRate));
         }
     }
-
+    
     /// <summary>
-    /// 미네랄 바 시각적 업데이트
+    /// 미네랄 UI 업데이트
     /// </summary>
     private void UpdateVisual()
     {
-        if (fillBar != null)
+        if (mineralSlider != null)
         {
-            // 현재 미네랄에 비례하여 바 너비 계산
-            float fillRatio = (float)currentMinerals / maxMinerals;
-            Vector2 size = fillBar.sizeDelta;
-            size.x = barMaxWidth * fillRatio;
-            fillBar.sizeDelta = size;
-            
-            // 미네랄 양에 따른 색상 변경 (선택적)
-            Image fillImage = fillBar.GetComponent<Image>();
-            if (fillImage != null)
-            {
-                if (fillRatio < 0.3f)
-                {
-                    fillImage.color = Color.red;        // 부족
-                }
-                else if (fillRatio < 0.7f)
-                {
-                    fillImage.color = Color.yellow;     // 보통
-                }
-                else
-                {
-                    fillImage.color = Color.green;      // 충분
-                }
-            }
+            mineralSlider.value = currentMinerals;
         }
         
-        // 텍스트 업데이트
         if (mineralText != null)
         {
             mineralText.text = $"{currentMinerals}/{maxMinerals}";
         }
-    }
-
-    /// <summary>
-    /// 미네랄 자동 채우기 시작
-    /// </summary>
-    public void StartFilling()
-    {
-        if (fillCoroutine != null)
-        {
-            StopCoroutine(fillCoroutine);
-        }
         
-        fillCoroutine = StartCoroutine(FillMineralRoutine());
+        // 미네랄 양에 따른 색상 변경
+        if (fillImage != null)
+        {
+            float ratio = (float)currentMinerals / maxMinerals;
+            if (ratio > 0.5f)
+                fillImage.color = normalColor;
+            else if (ratio > 0.2f)
+                fillImage.color = lowColor;
+            else
+                fillImage.color = criticalColor;
+        }
     }
-
+    
     /// <summary>
-    /// 미네랄을 소비합니다 (원 버튼 소환용)
+    /// 미네랄 소비 시도
     /// </summary>
-    /// <param name="cost">소비할 미네랄 양</param>
-    /// <returns>소비 성공 여부</returns>
     public bool TrySpend(int cost)
     {
-        // 충분한 미네랄이 있는지 확인
         if (currentMinerals >= cost)
         {
-            // 미네랄 차감
             currentMinerals -= cost;
-            // 시각적 업데이트
             UpdateVisual();
             PlayMineralSpendEffect();
-            
-            // 이벤트 호출
             OnMineralChanged?.Invoke(currentMinerals);
             
             Debug.Log($"[MineralBar] {cost} 미네랄 소비. 남은 미네랄: {currentMinerals}/{maxMinerals}");
@@ -192,6 +134,14 @@ public class MineralBar : MonoBehaviour
     /// 현재 미네랄 수를 반환합니다.
     /// </summary>
     public int GetMineral()
+    {
+        return currentMinerals;
+    }
+    
+    /// <summary>
+    /// 현재 미네랄 수를 반환합니다. (GetCurrentMinerals 추가)
+    /// </summary>
+    public int GetCurrentMinerals()
     {
         return currentMinerals;
     }
@@ -266,22 +216,23 @@ public class MineralBar : MonoBehaviour
     }
 
     /// <summary>
-    /// 최대 미네랄 수 변경
+    /// 최대 미네랄 설정
     /// </summary>
-    public void SetMaxMinerals(int newMax)
+    public void SetMaxMinerals(int max)
     {
-        maxMinerals = newMax;
-        currentMinerals = Mathf.Min(currentMinerals, maxMinerals);
+        maxMinerals = max;
+        if (mineralSlider != null)
+        {
+            mineralSlider.maxValue = maxMinerals;
+        }
         UpdateVisual();
-        
-        Debug.Log($"[MineralBar] 최대 미네랄이 {maxMinerals}로 변경되었습니다.");
     }
 
-    private void OnDestroy()
+    /// <summary>
+    /// 미네랄 회복률 설정
+    /// </summary>
+    public void SetRegenRate(float rate)
     {
-        if (fillCoroutine != null)
-        {
-            StopCoroutine(fillCoroutine);
-        }
+        mineralRegenRate = rate;
     }
 }

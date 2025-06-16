@@ -1,179 +1,105 @@
-// Assets\Scripts\HeroAutoMover.cs
-
-using UnityEngine;
-
 /// <summary>
-/// 히어로(주인공) 자동 이동 컴포넌트
-/// 
-/// [게임 기획서 연계]
-/// - 3라인 시스템: 왼쪽/중앙/오른쪽 웨이포인트를 따라 이동
-/// - 전투 우선순위:
-///   1. 적 탐지 시 → 사정거리 내면 공격, 밖이면 웨이포인트 이동
-///   2. 웨이포인트 상실 시 → 중간성 목표
-///   3. 중간성 파괴 시 → 최종성 목표
-/// - 히어로도 지역 간 이동 가능
+/// 히어로 자동 이동/공격 컴포넌트
 /// </summary>
 public class HeroAutoMover : MonoBehaviour
 {
-    [Header("주인공 이동 속도(초당)")]
-    public float moveSpeed = 2f;
-
-    [Header("몬스터와 얼마나 가까워져야 멈출지 (가까이 다가가기 범위)")]
-    public float stopDistance = 1.0f;
-
-    [Header("[게임 기획서] 3라인 시스템 설정")]
-    [Tooltip("히어로가 따라갈 웨이포인트 (왼쪽/중앙/오른쪽 중 하나)")]
-    public Transform[] heroWaypoints;
+    private Character character;
+    private float searchRadius = 10f;
+    private float attackCheckInterval = 0.5f;
+    private float lastAttackCheck = 0f;
     
-    [Tooltip("현재 목표 웨이포인트 인덱스")]
-    public int currentWaypointIndex = 0;
-    
-    [Tooltip("웨이포인트 도달 거리")]
-    public float waypointReachDistance = 0.5f;
-
-    private Character heroCharacter;
-    private CharacterMovement heroMovement;
-    private bool hasWaypoints = false;
-
     private void Start()
     {
-        heroCharacter = GetComponent<Character>();
-        heroMovement = GetComponent<CharacterMovement>();
-        
-        // 웨이포인트 설정 확인
-        if (heroWaypoints != null && heroWaypoints.Length > 0)
+        character = GetComponent<Character>();
+        if (character == null)
         {
-            hasWaypoints = true;
-            Debug.Log($"[HeroAutoMover] 웨이포인트 {heroWaypoints.Length}개 설정됨");
-        }
-        else
-        {
-            Debug.LogWarning("[HeroAutoMover] 웨이포인트가 설정되지 않음. CharacterMovement의 웨이포인트를 사용합니다.");
-            
-            // CharacterMovement의 웨이포인트 사용
-            if (heroMovement != null)
-            {
-                Debug.Log("[HeroAutoMover] CharacterMovement의 웨이포인트 시스템 사용");
-            }
-        }
-
-        // 히어로 초기 설정
-        if (heroCharacter != null)
-        {
-            Debug.Log($"[HeroAutoMover] 히어로 {heroCharacter.characterName} 자동 이동 시작 (지역{heroCharacter.areaIndex})");
+            Debug.LogError("[HeroAutoMover] Character 컴포넌트를 찾을 수 없습니다!");
+            enabled = false;
         }
     }
-
+    
     private void Update()
     {
-        if (heroCharacter == null) return;
-        
-        // CharacterMovement가 있으면 그것에 맡김
-        if (heroMovement != null && heroMovement.enabled)
+        if (Time.time - lastAttackCheck > attackCheckInterval)
         {
-            // CharacterMovement가 알아서 웨이포인트 이동과 지역 간 점프를 처리함
-            return;
+            lastAttackCheck = Time.time;
+            CheckForTargets();
         }
-        
-        // CharacterMovement가 없거나 비활성화된 경우 기본 이동 로직
-        MoveToNearestMonster();
     }
-
-    /// <summary>
-    /// 가장 가까운 몬스터를 찾아서 이동 (기본 로직)
-    /// </summary>
-    private void MoveToNearestMonster()
+    
+    private void CheckForTargets()
     {
-        // 현재 위치에서 가장 가까운 몬스터 찾기
-        Monster nearestMonster = FindNearestMonster();
+        // 공격 범위 내 적 찾기
+        Collider2D[] colliders = Physics2D.OverlapCircleAll(transform.position, searchRadius);
         
-        if (nearestMonster != null)
+        foreach (var collider in colliders)
         {
-            Vector3 dirToMonster = (nearestMonster.transform.position - transform.position).normalized;
-            float distToMonster = Vector3.Distance(transform.position, nearestMonster.transform.position);
-
-            // 사정거리 내에 있으면 공격 (이동하지 않음)
-            if (distToMonster <= heroCharacter.attackRange)
+            if (collider == null) continue;
+            
+            // 몬스터 확인
+            Monster monster = collider.GetComponent<Monster>();
+            if (monster != null && monster.areaIndex != character.areaIndex)
             {
-                // CharacterCombat이 알아서 공격 처리
-                return;
-            }
-
-            // 사정거리 밖이면 웨이포인트 따라 이동
-            if (hasWaypoints && currentWaypointIndex < heroWaypoints.Length)
-            {
-                MoveToWaypoint();
-            }
-            else
-            {
-                // 웨이포인트가 없으면 몬스터 방향으로 이동
-                if (distToMonster > stopDistance)
+                // 공격 가능 거리인지 확인
+                float distance = Vector3.Distance(transform.position, monster.transform.position);
+                if (distance <= character.attackRange)
                 {
-                    transform.position += dirToMonster * moveSpeed * Time.deltaTime;
+                    // 공격 처리
+                    Attack(monster);
+                    break;
+                }
+            }
+            
+            // 적 캐릭터 확인
+            Character enemyChar = collider.GetComponent<Character>();
+            if (enemyChar != null && enemyChar.areaIndex != character.areaIndex)
+            {
+                float distance = Vector3.Distance(transform.position, enemyChar.transform.position);
+                if (distance <= character.attackRange)
+                {
+                    // 공격 처리
+                    Attack(enemyChar);
+                    break;
                 }
             }
         }
-        else
-        {
-            // 몬스터가 없으면 웨이포인트 따라 이동
-            if (hasWaypoints && currentWaypointIndex < heroWaypoints.Length)
-            {
-                MoveToWaypoint();
-            }
-        }
     }
-
-    /// <summary>
-    /// 웨이포인트로 이동
-    /// </summary>
-    private void MoveToWaypoint()
+    
+    private void Attack(IDamageable target)
     {
-        if (currentWaypointIndex >= heroWaypoints.Length) return;
+        if (target == null) return;
         
-        Transform targetWaypoint = heroWaypoints[currentWaypointIndex];
-        if (targetWaypoint == null) return;
-        
-        Vector3 direction = (targetWaypoint.position - transform.position).normalized;
-        float distance = Vector3.Distance(transform.position, targetWaypoint.position);
-        
-        if (distance > waypointReachDistance)
+        // CharacterCombat 컴포넌트 사용
+        CharacterCombat combat = GetComponent<CharacterCombat>();
+        if (combat != null)
         {
-            transform.position += direction * moveSpeed * Time.deltaTime;
+            // 공격은 CharacterCombat에서 처리
         }
         else
         {
-            // 웨이포인트 도달, 다음 웨이포인트로
-            currentWaypointIndex++;
-            Debug.Log($"[HeroAutoMover] 웨이포인트 {currentWaypointIndex} 도달");
+            // 직접 데미지 처리
+            target.TakeDamage(character.attackPower);
         }
     }
+}
 
-    /// <summary>
-    /// 가장 가까운 몬스터 찾기
-    /// </summary>
-    private Monster FindNearestMonster()
+/// <summary>
+/// 카메라를 바라보는 컴포넌트 (HP바, 텍스트 등에 사용)
+/// </summary>
+public class LookAtCamera : MonoBehaviour
+{
+    private Camera mainCamera;
+    
+    private void Start()
     {
-        string targetTag = (heroCharacter.areaIndex == 1) ? "EnemyMonster" : "Monster";
-        GameObject[] monsterObjs = GameObject.FindGameObjectsWithTag(targetTag);
-        
-        Monster nearestMonster = null;
-        float nearestDistance = Mathf.Infinity;
-
-        foreach (GameObject obj in monsterObjs)
+        mainCamera = Camera.main;
+    }
+    
+    private void LateUpdate()
+    {
+        if (mainCamera != null)
         {
-            if (obj == null) continue;
-            
-            Monster monster = obj.GetComponent<Monster>();
-            if (monster == null) continue;
-
-            float distance = Vector3.Distance(transform.position, monster.transform.position);
-            if (distance < nearestDistance)
-            {
-                nearestDistance = distance;
-                nearestMonster = monster;
-            }
+            transform.rotation = mainCamera.transform.rotation;
         }
-
-        return nearestMonster;
     }
 }

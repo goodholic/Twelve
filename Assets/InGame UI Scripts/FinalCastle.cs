@@ -134,3 +134,89 @@ public class FinalCastle : MonoBehaviour, IDamageable
         return maxHealth;
     }
 }
+
+/// <summary>
+/// 최종성 클래스 - 게임 기획서: 체력 1000
+/// </summary>
+public class FinalCastle : MonoBehaviour, IDamageable
+{
+    [Header("성 정보")]
+    public string castleName = "최종성";
+    public int maxHealth = 1000;
+    public int currentHealth = 1000;
+    public int areaIndex = 1; // 1: Region1, 2: Region2
+    
+    [Header("UI")]
+    public Slider healthBar;
+    public TextMeshProUGUI healthText;
+    
+    [Header("효과")]
+    public GameObject damageEffect;
+    public GameObject destroyEffect;
+    
+    private void Start()
+    {
+        UpdateHealthUI();
+    }
+    
+    public void TakeDamage(float damage)
+    {
+        currentHealth -= Mathf.RoundToInt(damage);
+        currentHealth = Mathf.Max(0, currentHealth);
+        
+        UpdateHealthUI();
+        
+        if (damageEffect != null)
+        {
+            GameObject effect = Instantiate(damageEffect, transform.position, Quaternion.identity);
+            Destroy(effect, 2f);
+        }
+        
+        Debug.Log($"[FinalCastle] {castleName}이(가) {damage} 데미지를 받았습니다! 남은 체력: {currentHealth}/{maxHealth}");
+        
+        if (currentHealth <= 0)
+        {
+            OnDestroyed();
+        }
+    }
+    
+    private void UpdateHealthUI()
+    {
+        if (healthBar != null)
+        {
+            healthBar.maxValue = maxHealth;
+            healthBar.value = currentHealth;
+        }
+        
+        if (healthText != null)
+        {
+            healthText.text = $"{currentHealth}/{maxHealth}";
+        }
+    }
+    
+    private void OnDestroyed()
+    {
+        Debug.Log($"[FinalCastle] {castleName}이(가) 파괴되었습니다! 게임 종료!");
+        
+        if (destroyEffect != null)
+        {
+            GameObject effect = Instantiate(destroyEffect, transform.position, Quaternion.identity);
+            Destroy(effect, 3f);
+        }
+        
+        // GameManager에 게임 종료 알림
+        if (GameManager.Instance != null)
+        {
+            if (areaIndex == 1)
+            {
+                GameManager.Instance.TakeDamageToRegion1(currentHealth);
+            }
+            else
+            {
+                GameManager.Instance.TakeDamageToRegion2(currentHealth);
+            }
+        }
+        
+        gameObject.SetActive(false);
+    }
+}

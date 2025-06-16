@@ -892,3 +892,61 @@ public class DeckPanelManager : MonoBehaviour
         }
     }
 }
+
+// DeckPanelManager.cs의 수정 부분 (798번 줄 근처)
+// OnClickUse4CardsAtRandom 메서드 수정
+
+public void OnClickUse4CardsAtRandom()
+{
+    if (characterInventory == null)
+    {
+        Debug.LogWarning("[DeckPanelManager] characterInventory가 null이라 작업 불가");
+        return;
+    }
+
+    Tile[] allTiles = FindObjectsByType<Tile>(FindObjectsSortMode.None);
+    List<Tile> validTiles = new List<Tile>();
+    foreach (Tile t in allTiles)
+    {
+        if (t != null && !t.isRegion2)  // isRegion2 프로퍼티 사용
+        {
+            if ((t.IsPlacable() || t.IsPlaceTile()))  // IsPlacable 메서드 사용
+            {
+                validTiles.Add(t);
+            }
+        }
+    }
+
+    if (validTiles.Count == 0)
+    {
+        Debug.LogWarning("[DeckPanelManager] 지역1에 배치할 수 있는 placable/placeTile이 없습니다!");
+        return;
+    }
+
+    Debug.Log($"[DeckPanelManager] OnClickUse4CardsAtRandom() -> 지역1의 배치가능 타일 {validTiles.Count}개 중 랜덤으로 4장 소환 시도.");
+    
+    // 실제 소환 로직 추가
+    int cardsToPlace = Mathf.Min(4, validTiles.Count);
+    List<int> usedIndices = new List<int>();
+    
+    for (int i = 0; i < cardsToPlace && i < registeredCharactersSet2.Length; i++)
+    {
+        if (registeredCharactersSet2[i] != null && validTiles.Count > i)
+        {
+            // 랜덤 타일 선택
+            int randomTileIndex = Random.Range(0, validTiles.Count);
+            Tile targetTile = validTiles[randomTileIndex];
+            validTiles.RemoveAt(randomTileIndex); // 중복 방지
+            
+            // PlacementManager를 통해 소환
+            if (PlacementManager.Instance != null)
+            {
+                bool success = PlacementManager.Instance.SummonCharacterOnTile(registeredCharactersSet2[i], targetTile, false);
+                if (success)
+                {
+                    Debug.Log($"[DeckPanelManager] {registeredCharactersSet2[i].characterName}을(를) {targetTile.name}에 배치 성공!");
+                }
+            }
+        }
+    }
+}

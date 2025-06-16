@@ -46,37 +46,29 @@ public class GameManager : MonoBehaviour
 
     // =======================================================================
     // == 기존에는 resultSceneName 필드 + 씬 이동 로직이 있었으나 제거했습니다.
+    // == 대신 결과 UI를 표시하는 방식으로 변경합니다.
     // =======================================================================
-    // public string resultSceneName = "ResultScene"; // (사용 안 함)
-
-    [HideInInspector] public bool isGameOver = false;  // 게임이 끝났는지 여부
-    [HideInInspector] public bool isVictory = false;   // true면 승리, false면 패배
-
-    // =================== (추가) 결과 패널/텍스트 연결 ===================
-    [Header("결과 패널(씬 전환 대신 사용)")]
-    public GameObject resultPanel;          // 인스펙터에서 연결 (기본비활성)
-    public TextMeshProUGUI resultPanelText; // 승/패 문구 표시용 TMP
-
-    // =================== [추가] 지역1 성 체력 관리 ===================
-    [Header("지역1 성 체력")]
-    [SerializeField] private TextMeshProUGUI region1LifeText;
-    public int region1Life = 10;
     
-    // =================== [새로 추가] 중간성 & 최종성 ===================
-    [Header("지역1 중간성 (3개 라인)")]
-    public MiddleCastle region1LeftMiddleCastle;
-    public MiddleCastle region1CenterMiddleCastle;
-    public MiddleCastle region1RightMiddleCastle;
+    [Header("결과 UI 패널")]
+    [Tooltip("게임 종료 시 표시할 결과 UI 패널")]
+    public GameObject resultUIPanel;
     
-    [Header("지역2 중간성 (3개 라인)")]
-    public MiddleCastle region2LeftMiddleCastle;
-    public MiddleCastle region2CenterMiddleCastle;
-    public MiddleCastle region2RightMiddleCastle;
+    [Header("결과 텍스트")]
+    public TextMeshProUGUI resultTitleText;
+    public TextMeshProUGUI resultDescriptionText;
     
-    [Header("최종성")]
-    public FinalCastle region1FinalCastle;
-    public FinalCastle region2FinalCastle;
-
+    [Header("성 체력")]
+    public int region1CastleHealth = 1000;
+    public int region2CastleHealth = 1000;
+    
+    [Header("웨이브 정보")]
+    public int currentWave = 0;
+    public int totalWaves = 20;
+    public int completedWaves = 0;
+    
+    [Header("게임 상태")]
+    public bool isGameEnded = false;
+    
     private void Awake()
     {
         if (instance != null && instance != this)
@@ -84,421 +76,188 @@ public class GameManager : MonoBehaviour
             Destroy(gameObject);
             return;
         }
-
         instance = this;
-        
-        // DontDestroyOnLoad는 root GameObject에만 적용 가능
-        if (transform.parent != null)
-        {
-            transform.SetParent(null);
-        }
-        DontDestroyOnLoad(gameObject);
-
-        // 네트워크 런너 찾기 (임시로 주석처리)
-        /*
-        runner = FindFirstObjectByType<NetworkRunner>();
-        if (runner != null)
-        {
-            if (runner.GameMode == GameMode.Host)
-            {
-                // 호스트면 hostDeck을 currentRegisteredCharacters[0..8]에 복사
-                for (int i = 0; i < 9; i++)
-                {
-                    currentRegisteredCharacters[i] = (hostDeck != null && i < hostDeck.Length)
-                        ? hostDeck[i]
-                        : null;
-                }
-                Debug.Log("[GameManager] Host => hostDeck 사용");
-            }
-            else if (runner.GameMode == GameMode.Client)
-            {
-                // 클라이언트면 clientDeck을 currentRegisteredCharacters[0..8]에 복사
-                for (int i = 0; i < 9; i++)
-                {
-                    currentRegisteredCharacters[i] = (clientDeck != null && i < clientDeck.Length)
-                        ? clientDeck[i]
-                        : null;
-                }
-                Debug.Log("[GameManager] Client => clientDeck 사용");
-            }
-        }
-        else
-        {
-        */
-            // 싱글플레이(네트워크 없음) => 호스트 덱 사용
-            for (int i = 0; i < 9; i++)
-            {
-                currentRegisteredCharacters[i] = (hostDeck != null && i < hostDeck.Length)
-                    ? hostDeck[i]
-                    : null;
-            }
-            Debug.Log("[GameManager] 싱글플레이 => hostDeck 사용 (임시)");
-        // }
     }
 
-    private void Start()
+    void Start()
     {
-        if (waveSpawner == null)
-        {
-            waveSpawner = FindFirstObjectByType<WaveSpawner>();
-        }
-        if (placementManager == null)
-        {
-            placementManager = FindFirstObjectByType<PlacementManager>();
-        }
-        
-        // 지역1 생명력 텍스트 초기화
-        UpdateRegion1LifeText();
-        
-        // 중간성과 최종성 이벤트 연결
-        SetupCastleEvents();
-    }
-    
-    /// <summary>
-    /// 중간성과 최종성의 파괴 이벤트 연결
-    /// </summary>
-    private void SetupCastleEvents()
-    {
-        // 지역1 중간성
-        if (region1LeftMiddleCastle != null)
-        {
-            region1LeftMiddleCastle.OnMiddleCastleDestroyed += OnMiddleCastleDestroyed;
-        }
-        if (region1CenterMiddleCastle != null)
-        {
-            region1CenterMiddleCastle.OnMiddleCastleDestroyed += OnMiddleCastleDestroyed;
-        }
-        if (region1RightMiddleCastle != null)
-        {
-            region1RightMiddleCastle.OnMiddleCastleDestroyed += OnMiddleCastleDestroyed;
-        }
-        
-        // 지역2 중간성
-        if (region2LeftMiddleCastle != null)
-        {
-            region2LeftMiddleCastle.OnMiddleCastleDestroyed += OnMiddleCastleDestroyed;
-        }
-        if (region2CenterMiddleCastle != null)
-        {
-            region2CenterMiddleCastle.OnMiddleCastleDestroyed += OnMiddleCastleDestroyed;
-        }
-        if (region2RightMiddleCastle != null)
-        {
-            region2RightMiddleCastle.OnMiddleCastleDestroyed += OnMiddleCastleDestroyed;
-        }
-        
-        // 최종성
-        if (region1FinalCastle != null)
-        {
-            region1FinalCastle.OnFinalCastleDestroyed += OnFinalCastleDestroyed;
-        }
-        if (region2FinalCastle != null)
-        {
-            region2FinalCastle.OnFinalCastleDestroyed += OnFinalCastleDestroyed;
-        }
-    }
-    
-    /// <summary>
-    /// 중간성이 파괴되었을 때 호출
-    /// </summary>
-    private void OnMiddleCastleDestroyed(RouteType route, int areaIndex)
-    {
-        Debug.Log($"[GameManager] 지역{areaIndex} {route} 중간성 파괴됨!");
-        
-        // 해당 라인의 캐릭터들이 최종성으로 목표 변경하도록 알림
-        Character[] allCharacters = Object.FindObjectsByType<Character>(FindObjectsSortMode.None);
-        foreach (var character in allCharacters)
-        {
-            if (character != null && character.areaIndex == areaIndex && character.selectedRoute == route)
-            {
-                // 이미 CharacterCombat에서 자동으로 처리되므로 여기서는 로그만
-                Debug.Log($"[GameManager] {character.characterName}의 목표가 최종성으로 변경될 예정");
-            }
-        }
-    }
-    
-    /// <summary>
-    /// 최종성이 파괴되었을 때 호출 (게임 종료)
-    /// </summary>
-    private void OnFinalCastleDestroyed(int areaIndex)
-    {
-        Debug.Log($"[GameManager] 지역{areaIndex} 최종성 파괴됨! 게임 종료!");
-        
-        // 지역1 최종성 파괴 = 플레이어 패배
-        // 지역2 최종성 파괴 = 플레이어 승리
-        bool victory = (areaIndex == 2);
-        SetGameOver(victory);
-    }
-
-    private void Update()
-    {
-        // ESC로 종료
-        if (Input.GetKeyDown(KeyCode.Escape))
-        {
-            Application.Quit();
-        }
-    }
-
-    /// <summary>
-    /// (버튼) 웨이브 시작
-    /// </summary>
-    public void StartWave()
-    {
+        // 웨이브 스포너 초기화
         if (waveSpawner != null)
         {
-            waveSpawner.StartNextWave();
+            waveSpawner.Initialize();
         }
-    }
-
-    /// <summary>
-    /// 게임 오버(승/패) 처리.  
-    /// 기존에는 `SceneManager.LoadScene(resultSceneName);`를 호출했으나 제거하고,  
-    /// **같은 씬**에서 `resultPanel.SetActive(true)`로 대체합니다.
-    /// </summary>
-    public void SetGameOver(bool victory)
-    {
-        if (isGameOver) return; // 이미 끝났다면 중복 처리 방지
-        isGameOver = true;
-        isVictory = victory;
-
-        Debug.Log($"[GameManager] GameOver!! isVictory={victory}");
         
-        // ▼▼ [추가] resultPanel null 체크 디버그 로그 ▼▼
-        Debug.Log($"[GameManager] resultPanel is null? {resultPanel == null}");
-        if (resultPanel != null)
+        // 배치 매니저 초기화
+        if (placementManager != null)
         {
-            Debug.Log($"[GameManager] resultPanel name: {resultPanel.name}, active: {resultPanel.activeSelf}");
+            // placementManager 초기화 로직
         }
-
-        // 승리 시 100골드 지급
-        if (victory)
-        {
-            // ShopManager를 통해 골드 지급
-            if (ShopManager.Instance != null)
-            {
-                ShopManager.Instance.AddGold(100);
-                Debug.Log("[GameManager] 승리 보상으로 100골드가 지급되었습니다.");
-            }
-            else
-            {
-                Debug.LogWarning("[GameManager] ShopManager.Instance가 null - 골드를 지급할 수 없습니다.");
-            }
-        }
-
-        // === 씬 이동 대신, 결과 패널을 켬 ===
-        if (resultPanel != null && resultPanel.gameObject != null)
-        {
-            Debug.Log($"[GameManager] resultPanel을 활성화합니다: {resultPanel.name}");
-            resultPanel.SetActive(true);
-
-            // 승리냐 패배냐에 따라 텍스트 변경
-            if (resultPanelText != null)
-            {
-                resultPanelText.text = victory ? "승리!" : "패배...";
-                Debug.Log($"[GameManager] 결과 텍스트 설정: {resultPanelText.text}");
-            }
-            else
-            {
-                Debug.LogWarning("[GameManager] resultPanelText가 null입니다!");
-            }
-        }
-        else
-        {
-            Debug.LogWarning("[GameManager] resultPanel이 설정되지 않았습니다. 임시 결과 메시지를 생성합니다.");
-            
-            // 패널이 없을 경우 임시 결과 메시지 생성
-            CreateTemporaryResultMessage(victory);
-        }
-    }
-
-    /// <summary>
-    /// 지역1 성에 데미지를 입힙니다.
-    /// </summary>
-    public void TakeDamageToRegion1(int amount)
-    {
-        region1Life -= amount;
-        if (region1Life < 0)
-            region1Life = 0;
-
-        UpdateRegion1LifeText();
-        Debug.Log($"[GameManager] 지역1 체력 감소: {amount} => 남은 HP={region1Life}");
-
-        if (region1Life <= 0)
-        {
-            Debug.LogWarning("[GameManager] 지역1 체력=0 => 플레이어 패배!");
-            SetGameOver(false); // 패배
-        }
-    }
-
-    /// <summary>
-    /// 지역1 생명력 텍스트 업데이트
-    /// </summary>
-    private void UpdateRegion1LifeText()
-    {
-        if (region1LifeText != null)
-        {
-            region1LifeText.text = $"HP: {region1Life}";
-        }
-    }
-    
-    /// <summary>
-    /// 라우트에 해당하는 중간성 반환
-    /// </summary>
-    public MiddleCastle GetMiddleCastle(int areaIndex, RouteType route)
-    {
-        if (areaIndex == 1)
-        {
-            switch (route)
-            {
-                case RouteType.Left:
-                    return region1LeftMiddleCastle;
-                case RouteType.Center:
-                    return region1CenterMiddleCastle;
-                case RouteType.Right:
-                    return region1RightMiddleCastle;
-            }
-        }
-        else if (areaIndex == 2)
-        {
-            switch (route)
-            {
-                case RouteType.Left:
-                    return region2LeftMiddleCastle;
-                case RouteType.Center:
-                    return region2CenterMiddleCastle;
-                case RouteType.Right:
-                    return region2RightMiddleCastle;
-            }
-        }
-        return null;
-    }
-    
-    /// <summary>
-    /// 지역에 해당하는 최종성 반환
-    /// </summary>
-    public FinalCastle GetFinalCastle(int areaIndex)
-    {
-        if (areaIndex == 1)
-            return region1FinalCastle;
-        else if (areaIndex == 2)
-            return region2FinalCastle;
-        return null;
-    }
-
-    /// <summary>
-    /// 임시 결과 메시지를 생성합니다 (resultPanel이 없을 때 사용)
-    /// </summary>
-    private void CreateTemporaryResultMessage(bool victory)
-    {
-        try
-        {
-            GameObject tempResultMessage = new GameObject("TempResultMessage");
-            Canvas canvas = FindFirstObjectByType<Canvas>();
-            
-            if (canvas == null)
-            {
-                Debug.LogWarning("[GameManager] Canvas를 찾을 수 없어 임시 결과 메시지를 생성할 수 없습니다.");
-                return;
-            }
-            
-            tempResultMessage.transform.SetParent(canvas.transform, false);
-            
-            // 배경 패널 설정
-            RectTransform rectTransform = tempResultMessage.AddComponent<RectTransform>();
-            rectTransform.anchoredPosition = Vector2.zero;
-            rectTransform.sizeDelta = new Vector2(500, 300);
-            rectTransform.anchorMin = new Vector2(0.5f, 0.5f);
-            rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
-            rectTransform.pivot = new Vector2(0.5f, 0.5f);
-            
-            Image background = tempResultMessage.AddComponent<Image>();
-            background.color = new Color(0, 0, 0, 0.8f);
-            
-            // 텍스트 오브젝트 생성
-            GameObject textObject = new GameObject("ResultText");
-            textObject.transform.SetParent(tempResultMessage.transform, false);
-            
-            RectTransform textRect = textObject.AddComponent<RectTransform>();
-            textRect.anchoredPosition = Vector2.zero;
-            textRect.sizeDelta = new Vector2(480, 280);
-            textRect.anchorMin = new Vector2(0.5f, 0.5f);
-            textRect.anchorMax = new Vector2(0.5f, 0.5f);
-            textRect.pivot = new Vector2(0.5f, 0.5f);
-            
-            // TextMeshProUGUI 컴포넌트 추가
-            TextMeshProUGUI text = textObject.AddComponent<TextMeshProUGUI>();
-            
-            if (victory)
-            {
-                text.text = "🎉 승리! 🎉\n\n100골드를 획득했습니다!";
-                text.color = Color.yellow;
-            }
-            else
-            {
-                text.text = "💀 패배... 💀\n\n다시 도전해보세요!";
-                text.color = Color.red;
-            }
-            
-            text.fontSize = 36;
-            text.alignment = TextAlignmentOptions.Center;
-            text.fontStyle = FontStyles.Bold;
-            
-            // 맨 앞으로 이동
-            rectTransform.SetAsLastSibling();
-            
-            Debug.Log($"[GameManager] 임시 결과 메시지를 생성했습니다: {(victory ? "승리" : "패배")}");
-            
-            // 5초 후 자동으로 제거
-            StartCoroutine(DestroyTemporaryMessageAfterDelay(tempResultMessage, 5f));
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"[GameManager] 임시 결과 메시지 생성 중 오류 발생: {e.Message}");
-        }
-    }
-    
-    /// <summary>
-    /// 임시 메시지를 일정 시간 후 제거합니다
-    /// </summary>
-    private System.Collections.IEnumerator DestroyTemporaryMessageAfterDelay(GameObject message, float delay)
-    {
-        yield return new WaitForSeconds(delay);
         
-        if (message != null)
+        // 결과 UI 숨기기
+        if (resultUIPanel != null)
         {
-            Destroy(message);
-            Debug.Log("[GameManager] 임시 결과 메시지가 제거되었습니다.");
+            resultUIPanel.SetActive(false);
+        }
+        
+        Debug.Log("[GameManager] 게임 시작!");
+    }
+
+    /// <summary>
+    /// 지역1 성에 데미지
+    /// </summary>
+    public void TakeDamageToRegion1(int damage)
+    {
+        if (isGameEnded) return;
+        
+        region1CastleHealth -= damage;
+        Debug.Log($"[GameManager] 지역1 성이 {damage} 데미지를 받았습니다! 남은 체력: {region1CastleHealth}");
+        
+        if (region1CastleHealth <= 0)
+        {
+            region1CastleHealth = 0;
+            EndGame(false, "지역1 성이 파괴되었습니다!");
+        }
+    }
+    
+    /// <summary>
+    /// 지역2 성에 데미지
+    /// </summary>
+    public void TakeDamageToRegion2(int damage)
+    {
+        if (isGameEnded) return;
+        
+        region2CastleHealth -= damage;
+        Debug.Log($"[GameManager] 지역2 성이 {damage} 데미지를 받았습니다! 남은 체력: {region2CastleHealth}");
+        
+        if (region2CastleHealth <= 0)
+        {
+            region2CastleHealth = 0;
+            EndGame(true, "지역2 성이 파괴되었습니다!");
+        }
+    }
+    
+    /// <summary>
+    /// 웨이브 완료 처리
+    /// </summary>
+    public void OnWaveCompleted()
+    {
+        completedWaves++;
+        Debug.Log($"[GameManager] 웨이브 {completedWaves} 완료!");
+        
+        // 5웨이브마다 보상
+        if (completedWaves % 5 == 0)
+        {
+            GiveWaveReward();
+        }
+        
+        // 모든 웨이브 완료
+        if (completedWaves >= totalWaves)
+        {
+            EndGame(true, $"모든 웨이브({totalWaves})를 완료했습니다!");
+        }
+    }
+    
+    /// <summary>
+    /// 5웨이브 보상 (게임 기획서: 랜덤 2성 캐릭터 3개 중 1개 선택)
+    /// </summary>
+    private void GiveWaveReward()
+    {
+        Debug.Log($"[GameManager] {completedWaves}웨이브 보상! 랜덤 2성 캐릭터 선택 가능");
+        // TODO: 보상 UI 표시 및 캐릭터 선택 로직
+    }
+    
+    /// <summary>
+    /// 게임 종료 처리
+    /// </summary>
+    private void EndGame(bool isVictory, string reason)
+    {
+        if (isGameEnded) return;
+        
+        isGameEnded = true;
+        Debug.Log($"[GameManager] 게임 종료! 승리: {isVictory}, 이유: {reason}");
+        
+        // 웨이브 스포너 중지
+        if (waveSpawner != null)
+        {
+            waveSpawner.StopSpawning();
+        }
+        
+        // 결과 UI 표시
+        ShowResultUI(isVictory, reason);
+    }
+    
+    /// <summary>
+    /// 결과 UI 표시
+    /// </summary>
+    private void ShowResultUI(bool isVictory, string reason)
+    {
+        if (resultUIPanel != null)
+        {
+            resultUIPanel.SetActive(true);
+            
+            if (resultTitleText != null)
+            {
+                resultTitleText.text = isVictory ? "승리!" : "패배";
+            }
+            
+            if (resultDescriptionText != null)
+            {
+                resultDescriptionText.text = $"{reason}\n완료 웨이브: {completedWaves}/{totalWaves}";
+            }
         }
     }
 
     /// <summary>
-    /// 게임 상태를 초기화합니다 (결과 화면에서 로비로 돌아갈 때 사용)
+    /// 게임 상태 초기화
     /// </summary>
     public void ResetGameState()
     {
-        isGameOver = false;
-        isVictory = false;
-        region1Life = 10;
+        isGameEnded = false;
+        region1CastleHealth = 1000;
+        region2CastleHealth = 1000;
+        currentWave = 0;
+        completedWaves = 0;
         
-        // 결과 패널 비활성화
-        if (resultPanel != null)
+        if (resultUIPanel != null)
         {
-            resultPanel.SetActive(false);
+            resultUIPanel.SetActive(false);
         }
-        
-        // 임시 결과 메시지들 제거
-        GameObject[] tempMessages = GameObject.FindGameObjectsWithTag("Untagged");
-        foreach (var obj in tempMessages)
-        {
-            if (obj.name.Contains("TempResultMessage"))
-            {
-                Destroy(obj);
-            }
-        }
-        
-        // 지역1 생명력 텍스트 업데이트
-        UpdateRegion1LifeText();
         
         Debug.Log("[GameManager] 게임 상태가 초기화되었습니다.");
+    }
+    
+    /// <summary>
+    /// 현재 웨이브 가져오기
+    /// </summary>
+    public int GetCurrentWave()
+    {
+        return currentWave;
+    }
+    
+    /// <summary>
+    /// 웨이브 시작
+    /// </summary>
+    public void StartWave(int waveNumber)
+    {
+        currentWave = waveNumber;
+        Debug.Log($"[GameManager] 웨이브 {currentWave} 시작!");
+    }
+    
+    /// <summary>
+    /// 디버그용: 강제 승리
+    /// </summary>
+    [ContextMenu("Force Victory")]
+    public void ForceVictory()
+    {
+        EndGame(true, "디버그: 강제 승리");
+    }
+    
+    /// <summary>
+    /// 디버그용: 강제 패배
+    /// </summary>
+    [ContextMenu("Force Defeat")]
+    public void ForceDefeat()
+    {
+        EndGame(false, "디버그: 강제 패배");
     }
 }

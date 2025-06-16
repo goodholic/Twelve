@@ -3,9 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 
 /// <summary>
-/// 타일 상태 관리, 타일 참조 정리
-/// 게임 기획서: 타일 기반 소환, 3라인 시스템 관리
-/// ★★★ 수정: 같은 캐릭터끼리는 한 타일에 최대 3개까지 배치 가능
+/// 타일 관리자 - 게임 기획서: 타일 기반 소환 시스템
 /// </summary>
 public class TileManager : MonoBehaviour
 {
@@ -26,28 +24,15 @@ public class TileManager : MonoBehaviour
             return instance;
         }
     }
-
-    [Header("타일 그리드 설정")]
-    [Tooltip("7x12 그리드의 모든 타일들")]
-    public Tile[,] tileGrid = new Tile[7, 12];
-
-    [Header("3라인 시스템")]
-    [Tooltip("왼쪽 라인 타일들")]
-    public List<Tile> leftRouteTiles = new List<Tile>();
-    [Tooltip("중앙 라인 타일들")]
-    public List<Tile> centerRouteTiles = new List<Tile>();
-    [Tooltip("오른쪽 라인 타일들")]
-    public List<Tile> rightRouteTiles = new List<Tile>();
-
-    [Header("소환 가능 타일")]
-    [Tooltip("플레이어가 소환 가능한 타일들")]
-    public List<Tile> playerSummonableTiles = new List<Tile>();
-    [Tooltip("AI가 소환 가능한 타일들")]
-    public List<Tile> aiSummonableTiles = new List<Tile>();
-
-    private float lastCleanupTime = 0f;
-    private const float CLEANUP_INTERVAL = 1.0f;
-
+    
+    [Header("타일 분류")]
+    private List<Tile> leftRouteTiles = new List<Tile>();
+    private List<Tile> centerRouteTiles = new List<Tile>();
+    private List<Tile> rightRouteTiles = new List<Tile>();
+    
+    private List<Tile> playerSummonableTiles = new List<Tile>();
+    private List<Tile> aiSummonableTiles = new List<Tile>();
+    
     private void Awake()
     {
         if (instance != null && instance != this)
@@ -57,40 +42,21 @@ public class TileManager : MonoBehaviour
         }
         instance = this;
     }
-
+    
     private void Start()
     {
-        InitializeTileGrid();
+        CollectAllTiles();
         CategorizeRouteTiles();
         CategorizeSummonableTiles();
     }
-
-    private void Update()
-    {
-        if (Time.time - lastCleanupTime > CLEANUP_INTERVAL)
-        {
-            CleanupDestroyedCharacterReferences();
-            UpdatePlacedTileStates();
-            lastCleanupTime = Time.time;
-        }
-    }
-
+    
     /// <summary>
-    /// 타일 그리드 초기화
+    /// 모든 타일 수집
     /// </summary>
-    private void InitializeTileGrid()
+    private void CollectAllTiles()
     {
         Tile[] allTiles = Object.FindObjectsByType<Tile>(FindObjectsSortMode.None);
-        
-        foreach (var tile in allTiles)
-        {
-            if (tile.row >= 0 && tile.row < 7 && tile.column >= 0 && tile.column < 12)
-            {
-                tileGrid[tile.row, tile.column] = tile;
-            }
-        }
-        
-        Debug.Log($"[TileManager] 타일 그리드 초기화 완료. 총 {allTiles.Length}개 타일 발견");
+        Debug.Log($"[TileManager] 총 {allTiles.Length}개 타일 발견");
     }
 
     /// <summary>
@@ -168,79 +134,57 @@ public class TileManager : MonoBehaviour
     {
         if (character == null) return;
         
-        // 이 캐릭터가 참조하는 타일에서 제거
-        if (character.currentTile != null)
+        // 모든 타일 검사
+        Tile[] allTiles = Object.FindObjectsByType<Tile>(FindObjectsSortMode.None);
+        foreach (var tile in allTiles)
         {
-            character.currentTile.RemoveOccupyingCharacter(character);
-            Debug.Log($"[TileManager] {character.characterName}의 타일 참조 정리: {character.currentTile.name}");
+            if (tile == null) continue;
             
-            // 타일이 비었으면 원래 상태로
-            if (character.currentTile.GetOccupyingCharacters().Count == 0)
+            // 타일의 캐릭터 리스트 정리
+            List<Character> validChars = new List<Character>();
+            foreach (var c in tile.GetOccupyingCharacters())
             {
-                OnCharacterRemovedFromTile(character.currentTile);
+                if (c != null && c != character)
+                {
+                    validChars.Add(c);
+                }
             }
             
-            character.currentTile = null;
-        }
-    }
-
-    /// <summary>
-    /// PlaceTile 자식 오브젝트 생성
-    /// </summary>
-    public void CreatePlaceTileChild(Tile tile)
-    {
-        if (tile == null) return;
-        
-        // 이미 PlaceTile 자식이 있는지 확인
-        Transform existingChild = tile.transform.Find("PlaceTile(Clone)");
-        if (existingChild != null)
-        {
-            Debug.Log($"[TileManager] {tile.name}에 이미 PlaceTile 자식이 있습니다.");
-            return;
-        }
-        
-        // PlaceTile 프리팹 생성
-        if (tile.placeTilePrefab != null)
-        {
-            GameObject placeChild = Instantiate(tile.placeTilePrefab, tile.transform);
-            placeChild.transform.localPosition = Vector3.zero;
-            placeChild.transform.localScale = Vector3.one;
-            
-            // RectTransform 설정
-            RectTransform placeRect = placeChild.GetComponent<RectTransform>();
-            if (placeRect != null)
+            // 유효하지 않은 캐릭터가 있었다면 리스트 재구성
+            if (validChars.Count != tile.GetOccupyingCharacters().Count)
             {
-                placeRect.anchorMin = Vector2.zero;
-                placeRect.anchorMax = Vector2.one;
-                placeRect.anchoredPosition = Vector2.zero;
-                placeRect.sizeDelta = Vector2.zero;
+                tile.RemoveAllOccupyingCharacters();
+                foreach (var c in validChars)
+                {
+                    tile.AddOccupyingCharacter(c);
+                }
+                
+                // 타일이 비었으면 상태 업데이트
+                if (validChars.Count == 0 && (tile.IsPlaceTile() || tile.IsPlaced2()))
+                {
+                    if (tile.IsPlaceTile())
+                    {
+                        tile.SetPlacable();
+                    }
+                    else if (tile.IsPlaced2())
+                    {
+                        tile.SetPlacable2();
+                    }
+                    tile.RefreshTileVisual();
+                    Debug.Log($"[TileManager] {tile.name} 타일의 캐릭터가 없어져서 상태 업데이트");
+                }
             }
-            
-            Debug.Log($"[TileManager] {tile.name}에 PlaceTile 자식 생성 완료");
         }
     }
 
     /// <summary>
-    /// PlaceTile 자식 오브젝트 제거
+    /// 타일 정리 및 상태 업데이트
     /// </summary>
-    public void RemovePlaceTileChild(Tile tile)
+    public void CleanupTiles()
     {
-        if (tile == null) return;
-        
-        Transform placeChild = tile.transform.Find("PlaceTile(Clone)");
-        if (placeChild != null)
-        {
-            Destroy(placeChild.gameObject);
-            Debug.Log($"[TileManager] {tile.name}의 PlaceTile 자식 제거");
-        }
-    }
-
-    /// <summary>
-    /// ★★★ 수정: 파괴된 캐릭터 참조 정리
-    /// </summary>
-    private void CleanupDestroyedCharacterReferences()
-    {
+        // 모든 캐릭터 수집
         Character[] allChars = Object.FindObjectsByType<Character>(FindObjectsSortMode.None);
+        HashSet<Character> validCharSet = new HashSet<Character>(allChars);
         
         // 모든 타일 검사
         Tile[] allTiles = Object.FindObjectsByType<Tile>(FindObjectsSortMode.None);
@@ -252,7 +196,7 @@ public class TileManager : MonoBehaviour
             List<Character> validChars = new List<Character>();
             foreach (var c in tile.GetOccupyingCharacters())
             {
-                if (c != null && allChars.Contains(c))
+                if (c != null && validCharSet.Contains(c))
                 {
                     validChars.Add(c);
                 }
