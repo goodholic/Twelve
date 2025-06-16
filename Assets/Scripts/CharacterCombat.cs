@@ -119,71 +119,58 @@ public class CharacterCombat : MonoBehaviour
             
             // 1. 캐릭터 타겟 찾기
             Character charTarget = FindCharacterTargetInRange();
-            if (charTarget != null && charTarget.currentHP > 0)
+            if (charTarget != null)
             {
                 character.currentCharTarget = charTarget;
-                targetGameObject = charTarget.gameObject;
                 target = charTarget;
+                targetGameObject = charTarget.gameObject;
                 targetName = charTarget.characterName;
             }
-            else
+            
+            // 2. 몬스터 타겟 찾기
+            if (target == null)
             {
-                // 2. 몬스터 타겟 찾기
                 Monster monsterTarget = FindMonsterTargetInRange();
-                if (monsterTarget != null && monsterTarget.health > 0)
+                if (monsterTarget != null)
                 {
                     character.currentTarget = monsterTarget;
-                    targetGameObject = monsterTarget.gameObject;
                     target = monsterTarget;
-                    targetName = monsterTarget.gameObject.name;
+                    targetGameObject = monsterTarget.gameObject;
+                    targetName = monsterTarget.monsterName;
                 }
             }
             
-            // 공격 실행
-            if (target != null)
+            // 3. 성 타겟 찾기
+            if (target == null)
             {
-                Attack(target, targetGameObject, targetName);
-                // movement.SetCombatState(true); // 메서드가 존재하지 않음
-                
-                if (visual != null)
+                var (castle, castleName) = FindCastleTargetInRange();
+                if (castle != null)
                 {
-                    // visual.TriggerAttackAnimation(); // 메서드가 존재하지 않음
+                    target = castle;
+                    targetGameObject = castle is MiddleCastle mc ? mc.gameObject : (castle as FinalCastle).gameObject;
+                    targetName = castleName;
                 }
             }
-            else
+            
+            if (target != null && targetGameObject != null)
             {
-                // movement.SetCombatState(false); // 메서드가 존재하지 않음
-                
-                // 타겟이 없으면 성 공격 체크
-                // movement.GetTargetMiddleCastle()와 GetTargetFinalCastle() 메서드가 존재하지 않음
-                // 대신 직접 찾기
-                MiddleCastle middleCastle = FindFirstObjectByType<MiddleCastle>();
-                FinalCastle finalCastle = FindFirstObjectByType<FinalCastle>();
-                
-                if (middleCastle != null && middleCastle.currentHealth > 0)
-                {
-                    AttackCastle(middleCastle);
-                }
-                else if (finalCastle != null && finalCastle.currentHealth > 0)
-                {
-                    AttackCastle(finalCastle);
-                }
+                // 총알 생성
+                CreateBullet(target, targetGameObject, targetName);
             }
         }
     }
     
-    private void Attack(IDamageable target, GameObject targetGameObject, string targetName)
+    private void CreateBullet(IDamageable target, GameObject targetGameObject, string targetName)
     {
-        GameObject bulletPrefabToUse = GetBulletPrefab();
-        
-        if (bulletPrefabToUse != null)
+        if (bulletPrefab != null)
         {
             try
             {
-                GameObject bulletObj = Instantiate(bulletPrefabToUse);
+                GameObject bulletObj = Instantiate(bulletPrefab);
                 
-                // UI 총알이 보이도록 개선된 설정
-                RectTransform parentPanel = SelectBulletPanel(character.areaIndex == 1 ? 2 : 1);
+                // 적절한 부모 패널 선택
+                int targetAreaIndex = GetTargetAreaIndex(targetGameObject);
+                RectTransform parentPanel = SelectBulletPanel(targetAreaIndex);
                 
                 if (parentPanel != null)
                 {
@@ -196,12 +183,35 @@ public class CharacterCombat : MonoBehaviour
                         bulletRect = bulletObj.AddComponent<RectTransform>();
                     }
                     
-                    // 위치 설정
-                    Vector2 localPos = parentPanel.InverseTransformPoint(transform.position);
-                    bulletRect.anchoredPosition = localPos;
+                    // UI 좌표로 위치 변환
+                    Camera mainCamera = Camera.main;
+                    Canvas canvas = parentPanel.GetComponentInParent<Canvas>();
                     
-                    // 크기 설정 (UI에서 보이도록)
-                    bulletRect.sizeDelta = new Vector2(30f, 30f); // 기본 크기
+                    if (mainCamera != null && canvas != null)
+                    {
+                        // 캐릭터의 월드 좌표를 스크린 좌표로 변환
+                        Vector3 screenPos = mainCamera.WorldToScreenPoint(transform.position);
+                        
+                        // 스크린 좌표를 Canvas의 로컬 좌표로 변환
+                        Vector2 localPoint;
+                        RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                            parentPanel,
+                            screenPos,
+                            canvas.worldCamera,
+                            out localPoint
+                        );
+                        
+                        bulletRect.anchoredPosition = localPoint;
+                    }
+                    else
+                    {
+                        // 대체 방법: 직접 로컬 좌표 계산
+                        Vector2 localPos = parentPanel.InverseTransformPoint(transform.position);
+                        bulletRect.anchoredPosition = localPos;
+                    }
+                    
+                    // 크기 설정 (UI에서 보이도록 더 크게)
+                    bulletRect.sizeDelta = new Vector2(50f, 50f); // 기본 크기를 50x50으로 증가
                     
                     // 앵커와 피벗 설정
                     bulletRect.anchorMin = new Vector2(0.5f, 0.5f);
@@ -240,6 +250,12 @@ public class CharacterCombat : MonoBehaviour
                                 bool isUpDirection = targetGameObject.transform.position.y > transform.position.y;
                                 bulletImage.sprite = isUpDirection ? bulletUpDirectionSprite : bulletDownDirectionSprite;
                             }
+                            else
+                            {
+                                // 디버그용으로 색상 설정
+                                bulletImage.color = Color.yellow; // 노란색으로 표시
+                                Debug.LogWarning($"[CharacterCombat] 총알 스프라이트가 설정되지 않았습니다. 노란색으로 표시합니다.");
+                            }
                         }
                         
                         // Raycast Target 비활성화 (클릭 방해 방지)
@@ -255,6 +271,8 @@ public class CharacterCombat : MonoBehaviour
                     canvasGroup.alpha = 1f;
                     canvasGroup.interactable = false;
                     canvasGroup.blocksRaycasts = false;
+                    
+                    Debug.Log($"[CharacterCombat] 총알 생성 완료 - 위치: {bulletRect.anchoredPosition}, 크기: {bulletRect.sizeDelta}");
                 }
                 
                 // 근접 공격이고 타겟이 매우 가까우면
@@ -313,19 +331,86 @@ public class CharacterCombat : MonoBehaviour
         }
     }
     
-    private void AttackCastle(MonoBehaviour castle)
+    private int GetTargetAreaIndex(GameObject targetObj)
     {
-        GameObject bulletPrefabToUse = GetBulletPrefab();
-        if (bulletPrefabToUse != null)
+        // Monster의 areaIndex 확인
+        Monster monster = targetObj.GetComponent<Monster>();
+        if (monster != null)
         {
-            GameObject bulletObj = Instantiate(bulletPrefabToUse);
-            RectTransform parentPanel = SelectBulletPanel(character.areaIndex == 1 ? 2 : 1);
+            return monster.areaIndex;
+        }
+        
+        // Character의 areaIndex 확인
+        Character character = targetObj.GetComponent<Character>();
+        if (character != null)
+        {
+            return character.areaIndex;
+        }
+        
+        // Castle의 areaIndex 확인
+        MiddleCastle middleCastle = targetObj.GetComponent<MiddleCastle>();
+        if (middleCastle != null)
+        {
+            return middleCastle.areaIndex;
+        }
+        
+        FinalCastle finalCastle = targetObj.GetComponent<FinalCastle>();
+        if (finalCastle != null)
+        {
+            return finalCastle.areaIndex;
+        }
+        
+        // 기본값
+        return (character != null && character.areaIndex == 2) ? 1 : 2;
+    }
+    
+    public void AttackAtPosition(IDamageable target, Vector2 position)
+    {
+        if (target == null) return;
+        
+        GameObject targetGameObject = null;
+        string targetName = "";
+        
+        if (target is Monster monster)
+        {
+            targetGameObject = monster.gameObject;
+            targetName = monster.monsterName;
+        }
+        else if (target is Character targetChar)
+        {
+            targetGameObject = targetChar.gameObject;
+            targetName = targetChar.characterName;
+        }
+        else if (target is MiddleCastle middleCastle)
+        {
+            targetGameObject = middleCastle.gameObject;
+            targetName = "중간성";
+        }
+        else if (target is FinalCastle finalCastle)
+        {
+            targetGameObject = finalCastle.gameObject;
+            targetName = "최종성";
+        }
+        
+        if (targetGameObject != null)
+        {
+            CreateBullet(target, targetGameObject, targetName);
+        }
+    }
+    
+    private void AttackCastle(IDamageable castle)
+    {
+        if (bulletPrefab != null)
+        {
+            GameObject bulletObj = Instantiate(bulletPrefab);
+            
+            int targetAreaIndex = GetTargetAreaIndex(castle is MiddleCastle mc ? mc.gameObject : (castle as FinalCastle).gameObject);
+            RectTransform parentPanel = SelectBulletPanel(targetAreaIndex);
             
             if (parentPanel != null)
             {
                 bulletObj.transform.SetParent(parentPanel, false);
                 
-                // RectTransform 설정
                 RectTransform bulletRect = bulletObj.GetComponent<RectTransform>();
                 if (bulletRect == null)
                 {
@@ -334,28 +419,7 @@ public class CharacterCombat : MonoBehaviour
                 
                 Vector2 localPos = parentPanel.InverseTransformPoint(transform.position);
                 bulletRect.anchoredPosition = localPos;
-                bulletRect.sizeDelta = new Vector2(30f, 30f);
-                bulletRect.anchorMin = new Vector2(0.5f, 0.5f);
-                bulletRect.anchorMax = new Vector2(0.5f, 0.5f);
-                bulletRect.pivot = new Vector2(0.5f, 0.5f);
-                bulletRect.localScale = Vector3.one;
-                bulletRect.SetAsLastSibling();
                 
-                // Image 컴포넌트 설정
-                Image bulletImage = bulletObj.GetComponent<Image>();
-                if (bulletImage != null)
-                {
-                    bulletImage.enabled = true;
-                    if (bulletImage.color.a < 0.1f)
-                    {
-                        Color c = bulletImage.color;
-                        c.a = 1f;
-                        bulletImage.color = c;
-                    }
-                    bulletImage.raycastTarget = false;
-                }
-                
-                // Canvas Group 설정
                 CanvasGroup canvasGroup = bulletObj.GetComponent<CanvasGroup>();
                 if (canvasGroup == null)
                 {
@@ -369,8 +433,18 @@ public class CharacterCombat : MonoBehaviour
             Bullet bullet = bulletObj.GetComponent<Bullet>();
             if (bullet != null)
             {
+                GameObject castleGameObject = null;
+                if (castle is MiddleCastle middleCastleObj)
+                {
+                    castleGameObject = middleCastleObj.gameObject;
+                }
+                else if (castle is FinalCastle fc)
+                {
+                    castleGameObject = fc.gameObject;
+                }
+                
                 bullet.Initialize(
-                    castle.gameObject,
+                    castleGameObject,
                     character.attackPower,
                     character.areaIndex,
                     true,
@@ -407,13 +481,14 @@ public class CharacterCombat : MonoBehaviour
         foreach (var otherChar in allCharacters)
         {
             if (otherChar == null || otherChar == character) continue;
-            if (otherChar.areaIndex == character.areaIndex) continue;
             if (otherChar.currentHP <= 0) continue;
+            if (otherChar.areaIndex == character.areaIndex) continue;
             
-            float dist = Vector2.Distance(transform.position, otherChar.transform.position);
-            if (dist <= character.attackRange && dist < nearestDistance)
+            float distance = Vector2.Distance(transform.position, otherChar.transform.position);
+            
+            if (distance <= character.attackRange && distance < nearestDistance)
             {
-                nearestDistance = dist;
+                nearestDistance = distance;
                 nearestChar = otherChar;
             }
         }
@@ -423,23 +498,21 @@ public class CharacterCombat : MonoBehaviour
     
     private Monster FindMonsterTargetInRange()
     {
-        // 태그 대신 FindObjectsByType 사용하여 모든 몬스터 찾기
         Monster[] allMonsters = FindObjectsByType<Monster>(FindObjectsSortMode.None);
-        
         Monster nearestMonster = null;
         float nearestDistance = Mathf.Infinity;
         
         foreach (var monster in allMonsters)
         {
-            if (monster == null || monster.health <= 0) continue;
-            
-            // 같은 지역의 몬스터는 공격하지 않음
+            if (monster == null) continue;
+            if (monster.currentHealth <= 0) continue;
             if (monster.areaIndex == character.areaIndex) continue;
             
-            float dist = Vector2.Distance(transform.position, monster.transform.position);
-            if (dist <= character.attackRange && dist < nearestDistance)
+            float distance = Vector2.Distance(transform.position, monster.transform.position);
+            
+            if (distance <= character.attackRange && distance < nearestDistance)
             {
-                nearestDistance = dist;
+                nearestDistance = distance;
                 nearestMonster = monster;
             }
         }
@@ -447,10 +520,44 @@ public class CharacterCombat : MonoBehaviour
         return nearestMonster;
     }
     
-    // 클릭 시 공격 범위 변경
-    private void OnMouseDown()
+    private (IDamageable, string) FindCastleTargetInRange()
     {
-        Debug.Log($"[Character] {character.characterName} 클릭됨! 공격 범위를 {character.attackRange}에서 {newAttackRangeOnClick}로 변경");
+        // 중간성 체크
+        MiddleCastle[] middleCastles = FindObjectsByType<MiddleCastle>(FindObjectsSortMode.None);
+        foreach (var castle in middleCastles)
+        {
+            if (castle == null) continue;
+            if (castle.currentHealth <= 0) continue;
+            if (castle.areaIndex == character.areaIndex) continue;
+            
+            float distance = Vector2.Distance(transform.position, castle.transform.position);
+            if (distance <= character.attackRange)
+            {
+                return (castle, "중간성");
+            }
+        }
+        
+        // 최종성 체크
+        FinalCastle[] finalCastles = FindObjectsByType<FinalCastle>(FindObjectsSortMode.None);
+        foreach (var castle in finalCastles)
+        {
+            if (castle == null) continue;
+            if (castle.currentHealth <= 0) continue;
+            if (castle.areaIndex == character.areaIndex) continue;
+            
+            float distance = Vector2.Distance(transform.position, castle.transform.position);
+            if (distance <= character.attackRange)
+            {
+                return (castle, "최종성");
+            }
+        }
+        
+        return (null, "");
+    }
+    
+    public void SetClickToChangeAttackRange()
+    {
+        Debug.Log($"[Character] {character.characterName}의 클릭 시 공격 범위를 {character.attackRange}에서 {newAttackRangeOnClick}로 변경");
         character.attackRange = newAttackRangeOnClick;
         
         // 공격 범위 표시

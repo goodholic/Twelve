@@ -193,7 +193,6 @@ GameObject:
   - component: {fileID: -6454021280372367565}
   - component: {fileID: -3403123716993649127}
   - component: {fileID: 5087882912234912243}
-  - component: {fileID: 6258141603421103278}
   - component: {fileID: -313598938128675428}
   - component: {fileID: -8639468383175258917}
   - component: {fileID: -4357015087272861213}
@@ -380,25 +379,6 @@ CircleCollider2D:
   m_CompositeOrder: 0
   m_Offset: {x: 0, y: 0}
   m_Radius: 0.5
---- !u!114 &6258141603421103278
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7009747068067306124}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: -1552182283, guid: e725a070cec140c4caffb81624c8c787, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  SortKey: 4201887767
-  ObjectInterest: 1
-  Flags: 262145
-  NestedObjects: []
-  NetworkedBehaviours:
-  - {fileID: -6454021280372367565}
-  ForceRemoteRenderTimeframe: 0
 --- !u!61 &-313598938128675428
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -487,7 +467,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 08c567e188f335f4493f6b5c95446e55, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  bulletPrefab: {fileID: 0}
+  bulletPrefab: {fileID: 6080353663600752421, guid: c0e3832b250e20d40a1fbaaf1c425c51, type: 3}
   bulletSpeed: 5
   bulletUpDirectionSprite: {fileID: 0}
   bulletDownDirectionSprite: {fileID: 0}

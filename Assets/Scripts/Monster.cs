@@ -5,8 +5,10 @@ using UnityEngine.UI;
 public class Monster : MonoBehaviour, IDamageable
 {
     [Header("Monster Stats")]
+    public string monsterName = "Monster"; // 몬스터 이름 추가
     public float moveSpeed = 0.7f;  // 1.0f → 0.7f로 속도 더 감소
     public float health = 50f;
+    public float currentHealth; // 현재 체력 속성 추가
 
     [Header("Monster Size")]
     [Tooltip("몬스터 크기 배율 (0.3 = 30% 크기)")]
@@ -68,6 +70,7 @@ public class Monster : MonoBehaviour, IDamageable
         Debug.Log($"[Monster] 챕터 {currentChapter} 몬스터 - 체력: {health}, 성 데미지: {damageToCastle}");
         
         maxHealth = health;
+        currentHealth = health;
         originalMoveSpeed = moveSpeed;
 
         // HP바 초기화
@@ -148,7 +151,7 @@ public class Monster : MonoBehaviour, IDamageable
     {
         if (hpFillImage != null)
         {
-            float ratio = health / maxHealth;
+            float ratio = currentHealth / maxHealth;
             hpFillImage.fillAmount = ratio;
 
             // 체력에 따른 색상 변경
@@ -365,10 +368,10 @@ public class Monster : MonoBehaviour, IDamageable
     {
         if (isDead) return;
 
-        health -= damageAmount;
+        currentHealth -= damageAmount;
         UpdateHpBar();
 
-        if (health <= 0f)
+        if (currentHealth <= 0f)
         {
             Die();
         }

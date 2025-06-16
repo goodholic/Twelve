@@ -289,7 +289,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 08c567e188f335f4493f6b5c95446e55, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  bulletPrefab: {fileID: 0}
+  bulletPrefab: {fileID: 8845817633173902957, guid: 3f66d6bb5c94c954e9e997e0b8a75c68, type: 3}
   bulletSpeed: 5
   bulletUpDirectionSprite: {fileID: 0}
   bulletDownDirectionSprite: {fileID: 0}
