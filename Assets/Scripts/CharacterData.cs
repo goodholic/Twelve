@@ -38,7 +38,7 @@ public class CharacterData
     public GameObject spawnPrefab;
     
     [Header("UI 아이콘")]
-    public Image buttonIcon;
+    public Sprite buttonIcon;  // Image에서 Sprite로 변경
     
     [Header("초기 별 등급")]
     public CharacterStar initialStar = CharacterStar.OneStar;
@@ -79,4 +79,14 @@ public enum AttackTargetType
     Character,  // 캐릭터만
     Monster,    // 몬스터만
     Both        // 둘 다
+}
+
+/// <summary>
+/// 공격 사거리 타입
+/// </summary>
+[System.Serializable]
+public enum RangeType
+{
+    Melee,      // 근접
+    Ranged      // 원거리
 }

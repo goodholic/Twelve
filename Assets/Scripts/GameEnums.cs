@@ -43,3 +43,28 @@ public enum RaceType
     Undead,     // 언데드족
     Etc         // 기타
 }
+
+using UnityEngine;
+
+/// <summary>
+/// 라인/경로 타입 정의
+/// 게임 기획서: 3라인 시스템 (왼쪽/중앙/오른쪽)
+/// </summary>
+[System.Serializable]
+public enum RouteType
+{
+    Left,    // 왼쪽 라인
+    Center,  // 중앙 라인
+    Right    // 오른쪽 라인
+}
+
+/// <summary>
+/// 종족 타입 정의
+/// </summary>
+[System.Serializable]
+public enum RaceType
+{
+    Human,
+    Orc,
+    Elf,
+}
