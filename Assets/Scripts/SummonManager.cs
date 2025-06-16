@@ -527,4 +527,36 @@ public class SummonManager : MonoBehaviour
             }
         }
     }
+
+    /// <summary>
+    /// 캐릭터를 특정 타일에 배치 (Tile.cs에서 호출)
+    /// </summary>
+    public Character PlaceCharacterOnTile(CharacterData data, Tile tile, bool isOpponent)
+    {
+        if (data == null || tile == null)
+        {
+            Debug.LogError("[SummonManager] PlaceCharacterOnTile: data 또는 tile이 null입니다!");
+            return null;
+        }
+        
+        // ★★★ 50마리 제한 체크
+        if (placementManager != null && !placementManager.CanSummonCharacter(isOpponent))
+        {
+            int currentCount = placementManager.GetCharacterCount(isOpponent);
+            int maxCount = 50;
+            Debug.LogWarning($"[SummonManager] 캐릭터 수 제한 도달! 현재: {currentCount}/{maxCount}");
+            return null;
+        }
+        
+        // 캐릭터 생성
+        Character newChar = CreateCharacterOnTile(data, tile, isOpponent);
+        
+        if (newChar != null)
+        {
+            PlaySummonEffect(tile.transform.position);
+            Debug.Log($"[SummonManager] {data.characterName} 배치 성공 at {tile.name}");
+        }
+        
+        return newChar;
+    }
 }

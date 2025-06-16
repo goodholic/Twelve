@@ -364,10 +364,23 @@ public class Tile : MonoBehaviour
         // 타일 클릭 시 캐릭터 소환 시도
         if (IsPlaceableType())
         {
-            SummonManager summonManager = SummonManager.Instance;
-            if (summonManager != null)
+            var coreData = CoreDataManager.Instance;
+            if (coreData != null && coreData.currentCharacterIndex >= 0)
             {
-                summonManager.PlaceCharacterOnTile(this);
+                SummonManager summonManager = SummonManager.Instance;
+                if (summonManager != null && coreData.characterDatabase != null)
+                {
+                    var allChars = coreData.characterDatabase.currentRegisteredCharacters;
+                    if (coreData.currentCharacterIndex < allChars.Length)
+                    {
+                        CharacterData selectedChar = allChars[coreData.currentCharacterIndex];
+                        if (selectedChar != null)
+                        {
+                            bool isOpponent = !coreData.isHost;
+                            summonManager.PlaceCharacterOnTile(selectedChar, this, isOpponent);
+                        }
+                    }
+                }
             }
         }
     }

@@ -263,7 +263,11 @@ public class DraggableSummonButtonUI : MonoBehaviour, IBeginDragHandler, IDragHa
         if (!droppedOnTile)
         {
             List<RaycastResult> results = new List<RaycastResult>();
-            eventData.module.GetComponent<GraphicRaycaster>().Raycast(eventData, results);
+            GraphicRaycaster raycaster = canvas.GetComponent<GraphicRaycaster>();
+            if (raycaster != null)
+            {
+                raycaster.Raycast(eventData, results);
+            }
 
             foreach (var result in results)
             {
@@ -392,5 +396,14 @@ public class DraggableSummonButtonUI : MonoBehaviour, IBeginDragHandler, IDragHa
                 Debug.LogError("[DraggableSummonButtonUI] 캐릭터 소환 실패!");
             }
         }
+    }
+
+    /// <summary>
+    /// 소환할 캐릭터 데이터 설정
+    /// </summary>
+    public void SetSummonData(int characterIndex)
+    {
+        summonCharacterIndex = characterIndex;
+        Debug.Log($"[DraggableSummonButtonUI] SetSummonData: {characterIndex}");
     }
 }
