@@ -1,128 +1,73 @@
-using UnityEngine;
-using System.Collections;
 using System.Collections.Generic;
+using UnityEngine;
 
-/// <summary>
-/// 10종의 탄환 타입 정의
-/// </summary>
 public enum BulletType
 {
     Normal,
     Piercing,
     Explosive,
+    Chain,
     Slow,
     Bleed,
-    Chain,
     Stun,
     ArmorPenetration,
     Split,
     Energy
 }
 
-/// <summary>
-/// 타워(또는 유닛)에서 발사되는 탄환.
-/// </summary>
 public class Bullet : MonoBehaviour
 {
-    [Header("Bullet Type (10종)")]
+    [Header("Bullet Stats")]
+    public float damage = 10f;
+    public float speed = 5f;
+    public float maxLifeTime = 5f;
     public BulletType bulletType = BulletType.Normal;
 
-    [Header("공통: 공격력 / 속도 / 최대 생존시간")]
-    public float damage = 10f;
-    public float speed = 3f;
-    public float maxLifeTime = 3f;
-
-    [Header("광역 공격 여부(폭발탄 등)")]
+    [Header("Special Effects")]
+    public float areaRadius = 0f;
     public bool isAreaAttack = false;
-    public float areaRadius = 1.5f;
-
-    [Header("타겟 / 기타")]
-    public GameObject target;        // 몬스터나 캐릭터 모두 사용 가능하도록 GameObject로 변경
-    private float aliveTime = 0f;    // 사용 중인 시간 체크
-    private IDamageable damageableTarget;  // 인터페이스 사용 (Monster/Character/Castle 등)
-
-    // -------------------------------------------------------
-    // [탄환별 추가 옵션들]
-    // -------------------------------------------------------
-    [Header("관통탄 옵션")]
     public int maxPierceCount = 3;
-
-    [Header("슬로우탄 옵션")]
+    public float chainRange = 3f;
+    public int maxChainCount = 3;
     public float slowDuration = 2f;
     public float slowAmount = 0.5f;
-
-    [Header("출혈탄 옵션(DoT)")]
     public float bleedDuration = 3f;
     public float bleedDamagePerSec = 2f;
-
-    [Header("연쇄탄 옵션")]
-    public int chainMaxBounces = 3;
-    public float chainBounceRange = 2f;
-
-    [Header("마비탄 옵션")]
     public float stunDuration = 1f;
-
-    [Header("파괴탄 옵션(방어 무시)")]
-    public bool ignoreDefense = true;
-
-    [Header("분열탄 옵션")]
+    public float armorPenRatio = 0.5f;
     public int splitCount = 3;
-    public float splitBulletAngleSpread = 30f;
     public GameObject subBulletPrefab;
 
-    [Header("에너지탄 옵션")]
-    public float extraRange = 5f;
-    public float energySpeedFactor = 1.2f;
+    [Header("Movement")]
+    public float arcHeight = 0f;
+    public float speedMultiplier = 1f;
 
-    [Header("Impact / 폭발 이펙트 (옵션)")]
+    private GameObject target;
+    private IDamageable damageableTarget;
+    private Vector3 startPosition;
+    private float totalDistance;
+    private float currentDistance;
+    private float aliveTime = 0f;
+
+    [Header("VFX")]
     public GameObject impactEffectPrefab;
     public GameObject explosionEffectPrefab;
+    public GameObject chainEffectPrefab;
 
-    // 포물선 이동을 위한 변수들
-    [Header("포물선 설정")]
-    public float arcHeight = 0.5f;  // 포물선의 최대 높이 (값이 클수록 더 높게 날아감)
-    private Vector3 startPosition;   // 총알 시작 위치
-    private float totalDistance;     // 총알이 날아갈 총 거리
-    private float currentDistance;   // 현재까지 날아간 거리
-    private float speedMultiplier = 0.7f;  // 전체적인 속도 감소 인자 (조정용)
-
-    // ================================
-    // [수정] 아래 두 스프라이트는
-    // "소환된 캐릭터가 (위/아래로) 표시될 때" 쓰이는 것이며,
-    // 실제 '탄환' 그래픽으로 사용되지 않음!
-    // ================================
-    [Header("소환된 캐릭터가 위/아래로 공격할 때 보여줄 스프라이트 (총알 스프라이트 X)")]
-    public Sprite bulletUpDirectionSprite;    // (기존) 위쪽 방향 탄환 스프라이트 -> 지금은 "소환된 캐릭터(위로 쏠 때)"
-    public Sprite bulletDownDirectionSprite;  // (기존) 아래쪽 방향 탄환 스프라이트 -> 지금은 "소환된 캐릭터(아래로 쏠 때)"
+    [Header("소환된 캐릭터가 위/아래로 공격할 때 보여줄 스프라이트")]
+    public Sprite bulletUpDirectionSprite;
+    public Sprite bulletDownDirectionSprite;
 
     private SpriteRenderer spriteRenderer;
-    private UnityEngine.UI.Image uiImage;
 
     private int piercedCount = 0;
     private List<Monster> chainAttackedMonsters = new List<Monster>();
     private int currentBounceCount = 0;
 
-    // VFX 패널 (정적 참조)
-    private static RectTransform vfxPanel;
-
-    // === [수정 부분] ===
     [Header("Area 구분 (1 or 2)")]
     public int areaIndex = 1;
-    // =================
 
-    // UI 환경에서 총알 표시를 위한 추가 변수
-    private RectTransform rectTransform;
-    private Canvas parentCanvas;
     private Character sourceCharacter;
-
-    /// <summary>
-    /// VFX 이펙트들이 생성될 부모 패널 설정 (정적 메서드)
-    /// </summary>
-    public static void SetVfxPanel(RectTransform panel)
-    {
-        vfxPanel = panel;
-        Debug.Log("[Bullet] VFX 패널 설정됨: " + (panel != null ? panel.name : "null"));
-    }
 
     /// <summary>
     /// 탄환 초기화 (몬스터/캐릭터/성 등 IDamageable 대상)
@@ -163,7 +108,7 @@ public class Bullet : MonoBehaviour
             this.startPosition = transform.position;
             if (target != null)
             {
-                this.totalDistance = Vector2.Distance(startPosition, target.transform.position);
+                this.totalDistance = Vector3.Distance(startPosition, target.transform.position);
             }
             this.currentDistance = 0f;
         }
@@ -178,191 +123,71 @@ public class Bullet : MonoBehaviour
         Init((IDamageable)targetMonster, baseDamage, baseSpeed, areaAtk, areaAtkRadius, areaIndex);
     }
 
-    /// <summary>
-    /// 캐릭터를 타겟으로 하는 탄환 초기화 (이전 호환)
-    /// </summary>
-    public void InitForCharacter(Character targetChar, float baseDamage, float baseSpeed,
-                                bool areaAtk, float areaAtkRadius, int areaIndex)
+    public void SetSpeedMultiplier(float multiplier)
     {
-        Init((IDamageable)targetChar, baseDamage, baseSpeed, areaAtk, areaAtkRadius, areaIndex);
+        speedMultiplier = multiplier;
     }
 
-    /// <summary>
-    /// UI 환경에서 총알 초기화를 위한 새로운 메서드
-    /// </summary>
-    public void Initialize(GameObject targetGameObject, float baseDamage, int areaIndex,
-                          bool areaAtk, float baseSpeed, Character sourceCharacter = null)
+    public void SetSourceCharacter(Character character)
     {
-        this.target = targetGameObject;
-        this.damage = baseDamage;
-        this.areaIndex = areaIndex;
-        this.isAreaAttack = areaAtk;
-        this.speed = baseSpeed;
-        this.sourceCharacter = sourceCharacter;
+        sourceCharacter = character;
+    }
+
+    public void SetBulletType(BulletType type)
+    {
+        bulletType = type;
+    }
+
+    public void SetBulletDirection(Vector3 direction)
+    {
+        if (spriteRenderer == null) return;
+
+        bool isUpDirection = direction.y > 0;
         
-        // IDamageable 찾기
-        IDamageable targetDamageable = null;
-        if (targetGameObject != null)
+        if (isUpDirection && bulletUpDirectionSprite != null)
         {
-            // Monster 컴포넌트 확인
-            Monster monster = targetGameObject.GetComponent<Monster>();
-            if (monster != null)
-            {
-                targetDamageable = monster;
-            }
-            else
-            {
-                // Character 컴포넌트 확인
-                Character character = targetGameObject.GetComponent<Character>();
-                if (character != null)
-                {
-                    targetDamageable = character;
-                }
-                else
-                {
-                    // Castle 컴포넌트들 확인
-                    MiddleCastle middleCastle = targetGameObject.GetComponent<MiddleCastle>();
-                    if (middleCastle != null)
-                    {
-                        targetDamageable = middleCastle;
-                    }
-                    else
-                    {
-                        FinalCastle finalCastle = targetGameObject.GetComponent<FinalCastle>();
-                        if (finalCastle != null)
-                        {
-                            targetDamageable = finalCastle;
-                        }
-                    }
-                }
-            }
+            spriteRenderer.sprite = bulletUpDirectionSprite;
         }
-        
-        if (targetDamageable != null)
+        else if (!isUpDirection && bulletDownDirectionSprite != null)
         {
-            // 기본 광역 반지름 설정 (sourceCharacter가 있는 경우)
-            float areaAtkRadius = 1.5f;
-            if (sourceCharacter != null && sourceCharacter.isAreaAttack)
-            {
-                areaAtkRadius = sourceCharacter.areaAttackRadius;
-            }
-            
-            // 기존 Init 메서드 호출
-            Init(targetDamageable, baseDamage, baseSpeed, areaAtk, areaAtkRadius, areaIndex);
-        }
-        else
-        {
-            Debug.LogWarning($"[Bullet] Initialize: 타겟 오브젝트에서 IDamageable 컴포넌트를 찾을 수 없습니다: {targetGameObject?.name}");
+            spriteRenderer.sprite = bulletDownDirectionSprite;
         }
     }
-    
-    /// <summary>
-    /// 광역 공격 설정
-    /// </summary>
-    public void SetAreaAttack(float radius)
+
+    private void Awake()
     {
-        this.isAreaAttack = true;
-        this.areaRadius = radius;
-    }
-    
-    /// <summary>
-    /// 근접 공격으로 설정 (즉시 타겟에 도달하도록)
-    /// </summary>
-    public void SetAsMeleeAttack()
-    {
-        // 근접 공격의 경우 속도를 매우 빠르게 설정하여 즉시 도달하도록 함
-        this.speed = 50f;
-        this.maxLifeTime = 0.5f; // 짧은 생존 시간
-        this.speedMultiplier = 2f; // 속도 배율 증가
+        spriteRenderer = GetComponent<SpriteRenderer>();
+        if (spriteRenderer == null)
+        {
+            spriteRenderer = GetComponentInChildren<SpriteRenderer>();
+        }
+
+        // SpriteRenderer가 없으면 생성
+        if (spriteRenderer == null)
+        {
+            GameObject spriteObj = new GameObject("Sprite");
+            spriteObj.transform.SetParent(transform);
+            spriteObj.transform.localPosition = Vector3.zero;
+            spriteRenderer = spriteObj.AddComponent<SpriteRenderer>();
+            spriteRenderer.sortingOrder = 100; // 총알이 위에 표시되도록
+        }
+
+        // 기본 색상 설정 (디버그용)
+        if (spriteRenderer.sprite == null)
+        {
+            // 임시로 작은 원형 스프라이트 생성 (실제로는 적절한 스프라이트 에셋 사용)
+            spriteRenderer.color = Color.red;
+        }
     }
 
     private void Start()
     {
-        piercedCount = 0;
-        currentBounceCount = 0;
-        chainAttackedMonsters.Clear();
-
-        // 포물선 이동 초기화
-        startPosition = transform.position;
+        // 방향에 따른 스프라이트 설정
         if (target != null)
         {
-            totalDistance = Vector2.Distance(startPosition, target.transform.position);
+            Vector3 direction = (target.transform.position - transform.position).normalized;
+            SetBulletDirection(direction);
         }
-        currentDistance = 0f;
-
-        // 스프라이트 렌더러 or UI 이미지
-        spriteRenderer = GetComponent<SpriteRenderer>();
-        uiImage = GetComponent<UnityEngine.UI.Image>();
-        rectTransform = GetComponent<RectTransform>();
-
-        // UI 환경에서 Canvas 찾기
-        if (rectTransform != null)
-        {
-            parentCanvas = GetComponentInParent<Canvas>();
-            if (parentCanvas == null)
-            {
-                // 부모에서 Canvas를 찾을 수 없으면 Scene에서 찾기
-                parentCanvas = FindFirstObjectByType<Canvas>();
-            }
-        }
-
-        // UI 상에서 총알 안 보이는 문제 해결 - RectTransform 초기화 개선
-        if (rectTransform != null)
-        {
-            // 앵커와 피벗 설정
-            rectTransform.anchorMin = new Vector2(0.5f, 0.5f);
-            rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
-            rectTransform.pivot = new Vector2(0.5f, 0.5f);
-            
-            // 크기 설정 (총알이 보이도록 적절한 크기 설정)
-            if (rectTransform.sizeDelta.x < 10f || rectTransform.sizeDelta.y < 10f)
-            {
-                rectTransform.sizeDelta = new Vector2(50f, 50f); // 기본 크기를 좀 더 크게
-            }
-            
-            // 스케일 확인
-            if (rectTransform.localScale.x < 0.1f || rectTransform.localScale.y < 0.1f)
-            {
-                rectTransform.localScale = Vector3.one;
-            }
-            
-            // 맨 앞으로 이동
-            rectTransform.SetAsLastSibling();
-            
-            // UI 이미지가 있다면 활성화 확인
-            if (uiImage != null)
-            {
-                uiImage.enabled = true;
-                
-                // 이미지 색상이 투명하지 않도록 확인
-                if (uiImage.color.a < 0.1f)
-                {
-                    Color c = uiImage.color;
-                    c.a = 1f;
-                    uiImage.color = c;
-                }
-                
-                // 스프라이트가 설정되어 있는지 확인
-                if (uiImage.sprite == null)
-                {
-                    Debug.LogWarning($"[Bullet] UI Image에 스프라이트가 설정되지 않았습니다!");
-                    
-                    // 디버그용 기본 색상 설정
-                    uiImage.color = Color.red; // 빨간색으로 표시하여 총알 위치 확인
-                }
-            }
-            
-            // UI 좌표로 위치 변환
-            UpdateUIPosition();
-        }
-        else if (spriteRenderer != null)
-        {
-            // SpriteRenderer 사용 시
-            spriteRenderer.enabled = true;
-            spriteRenderer.sortingOrder = 100; // 높은 값으로 설정하여 앞쪽에 표시
-        }
-
-        Debug.Log($"[Bullet] 총알 생성됨 - 위치: {transform.position}, 타겟: {target?.name}, RectTransform: {rectTransform != null}, 크기: {rectTransform?.sizeDelta}");
     }
 
     private void Update()
@@ -397,115 +222,39 @@ public class Bullet : MonoBehaviour
             case BulletType.Stun:
             case BulletType.ArmorPenetration:
             case BulletType.Split:
+            case BulletType.Chain:
             {
                 float moveDistance = speed * speedMultiplier * Time.deltaTime;
                 currentDistance += moveDistance;
                 float progressRatio = Mathf.Clamp01(currentDistance / totalDistance);
 
-                // UI 환경에서는 RectTransform으로 이동
-                if (rectTransform != null && parentCanvas != null)
+                // 포물선 경로 계산
+                Vector3 currentPos = Vector3.Lerp(startPosition, target.transform.position, progressRatio);
+                
+                // 포물선 높이 적용
+                if (arcHeight > 0)
                 {
-                    // 월드 좌표에서 스크린 좌표로 변환
-                    Vector3 targetWorldPos = target.transform.position;
-                    Vector3 startWorldPos = startPosition;
-                    
-                    // 포물선 경로 계산
-                    Vector3 currentWorldPos = Vector3.Lerp(startWorldPos, targetWorldPos, progressRatio);
                     float arcHeightAtPoint = arcHeight * Mathf.Sin(progressRatio * Mathf.PI);
-                    currentWorldPos.y += arcHeightAtPoint;
-                    
-                    // 월드 좌표를 스크린 좌표로 변환
-                    Camera cam = Camera.main;
-                    if (cam != null)
-                    {
-                        Vector3 screenPos = cam.WorldToScreenPoint(currentWorldPos);
-                        
-                        // 스크린 좌표를 Canvas의 로컬 좌표로 변환
-                        Vector2 localPoint;
-                        RectTransformUtility.ScreenPointToLocalPointInRectangle(
-                            parentCanvas.transform as RectTransform,
-                            screenPos,
-                            parentCanvas.worldCamera,
-                            out localPoint
-                        );
-                        
-                        rectTransform.anchoredPosition = localPoint;
-                    }
+                    currentPos.y += arcHeightAtPoint;
                 }
-                else
+                
+                transform.position = currentPos;
+
+                // 총알 회전 (진행 방향을 바라보도록)
+                Vector3 direction = (target.transform.position - transform.position).normalized;
+                if (direction != Vector3.zero)
                 {
-                    // 일반적인 Transform 이동
-                    Vector3 newPosition = Vector3.Lerp(startPosition, target.transform.position, progressRatio);
-                    float arcHeightAtPoint = arcHeight * Mathf.Sin(progressRatio * Mathf.PI);
-                    newPosition.y += arcHeightAtPoint;
-                    transform.position = newPosition;
+                    float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
+                    transform.rotation = Quaternion.AngleAxis(angle - 90f, Vector3.forward);
                 }
 
-                float dist = Vector2.Distance(transform.position, target.transform.position);
+                // 타겟에 도달했는지 확인
+                float dist = Vector3.Distance(transform.position, target.transform.position);
                 if (dist < 0.2f || progressRatio >= 0.98f)
                 {
                     OnHitTarget();
                 }
                 break;
-            }
-
-            case BulletType.Chain:
-            {
-                float moveDistanceC = speed * speedMultiplier * Time.deltaTime;
-                currentDistance += moveDistanceC;
-                float progressRatioC = Mathf.Clamp01(currentDistance / totalDistance);
-
-                // UI 환경에서는 RectTransform으로 이동
-                if (rectTransform != null && parentCanvas != null)
-                {
-                    UpdateUIPosition();
-                }
-                else
-                {
-                    Vector3 newPositionC = Vector3.Lerp(startPosition, target.transform.position, progressRatioC);
-                    float arcHeightAtPointC = arcHeight * Mathf.Sin(progressRatioC * Mathf.PI);
-                    newPositionC.y += arcHeightAtPointC;
-                    transform.position = newPositionC;
-                }
-
-                float distC = Vector2.Distance(transform.position, target.transform.position);
-                if (distC < 0.2f || progressRatioC >= 0.98f)
-                {
-                    OnHitTarget();
-                }
-                break;
-            }
-        }
-    }
-
-    /// <summary>
-    /// UI 좌표 업데이트
-    /// </summary>
-    private void UpdateUIPosition()
-    {
-        if (rectTransform != null && parentCanvas != null && target != null)
-        {
-            Camera cam = Camera.main;
-            if (cam != null)
-            {
-                // 타겟의 월드 좌표를 스크린 좌표로 변환
-                Vector3 screenPos = cam.WorldToScreenPoint(target.transform.position);
-                
-                // 스크린 좌표를 Canvas의 로컬 좌표로 변환
-                Vector2 localPoint;
-                RectTransformUtility.ScreenPointToLocalPointInRectangle(
-                    parentCanvas.transform as RectTransform,
-                    screenPos,
-                    parentCanvas.worldCamera,
-                    out localPoint
-                );
-                
-                // 현재 위치에서 타겟 위치로 이동
-                Vector2 currentPos = rectTransform.anchoredPosition;
-                Vector2 direction = (localPoint - currentPos).normalized;
-                float moveDistance = speed * speedMultiplier * Time.deltaTime * 100f; // UI에서는 픽셀 단위이므로 곱하기
-                
-                rectTransform.anchoredPosition = Vector2.MoveTowards(currentPos, localPoint, moveDistance);
             }
         }
     }
@@ -545,7 +294,7 @@ public class Bullet : MonoBehaviour
                         target = nextMonster.gameObject;
                         damageableTarget = nextMonster;
                         startPosition = transform.position;
-                        totalDistance = Vector2.Distance(startPosition, target.transform.position);
+                        totalDistance = Vector3.Distance(startPosition, target.transform.position);
                         currentDistance = 0f;
                     }
                     else
@@ -557,65 +306,56 @@ public class Bullet : MonoBehaviour
 
             case BulletType.Explosive:
                 ApplyDamageToTarget(damage);
-                if (isAreaAttack)
-                {
-                    ApplyUnifiedAreaDamage(target.transform.position);
-                    SpawnExplosionEffect(target.transform.position);
-                }
-                else
-                {
-                    SpawnImpactEffect(target.transform.position);
-                }
-                Destroy(gameObject);
-                break;
-
-            case BulletType.Slow:
-                ApplyDamageToTarget(damage * 0.7f);
-                if (damageableTarget is Monster monsterSlow)
-                {
-                    monsterSlow.ApplySlow(slowDuration, slowAmount);
-                }
-                SpawnImpactEffect(target.transform.position);
-                Destroy(gameObject);
-                break;
-
-            case BulletType.Bleed:
-                ApplyDamageToTarget(damage * 0.5f);
-                if (damageableTarget is Monster monsterBleed)
-                {
-                    StartCoroutine(ApplyBleedDamage(monsterBleed));
-                }
-                SpawnImpactEffect(target.transform.position);
+                ApplyUnifiedAreaDamage(target.transform.position);
+                SpawnExplosionEffect(target.transform.position);
                 Destroy(gameObject);
                 break;
 
             case BulletType.Chain:
                 ApplyDamageToTarget(damage);
-                currentBounceCount++;
-                SpawnImpactEffect(target.transform.position);
+                chainAttackedMonsters.Add(target.GetComponent<Monster>());
 
-                if (currentBounceCount >= chainMaxBounces)
+                Monster nextChainTarget = FindNextChainTarget();
+                if (nextChainTarget != null && currentBounceCount < maxChainCount)
                 {
-                    Destroy(gameObject);
+                    currentBounceCount++;
+                    target = nextChainTarget.gameObject;
+                    damageableTarget = nextChainTarget;
+                    startPosition = transform.position;
+                    totalDistance = Vector3.Distance(startPosition, target.transform.position);
+                    currentDistance = 0f;
+                    SpawnChainEffect(transform.position, target.transform.position);
                 }
                 else
                 {
-                    FindNextUnifiedTarget(target.transform.position);
+                    SpawnImpactEffect(target.transform.position);
+                    Destroy(gameObject);
                 }
                 break;
 
+            case BulletType.Slow:
+                ApplyDamageToTarget(damage);
+                ApplySlowEffect();
+                SpawnImpactEffect(target.transform.position);
+                Destroy(gameObject);
+                break;
+
+            case BulletType.Bleed:
+                ApplyDamageToTarget(damage);
+                ApplyBleedEffect();
+                SpawnImpactEffect(target.transform.position);
+                Destroy(gameObject);
+                break;
+
             case BulletType.Stun:
-                ApplyDamageToTarget(damage * 0.8f);
-                if (damageableTarget is Monster monsterStun)
-                {
-                    monsterStun.ApplyStun(stunDuration);
-                }
+                ApplyDamageToTarget(damage);
+                ApplyStunEffect();
                 SpawnImpactEffect(target.transform.position);
                 Destroy(gameObject);
                 break;
 
             case BulletType.ArmorPenetration:
-                ApplyDamageToTarget(damage);
+                ApplyDamageToTarget(damage * (1f + armorPenRatio));
                 SpawnImpactEffect(target.transform.position);
                 Destroy(gameObject);
                 break;
@@ -656,7 +396,7 @@ public class Bullet : MonoBehaviour
         {
             if (m == null) continue;
             if (m.gameObject == target) continue;
-            float dist = Vector2.Distance(center, m.transform.position);
+            float dist = Vector3.Distance(center, m.transform.position);
             if (dist <= areaRadius)
             {
                 m.TakeDamage(damage * 0.5f);
@@ -671,7 +411,7 @@ public class Bullet : MonoBehaviour
             if (ch.gameObject == target) continue;
             if (ch.areaIndex == this.areaIndex) continue;
 
-            float dist = Vector2.Distance(center, ch.transform.position);
+            float dist = Vector3.Distance(center, ch.transform.position);
             if (dist <= areaRadius)
             {
                 ch.TakeDamage(damage * 0.5f);
@@ -693,9 +433,9 @@ public class Bullet : MonoBehaviour
             if (m == null || m.gameObject == target) continue;
 
             Vector3 toMonster = m.transform.position - myPos;
-            float dot = Vector3.Dot(toMonster.normalized, dir);
-
-            if (dot > 0.8f)
+            float angle = Vector3.Angle(dir, toMonster);
+            
+            if (angle < 30f)
             {
                 float dist = toMonster.magnitude;
                 if (dist < minDist)
@@ -709,198 +449,138 @@ public class Bullet : MonoBehaviour
         return best;
     }
 
-    private void FindNextUnifiedTarget(Vector3 position)
+    private Monster FindNextChainTarget()
     {
-        GameObject bestTarget = null;
-        IDamageable bestDamageable = null;
+        Monster[] allMonsters = Object.FindObjectsByType<Monster>(FindObjectsSortMode.None);
+        Monster best = null;
+        float minDist = chainRange;
+
+        foreach (var m in allMonsters)
+        {
+            if (m == null || chainAttackedMonsters.Contains(m)) continue;
+
+            float dist = Vector3.Distance(target.transform.position, m.transform.position);
+            if (dist < minDist)
+            {
+                minDist = dist;
+                best = m;
+            }
+        }
+
+        return best;
+    }
+
+    private void DoSplit(Vector3 splitPos)
+    {
+        if (subBulletPrefab == null) return;
+
+        for (int i = 0; i < splitCount; i++)
+        {
+            float angle = (360f / splitCount) * i;
+            Vector3 dir = Quaternion.Euler(0, 0, angle) * Vector3.right;
+            
+            GameObject subBullet = Instantiate(subBulletPrefab, splitPos, Quaternion.identity);
+            Bullet subBulletComp = subBullet.GetComponent<Bullet>();
+            
+            if (subBulletComp != null)
+            {
+                Monster nearestMonster = FindNearestMonsterFromPosition(splitPos);
+                if (nearestMonster != null)
+                {
+                    subBulletComp.Init(nearestMonster, damage * 0.5f, speed, false, 0f, areaIndex);
+                }
+                else
+                {
+                    Destroy(subBullet);
+                }
+            }
+        }
+    }
+
+    private Monster FindNearestMonsterFromPosition(Vector3 pos)
+    {
+        Monster[] allMonsters = Object.FindObjectsByType<Monster>(FindObjectsSortMode.None);
+        Monster nearest = null;
         float minDist = float.MaxValue;
 
-        // 몬스터 체크
-        Monster[] allMonsters = Object.FindObjectsByType<Monster>(FindObjectsSortMode.None);
         foreach (var m in allMonsters)
         {
             if (m == null) continue;
-            if (chainAttackedMonsters.Contains(m)) continue;
-            float dist = Vector2.Distance(position, m.transform.position);
-            if (dist < chainBounceRange && dist < minDist)
+            float dist = Vector3.Distance(pos, m.transform.position);
+            if (dist < minDist)
             {
                 minDist = dist;
-                bestTarget = m.gameObject;
-                bestDamageable = m;
+                nearest = m;
             }
         }
 
-        // 캐릭터 체크
-        Character[] allCharacters = Object.FindObjectsByType<Character>(FindObjectsSortMode.None);
-        foreach (var ch in allCharacters)
-        {
-            if (ch == null) continue;
-            if (ch.gameObject == target) continue;
-            if (ch.areaIndex == this.areaIndex) continue;
-
-            float dist = Vector2.Distance(position, ch.transform.position);
-            if (dist < chainBounceRange && dist < minDist)
-            {
-                minDist = dist;
-                bestTarget = ch.gameObject;
-                bestDamageable = ch;
-            }
-        }
-        
-        // 중간성 체크
-        MiddleCastle[] middleCastles = Object.FindObjectsByType<MiddleCastle>(FindObjectsSortMode.None);
-        foreach (var castle in middleCastles)
-        {
-            if (castle == null) continue;
-            if (castle.gameObject == target) continue;
-            if (castle.areaIndex == this.areaIndex) continue;
-            
-            float dist = Vector2.Distance(position, castle.transform.position);
-            if (dist < chainBounceRange && dist < minDist)
-            {
-                minDist = dist;
-                bestTarget = castle.gameObject;
-                bestDamageable = castle;
-            }
-        }
-        
-        // 최종성 체크
-        FinalCastle[] finalCastles = Object.FindObjectsByType<FinalCastle>(FindObjectsSortMode.None);
-        foreach (var castle in finalCastles)
-        {
-            if (castle == null) continue;
-            if (castle.gameObject == target) continue;
-            if (castle.areaIndex == this.areaIndex) continue;
-            
-            float dist = Vector2.Distance(position, castle.transform.position);
-            if (dist < chainBounceRange && dist < minDist)
-            {
-                minDist = dist;
-                bestTarget = castle.gameObject;
-                bestDamageable = castle;
-            }
-        }
-
-        if (bestTarget != null && bestDamageable != null)
-        {
-            target = bestTarget;
-            damageableTarget = bestDamageable;
-        }
-        else
-        {
-            Destroy(gameObject);
-        }
+        return nearest;
     }
 
-    private void DoSplit(Vector3 splitCenter)
+    private void ApplySlowEffect()
     {
-        float halfAngle = (splitBulletAngleSpread * (splitCount - 1)) / 2f;
-        for (int i = 0; i < splitCount; i++)
+        if (target == null) return;
+        
+        Monster monster = target.GetComponent<Monster>();
+        if (monster != null)
         {
-            float angle = -halfAngle + i * splitBulletAngleSpread;
-
-            GameObject sub = Instantiate(subBulletPrefab, splitCenter, Quaternion.identity);
-            Bullet subB = sub.GetComponent<Bullet>();
-            if (subB != null)
-            {
-                subB.bulletType = BulletType.Normal;
-                subB.damage = this.damage * 0.6f;
-                subB.speed = this.speed * 0.6f;
-                subB.maxLifeTime = 2f;
-                subB.speedMultiplier = this.speedMultiplier;
-                subB.areaIndex = this.areaIndex;
-
-                subB.isAreaAttack = false;
-                subB.areaRadius = 0f;
-
-                Vector2 dir = Quaternion.Euler(0f, 0f, angle) * Vector2.right;
-                Rigidbody2D rb = sub.GetComponent<Rigidbody2D>();
-                if (rb != null)
-                {
-                    rb.linearVelocity = dir * subB.speed * subB.speedMultiplier;
-                }
-            }
+            monster.ApplySlow(slowDuration, slowAmount);
         }
     }
 
-    private IEnumerator ApplyBleedDamage(Monster mon)
+    private void ApplyBleedEffect()
     {
-        float elapsed = 0f;
-        while (elapsed < bleedDuration && mon != null && mon.currentHealth > 0)
+        if (target == null) return;
+        
+        Monster monster = target.GetComponent<Monster>();
+        if (monster != null)
         {
-            mon.TakeDamage(bleedDamagePerSec * Time.deltaTime);
-            elapsed += Time.deltaTime;
-            yield return null;
+            monster.ApplyBleed(bleedDuration, bleedDamagePerSec);
         }
     }
 
-    private void SpawnImpactEffect(Vector3 pos)
+    private void ApplyStunEffect()
+    {
+        if (target == null) return;
+        
+        Monster monster = target.GetComponent<Monster>();
+        if (monster != null)
+        {
+            monster.ApplyStun(stunDuration);
+        }
+    }
+
+    private void SpawnImpactEffect(Vector3 position)
     {
         if (impactEffectPrefab != null)
         {
-            GameObject fx = Instantiate(impactEffectPrefab, pos, Quaternion.identity);
-            
-            // VFX 패널이 설정되어 있고 RectTransform이 있으면 UI 환경
-            if (vfxPanel != null && fx.GetComponent<RectTransform>() != null)
-            {
-                fx.transform.SetParent(vfxPanel, false);
-                
-                // 월드 좌표를 UI 좌표로 변환
-                Camera cam = Camera.main;
-                if (cam != null && parentCanvas != null)
-                {
-                    Vector3 screenPos = cam.WorldToScreenPoint(pos);
-                    Vector2 localPoint;
-                    RectTransformUtility.ScreenPointToLocalPointInRectangle(
-                        vfxPanel,
-                        screenPos,
-                        parentCanvas.worldCamera,
-                        out localPoint
-                    );
-                    
-                    RectTransform fxRect = fx.GetComponent<RectTransform>();
-                    fxRect.anchoredPosition = localPoint;
-                }
-            }
-            
-            Destroy(fx, 1f);
+            GameObject effect = Instantiate(impactEffectPrefab, position, Quaternion.identity);
+            Destroy(effect, 2f);
         }
     }
 
-    private void SpawnExplosionEffect(Vector3 pos)
+    private void SpawnExplosionEffect(Vector3 position)
     {
         if (explosionEffectPrefab != null)
         {
-            GameObject fx = Instantiate(explosionEffectPrefab, pos, Quaternion.identity);
-            
-            // VFX 패널이 설정되어 있고 RectTransform이 있으면 UI 환경
-            if (vfxPanel != null && fx.GetComponent<RectTransform>() != null)
-            {
-                fx.transform.SetParent(vfxPanel, false);
-                
-                // 월드 좌표를 UI 좌표로 변환
-                Camera cam = Camera.main;
-                if (cam != null && parentCanvas != null)
-                {
-                    Vector3 screenPos = cam.WorldToScreenPoint(pos);
-                    Vector2 localPoint;
-                    RectTransformUtility.ScreenPointToLocalPointInRectangle(
-                        vfxPanel,
-                        screenPos,
-                        parentCanvas.worldCamera,
-                        out localPoint
-                    );
-                    
-                    RectTransform fxRect = fx.GetComponent<RectTransform>();
-                    fxRect.anchoredPosition = localPoint;
-                }
-            }
-            
-            Destroy(fx, 1.5f);
+            GameObject effect = Instantiate(explosionEffectPrefab, position, Quaternion.identity);
+            effect.transform.localScale = Vector3.one * (areaRadius * 2f);
+            Destroy(effect, 2f);
         }
-        else
+    }
+
+    private void SpawnChainEffect(Vector3 start, Vector3 end)
+    {
+        if (chainEffectPrefab != null)
         {
-            SpawnImpactEffect(pos);
+            GameObject effect = Instantiate(chainEffectPrefab, start, Quaternion.identity);
+            
+            // 체인 이펙트를 시작점에서 끝점으로 늘이기
+            Vector3 direction = end - start;
+            effect.transform.right = direction;
+            effect.transform.localScale = new Vector3(direction.magnitude, 1f, 1f);
+            
+            Destroy(effect, 0.5f);
         }
     }
 }

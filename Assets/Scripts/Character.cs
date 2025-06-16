@@ -132,160 +132,194 @@ public class Character : MonoBehaviour, IDamageable // 임시로 MonoBehaviour �
     private CharacterJump jumpSystem;
     private CharacterVisual visual;
 
-    // 스프라이트 렌더러 참조
+    // 스프라이트 렌더러 참조 - Transform 버전으로 변경
     private SpriteRenderer spriteRenderer;
-    private Image uiImage;
 
     // [추가] 웨이포인트 이동 관련
     [HideInInspector] public Transform[] pathWaypoints;
     [HideInInspector] public int currentWaypointIndex = -1;
     [HideInInspector] public int maxWaypointIndex = -1;
     
-    // [추가] 패널 참조
-    [HideInInspector] public RectTransform bulletPanel;
-    [HideInInspector] public RectTransform opponentBulletPanel;
+    // [추가] VFX 패널 - Transform 버전에서는 필요없음
+    // [HideInInspector] public RectTransform vfxPanel;
     
-    // [추가] VFX 패널
-    [HideInInspector] public RectTransform vfxPanel;
-    
-    // [추가] HP바 캔버스
+    // [추가] HP바 캔버스 - World Space Canvas로 변경
     [HideInInspector] public Canvas hpBarCanvas;
 
     private void Awake()
     {
-        // 스프라이트 렌더러 찾기
+        // 스프라이트 렌더러 찾기 - UI Image 대신 SpriteRenderer 사용
         spriteRenderer = GetComponentInChildren<SpriteRenderer>();
+        
         if (spriteRenderer == null)
         {
-            uiImage = GetComponentInChildren<Image>();
+            // SpriteRenderer가 없으면 추가
+            GameObject spriteObj = new GameObject("Sprite");
+            spriteObj.transform.SetParent(transform);
+            spriteObj.transform.localPosition = Vector3.zero;
+            spriteRenderer = spriteObj.AddComponent<SpriteRenderer>();
+            spriteRenderer.sortingOrder = 10; // 적절한 sorting order 설정
         }
 
-        if (spriteRenderer == null && uiImage == null)
+        if (spriteRenderer == null)
         {
-            Debug.LogWarning($"[Character] {name} 에서 SpriteRenderer나 UI Image 둘 다 찾지 못했습니다.", this);
+            Debug.LogWarning($"[Character] {name} 에서 SpriteRenderer를 찾지 못했습니다.");
         }
+
+        maxHP = currentHP;
 
         // 컴포넌트 초기화
-        stats = GetComponent<CharacterStats>();
-        if (stats == null) stats = gameObject.AddComponent<CharacterStats>();
+        stats = GetComponent<CharacterStats>() ?? gameObject.AddComponent<CharacterStats>();
+        movement = GetComponent<CharacterMovement>() ?? gameObject.AddComponent<CharacterMovement>();
+        combat = GetComponent<CharacterCombat>() ?? gameObject.AddComponent<CharacterCombat>();
+        jumpSystem = GetComponent<CharacterJump>() ?? gameObject.AddComponent<CharacterJump>();
+        visual = GetComponent<CharacterVisual>() ?? gameObject.AddComponent<CharacterVisual>();
 
-        movement = GetComponent<CharacterMovement>();
-        if (movement == null) movement = gameObject.AddComponent<CharacterMovement>();
-
-        combat = GetComponent<CharacterCombat>();
-        if (combat == null) combat = gameObject.AddComponent<CharacterCombat>();
-
-        jumpSystem = GetComponent<CharacterJump>();
-        if (jumpSystem == null) jumpSystem = gameObject.AddComponent<CharacterJump>();
-
-        visual = GetComponent<CharacterVisual>();
-        if (visual == null) visual = gameObject.AddComponent<CharacterVisual>();
+        // 컴포넌트 초기화 호출
+        stats.Initialize(this);
+        movement.Initialize(this, stats);
+        combat.Initialize(this, stats, visual, movement, jumpSystem);
+        jumpSystem.Initialize(this, movement);
+        visual.Initialize(this, spriteRenderer, null); // UI Image 제거
     }
 
     private void Start()
     {
-        // 스탯 초기화
-        stats.InitializeStats(this);
-        maxHP = currentHP;
-
-        // 비주얼 초기화
-        visual.Initialize(this);
-
-        // 전투 시스템 초기화
-        combat.Initialize(this, stats, visual, movement, jumpSystem);
-
-        // 이동 시스템 초기화
-        movement.Initialize(this, visual, jumpSystem);
-
-        // 점프 시스템 초기화
-        jumpSystem.Initialize(this, movement);
+        // HP바 생성 - World Space Canvas 사용
+        CreateHPBarWorldSpace();
     }
 
     private void Update()
     {
-        // 이동 처리
-        movement.HandleMovement();
+        // HP바 위치 업데이트 (캐릭터 머리 위)
+        if (hpBarCanvas != null)
+        {
+            hpBarCanvas.transform.position = transform.position + Vector3.up * 1.5f;
+            hpBarCanvas.transform.rotation = Quaternion.identity; // 항상 정면을 바라보도록
+        }
     }
 
-    // IDamageable 구현
+    /// <summary>
+    /// World Space Canvas로 HP바 생성
+    /// </summary>
+    private void CreateHPBarWorldSpace()
+    {
+        if (isHero) return; // 히어로는 HP바 표시 안함
+
+        GameObject hpBarObj = new GameObject("HPBar");
+        hpBarObj.transform.SetParent(transform);
+        hpBarObj.transform.localPosition = Vector3.up * 1.5f;
+
+        // Canvas 설정
+        Canvas canvas = hpBarObj.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.WorldSpace;
+        canvas.worldCamera = Camera.main;
+        
+        // Canvas 크기 설정
+        RectTransform canvasRect = canvas.GetComponent<RectTransform>();
+        canvasRect.sizeDelta = new Vector2(1f, 0.2f);
+        canvasRect.localScale = Vector3.one;
+
+        // 배경 이미지
+        GameObject bgObj = new GameObject("Background");
+        bgObj.transform.SetParent(hpBarObj.transform);
+        Image bgImage = bgObj.AddComponent<Image>();
+        bgImage.color = new Color(0.2f, 0.2f, 0.2f, 0.8f);
+        RectTransform bgRect = bgImage.GetComponent<RectTransform>();
+        bgRect.anchorMin = Vector2.zero;
+        bgRect.anchorMax = Vector2.one;
+        bgRect.sizeDelta = Vector2.zero;
+        bgRect.anchoredPosition = Vector2.zero;
+
+        // HP 채움 이미지
+        GameObject fillObj = new GameObject("Fill");
+        fillObj.transform.SetParent(hpBarObj.transform);
+        Image fillImage = fillObj.AddComponent<Image>();
+        fillImage.color = Color.green;
+        RectTransform fillRect = fillImage.GetComponent<RectTransform>();
+        fillRect.anchorMin = new Vector2(0, 0);
+        fillRect.anchorMax = new Vector2(1, 1);
+        fillRect.sizeDelta = Vector2.zero;
+        fillRect.anchoredPosition = Vector2.zero;
+
+        hpBarCanvas = canvas;
+        visual.SetHPBarReferences(canvas, fillImage);
+    }
+
+    /// <summary>
+    /// 데미지를 받는 메서드 (IDamageable 인터페이스 구현)
+    /// </summary>
     public void TakeDamage(float damage)
     {
-        stats.TakeDamage(damage);
-    }
+        if (currentHP <= 0) return;
 
-    // 외부에서 접근 가능한 메서드들
-    public float GetMaxHP() => maxHP;
-    public void SetMaxHP(float value) => maxHP = value;
+        currentHP -= damage;
+        currentHP = Mathf.Clamp(currentHP, 0, maxHP);
 
-    public SpriteRenderer GetSpriteRenderer() => spriteRenderer;
-    public Image GetUIImage() => uiImage;
-    
-    // [추가] 패널 설정 메서드
-    public void SetBulletPanel(RectTransform panel)
-    {
-        bulletPanel = panel;
-    }
-    
-    // [추가] 별 비주얼 적용
-    public void ApplyStarVisual()
-    {
-        if (visual != null)
+        // HP바 업데이트
+        visual?.UpdateHPBar(currentHP / maxHP);
+
+        // 피격 효과
+        visual?.PlayHitEffect();
+
+        if (currentHP <= 0)
         {
-            visual.ApplyStarVisual();
-        }
-        else
-        {
-            Debug.LogWarning($"[Character] {characterName} ApplyStarVisual: visual 컴포넌트가 null입니다.");
+            Die();
         }
     }
-    
-    // [추가] 현재 타겟이 있는지 확인
-    public bool HasValidTarget()
-    {
-        return currentTarget != null || currentCharTarget != null || 
-               currentMiddleCastleTarget != null || currentFinalCastleTarget != null;
-    }
-    
-    // [추가] 모든 타겟 초기화
-    public void ClearAllTargets()
-    {
-        currentTarget = null;
-        currentCharTarget = null;
-        currentMiddleCastleTarget = null;
-        currentFinalCastleTarget = null;
-    }
 
-    // 캐릭터 파괴 시 정리
-    private void OnDestroy()
+    /// <summary>
+    /// 캐릭터 사망 처리
+    /// </summary>
+    private void Die()
     {
-        // 타일 참조 정리
+        Debug.Log($"[Character] {characterName} 사망!");
+
+        // 타일에서 제거
         if (currentTile != null)
         {
-            if (currentTile.gameObject != null && currentTile.gameObject.activeInHierarchy)
-            {
-                Debug.Log($"[Character] {characterName} 파괴됨 - {currentTile.name} 타일 참조 정리");
-                
-                Tile destroyedTile = currentTile;
-                
-                if (PlacementManager.Instance != null && PlacementManager.Instance.gameObject != null && PlacementManager.Instance.gameObject.activeInHierarchy)
-                {
-                    if (destroyedTile.IsPlaceTile() || destroyedTile.IsPlaced2())
-                    {
-                        destroyedTile.RefreshTileVisual();
-                    }
-                    else
-                    {
-                        TileManager.Instance.RemovePlaceTileChild(destroyedTile);
-                    }
-                    
-                    TileManager.Instance.OnCharacterRemovedFromTile(destroyedTile);
-                }
-            }
-            
-            currentTile = null;
+            currentTile.RemoveOccupyingCharacter(this);
         }
-        
-        // 모든 참조 해제
-        ClearAllTargets();
+
+        // 사망 효과
+        visual?.PlayDeathEffect();
+
+        // 오브젝트 제거
+        Destroy(gameObject);
     }
+
+    /// <summary>
+    /// 캐릭터의 스프라이트를 설정합니다.
+    /// </summary>
+    public void SetSprite(Sprite sprite)
+    {
+        if (spriteRenderer != null)
+        {
+            spriteRenderer.sprite = sprite;
+        }
+    }
+
+    /// <summary>
+    /// 캐릭터의 색상을 설정합니다.
+    /// </summary>
+    public void SetColor(Color color)
+    {
+        if (spriteRenderer != null)
+        {
+            spriteRenderer.color = color;
+        }
+    }
+
+    /// <summary>
+    /// 별 등급에 따른 시각적 효과 적용
+    /// </summary>
+    public void ApplyStarVisual()
+    {
+        visual?.ApplyStarEffect(star);
+    }
+
+    // Transform 버전에서는 불필요한 메서드들 제거
+    // public void SetBulletPanel(RectTransform panel) - 제거
+    // public void SetVfxPanel(RectTransform panel) - 제거
+    // public void SetHpBarCanvas(Canvas canvas) - 제거
 }
