@@ -1,20 +1,20 @@
-using System.Collections;
 using UnityEngine;
-using UnityEngine.UI;
-// using Fusion; // 임시로 주석처리
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
 
-/// <summary>
-/// 데미지를 받을 수 있는 모든 오브젝트(몬스터, 캐릭터)가 구현해야 하는 인터페이스
-/// </summary>
+// ================================
+// 게임 기획서: 타워 디펜스 X 실시간 대전
+// 캐릭터는 소환 시 고정 타워처럼 작동
+// 드래그로 3라인(좌/중/우) 변경 가능
+// ================================
+
 public interface IDamageable
 {
-    /// <summary>
-    /// 데미지를 받는 메서드
-    /// </summary>
-    /// <param name="damage">받을 데미지 양</param>
     void TakeDamage(float damage);
 }
 
+[System.Serializable]
 public enum CharacterStar
 {
     OneStar = 1,
@@ -22,104 +22,82 @@ public enum CharacterStar
     ThreeStar = 3
 }
 
-// [추가] 3종족 예시
+[System.Serializable]
 public enum CharacterRace
 {
     Human,
     Orc,
-    Elf,
-    Undead  // 언데드 종족 추가
+    Elf
 }
 
-// [추가] 공격 타입 enum
-public enum AttackTargetType
+[System.Serializable]
+public enum RouteType
 {
-    All,            // 모든 대상 공격 (기본)
-    CastleOnly,     // 성만 공격
-    CharacterOnly   // 캐릭터만 공격
+    Left,
+    Center,
+    Right
 }
 
-// [추가] 이동 타입 enum
-public enum MovementType
-{
-    Ground,  // 지상
-    Air      // 공중
-}
-
+[System.Serializable]
 public enum RangeType
 {
-    Melee,
-    Ranged,
-    LongRange  // 장거리 타입 추가
+    Melee,      // 근접
+    Ranged,     // 원거리
+    LongRange   // 장거리
 }
 
-public class Character : MonoBehaviour, IDamageable // 임시로 MonoBehaviour 사용
+/// <summary>
+/// 월드 좌표 기반 캐릭터 클래스
+/// UI가 아닌 월드 공간에서 작동합니다.
+/// </summary>
+public class Character : MonoBehaviour, IDamageable
 {
-    [Header("Character Star Info (별)")]
-    public CharacterStar star = CharacterStar.OneStar;
-
-    [Tooltip("캐릭터 이름")]
-    public string characterName;
-
-    // [추가] 종족 정보
-    [Header("종족 정보 (Human / Orc / Elf)")]
+    // ================================
+    // 기본 정보
+    // ================================
+    [Header("캐릭터 기본 정보")]
+    public string characterName = "Unknown";
+    public int characterIndex = -1;
     public CharacterRace race = CharacterRace.Human;
-
-    // [추가] 공격 및 이동 타입
-    [Header("공격 및 이동 타입")]
-    [Tooltip("공격 대상 타입")]
-    public AttackTargetType attackTargetType = AttackTargetType.All;
+    public CharacterStar star = CharacterStar.OneStar;
+    public Sprite characterSprite;
     
-    [Tooltip("이동 타입 (지상/공중)")]
-    public MovementType movementType = MovementType.Ground;
-
-    // ==================
+    [Header("앞뒤 이미지 (SD 캐주얼 스타일)")]
+    public Sprite frontSprite;
+    public Sprite backSprite;
+    
+    // ================================
     // 전투 스탯
-    // ==================
+    // ================================
+    [Header("전투 스탯")]
     public float attackPower = 10f;
+    public float attackRange = 3f;
     public float attackSpeed = 1f;
-    public float attackRange = 1.5f;
     public float currentHP = 100f;
-    private float maxHP = 100f;
-
-    // ======== 이동 속도 추가 =========
-    public float moveSpeed = 3f;
-
-    // ==================
-    // 타일/몬스터 관련
-    // ==================
+    public float maxHP = 100f;
+    
+    // ================================
+    // 특수 속성
+    // ================================
+    [Header("특수 속성")]
+    public bool isHero = false;
+    public int level = 1;
+    public float experience = 0f;
+    
+    // ================================
+    // 위치/타일 정보
+    // ================================
+    [Header("위치 정보")]
     public Tile currentTile;
+    public int areaIndex = 1;
+    
+    [Header("전투 타겟")]
     public Monster currentTarget;
     public Character currentCharTarget;
-    public MiddleCastle currentMiddleCastleTarget;  // [추가] 중간성 타겟
-    public FinalCastle currentFinalCastleTarget;    // [추가] 최종성 타겟
-    public bool isAreaAttack = false;
-    public float areaAttackRadius = 1f;
-
-    [Header("Hero Settings")]
-    [Tooltip("주인공(히어로) 여부")]
-    public bool isHero = false;
-
-    [Header("Draggable Settings")]
-    [Tooltip("드래그 가능 여부")]
-    public bool isDraggable = true;
-
-    [Header("Area 구분 (1 or 2)")]
-    [Tooltip("1번 공간인지, 2번 공간인지 구분하기 위한 인덱스")]
-    public int areaIndex = 1;
-
-    // ▼▼ [추가] 선택된 루트 정보 저장
-    [Header("Route Selection")]
-    [Tooltip("캐릭터가 선택한 루트 (Default/Left/Center/Right)")]
-    public RouteType selectedRoute = RouteType.Default;
-
-    // 공격 형태
-    [Header("공격 형태")]
-    public RangeType rangeType = RangeType.Melee;
-
-    // ===============================
-    // (★ 추가) 몬스터인가? (캐릭터 공격 / 몬스터 공격 여부)
-    // ===============================
+    
+    // ================================
+    // 이동 플래그
+    // ================================
     [Header("플레이어인가? (캐릭터 공격 / 몬스터 공격 여부)")]
     public bool isCharAttack = false;
 
@@ -140,11 +118,9 @@ public class Character : MonoBehaviour, IDamageable // 임시로 MonoBehaviour �
     [HideInInspector] public int currentWaypointIndex = -1;
     [HideInInspector] public int maxWaypointIndex = -1;
     
-    // [추가] VFX 패널 - Transform 버전에서는 필요없음
-    // [HideInInspector] public RectTransform vfxPanel;
-    
     // [추가] HP바 캔버스 - World Space Canvas로 변경
     [HideInInspector] public Canvas hpBarCanvas;
+    private UnityEngine.UI.Image hpBarFillImage;
 
     private void Awake()
     {
@@ -158,7 +134,8 @@ public class Character : MonoBehaviour, IDamageable // 임시로 MonoBehaviour �
             spriteObj.transform.SetParent(transform);
             spriteObj.transform.localPosition = Vector3.zero;
             spriteRenderer = spriteObj.AddComponent<SpriteRenderer>();
-            spriteRenderer.sortingOrder = 10; // 적절한 sorting order 설정
+            spriteRenderer.sortingLayerName = "Characters";
+            spriteRenderer.sortingOrder = 10;
         }
 
         if (spriteRenderer == null)
@@ -181,12 +158,37 @@ public class Character : MonoBehaviour, IDamageable // 임시로 MonoBehaviour �
         combat.Initialize(this, stats, visual, movement, jumpSystem);
         jumpSystem.Initialize(this, movement);
         visual.Initialize(this, spriteRenderer, null); // UI Image 제거
+        
+        // Collider 추가 (드래그용)
+        if (GetComponent<Collider2D>() == null)
+        {
+            BoxCollider2D col = gameObject.AddComponent<BoxCollider2D>();
+            col.size = Vector2.one;
+        }
+        
+        // DraggableCharacter 컴포넌트 추가
+        if (GetComponent<DraggableCharacter>() == null)
+        {
+            gameObject.AddComponent<DraggableCharacter>();
+        }
+        
+        // Layer 설정
+        gameObject.layer = LayerMask.NameToLayer("Character");
     }
 
     private void Start()
     {
         // HP바 생성 - World Space Canvas 사용
         CreateHPBarWorldSpace();
+        
+        // 스프라이트 설정
+        if (characterSprite != null && spriteRenderer != null)
+        {
+            spriteRenderer.sprite = characterSprite;
+        }
+        
+        // 별 등급에 따른 시각 효과
+        ApplyStarVisual();
     }
 
     private void Update()
@@ -218,12 +220,19 @@ public class Character : MonoBehaviour, IDamageable // 임시로 MonoBehaviour �
         // Canvas 크기 설정
         RectTransform canvasRect = canvas.GetComponent<RectTransform>();
         canvasRect.sizeDelta = new Vector2(1f, 0.2f);
-        canvasRect.localScale = Vector3.one;
+        canvasRect.localScale = Vector3.one * 0.01f; // 월드 스케일 조정
+
+        // CanvasScaler 추가
+        UnityEngine.UI.CanvasScaler scaler = hpBarObj.AddComponent<UnityEngine.UI.CanvasScaler>();
+        scaler.dynamicPixelsPerUnit = 100;
+
+        // GraphicRaycaster 추가
+        hpBarObj.AddComponent<UnityEngine.UI.GraphicRaycaster>();
 
         // 배경 이미지
         GameObject bgObj = new GameObject("Background");
         bgObj.transform.SetParent(hpBarObj.transform);
-        Image bgImage = bgObj.AddComponent<Image>();
+        UnityEngine.UI.Image bgImage = bgObj.AddComponent<UnityEngine.UI.Image>();
         bgImage.color = new Color(0.2f, 0.2f, 0.2f, 0.8f);
         RectTransform bgRect = bgImage.GetComponent<RectTransform>();
         bgRect.anchorMin = Vector2.zero;
@@ -234,7 +243,7 @@ public class Character : MonoBehaviour, IDamageable // 임시로 MonoBehaviour �
         // HP 채움 이미지
         GameObject fillObj = new GameObject("Fill");
         fillObj.transform.SetParent(hpBarObj.transform);
-        Image fillImage = fillObj.AddComponent<Image>();
+        UnityEngine.UI.Image fillImage = fillObj.AddComponent<UnityEngine.UI.Image>();
         fillImage.color = Color.green;
         RectTransform fillRect = fillImage.GetComponent<RectTransform>();
         fillRect.anchorMin = new Vector2(0, 0);
@@ -243,6 +252,7 @@ public class Character : MonoBehaviour, IDamageable // 임시로 MonoBehaviour �
         fillRect.anchoredPosition = Vector2.zero;
 
         hpBarCanvas = canvas;
+        hpBarFillImage = fillImage;
         visual.SetHPBarReferences(canvas, fillImage);
     }
 
@@ -317,9 +327,48 @@ public class Character : MonoBehaviour, IDamageable // 임시로 MonoBehaviour �
     {
         visual?.ApplyStarEffect(star);
     }
-
-    // Transform 버전에서는 불필요한 메서드들 제거
-    // public void SetBulletPanel(RectTransform panel) - 제거
-    // public void SetVfxPanel(RectTransform panel) - 제거
-    // public void SetHpBarCanvas(Canvas canvas) - 제거
+    
+    /// <summary>
+    /// 최대 HP 설정
+    /// </summary>
+    public void SetMaxHP(float hp)
+    {
+        maxHP = hp;
+        if (currentHP > maxHP)
+        {
+            currentHP = maxHP;
+        }
+    }
+    
+    /// <summary>
+    /// 캐릭터가 타일 위에 있는지 확인
+    /// </summary>
+    public bool IsOnTile(Tile tile)
+    {
+        return currentTile == tile;
+    }
+    
+    /// <summary>
+    /// 캐릭터의 월드 위치를 타일 중앙으로 설정
+    /// </summary>
+    public void SetPositionToTile(Tile tile)
+    {
+        if (tile != null)
+        {
+            transform.position = tile.transform.position;
+            transform.position = new Vector3(transform.position.x, transform.position.y, -1f); // 캐릭터를 약간 앞으로
+        }
+    }
+    
+    /// <summary>
+    /// 캐릭터 정보 디버그 출력
+    /// </summary>
+    public void DebugInfo()
+    {
+        Debug.Log($"[Character] {characterName} - " +
+                  $"Race: {race}, Star: {star}, Level: {level}, " +
+                  $"HP: {currentHP}/{maxHP}, ATK: {attackPower}, " +
+                  $"Range: {attackRange}, Speed: {attackSpeed}, " +
+                  $"Tile: {(currentTile != null ? currentTile.name : "None")}");
+    }
 }

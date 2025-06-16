@@ -1,161 +1,84 @@
-using System.Collections.Generic;
 using UnityEngine;
+using System.Collections;
+using System.Collections.Generic;
 
-public enum BulletType
-{
-    Normal,
-    Piercing,
-    Explosive,
-    Chain,
-    Slow,
-    Bleed,
-    Stun,
-    ArmorPenetration,
-    Split,
-    Energy
-}
-
+/// <summary>
+/// 월드 좌표 기반 총알 클래스
+/// 다양한 총알 타입과 효과를 지원합니다.
+/// </summary>
+[RequireComponent(typeof(Collider2D))]
 public class Bullet : MonoBehaviour
 {
-    [Header("Bullet Stats")]
+    [Header("총알 기본 설정")]
+    public BulletType bulletType = BulletType.Normal;
     public float damage = 10f;
     public float speed = 5f;
     public float maxLifeTime = 5f;
-    public BulletType bulletType = BulletType.Normal;
-
-    [Header("Special Effects")]
-    public float areaRadius = 0f;
-    public bool isAreaAttack = false;
-    public int maxPierceCount = 3;
-    public float chainRange = 3f;
-    public int maxChainCount = 3;
+    
+    [Header("타겟 정보")]
+    public IDamageable target;
+    public Vector3 targetPosition;
+    
+    [Header("발사 정보")]
+    public Character owner;
+    public Vector3 startPosition;
+    
+    [Header("특수 효과")]
+    public float explosionRadius = 2f; // 폭발형
+    public float slowAmount = 0.5f; // 둔화형
     public float slowDuration = 2f;
-    public float slowAmount = 0.5f;
+    public float bleedDamage = 2f; // 출혈형
     public float bleedDuration = 3f;
-    public float bleedDamagePerSec = 2f;
-    public float stunDuration = 1f;
-    public float armorPenRatio = 0.5f;
-    public int splitCount = 3;
-    public GameObject subBulletPrefab;
-
-    [Header("Movement")]
-    public float arcHeight = 0f;
-    public float speedMultiplier = 1f;
-
-    private GameObject target;
-    private IDamageable damageableTarget;
-    private Vector3 startPosition;
+    public float stunDuration = 1f; // 기절형
+    public int chainCount = 3; // 연쇄형
+    public float chainRange = 3f;
+    
+    [Header("시각 효과")]
+    public GameObject hitEffectPrefab;
+    public GameObject explosionEffectPrefab;
+    public TrailRenderer trailRenderer;
+    
+    [Header("포물선 설정")]
+    public float arcHeight = 1f;
+    public bool useParabolicPath = true;
+    
+    // 컴포넌트
+    private SpriteRenderer spriteRenderer;
+    private Collider2D col2D;
+    
+    // 상태
+    private float aliveTime = 0f;
+    private bool hasHit = false;
     private float totalDistance;
     private float currentDistance;
-    private float aliveTime = 0f;
+    private float speedMultiplier = 1f;
+    
+    // 연쇄 공격용
+    private List<IDamageable> hitTargets = new List<IDamageable>();
 
-    [Header("VFX")]
-    public GameObject impactEffectPrefab;
-    public GameObject explosionEffectPrefab;
-    public GameObject chainEffectPrefab;
-
-    [Header("소환된 캐릭터가 위/아래로 공격할 때 보여줄 스프라이트")]
-    public Sprite bulletUpDirectionSprite;
-    public Sprite bulletDownDirectionSprite;
-
-    private SpriteRenderer spriteRenderer;
-
-    private int piercedCount = 0;
-    private List<Monster> chainAttackedMonsters = new List<Monster>();
-    private int currentBounceCount = 0;
-
-    [Header("Area 구분 (1 or 2)")]
-    public int areaIndex = 1;
-
-    private Character sourceCharacter;
-
-    /// <summary>
-    /// 탄환 초기화 (몬스터/캐릭터/성 등 IDamageable 대상)
-    /// </summary>
-    public void Init(IDamageable targetObject, float baseDamage, float baseSpeed,
-                     bool areaAtk, float areaAtkRadius, int areaIndex)
+    public enum BulletType
     {
-        if (targetObject != null)
-        {
-            if (targetObject is Monster targetMonster)
-            {
-                this.target = targetMonster.gameObject;
-                this.damageableTarget = targetMonster;
-            }
-            else if (targetObject is Character targetChar)
-            {
-                this.target = targetChar.gameObject;
-                this.damageableTarget = targetChar;
-            }
-            else if (targetObject is MiddleCastle targetMiddleCastle)
-            {
-                this.target = targetMiddleCastle.gameObject;
-                this.damageableTarget = targetMiddleCastle;
-            }
-            else if (targetObject is FinalCastle targetFinalCastle)
-            {
-                this.target = targetFinalCastle.gameObject;
-                this.damageableTarget = targetFinalCastle;
-            }
-
-            this.damage = baseDamage;
-            this.speed = baseSpeed;
-            this.isAreaAttack = areaAtk;
-            this.areaRadius = areaAtkRadius;
-            this.areaIndex = areaIndex;
-
-            // 포물선 이동 초기화
-            this.startPosition = transform.position;
-            if (target != null)
-            {
-                this.totalDistance = Vector3.Distance(startPosition, target.transform.position);
-            }
-            this.currentDistance = 0f;
-        }
-    }
-
-    /// <summary>
-    /// 몬스터를 타겟으로 하는 탄환 초기화 (이전 호환)
-    /// </summary>
-    public void Init(Monster targetMonster, float baseDamage, float baseSpeed,
-                     bool areaAtk, float areaAtkRadius, int areaIndex)
-    {
-        Init((IDamageable)targetMonster, baseDamage, baseSpeed, areaAtk, areaAtkRadius, areaIndex);
-    }
-
-    public void SetSpeedMultiplier(float multiplier)
-    {
-        speedMultiplier = multiplier;
-    }
-
-    public void SetSourceCharacter(Character character)
-    {
-        sourceCharacter = character;
-    }
-
-    public void SetBulletType(BulletType type)
-    {
-        bulletType = type;
-    }
-
-    public void SetBulletDirection(Vector3 direction)
-    {
-        if (spriteRenderer == null) return;
-
-        bool isUpDirection = direction.y > 0;
-        
-        if (isUpDirection && bulletUpDirectionSprite != null)
-        {
-            spriteRenderer.sprite = bulletUpDirectionSprite;
-        }
-        else if (!isUpDirection && bulletDownDirectionSprite != null)
-        {
-            spriteRenderer.sprite = bulletDownDirectionSprite;
-        }
+        Normal,      // 일반
+        Energy,      // 에너지
+        Piercing,    // 관통
+        Explosive,   // 폭발
+        Slow,        // 둔화
+        Bleed,       // 출혈
+        Stun,        // 기절
+        ArmorPenetration, // 방어력 무시
+        Split,       // 분열
+        Chain        // 연쇄
     }
 
     private void Awake()
     {
+        col2D = GetComponent<Collider2D>();
+        if (col2D == null)
+        {
+            col2D = gameObject.AddComponent<CircleCollider2D>();
+        }
+        col2D.isTrigger = true;
+        
         spriteRenderer = GetComponent<SpriteRenderer>();
         if (spriteRenderer == null)
         {
@@ -169,418 +92,512 @@ public class Bullet : MonoBehaviour
             spriteObj.transform.SetParent(transform);
             spriteObj.transform.localPosition = Vector3.zero;
             spriteRenderer = spriteObj.AddComponent<SpriteRenderer>();
-            spriteRenderer.sortingOrder = 100; // 총알이 위에 표시되도록
+            spriteRenderer.sortingLayerName = "Bullets";
+            spriteRenderer.sortingOrder = 100;
         }
 
-        // 기본 색상 설정 (디버그용)
-        if (spriteRenderer.sprite == null)
+        // TrailRenderer 설정
+        if (trailRenderer == null)
         {
-            // 임시로 작은 원형 스프라이트 생성 (실제로는 적절한 스프라이트 에셋 사용)
-            spriteRenderer.color = Color.red;
+            trailRenderer = GetComponent<TrailRenderer>();
         }
+        
+        // Layer 설정
+        gameObject.layer = LayerMask.NameToLayer("Bullet");
     }
 
     private void Start()
     {
-        // 방향에 따른 스프라이트 설정
+        startPosition = transform.position;
+        
+        // 타겟이 있으면 거리 계산
         if (target != null)
         {
-            Vector3 direction = (target.transform.position - transform.position).normalized;
-            SetBulletDirection(direction);
+            GameObject targetObj = (target as MonoBehaviour)?.gameObject;
+            if (targetObj != null)
+            {
+                targetPosition = targetObj.transform.position;
+                totalDistance = Vector3.Distance(startPosition, targetPosition);
+            }
         }
+        else if (targetPosition != Vector3.zero)
+        {
+            totalDistance = Vector3.Distance(startPosition, targetPosition);
+        }
+        
+        // 방향에 따른 스프라이트 설정
+        SetBulletDirection();
+        
+        // 총알 타입에 따른 시각 효과
+        ApplyBulletTypeVisuals();
     }
 
     private void Update()
     {
         aliveTime += Time.deltaTime;
 
-        if (aliveTime >= maxLifeTime)
+        if (aliveTime >= maxLifeTime || hasHit)
         {
-            Destroy(gameObject);
+            DestroyBullet();
             return;
         }
 
         MoveBullet();
     }
 
+    /// <summary>
+    /// 총알 이동 처리
+    /// </summary>
     private void MoveBullet()
     {
-        if (target == null || !target.gameObject.activeInHierarchy)
+        if (target != null)
         {
-            Destroy(gameObject);
-            return;
+            GameObject targetObj = (target as MonoBehaviour)?.gameObject;
+            if (targetObj != null && targetObj.activeInHierarchy)
+            {
+                targetPosition = targetObj.transform.position;
+            }
+            else
+            {
+                // 타겟이 사라졌으면 마지막 위치로 계속 이동
+                target = null;
+            }
         }
 
+        float moveDistance = speed * speedMultiplier * Time.deltaTime;
+        currentDistance += moveDistance;
+        float progressRatio = Mathf.Clamp01(currentDistance / totalDistance);
+
+        if (useParabolicPath && bulletType != BulletType.Energy)
+        {
+            // 포물선 경로
+            Vector3 currentPos = Vector3.Lerp(startPosition, targetPosition, progressRatio);
+            float height = arcHeight * 4f * progressRatio * (1f - progressRatio);
+            currentPos.y += height;
+            transform.position = currentPos;
+        }
+        else
+        {
+            // 직선 경로
+            Vector3 direction = (targetPosition - transform.position).normalized;
+            transform.position += direction * moveDistance;
+        }
+
+        // 회전 업데이트
+        UpdateRotation();
+
+        // 목표 도달 확인
+        if (progressRatio >= 1f || Vector3.Distance(transform.position, targetPosition) < 0.1f)
+        {
+            OnReachTarget();
+        }
+    }
+
+    /// <summary>
+    /// 총알 회전 업데이트
+    /// </summary>
+    private void UpdateRotation()
+    {
+        Vector3 direction = (targetPosition - transform.position).normalized;
+        if (direction != Vector3.zero)
+        {
+            float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
+            transform.rotation = Quaternion.AngleAxis(angle - 90f, Vector3.forward);
+        }
+    }
+
+    /// <summary>
+    /// 목표 도달 시 처리
+    /// </summary>
+    private void OnReachTarget()
+    {
+        if (hasHit) return;
+        
+        hasHit = true;
+        
+        // 타겟에 데미지 적용
+        if (target != null)
+        {
+            ApplyDamage(target);
+        }
+        
+        // 범위 공격 확인
+        if (bulletType == BulletType.Explosive)
+        {
+            ApplyExplosiveDamage();
+        }
+        else if (bulletType == BulletType.Chain)
+        {
+            StartCoroutine(ChainAttack());
+        }
+        else
+        {
+            DestroyBullet();
+        }
+    }
+
+    /// <summary>
+    /// 충돌 처리
+    /// </summary>
+    private void OnTriggerEnter2D(Collider2D other)
+    {
+        if (hasHit) return;
+        
+        // 자기 자신이나 같은 팀은 무시
+        if (other.gameObject == owner?.gameObject) return;
+        
+        IDamageable damageable = other.GetComponent<IDamageable>();
+        if (damageable != null)
+        {
+            // 팀 확인
+            Character otherChar = other.GetComponent<Character>();
+            Monster otherMonster = other.GetComponent<Monster>();
+            
+            bool shouldHit = false;
+            
+            if (owner != null)
+            {
+                // 캐릭터가 쏜 총알
+                if (owner.isCharAttack && otherChar != null && otherChar.areaIndex != owner.areaIndex)
+                {
+                    shouldHit = true; // 다른 지역 캐릭터 공격
+                }
+                else if (!owner.isCharAttack && otherMonster != null)
+                {
+                    shouldHit = true; // 몬스터 공격
+                }
+            }
+            
+            if (shouldHit)
+            {
+                target = damageable;
+                targetPosition = other.transform.position;
+                OnReachTarget();
+            }
+        }
+    }
+
+    /// <summary>
+    /// 데미지 적용
+    /// </summary>
+    private void ApplyDamage(IDamageable target)
+    {
+        if (target == null) return;
+        
+        float finalDamage = damage;
+        
+        // 총알 타입별 추가 효과
         switch (bulletType)
         {
-            case BulletType.Energy:
-            case BulletType.Normal:
-            case BulletType.Piercing:
-            case BulletType.Explosive:
-            case BulletType.Slow:
-            case BulletType.Bleed:
-            case BulletType.Stun:
             case BulletType.ArmorPenetration:
-            case BulletType.Split:
-            case BulletType.Chain:
-            {
-                float moveDistance = speed * speedMultiplier * Time.deltaTime;
-                currentDistance += moveDistance;
-                float progressRatio = Mathf.Clamp01(currentDistance / totalDistance);
-
-                // 포물선 경로 계산
-                Vector3 currentPos = Vector3.Lerp(startPosition, target.transform.position, progressRatio);
+                finalDamage *= 1.5f; // 방어력 무시 보너스
+                break;
                 
-                // 포물선 높이 적용
-                if (arcHeight > 0)
-                {
-                    float arcHeightAtPoint = arcHeight * Mathf.Sin(progressRatio * Mathf.PI);
-                    currentPos.y += arcHeightAtPoint;
-                }
-                
-                transform.position = currentPos;
-
-                // 총알 회전 (진행 방향을 바라보도록)
-                Vector3 direction = (target.transform.position - transform.position).normalized;
-                if (direction != Vector3.zero)
-                {
-                    float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
-                    transform.rotation = Quaternion.AngleAxis(angle - 90f, Vector3.forward);
-                }
-
-                // 타겟에 도달했는지 확인
-                float dist = Vector3.Distance(transform.position, target.transform.position);
-                if (dist < 0.2f || progressRatio >= 0.98f)
-                {
-                    OnHitTarget();
-                }
-                break;
-            }
-        }
-    }
-
-    private void OnHitTarget()
-    {
-        if (damageableTarget == null)
-        {
-            if (target != null)
-            {
-                damageableTarget = target.GetComponent<IDamageable>();
-            }
-        }
-
-        switch (bulletType)
-        {
-            case BulletType.Normal:
-                ApplyDamageToTarget(damage);
-                SpawnImpactEffect(target.transform.position);
-                Destroy(gameObject);
-                break;
-
-            case BulletType.Piercing:
-                ApplyDamageToTarget(damage);
-                piercedCount++;
-                SpawnImpactEffect(target.transform.position);
-
-                if (piercedCount >= maxPierceCount)
-                {
-                    Destroy(gameObject);
-                }
-                else
-                {
-                    Monster nextMonster = FindNextMonsterInLine();
-                    if (nextMonster != null)
-                    {
-                        target = nextMonster.gameObject;
-                        damageableTarget = nextMonster;
-                        startPosition = transform.position;
-                        totalDistance = Vector3.Distance(startPosition, target.transform.position);
-                        currentDistance = 0f;
-                    }
-                    else
-                    {
-                        Destroy(gameObject);
-                    }
-                }
-                break;
-
-            case BulletType.Explosive:
-                ApplyDamageToTarget(damage);
-                ApplyUnifiedAreaDamage(target.transform.position);
-                SpawnExplosionEffect(target.transform.position);
-                Destroy(gameObject);
-                break;
-
-            case BulletType.Chain:
-                ApplyDamageToTarget(damage);
-                chainAttackedMonsters.Add(target.GetComponent<Monster>());
-
-                Monster nextChainTarget = FindNextChainTarget();
-                if (nextChainTarget != null && currentBounceCount < maxChainCount)
-                {
-                    currentBounceCount++;
-                    target = nextChainTarget.gameObject;
-                    damageableTarget = nextChainTarget;
-                    startPosition = transform.position;
-                    totalDistance = Vector3.Distance(startPosition, target.transform.position);
-                    currentDistance = 0f;
-                    SpawnChainEffect(transform.position, target.transform.position);
-                }
-                else
-                {
-                    SpawnImpactEffect(target.transform.position);
-                    Destroy(gameObject);
-                }
-                break;
-
             case BulletType.Slow:
-                ApplyDamageToTarget(damage);
-                ApplySlowEffect();
-                SpawnImpactEffect(target.transform.position);
-                Destroy(gameObject);
+                ApplySlowEffect(target);
                 break;
-
+                
             case BulletType.Bleed:
-                ApplyDamageToTarget(damage);
-                ApplyBleedEffect();
-                SpawnImpactEffect(target.transform.position);
-                Destroy(gameObject);
+                ApplyBleedEffect(target);
                 break;
-
+                
             case BulletType.Stun:
-                ApplyDamageToTarget(damage);
-                ApplyStunEffect();
-                SpawnImpactEffect(target.transform.position);
-                Destroy(gameObject);
+                ApplyStunEffect(target);
                 break;
-
-            case BulletType.ArmorPenetration:
-                ApplyDamageToTarget(damage * (1f + armorPenRatio));
-                SpawnImpactEffect(target.transform.position);
-                Destroy(gameObject);
-                break;
-
-            case BulletType.Split:
-                ApplyDamageToTarget(damage);
-                if (subBulletPrefab != null && splitCount > 0)
-                {
-                    DoSplit(target.transform.position);
-                }
-                SpawnImpactEffect(target.transform.position);
-                Destroy(gameObject);
-                break;
-
-            case BulletType.Energy:
-                ApplyDamageToTarget(damage * 0.8f);
-                SpawnImpactEffect(target.transform.position);
-                Destroy(gameObject);
-                break;
+        }
+        
+        target.TakeDamage(finalDamage);
+        hitTargets.Add(target);
+        
+        // 피격 효과
+        if (hitEffectPrefab != null)
+        {
+            GameObject effect = Instantiate(hitEffectPrefab, transform.position, Quaternion.identity);
+            Destroy(effect, 2f);
         }
     }
 
-    private void ApplyDamageToTarget(float dmg)
+    /// <summary>
+    /// 폭발 데미지 적용
+    /// </summary>
+    private void ApplyExplosiveDamage()
     {
-        if (damageableTarget != null)
+        // 폭발 효과
+        if (explosionEffectPrefab != null)
         {
-            damageableTarget.TakeDamage(dmg);
+            GameObject explosion = Instantiate(explosionEffectPrefab, transform.position, Quaternion.identity);
+            Destroy(explosion, 2f);
         }
-    }
-
-    private void ApplyUnifiedAreaDamage(Vector3 center)
-    {
-        if (areaRadius <= 0f) return;
-
-        // 몬스터 광역 데미지
-        Monster[] allMonsters = Object.FindObjectsByType<Monster>(FindObjectsSortMode.None);
-        foreach (var m in allMonsters)
+        
+        // 범위 내 모든 적에게 데미지
+        Collider2D[] colliders = Physics2D.OverlapCircleAll(transform.position, explosionRadius);
+        foreach (var col in colliders)
         {
-            if (m == null) continue;
-            if (m.gameObject == target) continue;
-            float dist = Vector3.Distance(center, m.transform.position);
-            if (dist <= areaRadius)
+            IDamageable damageable = col.GetComponent<IDamageable>();
+            if (damageable != null && !hitTargets.Contains(damageable))
             {
-                m.TakeDamage(damage * 0.5f);
+                float distance = Vector3.Distance(transform.position, col.transform.position);
+                float damageRatio = 1f - (distance / explosionRadius);
+                damageable.TakeDamage(damage * damageRatio);
+                hitTargets.Add(damageable);
             }
         }
-
-        // 캐릭터 광역 데미지
-        Character[] allCharacters = Object.FindObjectsByType<Character>(FindObjectsSortMode.None);
-        foreach (var ch in allCharacters)
-        {
-            if (ch == null) continue;
-            if (ch.gameObject == target) continue;
-            if (ch.areaIndex == this.areaIndex) continue;
-
-            float dist = Vector3.Distance(center, ch.transform.position);
-            if (dist <= areaRadius)
-            {
-                ch.TakeDamage(damage * 0.5f);
-            }
-        }
+        
+        DestroyBullet();
     }
 
-    private Monster FindNextMonsterInLine()
+    /// <summary>
+    /// 연쇄 공격
+    /// </summary>
+    private IEnumerator ChainAttack()
     {
-        Monster[] allMonsters = Object.FindObjectsByType<Monster>(FindObjectsSortMode.None);
-        Monster best = null;
-        float minDist = float.MaxValue;
-
-        Vector3 myPos = transform.position;
-        Vector3 dir = (target.transform.position - myPos).normalized;
-
-        foreach (var m in allMonsters)
+        int currentChain = 0;
+        Vector3 lastPosition = transform.position;
+        
+        while (currentChain < chainCount)
         {
-            if (m == null || m.gameObject == target) continue;
-
-            Vector3 toMonster = m.transform.position - myPos;
-            float angle = Vector3.Angle(dir, toMonster);
+            // 가장 가까운 적 찾기
+            IDamageable nextTarget = FindNearestEnemy(lastPosition, chainRange);
+            if (nextTarget == null) break;
             
-            if (angle < 30f)
-            {
-                float dist = toMonster.magnitude;
-                if (dist < minDist)
-                {
-                    minDist = dist;
-                    best = m;
-                }
-            }
-        }
-
-        return best;
-    }
-
-    private Monster FindNextChainTarget()
-    {
-        Monster[] allMonsters = Object.FindObjectsByType<Monster>(FindObjectsSortMode.None);
-        Monster best = null;
-        float minDist = chainRange;
-
-        foreach (var m in allMonsters)
-        {
-            if (m == null || chainAttackedMonsters.Contains(m)) continue;
-
-            float dist = Vector3.Distance(target.transform.position, m.transform.position);
-            if (dist < minDist)
-            {
-                minDist = dist;
-                best = m;
-            }
-        }
-
-        return best;
-    }
-
-    private void DoSplit(Vector3 splitPos)
-    {
-        if (subBulletPrefab == null) return;
-
-        for (int i = 0; i < splitCount; i++)
-        {
-            float angle = (360f / splitCount) * i;
-            Vector3 dir = Quaternion.Euler(0, 0, angle) * Vector3.right;
+            // 체인 이펙트 생성
+            GameObject chainBullet = Instantiate(gameObject);
+            Bullet chainComponent = chainBullet.GetComponent<Bullet>();
+            chainComponent.target = nextTarget;
+            chainComponent.targetPosition = (nextTarget as MonoBehaviour).transform.position;
+            chainComponent.startPosition = lastPosition;
+            chainComponent.damage = damage * 0.7f; // 연쇄 데미지 감소
+            chainComponent.bulletType = BulletType.Normal; // 무한 연쇄 방지
+            chainComponent.owner = owner;
             
-            GameObject subBullet = Instantiate(subBulletPrefab, splitPos, Quaternion.identity);
-            Bullet subBulletComp = subBullet.GetComponent<Bullet>();
+            lastPosition = chainComponent.targetPosition;
+            currentChain++;
             
-            if (subBulletComp != null)
-            {
-                Monster nearestMonster = FindNearestMonsterFromPosition(splitPos);
-                if (nearestMonster != null)
-                {
-                    subBulletComp.Init(nearestMonster, damage * 0.5f, speed, false, 0f, areaIndex);
-                }
-                else
-                {
-                    Destroy(subBullet);
-                }
-            }
+            yield return new WaitForSeconds(0.1f);
         }
+        
+        DestroyBullet();
     }
 
-    private Monster FindNearestMonsterFromPosition(Vector3 pos)
+    /// <summary>
+    /// 가장 가까운 적 찾기
+    /// </summary>
+    private IDamageable FindNearestEnemy(Vector3 position, float range)
     {
-        Monster[] allMonsters = Object.FindObjectsByType<Monster>(FindObjectsSortMode.None);
-        Monster nearest = null;
-        float minDist = float.MaxValue;
-
-        foreach (var m in allMonsters)
+        IDamageable nearest = null;
+        float minDistance = float.MaxValue;
+        
+        Collider2D[] colliders = Physics2D.OverlapCircleAll(position, range);
+        foreach (var col in colliders)
         {
-            if (m == null) continue;
-            float dist = Vector3.Distance(pos, m.transform.position);
-            if (dist < minDist)
+            IDamageable damageable = col.GetComponent<IDamageable>();
+            if (damageable != null && !hitTargets.Contains(damageable))
             {
-                minDist = dist;
-                nearest = m;
+                float distance = Vector3.Distance(position, col.transform.position);
+                if (distance < minDistance)
+                {
+                    // 팀 확인
+                    bool isEnemy = false;
+                    Character targetChar = col.GetComponent<Character>();
+                    Monster targetMonster = col.GetComponent<Monster>();
+                    
+                    if (owner != null)
+                    {
+                        if (owner.isCharAttack && targetChar != null && targetChar.areaIndex != owner.areaIndex)
+                            isEnemy = true;
+                        else if (!owner.isCharAttack && targetMonster != null)
+                            isEnemy = true;
+                    }
+                    
+                    if (isEnemy)
+                    {
+                        minDistance = distance;
+                        nearest = damageable;
+                    }
+                }
             }
         }
-
+        
         return nearest;
     }
 
-    private void ApplySlowEffect()
+    /// <summary>
+    /// 둔화 효과 적용
+    /// </summary>
+    private void ApplySlowEffect(IDamageable target)
     {
-        if (target == null) return;
-        
-        Monster monster = target.GetComponent<Monster>();
-        if (monster != null)
+        MonoBehaviour targetMono = target as MonoBehaviour;
+        if (targetMono != null)
         {
-            monster.ApplySlow(slowDuration, slowAmount);
+            StartCoroutine(SlowCoroutine(targetMono));
         }
     }
 
-    private void ApplyBleedEffect()
+    private IEnumerator SlowCoroutine(MonoBehaviour target)
     {
-        if (target == null) return;
-        
-        Monster monster = target.GetComponent<Monster>();
-        if (monster != null)
+        CharacterMovement movement = target.GetComponent<CharacterMovement>();
+        if (movement != null)
         {
-            monster.ApplyBleed(bleedDuration, bleedDamagePerSec);
-        }
-    }
-
-    private void ApplyStunEffect()
-    {
-        if (target == null) return;
-        
-        Monster monster = target.GetComponent<Monster>();
-        if (monster != null)
-        {
-            monster.ApplyStun(stunDuration);
-        }
-    }
-
-    private void SpawnImpactEffect(Vector3 position)
-    {
-        if (impactEffectPrefab != null)
-        {
-            GameObject effect = Instantiate(impactEffectPrefab, position, Quaternion.identity);
-            Destroy(effect, 2f);
-        }
-    }
-
-    private void SpawnExplosionEffect(Vector3 position)
-    {
-        if (explosionEffectPrefab != null)
-        {
-            GameObject effect = Instantiate(explosionEffectPrefab, position, Quaternion.identity);
-            effect.transform.localScale = Vector3.one * (areaRadius * 2f);
-            Destroy(effect, 2f);
-        }
-    }
-
-    private void SpawnChainEffect(Vector3 start, Vector3 end)
-    {
-        if (chainEffectPrefab != null)
-        {
-            GameObject effect = Instantiate(chainEffectPrefab, start, Quaternion.identity);
+            float originalSpeed = movement.moveSpeed;
+            movement.moveSpeed *= slowAmount;
             
-            // 체인 이펙트를 시작점에서 끝점으로 늘이기
-            Vector3 direction = end - start;
-            effect.transform.right = direction;
-            effect.transform.localScale = new Vector3(direction.magnitude, 1f, 1f);
+            yield return new WaitForSeconds(slowDuration);
             
-            Destroy(effect, 0.5f);
+            if (movement != null)
+                movement.moveSpeed = originalSpeed;
+        }
+    }
+
+    /// <summary>
+    /// 출혈 효과 적용
+    /// </summary>
+    private void ApplyBleedEffect(IDamageable target)
+    {
+        StartCoroutine(BleedCoroutine(target));
+    }
+
+    private IEnumerator BleedCoroutine(IDamageable target)
+    {
+        float elapsed = 0f;
+        int ticks = 0;
+        
+        while (elapsed < bleedDuration && target != null)
+        {
+            if (ticks > 0) // 첫 틱은 건너뛰기
+            {
+                target.TakeDamage(bleedDamage);
+            }
+            
+            ticks++;
+            yield return new WaitForSeconds(0.5f);
+            elapsed += 0.5f;
+        }
+    }
+
+    /// <summary>
+    /// 기절 효과 적용
+    /// </summary>
+    private void ApplyStunEffect(IDamageable target)
+    {
+        MonoBehaviour targetMono = target as MonoBehaviour;
+        if (targetMono != null)
+        {
+            CharacterMovement movement = targetMono.GetComponent<CharacterMovement>();
+            if (movement != null)
+            {
+                movement.StopMoving();
+                targetMono.StartCoroutine(StunRecoveryCoroutine(movement));
+            }
+        }
+    }
+
+    private IEnumerator StunRecoveryCoroutine(CharacterMovement movement)
+    {
+        yield return new WaitForSeconds(stunDuration);
+        
+        if (movement != null)
+        {
+            movement.StartMoving();
+        }
+    }
+
+    /// <summary>
+    /// 총알 방향 설정
+    /// </summary>
+    private void SetBulletDirection()
+    {
+        if (spriteRenderer == null) return;
+        
+        Vector3 direction = (targetPosition - transform.position).normalized;
+        
+        // 위/아래 방향에 따른 스프라이트 변경
+        CharacterCombat combat = owner?.GetComponent<CharacterCombat>();
+        if (combat != null)
+        {
+            if (direction.y > 0 && combat.bulletUpDirectionSprite != null)
+            {
+                spriteRenderer.sprite = combat.bulletUpDirectionSprite;
+            }
+            else if (direction.y < 0 && combat.bulletDownDirectionSprite != null)
+            {
+                spriteRenderer.sprite = combat.bulletDownDirectionSprite;
+            }
+        }
+    }
+
+    /// <summary>
+    /// 총알 타입별 시각 효과
+    /// </summary>
+    private void ApplyBulletTypeVisuals()
+    {
+        if (spriteRenderer == null) return;
+        
+        switch (bulletType)
+        {
+            case BulletType.Energy:
+                spriteRenderer.color = Color.cyan;
+                if (trailRenderer != null)
+                {
+                    trailRenderer.startColor = Color.cyan;
+                    trailRenderer.endColor = Color.blue;
+                }
+                break;
+                
+            case BulletType.Explosive:
+                spriteRenderer.color = Color.red;
+                transform.localScale *= 1.5f;
+                break;
+                
+            case BulletType.Piercing:
+                spriteRenderer.color = Color.yellow;
+                speedMultiplier = 1.5f;
+                break;
+                
+            case BulletType.Slow:
+                spriteRenderer.color = Color.blue;
+                break;
+                
+            case BulletType.Bleed:
+                spriteRenderer.color = new Color(0.5f, 0f, 0f);
+                break;
+                
+            case BulletType.Stun:
+                spriteRenderer.color = Color.magenta;
+                break;
+                
+            case BulletType.Chain:
+                spriteRenderer.color = Color.green;
+                if (trailRenderer != null)
+                {
+                    trailRenderer.startColor = Color.green;
+                    trailRenderer.endColor = Color.yellow;
+                }
+                break;
+        }
+    }
+
+    /// <summary>
+    /// 총알 제거
+    /// </summary>
+    private void DestroyBullet()
+    {
+        if (trailRenderer != null)
+        {
+            trailRenderer.enabled = false;
+        }
+        
+        Destroy(gameObject, 0.1f);
+    }
+
+    /// <summary>
+    /// 디버그용 기즈모
+    /// </summary>
+    private void OnDrawGizmos()
+    {
+        if (bulletType == BulletType.Explosive)
+        {
+            Gizmos.color = Color.red;
+            Gizmos.DrawWireSphere(transform.position, explosionRadius);
         }
     }
 }

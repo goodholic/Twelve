@@ -359,22 +359,3 @@ public class CharacterCombat : MonoBehaviour
         }
     }
 }
-
-// 텍스트가 항상 카메라를 바라보도록 하는 컴포넌트
-public class LookAtCamera : MonoBehaviour
-{
-    private Camera mainCamera;
-    
-    void Start()
-    {
-        mainCamera = Camera.main;
-    }
-    
-    void LateUpdate()
-    {
-        if (mainCamera != null)
-        {
-            transform.rotation = Quaternion.LookRotation(mainCamera.transform.forward);
-        }
-    }
-}

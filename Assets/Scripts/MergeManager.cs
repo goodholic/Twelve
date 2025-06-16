@@ -1,9 +1,10 @@
 using UnityEngine;
 using System.Collections.Generic;
 using System;
+using System.Linq;
 
 /// <summary>
-/// 캐릭터 합성, 별 등급 관리
+/// 월드 좌표 기반 캐릭터 합성 관리자
 /// 기획서: 1성×3 → 2성, 2성×3 → 3성
 /// </summary>
 public class MergeManager : MonoBehaviour
@@ -26,6 +27,10 @@ public class MergeManager : MonoBehaviour
         }
     }
 
+    [Header("합성 효과")]
+    public GameObject mergeEffectPrefab;
+    public float mergeEffectDuration = 1f;
+
     private void Awake()
     {
         if (instance != null && instance != this)
@@ -36,58 +41,27 @@ public class MergeManager : MonoBehaviour
         instance = this;
     }
 
-    public bool TryMergeCharacter(Character movingChar, Tile newTile)
+    /// <summary>
+    /// ★★★ 수정: 타일에서 3개의 캐릭터 합성 시도
+    /// </summary>
+    public bool TryMergeCharacters(List<Character> charactersToMerge, Tile targetTile)
     {
-        Debug.Log($"[MergeManager] TryMergeCharacter: movingChar={movingChar.characterName}, star={movingChar.star}, tile={newTile.name}");
-
-        Character[] allChars = FindObjectsByType<Character>(FindObjectsSortMode.None);
-        List<Character> sameCharacters = new List<Character>();
-        
-        // 타일에서 같은 캐릭터 찾기
-        foreach (var otherChar in allChars)
-        {
-            if (otherChar == null || otherChar == movingChar) continue;
-
-            if (otherChar.currentTile == newTile)
-            {
-                // 같은 캐릭터명과 같은 별 등급인지 확인
-                if (otherChar.star == movingChar.star && otherChar.characterName == movingChar.characterName)
-                {
-                    sameCharacters.Add(otherChar);
-                }
-                else
-                {
-                    Debug.Log("[MergeManager] 별이 다르거나 다른 캐릭터명 => 합성 불가");
-                    return false;
-                }
-            }
-        }
-        
-        // 기획서: 3개가 모여야 합성 가능
-        if (sameCharacters.Count >= 2) // movingChar + 2개 = 총 3개
-        {
-            sameCharacters.Add(movingChar);
-            return ExecuteMerge(sameCharacters, newTile);
-        }
-        else if (sameCharacters.Count == 1) // movingChar + 1개 = 총 2개 (아직 부족)
-        {
-            // 2개만 있으면 movingChar를 그 타일로 이동만 시킴
-            return false; // 합성은 하지 않고 단순 이동만
-        }
-        
-        return false;
-    }
-
-    private bool ExecuteMerge(List<Character> charactersToMerge, Tile targetTile)
-    {
-        if (charactersToMerge.Count < 3)
+        if (charactersToMerge == null || charactersToMerge.Count < 3)
         {
             Debug.LogWarning("[MergeManager] 합성에는 3개의 캐릭터가 필요합니다.");
             return false;
         }
-        
+
         // 첫 번째 캐릭터 기준으로 정보 저장
         Character baseChar = charactersToMerge[0];
+        
+        // 모든 캐릭터가 같은 종류인지 확인
+        if (!charactersToMerge.All(c => c.characterName == baseChar.characterName && c.star == baseChar.star))
+        {
+            Debug.LogWarning("[MergeManager] 합성하려는 캐릭터들이 같은 종류가 아닙니다.");
+            return false;
+        }
+
         CharacterStar currentStar = baseChar.star;
         CharacterStar targetStar = CharacterStar.OneStar;
         
@@ -108,11 +82,14 @@ public class MergeManager : MonoBehaviour
                 return false;
         }
         
-        // 실제 프리팹 교체로 합성 실행
-        return ReplaceCharacterWithNewStar(charactersToMerge, targetTile, targetStar);
+        // 합성 실행
+        return ExecuteMerge(charactersToMerge, targetTile, targetStar);
     }
 
-    private bool ReplaceCharacterWithNewStar(List<Character> charactersToMerge, Tile targetTile, CharacterStar newStar)
+    /// <summary>
+    /// 합성 실행
+    /// </summary>
+    private bool ExecuteMerge(List<Character> charactersToMerge, Tile targetTile, CharacterStar newStar)
     {
         var coreData = CoreDataManager.Instance;
         
@@ -122,119 +99,111 @@ public class MergeManager : MonoBehaviour
         Vector3 position = targetTile.transform.position;
         Transform parent = baseChar.transform.parent;
         
-        Debug.Log($"[MergeManager] 프리팹 교체 시작: {baseChar.characterName} -> {newStar}");
+        Debug.Log($"[MergeManager] 합성 시작: {baseChar.characterName} ({baseChar.star}) × 3 → {newStar}");
         
+        // 합성 효과 재생
+        PlayMergeEffect(position);
+        
+        // StarMergeDatabase에서 새 캐릭터 데이터 가져오기
         StarMergeDatabaseObject targetDB = (areaIndex == 2 && coreData.starMergeDatabaseRegion2 != null) 
             ? coreData.starMergeDatabaseRegion2 : coreData.starMergeDatabase;
             
         if (targetDB == null)
         {
-            Debug.LogWarning("[MergeManager] StarMergeDatabase가 null입니다.");
+            Debug.LogWarning("[MergeManager] StarMergeDatabase가 null입니다. 간단한 업그레이드로 처리합니다.");
             SimpleUpgrade(baseChar, newStar);
             RemoveOtherCharacters(charactersToMerge, baseChar);
             return true;
         }
         
-        // 합성할 3개 중 랜덤 종족 선택 (UnityEngine.Random으로 명시)
-        RaceType selectedRace = (RaceType)charactersToMerge[UnityEngine.Random.Range(0, charactersToMerge.Count)].race;
+        // 합성할 3개 중 랜덤 종족 선택
+        CharacterRace selectedRace = charactersToMerge[UnityEngine.Random.Range(0, charactersToMerge.Count)].race;
         CharacterData newCharData = null;
         
         if (newStar == CharacterStar.TwoStar)
         {
-            newCharData = targetDB.GetRandom2Star(selectedRace);
+            newCharData = targetDB.GetRandom2Star((RaceType)selectedRace);
         }
         else if (newStar == CharacterStar.ThreeStar)
         {
-            newCharData = targetDB.GetRandom3Star(selectedRace);
+            newCharData = targetDB.GetRandom3Star((RaceType)selectedRace);
         }
         
         if (newCharData == null || newCharData.spawnPrefab == null)
         {
-            Debug.LogWarning($"[MergeManager] {newStar} 프리팹을 찾을 수 없습니다. 기존 방식으로 처리");
+            Debug.LogWarning($"[MergeManager] {newStar} 프리팹을 찾을 수 없습니다. 간단한 업그레이드로 처리합니다.");
             SimpleUpgrade(baseChar, newStar);
             RemoveOtherCharacters(charactersToMerge, baseChar);
             return true;
         }
         
+        // 타일에서 기존 캐릭터들 제거
+        foreach (var character in charactersToMerge)
+        {
+            if (character.currentTile != null)
+            {
+                character.currentTile.RemoveOccupyingCharacter(character);
+            }
+        }
+        
         // 새로운 캐릭터 생성
-        GameObject newCharObj = Instantiate(newCharData.spawnPrefab, parent);
-        if (newCharObj == null)
-        {
-            Debug.LogError("[MergeManager] 새 프리팹 생성 실패");
-            return false;
-        }
+        GameObject newCharObj = Instantiate(newCharData.spawnPrefab, position, Quaternion.identity, parent);
         
-        // 위치 설정
-        RectTransform newCharRect = newCharObj.GetComponent<RectTransform>();
-        if (newCharRect != null)
-        {
-            RectTransform oldRect = baseChar.GetComponent<RectTransform>();
-            if (oldRect != null)
-            {
-                newCharRect.anchoredPosition = oldRect.anchoredPosition;
-                newCharRect.localRotation = oldRect.localRotation;
-            }
-        }
-        else
-        {
-            newCharObj.transform.position = position;
-            newCharObj.transform.localRotation = baseChar.transform.localRotation;
-        }
-        
-        // Character 컴포넌트 설정
         Character newCharacter = newCharObj.GetComponent<Character>();
-        if (newCharacter != null)
+        if (newCharacter == null)
         {
-            // 기존 정보 복사
-            newCharacter.currentTile = targetTile;
-            newCharacter.areaIndex = areaIndex;
-            newCharacter.isHero = baseChar.isHero;
-            newCharacter.isCharAttack = baseChar.isCharAttack;
-            newCharacter.currentWaypointIndex = baseChar.currentWaypointIndex;
-            newCharacter.maxWaypointIndex = baseChar.maxWaypointIndex;
-            newCharacter.pathWaypoints = baseChar.pathWaypoints;
-            
-            // 새로운 데이터 적용
-            newCharacter.characterName = newCharData.characterName;
-            newCharacter.race = newCharData.race;
-            newCharacter.star = newStar;
-            
-            // 스탯 설정 (별 등급에 따른 배율 적용)
-            float statMultiplier = 1.0f;
-            switch (newStar)
-            {
-                case CharacterStar.TwoStar:
-                    statMultiplier = 1.3f;
-                    break;
-                case CharacterStar.ThreeStar:
-                    statMultiplier = 1.6f;
-                    break;
-            }
-            
-            newCharacter.attackPower = newCharData.attackPower * statMultiplier;
-            newCharacter.attackSpeed = newCharData.attackSpeed * 1.1f;
-            newCharacter.attackRange = newCharData.attackRange * 1.1f;
-            newCharacter.currentHP = newCharData.maxHP * statMultiplier;
-            newCharacter.moveSpeed = newCharData.moveSpeed;
-            
-            // 별 비주얼 적용
-            newCharacter.ApplyStarVisual();
-            
-            // 탄환 패널 설정
-            if (areaIndex == 2 && coreData.opponentBulletPanel != null)
-            {
-                newCharacter.opponentBulletPanel = coreData.opponentBulletPanel;
-            }
-            else
-            {
-                newCharacter.SetBulletPanel(coreData.bulletPanel);
-            }
-            
-            // 앞뒤 이미지 적용
-            if (newCharData.frontSprite != null || newCharData.backSprite != null)
-            {
-                ApplyFrontBackImages(newCharacter, newCharData);
-            }
+            newCharacter = newCharObj.AddComponent<Character>();
+        }
+        
+        // 기존 정보 복사
+        newCharacter.currentTile = targetTile;
+        newCharacter.areaIndex = areaIndex;
+        newCharacter.isHero = baseChar.isHero;
+        newCharacter.isCharAttack = baseChar.isCharAttack;
+        newCharacter.currentWaypointIndex = baseChar.currentWaypointIndex;
+        newCharacter.maxWaypointIndex = baseChar.maxWaypointIndex;
+        newCharacter.pathWaypoints = baseChar.pathWaypoints;
+        
+        // 새로운 데이터 적용
+        newCharacter.characterName = newCharData.characterName;
+        newCharacter.characterIndex = newCharData.characterIndex;
+        newCharacter.race = newCharData.race;
+        newCharacter.star = newStar;
+        
+        // 스탯 설정 (별 등급에 따른 배율 적용)
+        float statMultiplier = GetStatMultiplier(newStar);
+        
+        newCharacter.attackPower = newCharData.attackPower * statMultiplier;
+        newCharacter.attackSpeed = newCharData.attackSpeed * (newStar == CharacterStar.TwoStar ? 1.1f : 1.2f);
+        newCharacter.attackRange = newCharData.attackRange * (newStar == CharacterStar.TwoStar ? 1.1f : 1.2f);
+        newCharacter.currentHP = newCharData.health * statMultiplier;
+        newCharacter.maxHP = newCharData.health * statMultiplier;
+        newCharacter.level = baseChar.level; // 레벨 유지
+        
+        // 스프라이트 설정
+        if (newCharData.characterSprite != null)
+        {
+            newCharacter.characterSprite = newCharData.characterSprite;
+            newCharacter.SetSprite(newCharData.characterSprite);
+        }
+        
+        // 앞뒤 이미지 설정
+        if (newCharData.frontSprite != null || newCharData.backSprite != null)
+        {
+            newCharacter.frontSprite = newCharData.frontSprite;
+            newCharacter.backSprite = newCharData.backSprite;
+        }
+        
+        // 타일에 새 캐릭터 추가
+        targetTile.AddOccupyingCharacter(newCharacter);
+        
+        // 별 비주얼 적용
+        newCharacter.ApplyStarVisual();
+        
+        // DraggableCharacter 컴포넌트 추가 (플레이어 캐릭터만)
+        if (areaIndex == 1 && newCharacter.GetComponent<DraggableCharacter>() == null)
+        {
+            newCharacter.gameObject.AddComponent<DraggableCharacter>();
         }
         
         // 기존 3개 캐릭터 모두 제거
@@ -250,9 +219,14 @@ public class MergeManager : MonoBehaviour
         return true;
     }
 
+    /// <summary>
+    /// 간단한 업그레이드 (프리팹 교체 없이)
+    /// </summary>
     private void SimpleUpgrade(Character character, CharacterStar newStar)
     {
         character.star = newStar;
+        
+        float statMultiplier = GetStatMultiplier(newStar);
         
         // 스탯 업그레이드
         switch (newStar)
@@ -262,91 +236,87 @@ public class MergeManager : MonoBehaviour
                 character.attackSpeed *= 1.1f;
                 character.attackRange *= 1.1f;
                 character.currentHP *= 1.2f;
+                character.maxHP *= 1.2f;
                 break;
             case CharacterStar.ThreeStar:
                 character.attackPower *= 1.6f;
                 character.attackSpeed *= 1.2f;
                 character.attackRange *= 1.2f;
                 character.currentHP *= 1.4f;
+                character.maxHP *= 1.4f;
                 break;
         }
         
         character.ApplyStarVisual();
     }
 
+    /// <summary>
+    /// 별 등급에 따른 스탯 배율
+    /// </summary>
+    private float GetStatMultiplier(CharacterStar star)
+    {
+        switch (star)
+        {
+            case CharacterStar.OneStar:
+                return 1.0f;
+            case CharacterStar.TwoStar:
+                return 1.3f;
+            case CharacterStar.ThreeStar:
+                return 1.6f;
+            default:
+                return 1.0f;
+        }
+    }
+
+    /// <summary>
+    /// 다른 캐릭터들 제거
+    /// </summary>
     private void RemoveOtherCharacters(List<Character> allCharacters, Character keepCharacter)
     {
         foreach (var character in allCharacters)
         {
             if (character != null && character != keepCharacter && character.gameObject != null)
             {
+                // 타일에서 제거
+                if (character.currentTile != null)
+                {
+                    character.currentTile.RemoveOccupyingCharacter(character);
+                }
+                
                 Destroy(character.gameObject);
             }
         }
     }
 
-    private void ApplyFrontBackImages(Character character, CharacterData data)
+    /// <summary>
+    /// 합성 효과 재생
+    /// </summary>
+    private void PlayMergeEffect(Vector3 position)
     {
-        Transform frontImageObj = character.transform.Find("FrontImage");
-        Transform backImageObj = character.transform.Find("BackImage");
-        
-        if (data.frontSprite != null)
+        if (mergeEffectPrefab != null)
         {
-            if (frontImageObj == null)
-            {
-                GameObject frontGO = new GameObject("FrontImage");
-                frontGO.transform.SetParent(character.transform, false);
-                frontImageObj = frontGO.transform;
-                
-                UnityEngine.UI.Image frontImg = frontGO.AddComponent<UnityEngine.UI.Image>();
-                RectTransform frontRect = frontGO.GetComponent<RectTransform>();
-                frontRect.anchorMin = new Vector2(0.5f, 0.5f);
-                frontRect.anchorMax = new Vector2(0.5f, 0.5f);
-                frontRect.pivot = new Vector2(0.5f, 0.5f);
-                frontRect.sizeDelta = new Vector2(100, 100);
-                frontRect.anchoredPosition = Vector2.zero;
-            }
-            
-            UnityEngine.UI.Image frontImage = frontImageObj.GetComponent<UnityEngine.UI.Image>();
-            if (frontImage != null)
-            {
-                frontImage.sprite = data.frontSprite;
-                frontImage.preserveAspect = true;
-            }
-            
-            frontImageObj.gameObject.SetActive(false);
+            GameObject effect = Instantiate(mergeEffectPrefab, position, Quaternion.identity);
+            Destroy(effect, mergeEffectDuration);
         }
         
-        if (data.backSprite != null)
-        {
-            if (backImageObj == null)
-            {
-                GameObject backGO = new GameObject("BackImage");
-                backGO.transform.SetParent(character.transform, false);
-                backImageObj = backGO.transform;
-                
-                UnityEngine.UI.Image backImg = backGO.AddComponent<UnityEngine.UI.Image>();
-                RectTransform backRect = backGO.GetComponent<RectTransform>();
-                backRect.anchorMin = new Vector2(0.5f, 0.5f);
-                backRect.anchorMax = new Vector2(0.5f, 0.5f);
-                backRect.pivot = new Vector2(0.5f, 0.5f);
-                backRect.sizeDelta = new Vector2(100, 100);
-                backRect.anchoredPosition = Vector2.zero;
-            }
-            
-            UnityEngine.UI.Image backImage = backImageObj.GetComponent<UnityEngine.UI.Image>();
-            if (backImage != null)
-            {
-                backImage.sprite = data.backSprite;
-                backImage.preserveAspect = true;
-            }
-            
-            backImageObj.gameObject.SetActive(true);
-        }
-        
-        Debug.Log($"[MergeManager] {character.characterName}에 앞뒤 이미지 적용 완료");
+        // 추가 시각 효과 (파티클, 사운드 등)
+        // TODO: 필요시 추가
     }
 
-    // 기존 메서드들 제거 (RandomizeAppearanceByStarAndRace, UpgradeStats 등)
-    // SimpleUpgrade로 통합됨
+    /// <summary>
+    /// 디버그용: 특정 타일의 합성 가능 여부 확인
+    /// </summary>
+    public void DebugCheckMergeOnTile(Tile tile)
+    {
+        if (tile == null) return;
+        
+        List<Character> tileCharacters = tile.GetOccupyingCharacters();
+        Debug.Log($"[MergeManager] {tile.name}의 캐릭터 수: {tileCharacters.Count}");
+        
+        var groups = tileCharacters.GroupBy(c => new { c.characterName, c.star });
+        foreach (var group in groups)
+        {
+            Debug.Log($"  - {group.Key.characterName} ({group.Key.star}): {group.Count()}개");
+        }
+    }
 }

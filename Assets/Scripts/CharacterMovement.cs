@@ -1,571 +1,242 @@
+using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
+using System.Linq;
 
+/// <summary>
+/// 월드 좌표 기반 캐릭터 이동 시스템
+/// 웨이포인트를 따라 이동하고 점프를 처리합니다.
+/// </summary>
 public class CharacterMovement : MonoBehaviour
 {
     private Character character;
+    private CharacterStats stats;
     private CharacterVisual visual;
-    private CharacterJump jumpSystem;
     
-    // WaveSpawner에서 관리하는 이동 정보
-    [HideInInspector] public Transform[] pathWaypoints;
-    [HideInInspector] public int currentWaypointIndex = -1;
-    [HideInInspector] public int maxWaypointIndex = 6;
+    [Header("이동 설정")]
+    public float moveSpeed = 2f;
+    public float rotationSpeed = 10f;
+    public float stoppingDistance = 0.1f;
     
-    // 웨이브 스포너 참조
-    private WaveSpawner waveSpawner;
-    private WaveSpawnerRegion2 waveSpawnerRegion;
+    [Header("웨이포인트")]
+    private Transform[] pathWaypoints;
+    private int currentWaypointIndex = -1;
+    private int maxWaypointIndex = -1;
     
-    // 점프 상태
+    [Header("점프 설정")]
+    public float jumpHeight = 2f;
+    public float jumpDuration = 1f;
+    private bool isJumping = false;
     private bool isJumpingAcross = false;
     private bool hasJumped = false;
     
-    // 중간성/최종성 타겟팅
-    private enum CastleTarget
-    {
-        None,
-        MiddleLeft,
-        MiddleRight,
-        Final
-    }
+    [Header("전투 중 이동")]
+    private bool isInCombat = false;
+    private Vector3 combatStartPosition;
     
-    private CastleTarget currentCastleTarget = CastleTarget.None;
-    private Transform middleLeftCastle;
-    private Transform middleRightCastle;
-    private Transform finalCastle;
-    private int middleLeftHealth = 500;
-    private int middleRightHealth = 500;
+    // 코루틴 참조
+    private Coroutine moveCoroutine;
+    private Coroutine jumpCoroutine;
     
-    [Header("Movement Settings")]
-    public float moveSpeed = 3f;
-    
-    public void Initialize(Character character, CharacterVisual visual, CharacterJump jumpSystem)
+    public void Initialize(Character character, CharacterStats stats)
     {
         this.character = character;
-        this.visual = visual;
-        this.jumpSystem = jumpSystem;
+        this.stats = stats;
+        this.visual = GetComponent<CharacterVisual>();
         
-        // WaveSpawner 찾기
-        waveSpawner = FindFirstObjectByType<WaveSpawner>();
-        waveSpawnerRegion = FindFirstObjectByType<WaveSpawnerRegion2>();
-        
-        // 중간성/최종성 오브젝트 찾기 (태그 대신 컴포넌트로 찾기)
-        MiddleCastle[] middleCastles = Object.FindObjectsByType<MiddleCastle>(FindObjectsSortMode.None);
-        foreach (var castle in middleCastles)
+        // 캐릭터의 웨이포인트 정보 동기화
+        if (character.pathWaypoints != null)
         {
-            if (castle.gameObject.name.Contains("MiddleLeft") || castle.gameObject.name.Contains("Left"))
-                middleLeftCastle = castle.transform;
-            else if (castle.gameObject.name.Contains("MiddleRight") || castle.gameObject.name.Contains("Right"))
-                middleRightCastle = castle.transform;
+            pathWaypoints = character.pathWaypoints;
+            currentWaypointIndex = character.currentWaypointIndex;
+            maxWaypointIndex = character.maxWaypointIndex;
         }
-        
-        FinalCastle[] finalCastles = Object.FindObjectsByType<FinalCastle>(FindObjectsSortMode.None);
-        foreach (var castle in finalCastles)
-        {
-            if (castle.gameObject.name.Contains("Final"))
-                finalCastle = castle.transform;
-        }
-        
-        // 점프 상태 초기화
-        hasJumped = false;
-        isJumpingAcross = false;
     }
     
-    public void HandleMovement()
+    /// <summary>
+    /// 웨이포인트 설정
+    /// </summary>
+    public void SetWaypoints(Transform[] waypoints, int startIndex = 0)
     {
-        // 히어로는 pathWaypoints 이동 안 함
+        if (waypoints == null || waypoints.Length == 0)
+        {
+            Debug.LogWarning($"[CharacterMovement] {character.characterName}: 웨이포인트가 없습니다!");
+            return;
+        }
+        
+        pathWaypoints = waypoints;
+        currentWaypointIndex = startIndex;
+        maxWaypointIndex = waypoints.Length - 1;
+        
+        // Character 컴포넌트에도 동기화
+        character.pathWaypoints = pathWaypoints;
+        character.currentWaypointIndex = currentWaypointIndex;
+        character.maxWaypointIndex = maxWaypointIndex;
+        
+        Debug.Log($"[CharacterMovement] {character.characterName}: 웨이포인트 설정 완료. " +
+                  $"경로 길이: {waypoints.Length}, 시작 인덱스: {startIndex}");
+    }
+    
+    /// <summary>
+    /// 이동 시작
+    /// </summary>
+    public void StartMoving()
+    {
         if (character.isHero)
         {
-            UpdateCharacterDirectionSprite();
+            Debug.Log($"[CharacterMovement] 히어로 {character.characterName}은(는) 이동하지 않습니다.");
             return;
         }
-        
-        // placable/placed 타일의 캐릭터는 이동하지 않음
-        if (character.currentTile != null && 
-            (character.currentTile.IsPlacable() || character.currentTile.IsPlacable2() || 
-             character.currentTile.IsPlaceTile() || character.currentTile.IsPlaced2()))
-        {
-            UpdateCharacterDirectionSprite();
-            return;
-        }
-        
-        // 전투 중이면 이동하지 않음 (사정거리 내 적이 있을 때)
-        if (IsInCombatRange())
-        {
-            UpdateCharacterDirectionSprite();
-            return;
-        }
-        
-        // 성 공격 모드
-        if (currentCastleTarget != CastleTarget.None)
-        {
-            MoveToCastle();
-            return;
-        }
-        
-        // walkable 타일에 배치된 캐릭터는 currentWaypointIndex가 0 이상이어야 함
-        if (pathWaypoints != null && pathWaypoints.Length > 0 && currentWaypointIndex >= 0)
-        {
-            MoveAlongWaypoints();
-        }
-        else if (currentWaypointIndex == -1 && pathWaypoints != null && pathWaypoints.Length > 0)
-        {
-            // walkable 타일에 처음 배치된 경우 이동 시작
-            currentWaypointIndex = 0;
-            Debug.Log($"[Character] {character.characterName} walkable 타일에서 이동 시작 - 웨이포인트 개수: {pathWaypoints.Length}, 루트: {character.selectedRoute}");
-        }
-        
-        UpdateCharacterDirectionSprite();
-    }
-    
-    private bool IsInCombatRange()
-    {
-        // 사정거리 내에 적이 있는지 확인
-        if (character.currentTarget != null)
-        {
-            float distToTarget = Vector2.Distance(transform.position, character.currentTarget.transform.position);
-            if (distToTarget <= character.attackRange)
-            {
-                return true;
-            }
-        }
-        
-        if (character.currentCharTarget != null)
-        {
-            float distToTarget = Vector2.Distance(transform.position, character.currentCharTarget.transform.position);
-            if (distToTarget <= character.attackRange)
-            {
-                return true;
-            }
-        }
-        
-        return false;
-    }
-    
-    private void MoveToCastle()
-    {
-        Transform targetCastle = null;
-        
-        switch (currentCastleTarget)
-        {
-            case CastleTarget.MiddleLeft:
-                targetCastle = middleLeftCastle;
-                break;
-            case CastleTarget.MiddleRight:
-                targetCastle = middleRightCastle;
-                break;
-            case CastleTarget.Final:
-                targetCastle = finalCastle;
-                break;
-        }
-        
-        if (targetCastle == null)
-        {
-            Debug.LogWarning($"[Character] {character.characterName} 성 타겟을 찾을 수 없음");
-            return;
-        }
-        
-        Vector2 currentPos = transform.position;
-        Vector2 targetPos = targetCastle.position;
-        Vector2 dir = (targetPos - currentPos).normalized;
-        
-        float baseSpeed = 0.3f;
-        float distThisFrame = baseSpeed * Time.deltaTime;
-        
-        transform.position += (Vector3)(dir * distThisFrame);
-        
-        // 성에 도달했는지 확인
-        float distToCastle = Vector2.Distance(transform.position, targetPos);
-        if (distToCastle <= 0.5f)
-        {
-            OnReachCastle();
-        }
-    }
-    
-    private void OnReachCastle()
-    {
-        switch (currentCastleTarget)
-        {
-            case CastleTarget.MiddleLeft:
-                middleLeftHealth -= 10;
-                Debug.Log($"[Character] {character.characterName}이(가) 왼쪽 중간성 공격! 남은 체력: {middleLeftHealth}");
-                if (middleLeftHealth <= 0)
-                {
-                    Debug.Log("[Character] 왼쪽 중간성 파괴! 최종성으로 목표 변경");
-                    currentCastleTarget = CastleTarget.Final;
-                    if (middleLeftCastle != null)
-                        middleLeftCastle.gameObject.SetActive(false);
-                }
-                break;
-                
-            case CastleTarget.MiddleRight:
-                middleRightHealth -= 10;
-                Debug.Log($"[Character] {character.characterName}이(가) 오른쪽 중간성 공격! 남은 체력: {middleRightHealth}");
-                if (middleRightHealth <= 0)
-                {
-                    Debug.Log("[Character] 오른쪽 중간성 파괴! 최종성으로 목표 변경");
-                    currentCastleTarget = CastleTarget.Final;
-                    if (middleRightCastle != null)
-                        middleRightCastle.gameObject.SetActive(false);
-                }
-                break;
-                
-            case CastleTarget.Final:
-                if (character.areaIndex == 1)
-                {
-                    WaveSpawnerRegion2 spawner2 = FindFirstObjectByType<WaveSpawnerRegion2>();
-                    if (spawner2 != null)
-                    {
-                        spawner2.TakeDamageToRegion2(1);
-                        Debug.Log($"[Character] {character.characterName}이(가) 지역2 최종성에 1 데미지!");
-                    }
-                }
-                else if (character.areaIndex == 2)
-                {
-                    GameManager gameManager = FindFirstObjectByType<GameManager>();
-                    if (gameManager != null)
-                    {
-                        gameManager.TakeDamageToRegion1(1);
-                        Debug.Log($"[Character] {character.characterName}이(가) 지역1 최종성에 1 데미지!");
-                    }
-                }
-                break;
-        }
-        
-        // 공격 후 캐릭터 제거
-        DestroyCharacter();
-    }
-    
-    private void MoveAlongWaypoints()
-    {
-        if (pathWaypoints == null || pathWaypoints.Length == 0)
-        {
-            // 웨이포인트가 없으면 중간성으로 이동
-            DetermineCastleTarget();
-            return;
-        }
-        
-        // maxWaypointIndex를 실제 배열 길이에 맞게 조정
-        if (maxWaypointIndex < 0 || maxWaypointIndex >= pathWaypoints.Length)
-        {
-            maxWaypointIndex = pathWaypoints.Length - 1;
-        }
-        
-        if (currentWaypointIndex > maxWaypointIndex)
-        {
-            OnArriveCastle();
-            return;
-        }
-        
-        if (currentWaypointIndex < 0 || currentWaypointIndex >= pathWaypoints.Length)
-        {
-            Debug.LogWarning($"[Character] 잘못된 waypoint 인덱스: {currentWaypointIndex}, 배열 크기: {pathWaypoints.Length}");
-            DetermineCastleTarget();
-            return;
-        }
-        
-        Transform target = pathWaypoints[currentWaypointIndex];
-        if (target == null)
-        {
-            Debug.LogWarning($"[Character] {character.characterName}의 웨이포인트[{currentWaypointIndex}]가 null");
-            DetermineCastleTarget();
-            return;
-        }
-        
-        // 점프 포인트 도달 체크
-        if (!isJumpingAcross && !hasJumped && ShouldCheckForJump() && jumpSystem.CheckIfAtJumpPoint(character.selectedRoute, hasJumped))
-        {
-            jumpSystem.StartJumpToOtherRegion(OnJumpComplete);
-            isJumpingAcross = true;
-            return;
-        }
-        
-        Vector2 currentPos = transform.position;
-        Vector2 targetPos = target.position;
-        
-        // 순간이동 방지를 위한 거리 체크
-        float distToTarget = Vector2.Distance(currentPos, targetPos);
-        
-        if (distToTarget > 8f)
-        {
-            Debug.LogWarning($"[Character] {character.characterName} 웨이포인트가 멀리 있음! 거리: {distToTarget:F2}, 천천히 이동합니다.");
-            
-            float slowMoveDistance = 0.15f * Time.deltaTime;
-            Vector3 slowNewPosition = Vector2.MoveTowards(currentPos, targetPos, slowMoveDistance);
-            transform.position = slowNewPosition;
-            
-            Debug.Log($"[Character] {character.characterName} 먼 웨이포인트로 천천히 이동 중... (속도: {slowMoveDistance:F3})");
-            return;
-        }
-        
-        Vector2 dir = (targetPos - currentPos).normalized;
-        
-        // 모든 지역과 루트에 대한 안정적인 이동 속도
-        float baseSpeed = 0.3f;
-        
-        if (hasJumped)
-        {
-            baseSpeed *= 0.9f;
-            Debug.Log($"[Character] {character.characterName} 점프한 캐릭터 - 안정적 이동 속도: {baseSpeed:F3}");
-        }
-        
-        float distThisFrame = baseSpeed * Time.deltaTime;
-        
-        // 안전한 이동 처리
-        Vector3 newPosition = transform.position + (Vector3)(dir * distThisFrame);
-        
-        float moveDistance = Vector2.Distance(transform.position, newPosition);
-        if (moveDistance > 2f)
-        {
-            Debug.LogWarning($"[Character] {character.characterName} 한 프레임 이동 거리가 너무 큼: {moveDistance}, 제한함");
-            newPosition = transform.position + (Vector3)(dir * 2f);
-        }
-        
-        transform.position = newPosition;
-        
-        // 웨이포인트 도달 판정
-        float currentDist = Vector2.Distance(transform.position, targetPos);
-        float arrivalThreshold = hasJumped ? 0.2f : 0.25f;
-        
-        if (currentDist <= arrivalThreshold)
-        {
-            Debug.Log($"[Character] {character.characterName} 웨이포인트 {currentWaypointIndex} 도달! (거리: {currentDist:F3}, 임계값: {arrivalThreshold}, 지역: {character.areaIndex}, 점프: {hasJumped})");
-            
-            if (currentDist < 2f)
-            {
-                transform.position = targetPos;
-                Debug.Log($"[Character] {character.characterName} 웨이포인트 위치로 정확히 이동: {targetPos}");
-            }
-            
-            currentWaypointIndex++;
-            if (currentWaypointIndex > maxWaypointIndex)
-            {
-                OnArriveCastle();
-            }
-            else if (currentWaypointIndex >= pathWaypoints.Length)
-            {
-                OnArriveCastle();
-            }
-        }
-    }
-    
-    private void DetermineCastleTarget()
-    {
-        // 루트에 따라 중간성 결정
-        if (character.selectedRoute == RouteType.Left)
-        {
-            currentCastleTarget = CastleTarget.MiddleLeft;
-            Debug.Log($"[Character] {character.characterName} 왼쪽 중간성 목표 설정");
-        }
-        else if (character.selectedRoute == RouteType.Right)
-        {
-            currentCastleTarget = CastleTarget.MiddleRight;
-            Debug.Log($"[Character] {character.characterName} 오른쪽 중간성 목표 설정");
-        }
-        else
-        {
-            // 중앙 루트는 기본적으로 최종성 목표
-            currentCastleTarget = CastleTarget.Final;
-            Debug.Log($"[Character] {character.characterName} 최종성 목표 설정");
-        }
-    }
-    
-    private bool ShouldCheckForJump()
-    {
-        if (pathWaypoints == null || pathWaypoints.Length == 0 || currentWaypointIndex < 0)
-            return false;
-        
-        float progressRatio = (float)currentWaypointIndex / (float)pathWaypoints.Length;
-        bool shouldCheck = progressRatio >= 0.3f;
-        
-        if (shouldCheck)
-        {
-            Debug.Log($"[Character] {character.characterName} - 점프 체크 조건 만족: 진행률 {progressRatio:F2} ({currentWaypointIndex}/{pathWaypoints.Length})");
-        }
-        
-        return shouldCheck;
-    }
-    
-    private void OnJumpComplete(int targetAreaIndex)
-    {
-        isJumpingAcross = false;
-        hasJumped = true;
-        
-        Debug.Log($"[Character] {character.characterName} CharacterJumpController 점프 완료! 원래 지역: {character.areaIndex}, 이동한 지역: {targetAreaIndex}");
         
         if (pathWaypoints == null || pathWaypoints.Length == 0)
         {
-            Debug.LogWarning($"[Character] {character.characterName} 점프 완료 후 웨이포인트 배열이 유실됨! 복구 시도");
-            RestoreOriginalWaypoints();
+            Debug.LogWarning($"[CharacterMovement] {character.characterName}: 웨이포인트가 없어 이동할 수 없습니다!");
+            return;
         }
         
-        SetWaypointsForNewRegion(targetAreaIndex);
+        if (moveCoroutine != null)
+        {
+            StopCoroutine(moveCoroutine);
+        }
+        
+        moveCoroutine = StartCoroutine(MoveAlongPath());
     }
     
-    public void SetWaypointsForNewRegion(int newAreaIndex)
+    /// <summary>
+    /// 이동 중지
+    /// </summary>
+    public void StopMoving()
     {
-        Debug.Log($"[Character] {character.characterName} 점프 완료. 원래 지역 {character.areaIndex}의 웨이포인트를 계속 사용하여 지역 {newAreaIndex}를 탐방");
-        
-        if (pathWaypoints == null || pathWaypoints.Length == 0)
+        if (moveCoroutine != null)
         {
-            Debug.LogWarning($"[Character] {character.characterName} 웨이포인트 배열이 유실됨! 원래 지역의 웨이포인트 복구 시도");
-            RestoreOriginalWaypoints();
+            StopCoroutine(moveCoroutine);
+            moveCoroutine = null;
         }
         
-        if (pathWaypoints != null && pathWaypoints.Length > 0)
+        if (jumpCoroutine != null)
         {
-            bool waypointsValid = true;
-            for (int i = 0; i < pathWaypoints.Length; i++)
-            {
-                if (pathWaypoints[i] == null)
-                {
-                    Debug.LogError($"[Character] {character.characterName} 웨이포인트[{i}]가 null! 루트: {character.selectedRoute}");
-                    waypointsValid = false;
-                }
-            }
+            StopCoroutine(jumpCoroutine);
+            jumpCoroutine = null;
+        }
+        
+        isInCombat = false;
+    }
+    
+    /// <summary>
+    /// 웨이포인트를 따라 이동하는 코루틴
+    /// </summary>
+    private IEnumerator MoveAlongPath()
+    {
+        while (pathWaypoints != null && currentWaypointIndex >= 0 && currentWaypointIndex < pathWaypoints.Length)
+        {
+            Transform currentWaypoint = pathWaypoints[currentWaypointIndex];
             
-            if (!waypointsValid)
+            if (currentWaypoint == null)
             {
-                Debug.LogError($"[Character] {character.characterName} 웨이포인트 배열에 null이 포함됨! 복구 시도");
-                RestoreOriginalWaypoints();
-            }
-            
-            if (currentWaypointIndex < 0)
-            {
-                currentWaypointIndex = 0;
-                Debug.Log($"[Character] {character.characterName} 웨이포인트 인덱스가 음수였음. 0으로 초기화");
-            }
-            
-            if (currentWaypointIndex < pathWaypoints.Length - 1)
-            {
+                Debug.LogWarning($"[CharacterMovement] {character.characterName}: 웨이포인트 {currentWaypointIndex}가 null입니다!");
                 currentWaypointIndex++;
-                Debug.Log($"[Character] {character.characterName} 원래 지역 {character.areaIndex}의 웨이포인트 {currentWaypointIndex}부터 계속 진행 (총 {pathWaypoints.Length}개, 루트: {character.selectedRoute})");
+                continue;
+            }
+            
+            // 타겟이 있으면 전투 모드
+            if (character.currentTarget != null || character.currentCharTarget != null)
+            {
+                isInCombat = true;
+                combatStartPosition = transform.position;
+                
+                // 전투 중에도 웨이포인트 방향으로 이동
+                yield return MoveTowardsTarget(currentWaypoint.position);
             }
             else
             {
-                Debug.Log($"[Character] {character.characterName} 이미 마지막 웨이포인트에 도달. 현재 인덱스 유지: {currentWaypointIndex}");
+                isInCombat = false;
+                
+                // 웨이포인트로 이동
+                yield return MoveTowardsTarget(currentWaypoint.position);
+                
+                // 웨이포인트 도달
+                if (Vector3.Distance(transform.position, currentWaypoint.position) <= stoppingDistance)
+                {
+                    OnReachWaypoint();
+                    
+                    // 다음 웨이포인트로
+                    currentWaypointIndex++;
+                    character.currentWaypointIndex = currentWaypointIndex;
+                    
+                    // 마지막 웨이포인트 도달 시 처리
+                    if (currentWaypointIndex > maxWaypointIndex)
+                    {
+                        OnReachFinalWaypoint();
+                        yield break;
+                    }
+                }
             }
             
-            maxWaypointIndex = pathWaypoints.Length - 1;
-        }
-        else
-        {
-            Debug.LogError($"[Character] {character.characterName} 웨이포인트 복구 실패! 점프 후 이동 불가");
+            yield return null;
         }
     }
     
-    private void RestoreOriginalWaypoints()
+    /// <summary>
+    /// 목표 위치로 이동
+    /// </summary>
+    private IEnumerator MoveTowardsTarget(Vector3 targetPosition)
     {
-        Debug.Log($"[Character] {character.characterName} 원래 지역 {character.areaIndex}의 웨이포인트 복구 시도 (루트: {character.selectedRoute})");
-        
-        if (character.areaIndex == 1)
+        while (Vector3.Distance(transform.position, targetPosition) > stoppingDistance)
         {
-            if (waveSpawner != null)
+            // 이동 방향 계산
+            Vector3 direction = (targetPosition - transform.position).normalized;
+            
+            // 위치 이동
+            transform.position += direction * moveSpeed * Time.deltaTime;
+            
+            // 회전 (선택적)
+            if (direction != Vector3.zero)
             {
-                Transform[] restoredWaypoints = GetWaypointsFromOriginalSpawner(waveSpawner, character.selectedRoute);
-                if (restoredWaypoints != null && restoredWaypoints.Length > 0)
-                {
-                    bool allValid = true;
-                    for (int i = 0; i < restoredWaypoints.Length; i++)
-                    {
-                        if (restoredWaypoints[i] == null)
-                        {
-                            Debug.LogError($"[Character] {character.characterName} 복구된 지역1 웨이포인트[{i}]가 null!");
-                            allValid = false;
-                        }
-                    }
-                    
-                    if (allValid)
-                    {
-                        pathWaypoints = restoredWaypoints;
-                        maxWaypointIndex = restoredWaypoints.Length - 1;
-                        Debug.Log($"[Character] {character.characterName} 지역1 웨이포인트 복구 성공! ({restoredWaypoints.Length}개, 루트: {character.selectedRoute})");
-                    }
-                }
+                Quaternion targetRotation = Quaternion.LookRotation(Vector3.forward, direction);
+                transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
             }
-        }
-        else if (character.areaIndex == 2)
-        {
-            if (waveSpawnerRegion != null)
-            {
-                Transform[] restoredWaypoints = GetWaypointsFromOriginalSpawner(waveSpawnerRegion, character.selectedRoute);
-                if (restoredWaypoints != null && restoredWaypoints.Length > 0)
-                {
-                    bool allValid = true;
-                    for (int i = 0; i < restoredWaypoints.Length; i++)
-                    {
-                        if (restoredWaypoints[i] == null)
-                        {
-                            Debug.LogError($"[Character] {character.characterName} 복구된 지역2 웨이포인트[{i}]가 null!");
-                            allValid = false;
-                        }
-                    }
-                    
-                    if (allValid)
-                    {
-                        pathWaypoints = restoredWaypoints;
-                        maxWaypointIndex = restoredWaypoints.Length - 1;
-                        Debug.Log($"[Character] {character.characterName} 지역2 웨이포인트 복구 성공! ({restoredWaypoints.Length}개, 루트: {character.selectedRoute})");
-                    }
-                }
-            }
+            
+            // 스프라이트 방향 업데이트
+            UpdateCharacterDirectionSprite();
+            
+            yield return null;
         }
     }
     
-    private Transform[] GetWaypointsFromOriginalSpawner(WaveSpawner spawner, RouteType route)
+    /// <summary>
+    /// 웨이포인트 도달 시 처리
+    /// </summary>
+    private void OnReachWaypoint()
     {
-        switch (route)
+        Debug.Log($"[CharacterMovement] {character.characterName}이(가) 웨이포인트 {currentWaypointIndex}에 도달!");
+        
+        // 점프 지점 확인
+        if (ShouldJumpAtCurrentWaypoint())
         {
-            case RouteType.Left:
-                return spawner.walkableLeft;
-            case RouteType.Center:
-                return spawner.walkableCenter;
-            case RouteType.Right:
-                return spawner.walkableRight;
-            case RouteType.Default:
-            default:
-                return spawner.walkableCenter;
+            StartJump();
         }
     }
     
-    private Transform[] GetWaypointsFromOriginalSpawner(WaveSpawnerRegion2 spawner, RouteType route)
+    /// <summary>
+    /// 최종 웨이포인트 도달 시 처리
+    /// </summary>
+    private void OnReachFinalWaypoint()
     {
-        switch (route)
-        {
-            case RouteType.Left:
-                return spawner.walkableLeft2;
-            case RouteType.Center:
-                return spawner.walkableCenter2;
-            case RouteType.Right:
-                return spawner.walkableRight2;
-            case RouteType.Default:
-            default:
-                return spawner.walkableCenter2;
-        }
-    }
-    
-    private void OnArriveCastle()
-    {
-        if (character.isHero)
-        {
-            return;
-        }
+        Debug.Log($"[CharacterMovement] {character.characterName}이(가) 최종 웨이포인트에 도달!");
         
-        if (isJumpingAcross) return;
-        
-        Debug.Log($"[Character] {character.characterName}이(가) 웨이포인트 끝에 도달했습니다! (원래 지역: {character.areaIndex}, 점프했음: {hasJumped})");
-        
+        // 상대 지역으로 점프했으면 성에 데미지
         if (hasJumped)
         {
             if (character.areaIndex == 1)
             {
-                WaveSpawnerRegion2 spawner2 = FindFirstObjectByType<WaveSpawnerRegion2>();
-                if (spawner2 != null)
+                GameManager gameManager = FindFirstObjectByType<GameManager>();
+                if (gameManager != null)
                 {
-                    spawner2.TakeDamageToRegion2(1);
-                    Debug.Log($"[Character] 지역1 캐릭터 {character.characterName}이(가) 지역2 성에 1 데미지를 입혔습니다!");
+                    gameManager.TakeDamageToRegion2(1);
+                    Debug.Log($"[CharacterMovement] 지역1 캐릭터 {character.characterName}이(가) 지역2 성에 1 데미지를 입혔습니다!");
                 }
                 
-                Debug.Log($"[Character] 1지역 캐릭터 {character.characterName}이(가) 지역2 웨이포인트 끝에 도달하여 삭제됩니다.");
+                Debug.Log($"[CharacterMovement] 1지역 캐릭터 {character.characterName}이(가) 지역2 웨이포인트 끝에 도달하여 삭제됩니다.");
                 DestroyCharacter();
                 return;
             }
@@ -575,21 +246,266 @@ public class CharacterMovement : MonoBehaviour
                 if (gameManager != null)
                 {
                     gameManager.TakeDamageToRegion1(1);
-                    Debug.Log($"[Character] 지역2 캐릭터 {character.characterName}이(가) 지역1 성에 1 데미지를 입혔습니다!");
+                    Debug.Log($"[CharacterMovement] 지역2 캐릭터 {character.characterName}이(가) 지역1 성에 1 데미지를 입혔습니다!");
                 }
                 
-                Debug.Log($"[Character] 2지역 캐릭터 {character.characterName}이(가) 지역1 웨이포인트 끝에 도달하여 삭제됩니다.");
+                Debug.Log($"[CharacterMovement] 2지역 캐릭터 {character.characterName}이(가) 지역1 웨이포인트 끝에 도달하여 삭제됩니다.");
                 DestroyCharacter();
                 return;
             }
         }
         else
         {
-            Debug.Log($"[Character] {character.characterName}이(가) 자기 지역 웨이포인트 끝에 도달했지만 점프하지 않았으므로 삭제하지 않습니다.");
+            Debug.Log($"[CharacterMovement] {character.characterName}이(가) 자기 지역 웨이포인트 끝에 도달했지만 점프하지 않았으므로 삭제하지 않습니다.");
             return;
         }
     }
+
+    /// <summary>
+    /// 현재 웨이포인트에서 점프해야 하는지 확인
+    /// </summary>
+    private bool ShouldJumpAtCurrentWaypoint()
+    {
+        // CharacterJumpController의 점프 지점과 비교
+        CharacterJumpController jumpController = FindFirstObjectByType<CharacterJumpController>();
+        if (jumpController == null) return false;
+        
+        Transform currentWaypoint = pathWaypoints[currentWaypointIndex];
+        
+        // 지역1 점프 지점 확인
+        if (character.areaIndex == 1)
+        {
+            if (IsNearPosition(currentWaypoint.position, jumpController.region1LeftJumpStart) ||
+                IsNearPosition(currentWaypoint.position, jumpController.region1CenterJumpStart) ||
+                IsNearPosition(currentWaypoint.position, jumpController.region1RightJumpStart))
+            {
+                return true;
+            }
+        }
+        // 지역2 점프 지점 확인
+        else if (character.areaIndex == 2)
+        {
+            if (IsNearPosition(currentWaypoint.position, jumpController.region2LeftJumpStart) ||
+                IsNearPosition(currentWaypoint.position, jumpController.region2CenterJumpStart) ||
+                IsNearPosition(currentWaypoint.position, jumpController.region2RightJumpStart))
+            {
+                return true;
+            }
+        }
+        
+        return false;
+    }
     
+    /// <summary>
+    /// 두 위치가 가까운지 확인
+    /// </summary>
+    private bool IsNearPosition(Vector3 pos1, Transform pos2Transform)
+    {
+        if (pos2Transform == null) return false;
+        return Vector3.Distance(pos1, pos2Transform.position) < 0.5f;
+    }
+    
+    /// <summary>
+    /// 점프 시작
+    /// </summary>
+    private void StartJump()
+    {
+        if (isJumping) return;
+        
+        CharacterJumpController jumpController = FindFirstObjectByType<CharacterJumpController>();
+        if (jumpController == null)
+        {
+            Debug.LogWarning($"[CharacterMovement] CharacterJumpController를 찾을 수 없습니다!");
+            return;
+        }
+        
+        Transform jumpStart = null;
+        Transform jumpEnd = null;
+        
+        // 현재 위치에서 가장 가까운 점프 지점 찾기
+        GetNearestJumpPoints(jumpController, out jumpStart, out jumpEnd);
+        
+        if (jumpStart != null && jumpEnd != null)
+        {
+            if (jumpCoroutine != null)
+            {
+                StopCoroutine(jumpCoroutine);
+            }
+            
+            jumpCoroutine = StartCoroutine(JumpToPosition(jumpStart.position, jumpEnd.position));
+        }
+    }
+    
+    /// <summary>
+    /// 가장 가까운 점프 지점 찾기
+    /// </summary>
+    private void GetNearestJumpPoints(CharacterJumpController jumpController, out Transform jumpStart, out Transform jumpEnd)
+    {
+        jumpStart = null;
+        jumpEnd = null;
+        
+        float minDistance = float.MaxValue;
+        
+        if (character.areaIndex == 1)
+        {
+            // 지역1 → 지역2 점프
+            CheckJumpPoint(jumpController.region1LeftJumpStart, jumpController.region1LeftJumpEnd, ref jumpStart, ref jumpEnd, ref minDistance);
+            CheckJumpPoint(jumpController.region1CenterJumpStart, jumpController.region1CenterJumpEnd, ref jumpStart, ref jumpEnd, ref minDistance);
+            CheckJumpPoint(jumpController.region1RightJumpStart, jumpController.region1RightJumpEnd, ref jumpStart, ref jumpEnd, ref minDistance);
+        }
+        else if (character.areaIndex == 2)
+        {
+            // 지역2 → 지역1 점프
+            CheckJumpPoint(jumpController.region2LeftJumpStart, jumpController.region2LeftJumpEnd, ref jumpStart, ref jumpEnd, ref minDistance);
+            CheckJumpPoint(jumpController.region2CenterJumpStart, jumpController.region2CenterJumpEnd, ref jumpStart, ref jumpEnd, ref minDistance);
+            CheckJumpPoint(jumpController.region2RightJumpStart, jumpController.region2RightJumpEnd, ref jumpStart, ref jumpEnd, ref minDistance);
+        }
+    }
+    
+    /// <summary>
+    /// 점프 지점 확인
+    /// </summary>
+    private void CheckJumpPoint(Transform start, Transform end, ref Transform jumpStart, ref Transform jumpEnd, ref float minDistance)
+    {
+        if (start == null || end == null) return;
+        
+        float distance = Vector3.Distance(transform.position, start.position);
+        if (distance < minDistance)
+        {
+            minDistance = distance;
+            jumpStart = start;
+            jumpEnd = end;
+        }
+    }
+    
+    /// <summary>
+    /// 포물선 점프 코루틴
+    /// </summary>
+    private IEnumerator JumpToPosition(Vector3 startPos, Vector3 endPos)
+    {
+        isJumping = true;
+        isJumpingAcross = true;
+        hasJumped = true;
+        
+        float elapsed = 0f;
+        Vector3 initialPos = transform.position;
+        
+        Debug.Log($"[CharacterMovement] {character.characterName}이(가) 점프 시작! {startPos} → {endPos}");
+        
+        while (elapsed < jumpDuration)
+        {
+            elapsed += Time.deltaTime;
+            float t = elapsed / jumpDuration;
+            
+            // 수평 이동 (선형 보간)
+            Vector3 horizontalPos = Vector3.Lerp(startPos, endPos, t);
+            
+            // 수직 이동 (포물선)
+            float height = jumpHeight * 4f * t * (1f - t);
+            
+            // 최종 위치
+            transform.position = new Vector3(horizontalPos.x, horizontalPos.y + height, horizontalPos.z);
+            
+            yield return null;
+        }
+        
+        // 점프 완료
+        transform.position = endPos;
+        isJumping = false;
+        
+        // 상대 지역 웨이포인트로 변경
+        UpdateWaypointsAfterJump();
+        
+        Debug.Log($"[CharacterMovement] {character.characterName}이(가) 점프 완료!");
+    }
+    
+    /// <summary>
+    /// 점프 후 웨이포인트 업데이트
+    /// </summary>
+    private void UpdateWaypointsAfterJump()
+    {
+        RouteManager routeManager = RouteManager.Instance;
+        if (routeManager == null)
+        {
+            Debug.LogWarning($"[CharacterMovement] RouteManager를 찾을 수 없습니다!");
+            return;
+        }
+        
+        // 라우트 타입 결정
+        RouteType route = DetermineRouteFromPosition();
+        
+        // 새 웨이포인트 설정
+        Transform[] newWaypoints = null;
+        
+        if (character.areaIndex == 1)
+        {
+            // 지역1 → 지역2로 점프했으므로 지역2 웨이포인트 사용
+            newWaypoints = GetRegion2Waypoints(routeManager, route);
+            character.areaIndex = 2; // 지역 변경
+        }
+        else if (character.areaIndex == 2)
+        {
+            // 지역2 → 지역1로 점프했으므로 지역1 웨이포인트 사용
+            newWaypoints = GetRegion1Waypoints(routeManager, route);
+            character.areaIndex = 1; // 지역 변경
+        }
+        
+        if (newWaypoints != null && newWaypoints.Length > 0)
+        {
+            SetWaypoints(newWaypoints, 0);
+            StartMoving();
+        }
+    }
+    
+    /// <summary>
+    /// 현재 위치에서 라우트 타입 결정
+    /// </summary>
+    private RouteType DetermineRouteFromPosition()
+    {
+        if (transform.position.x < -2f)
+            return RouteType.Left;
+        else if (transform.position.x > 2f)
+            return RouteType.Right;
+        else
+            return RouteType.Center;
+    }
+    
+    /// <summary>
+    /// 지역1 웨이포인트 가져오기
+    /// </summary>
+    private Transform[] GetRegion1Waypoints(RouteManager routeManager, RouteType route)
+    {
+        GameObject[] waypoints = routeManager.GetWaypointsForRegion1(route);
+        return ConvertToTransforms(waypoints);
+    }
+    
+    /// <summary>
+    /// 지역2 웨이포인트 가져오기
+    /// </summary>
+    private Transform[] GetRegion2Waypoints(RouteManager routeManager, RouteType route)
+    {
+        GameObject[] waypoints = routeManager.GetWaypointsForRegion2(route);
+        return ConvertToTransforms(waypoints);
+    }
+    
+    /// <summary>
+    /// GameObject 배열을 Transform 배열로 변환
+    /// </summary>
+    private Transform[] ConvertToTransforms(GameObject[] gameObjects)
+    {
+        if (gameObjects == null) return null;
+        
+        Transform[] transforms = new Transform[gameObjects.Length];
+        for (int i = 0; i < gameObjects.Length; i++)
+        {
+            transforms[i] = gameObjects[i] != null ? gameObjects[i].transform : null;
+        }
+        return transforms;
+    }
+    
+    /// <summary>
+    /// 캐릭터 제거
+    /// </summary>
     private void DestroyCharacter()
     {
         if (character.currentTile != null)
@@ -614,6 +530,9 @@ public class CharacterMovement : MonoBehaviour
         Destroy(character.gameObject);
     }
     
+    /// <summary>
+    /// 캐릭터 방향 스프라이트 업데이트
+    /// </summary>
     private void UpdateCharacterDirectionSprite()
     {
         if (visual != null)
@@ -622,8 +541,11 @@ public class CharacterMovement : MonoBehaviour
         }
     }
     
+    // Public 접근자들
     public bool IsJumpingAcross() => isJumpingAcross;
     public bool HasJumped() => hasJumped;
+    public bool IsInCombat() => isInCombat;
+    public Transform GetCurrentWaypoint() => (pathWaypoints != null && currentWaypointIndex >= 0 && currentWaypointIndex < pathWaypoints.Length) ? pathWaypoints[currentWaypointIndex] : null;
     
     public void SetJumpingAcross(bool value) => isJumpingAcross = value;
     public void SetHasJumped(bool value) => hasJumped = value;
