@@ -79,6 +79,57 @@ public class WaypointManager : MonoBehaviour
     }
     
     /// <summary>
+    /// 특정 지역과 RouteType의 웨이포인트 가져오기
+    /// </summary>
+    public Transform[] GetWaypointsForRoute(int areaIndex, RouteType route)
+    {
+        GameObject[] waypoints = null;
+        
+        if (areaIndex == 1)
+        {
+            switch (route)
+            {
+                case RouteType.Left: 
+                    waypoints = region1RouteLeft_Waypoints; 
+                    break;
+                case RouteType.Center: 
+                    waypoints = region1RouteCenter_Waypoints; 
+                    break;
+                case RouteType.Right: 
+                    waypoints = region1RouteRight_Waypoints; 
+                    break;
+            }
+        }
+        else if (areaIndex == 2)
+        {
+            switch (route)
+            {
+                case RouteType.Left: 
+                    waypoints = region2RouteLeft_Waypoints; 
+                    break;
+                case RouteType.Center: 
+                    waypoints = region2RouteCenter_Waypoints; 
+                    break;
+                case RouteType.Right: 
+                    waypoints = region2RouteRight_Waypoints; 
+                    break;
+            }
+        }
+        
+        if (waypoints == null) return null;
+        
+        // GameObject 배열을 Transform 배열로 변환
+        Transform[] transforms = new Transform[waypoints.Length];
+        for (int i = 0; i < waypoints.Length; i++)
+        {
+            if (waypoints[i] != null)
+                transforms[i] = waypoints[i].transform;
+        }
+        
+        return transforms;
+    }
+    
+    /// <summary>
     /// 타일 타입에 따른 라우트 인덱스 가져오기
     /// </summary>
     public int GetRouteIndexFromTile(Tile tile)
@@ -137,45 +188,5 @@ public class WaypointManager : MonoBehaviour
         }
         
         return isValid;
-    }
-    
-    /// <summary>
-    /// 디버그용 웨이포인트 시각화
-    /// </summary>
-    private void OnDrawGizmos()
-    {
-        // Region 1 웨이포인트 그리기
-        DrawWaypointPath(region1RouteLeft_Waypoints, Color.red);
-        DrawWaypointPath(region1RouteCenter_Waypoints, Color.green);
-        DrawWaypointPath(region1RouteRight_Waypoints, Color.blue);
-        
-        // Region 2 웨이포인트 그리기
-        DrawWaypointPath(region2RouteLeft_Waypoints, Color.magenta);
-        DrawWaypointPath(region2RouteCenter_Waypoints, Color.yellow);
-        DrawWaypointPath(region2RouteRight_Waypoints, Color.cyan);
-    }
-    
-    /// <summary>
-    /// 웨이포인트 경로 그리기
-    /// </summary>
-    private void DrawWaypointPath(GameObject[] waypoints, Color color)
-    {
-        if (waypoints == null || waypoints.Length < 2) return;
-        
-        Gizmos.color = color;
-        
-        for (int i = 0; i < waypoints.Length; i++)
-        {
-            if (waypoints[i] == null) continue;
-            
-            // 웨이포인트 위치에 구체 그리기
-            Gizmos.DrawSphere(waypoints[i].transform.position, 0.3f);
-            
-            // 다음 웨이포인트로 선 그리기
-            if (i < waypoints.Length - 1 && waypoints[i + 1] != null)
-            {
-                Gizmos.DrawLine(waypoints[i].transform.position, waypoints[i + 1].transform.position);
-            }
-        }
     }
 }

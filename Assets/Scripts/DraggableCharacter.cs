@@ -198,8 +198,8 @@ public class DraggableCharacter : MonoBehaviour
                         spriteRenderer.color = invalidDropColor;
                     }
                 }
-
-                // 라인 변경 감지
+                
+                // 라인 변경 확인
                 CheckLineChange(currentHoveredTile);
             }
         }
@@ -209,38 +209,34 @@ public class DraggableCharacter : MonoBehaviour
     {
         if (tile == null) return false;
         
-        // 히어로는 타 지역으로 이동 불가
-        if (character.isHero)
+        // 같은 타일인 경우 가능
+        if (tile == originalTile) return true;
+        
+        // 타일이 비어있고 이동 가능한 경로인지 확인
+        if (!tile.IsOccupiedByCharacter())
         {
-            bool isMovingToDifferentRegion = false;
-            
-            if (character.areaIndex == 1 && (tile.isRegion2 || tile.IsWalkable2() || 
-                tile.IsWalkable2Left() || tile.IsWalkable2Center() || tile.IsWalkable2Right() || 
-                tile.IsPlacable2() || tile.IsPlaced2()))
+            // 타워형 캐릭터는 타워 배치 가능한 타일에만
+            if (character.isTower)
             {
-                isMovingToDifferentRegion = true;
+                return tile.IsTowerPlaceable() || tile.IsTower2Placeable();
             }
-            else if (character.areaIndex == 2 && (!tile.isRegion2 && (tile.IsWalkable() || 
-                tile.IsWalkableLeft() || tile.IsWalkableCenter() || tile.IsWalkableRight() || 
-                tile.IsPlacable() || tile.IsPlaceTile())))
+            else
             {
-                isMovingToDifferentRegion = true;
-            }
-            
-            if (isMovingToDifferentRegion)
-            {
-                return false;
+                // 이동형 캐릭터는 경로 타일에만
+                return tile.IsWalkable() || tile.IsWalkable2() ||
+                       tile.IsWalkableLeft() || tile.IsWalkable2Left() ||
+                       tile.IsWalkableCenter() || tile.IsWalkable2Center() ||
+                       tile.IsWalkableRight() || tile.IsWalkable2Right();
             }
         }
-
-        // 타일이 배치 가능한지 확인
-        return tile.CanPlaceCharacter(character);
+        
+        return false;
     }
 
     private void CheckLineChange(Tile tile)
     {
         if (tile == null) return;
-
+        
         RouteType? newRoute = GetTileRoute(tile);
         
         if (newRoute != targetRoute)
@@ -354,23 +350,4 @@ public class DraggableCharacter : MonoBehaviour
     }
 }
 
-/// <summary>
-/// 텍스트가 항상 카메라를 바라보도록 하는 컴포넌트
-/// </summary>
-public class LookAtCamera : MonoBehaviour
-{
-    private Camera mainCamera;
-
-    private void Start()
-    {
-        mainCamera = Camera.main;
-    }
-
-    private void LateUpdate()
-    {
-        if (mainCamera != null)
-        {
-            transform.rotation = Quaternion.LookRotation(transform.position - mainCamera.transform.position);
-        }
-    }
-}   
+// LookAtCamera 클래스는 Character.cs에 이미 정의되어 있으므로 여기서는 제거했습니다.

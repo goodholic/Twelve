@@ -2,11 +2,30 @@ using System.Collections;
 using UnityEngine;
 
 /// <summary>
-/// 캐릭터 이동 관리 컴포넌트
+/// 캐릭터 이동 관리 컴포넌트 - CharacterMovement와 이름 충돌 방지를 위해 Manager로 명명
 /// 게임 기획서: 3라인 시스템 (왼쪽/중앙/오른쪽 웨이포인트)
 /// </summary>
-public class CharacterMovement : MonoBehaviour
+public class CharacterMovementManager : MonoBehaviour
 {
+    // 싱글톤 인스턴스
+    private static CharacterMovementManager instance;
+    public static CharacterMovementManager Instance
+    {
+        get
+        {
+            if (instance == null)
+            {
+                instance = FindFirstObjectByType<CharacterMovementManager>();
+                if (instance == null)
+                {
+                    GameObject go = new GameObject("CharacterMovementManager");
+                    instance = go.AddComponent<CharacterMovementManager>();
+                }
+            }
+            return instance;
+        }
+    }
+    
     private Character character;
     private CharacterStats stats;
     private CharacterVisual visual;
@@ -33,6 +52,17 @@ public class CharacterMovement : MonoBehaviour
     // 코루틴 참조
     private Coroutine moveCoroutine;
     
+    private void Awake()
+    {
+        if (instance != null && instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        instance = this;
+        DontDestroyOnLoad(gameObject);
+    }
+    
     /// <summary>
     /// 이동 시스템 초기화
     /// </summary>
@@ -45,7 +75,7 @@ public class CharacterMovement : MonoBehaviour
         // 초기 지역 설정
         currentRegion = character.areaIndex;
         
-        Debug.Log($"[CharacterMovement] {character.characterName} 이동 시스템 초기화");
+        Debug.Log($"[CharacterMovementManager] {character.characterName} 이동 시스템 초기화");
     }
     
     /// <summary>
@@ -57,7 +87,7 @@ public class CharacterMovement : MonoBehaviour
         currentWaypointIndex = startIndex;
         maxWaypointIndex = waypoints.Length - 1;
         
-        Debug.Log($"[CharacterMovement] 웨이포인트 설정 완료 - 총 {waypoints.Length}개");
+        Debug.Log($"[CharacterMovementManager] 웨이포인트 설정 완료 - 총 {waypoints.Length}개");
     }
     
     /// <summary>
@@ -67,7 +97,7 @@ public class CharacterMovement : MonoBehaviour
     {
         if (pathWaypoints == null || pathWaypoints.Length == 0)
         {
-            Debug.LogWarning($"[CharacterMovement] {character.characterName} 웨이포인트가 설정되지 않음");
+            Debug.LogWarning($"[CharacterMovementManager] {character.characterName} 웨이포인트가 설정되지 않음");
             return;
         }
         
@@ -137,7 +167,7 @@ public class CharacterMovement : MonoBehaviour
         // 경로 끝에 도달했을 때
         if (currentWaypointIndex > maxWaypointIndex)
         {
-            Debug.Log($"[CharacterMovement] {character.characterName} 경로 끝 도달");
+            Debug.Log($"[CharacterMovementManager] {character.characterName} 경로 끝 도달");
             OnReachedPathEnd();
         }
     }
@@ -172,12 +202,12 @@ public class CharacterMovement : MonoBehaviour
             if (targetRegion == 2)
             {
                 gameManager.TakeDamageToRegion2(character.attackPower);
-                Debug.Log($"[CharacterMovement] {character.characterName}이(가) Region2 성 공격!");
+                Debug.Log($"[CharacterMovementManager] {character.characterName}이(가) Region2 성 공격!");
             }
             else
             {
                 // Region1 성 공격 메서드 추가 필요
-                Debug.Log($"[CharacterMovement] {character.characterName}이(가) Region1 성 공격!");
+                Debug.Log($"[CharacterMovementManager] {character.characterName}이(가) Region1 성 공격!");
             }
             
             // 공격 후 캐릭터 제거
@@ -194,7 +224,7 @@ public class CharacterMovement : MonoBehaviour
         currentWaypointIndex = 0;
         maxWaypointIndex = newWaypoints.Length - 1;
         
-        Debug.Log($"[CharacterMovement] 새로운 웨이포인트로 변경 - 총 {newWaypoints.Length}개");
+        Debug.Log($"[CharacterMovementManager] 새로운 웨이포인트로 변경 - 총 {newWaypoints.Length}개");
         
         // 이동 재시작
         if (isMoving)
@@ -274,4 +304,49 @@ public class CharacterMovement : MonoBehaviour
     
     public void SetJumpingAcross(bool value) => isJumpingAcross = value;
     public void SetHasJumped(bool value) => hasJumped = value;
+    
+    /// <summary>
+    /// 캐릭터를 드롭했을 때 처리 (DraggableCharacter에서 호출)
+    /// </summary>
+    public void OnDropCharacter(Character droppedCharacter, Tile targetTile)
+    {
+        if (droppedCharacter == null || targetTile == null) return;
+        
+        // 이전 타일에서 캐릭터 제거
+        if (droppedCharacter.currentTile != null)
+        {
+            droppedCharacter.currentTile.RemoveOccupyingCharacter(droppedCharacter);
+        }
+        
+        // 새 타일에 캐릭터 배치
+        targetTile.SetOccupyingCharacter(droppedCharacter);
+        droppedCharacter.currentTile = targetTile;
+        droppedCharacter.transform.position = targetTile.transform.position;
+        
+        // 라인 변경 시 웨이포인트 재설정
+        RouteManager routeManager = RouteManager.Instance;
+        if (routeManager != null)
+        {
+            RouteType newRoute = routeManager.DetermineRouteFromTile(targetTile, null);
+            
+            // 캐릭터의 CharacterMovement 컴포넌트 찾기
+            CharacterMovement movement = droppedCharacter.GetComponent<CharacterMovement>();
+            if (movement != null)
+            {
+                // 새로운 라우트의 웨이포인트 설정
+                WaypointManager waypointManager = WaypointManager.Instance;
+                if (waypointManager != null)
+                {
+                    Transform[] newWaypoints = waypointManager.GetWaypointsForRoute(droppedCharacter.areaIndex, newRoute);
+                    if (newWaypoints != null && newWaypoints.Length > 0)
+                    {
+                        movement.SetWaypoints(newWaypoints);
+                        movement.StartMoving();
+                        
+                        Debug.Log($"[CharacterMovementManager] {droppedCharacter.characterName}의 라우트를 {newRoute}로 변경");
+                    }
+                }
+            }
+        }
+    }
 }
