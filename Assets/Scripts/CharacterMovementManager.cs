@@ -319,7 +319,7 @@ public class CharacterMovementManager : MonoBehaviour
         }
         
         // 새 타일에 캐릭터 배치
-        targetTile.SetOccupyingCharacter(droppedCharacter);
+        targetTile.AddOccupyingCharacter(droppedCharacter);
         droppedCharacter.currentTile = targetTile;
         droppedCharacter.transform.position = targetTile.transform.position;
         
@@ -327,7 +327,18 @@ public class CharacterMovementManager : MonoBehaviour
         RouteManager routeManager = RouteManager.Instance;
         if (routeManager != null)
         {
-            RouteType newRoute = routeManager.DetermineRouteFromTile(targetTile, null);
+            // WaveSpawner 찾기 (지역에 따라 다름)
+            RouteType newRoute;
+            if (droppedCharacter.areaIndex == 1)
+            {
+                WaveSpawner spawner = FindFirstObjectByType<WaveSpawner>();
+                newRoute = routeManager.DetermineRouteFromTile(targetTile, spawner);
+            }
+            else
+            {
+                WaveSpawnerRegion2 spawner2 = FindFirstObjectByType<WaveSpawnerRegion2>();
+                newRoute = routeManager.DetermineRouteFromTile(targetTile, spawner2);
+            }
             
             // 캐릭터의 CharacterMovement 컴포넌트 찾기
             CharacterMovement movement = droppedCharacter.GetComponent<CharacterMovement>();
@@ -345,61 +356,6 @@ public class CharacterMovementManager : MonoBehaviour
                         
                         Debug.Log($"[CharacterMovementManager] {droppedCharacter.characterName}의 라우트를 {newRoute}로 변경");
                     }
-                }
-            }
-        }
-    }
-}
-
-// CharacterMovementManager.cs 수정 부분 (294번 줄 근처)
-// OnDropCharacter 메서드에서 RouteManager.DetermineRouteFromTile 호출 수정
-public void OnDropCharacter(Character droppedCharacter, Tile targetTile)
-{
-    if (droppedCharacter == null || targetTile == null) return;
-    
-    // 이전 타일에서 캐릭터 제거
-    if (droppedCharacter.currentTile != null)
-    {
-        droppedCharacter.currentTile.RemoveOccupyingCharacter(droppedCharacter);
-    }
-    
-    // 새 타일에 캐릭터 배치
-    targetTile.AddOccupyingCharacter(droppedCharacter);
-    droppedCharacter.currentTile = targetTile;
-    droppedCharacter.transform.position = targetTile.transform.position;
-    
-    // 라인 변경 시 웨이포인트 재설정
-    RouteManager routeManager = RouteManager.Instance;
-    if (routeManager != null)
-    {
-        // WaveSpawner 찾기 (지역에 따라 다름)
-        RouteType newRoute;
-        if (droppedCharacter.areaIndex == 1)
-        {
-            WaveSpawner spawner = FindFirstObjectByType<WaveSpawner>();
-            newRoute = routeManager.DetermineRouteFromTile(targetTile, spawner);
-        }
-        else
-        {
-            WaveSpawnerRegion2 spawner2 = FindFirstObjectByType<WaveSpawnerRegion2>();
-            newRoute = routeManager.DetermineRouteFromTile(targetTile, spawner2);
-        }
-        
-        // 캐릭터의 CharacterMovement 컴포넌트 찾기
-        CharacterMovement movement = droppedCharacter.GetComponent<CharacterMovement>();
-        if (movement != null)
-        {
-            // 새로운 라우트의 웨이포인트 설정
-            WaypointManager waypointManager = WaypointManager.Instance;
-            if (waypointManager != null)
-            {
-                Transform[] newWaypoints = waypointManager.GetWaypointsForRoute(droppedCharacter.areaIndex, newRoute);
-                if (newWaypoints != null && newWaypoints.Length > 0)
-                {
-                    movement.SetWaypoints(newWaypoints);
-                    movement.StartMoving();
-                    
-                    Debug.Log($"[CharacterMovementManager] {droppedCharacter.characterName}의 라우트를 {newRoute}로 변경");
                 }
             }
         }

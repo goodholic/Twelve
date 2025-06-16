@@ -101,8 +101,19 @@ public class CharacterCombat : MonoBehaviour
             return null;
         }
         
-        // 기본 총알 프리팹 사용
-        return coreData.defaultBulletPrefab;
+        // 기본 총알 프리팹 사용 (defaultBulletPrefab이 CoreDataManager에 추가됨)
+        if (coreData.defaultBulletPrefab != null)
+        {
+            return coreData.defaultBulletPrefab;
+        }
+        
+        // bulletPrefab이 이미 설정되어 있으면 사용
+        if (bulletPrefab != null)
+        {
+            return bulletPrefab;
+        }
+        
+        return null;
     }
     
     /// <summary>
@@ -113,20 +124,22 @@ public class CharacterCombat : MonoBehaviour
         while (character != null && character.currentHP > 0)
         {
             // 공격 쿨다운 체크
-            float attackCooldown = stats != null ? stats.GetAttackCooldown() : 1f;
+            float attackCooldown = stats != null ? stats.GetAttackSpeed() : (1f / character.attackSpeed);
             
             if (Time.time - lastAttackTime >= attackCooldown)
             {
-                // 점프 중이거나 이동 중일 때는 공격하지 않음
-                if (movement != null && (movement.IsJumping() || movement.isMoving))
-                {
-                    yield return new WaitForSeconds(0.1f);
-                    continue;
-                }
+                // 타겟 찾기
+                bool foundTarget = TryFindAndAttackTarget();
                 
-                // 타겟 찾기 및 공격
-                AttemptAttack();
-                lastAttackTime = Time.time;
+                if (foundTarget)
+                {
+                    lastAttackTime = Time.time;
+                    isAttacking = true;
+                }
+                else
+                {
+                    isAttacking = false;
+                }
             }
             
             yield return new WaitForSeconds(0.1f);
@@ -134,58 +147,158 @@ public class CharacterCombat : MonoBehaviour
     }
     
     /// <summary>
-    /// 공격 시도
+    /// 공격 체크 수정
     /// </summary>
-    private void AttemptAttack()
+    private bool CanAttackTarget()
     {
+        // 이동 중인지 확인
+        if (movement != null)
+        {
+            // isMoving 프로퍼티 사용
+            if (movement.isMoving)
+            {
+                return false;
+            }
+        }
+        
+        // 점프 중인지 확인
+        if (jumpSystem != null && movement != null)
+        {
+            if (movement.IsJumping() || movement.IsJumpingAcross())
+            {
+                return false;
+            }
+        }
+        
+        return true;
+    }
+    
+    /// <summary>
+    /// 타겟 찾고 공격
+    /// </summary>
+    private bool TryFindAndAttackTarget()
+    {
+        if (!CanAttackTarget()) return false;
+        
         IDamageable target = null;
         GameObject targetGameObject = null;
         string targetName = "";
         
-        // 공격 타겟 타입에 따라 타겟 찾기
+        // 타겟 타입에 따라 우선순위 처리
         switch (character.attackTargetType)
         {
             case AttackTargetType.CharacterOnly:
-                var (charTarget, charGO, charName) = FindCharacterTargetInRange();
-                target = charTarget;
-                targetGameObject = charGO;
-                targetName = charName;
+                var charResult = FindCharacterTargetInRange();
+                target = charResult.Item1;
+                targetGameObject = charResult.Item2;
+                targetName = charResult.Item3;
                 break;
                 
             case AttackTargetType.MonsterOnly:
-                var (monsterTarget, monsterGO, monsterName) = FindMonsterTargetInRange();
-                target = monsterTarget;
-                targetGameObject = monsterGO;
-                targetName = monsterName;
+                var monResult = FindMonsterTargetInRange();
+                target = monResult.Item1;
+                targetGameObject = monResult.Item2;
+                targetName = monResult.Item3;
                 break;
                 
             case AttackTargetType.Both:
-                // 먼저 캐릭터 찾기
-                var (bothCharTarget, bothCharGO, bothCharName) = FindCharacterTargetInRange();
-                if (bothCharTarget != null)
+                // 둘 다 찾아서 가까운 쪽 공격
+                var charBoth = FindCharacterTargetInRange();
+                var monBoth = FindMonsterTargetInRange();
+                
+                if (charBoth.Item1 != null && monBoth.Item1 != null)
                 {
-                    target = bothCharTarget;
-                    targetGameObject = bothCharGO;
-                    targetName = bothCharName;
+                    float charDist = Vector3.Distance(transform.position, charBoth.Item2.transform.position);
+                    float monDist = Vector3.Distance(transform.position, monBoth.Item2.transform.position);
+                    
+                    if (charDist <= monDist)
+                    {
+                        target = charBoth.Item1;
+                        targetGameObject = charBoth.Item2;
+                        targetName = charBoth.Item3;
+                    }
+                    else
+                    {
+                        target = monBoth.Item1;
+                        targetGameObject = monBoth.Item2;
+                        targetName = monBoth.Item3;
+                    }
                 }
-                else
+                else if (charBoth.Item1 != null)
                 {
-                    // 캐릭터가 없으면 몬스터 찾기
-                    var (bothMonsterTarget, bothMonsterGO, bothMonsterName) = FindMonsterTargetInRange();
-                    target = bothMonsterTarget;
-                    targetGameObject = bothMonsterGO;
-                    targetName = bothMonsterName;
+                    target = charBoth.Item1;
+                    targetGameObject = charBoth.Item2;
+                    targetName = charBoth.Item3;
+                }
+                else if (monBoth.Item1 != null)
+                {
+                    target = monBoth.Item1;
+                    targetGameObject = monBoth.Item2;
+                    targetName = monBoth.Item3;
+                }
+                break;
+                
+            case AttackTargetType.CastleOnly:
+                var castleResult = FindCastleTargetInRange();
+                target = castleResult.Item1;
+                targetName = castleResult.Item2;
+                // 성의 GameObject 찾기
+                if (target != null)
+                {
+                    MiddleCastle mc = target as MiddleCastle;
+                    FinalCastle fc = target as FinalCastle;
+                    targetGameObject = mc != null ? mc.gameObject : (fc != null ? fc.gameObject : null);
+                }
+                break;
+                
+            case AttackTargetType.All:
+                // 모든 타겟 중 가장 가까운 것
+                var charAll = FindCharacterTargetInRange();
+                var monAll = FindMonsterTargetInRange();
+                var castleAll = FindCastleTargetInRange();
+                
+                float minDistance = float.MaxValue;
+                
+                if (charAll.Item1 != null)
+                {
+                    float dist = Vector3.Distance(transform.position, charAll.Item2.transform.position);
+                    if (dist < minDistance)
+                    {
+                        minDistance = dist;
+                        target = charAll.Item1;
+                        targetGameObject = charAll.Item2;
+                        targetName = charAll.Item3;
+                    }
                 }
                 
-                // 둘 다 없으면 성 타겟 찾기
-                if (target == null)
+                if (monAll.Item1 != null)
                 {
-                    var (castleAll, castleNameAll) = FindCastleTargetInRange();
-                    if (castleAll != null)
+                    float dist = Vector3.Distance(transform.position, monAll.Item2.transform.position);
+                    if (dist < minDistance)
                     {
-                        target = castleAll;
-                        targetGameObject = castleAll is MiddleCastle mc ? mc.gameObject : (castleAll as FinalCastle).gameObject;
-                        targetName = castleNameAll;
+                        minDistance = dist;
+                        target = monAll.Item1;
+                        targetGameObject = monAll.Item2;
+                        targetName = monAll.Item3;
+                    }
+                }
+                
+                if (castleAll.Item1 != null)
+                {
+                    MiddleCastle mc = castleAll.Item1 as MiddleCastle;
+                    FinalCastle fc = castleAll.Item1 as FinalCastle;
+                    GameObject castleObj = mc != null ? mc.gameObject : (fc != null ? fc.gameObject : null);
+                    
+                    if (castleObj != null)
+                    {
+                        float dist = Vector3.Distance(transform.position, castleObj.transform.position);
+                        if (dist < minDistance)
+                        {
+                            minDistance = dist;
+                            target = castleAll.Item1;
+                            targetGameObject = castleObj;
+                            targetName = castleAll.Item2;
+                        }
                     }
                 }
                 break;
@@ -365,71 +478,20 @@ public class CharacterCombat : MonoBehaviour
     {
         visual?.PlayAttackAnimation();
     }
-}
-
-// CharacterCombat.cs 수정 부분 (105번 줄 근처)
-// GetBulletPrefab 메서드 수정
-private GameObject GetBulletPrefab()
-{
-    var coreData = CoreDataManager.Instance;
-    if (coreData == null)
-    {
-        Debug.LogError("[CharacterCombat] CoreDataManager.Instance가 null입니다!");
-        return null;
-    }
     
-    // 기본 총알 프리팹 사용 (defaultBulletPrefab이 CoreDataManager에 추가됨)
-    if (coreData.defaultBulletPrefab != null)
+    /// <summary>
+    /// 범위 공격 체크 수정
+    /// </summary>
+    private void CheckAreaAttack()
     {
-        return coreData.defaultBulletPrefab;
-    }
-    
-    // bulletPrefab이 이미 설정되어 있으면 사용
-    if (bulletPrefab != null)
-    {
-        return bulletPrefab;
-    }
-    
-    return null;
-}
-
-// CharacterCombat.cs 수정 부분 (121번 줄 근처)
-// 공격 체크 수정
-private bool CanAttackTarget()
-{
-    // 이동 중인지 확인
-    if (movement != null)
-    {
-        // isMoving 프로퍼티 사용
-        if (movement.isMoving)
+        if (!character.isAreaAttack) return;
+        
+        // 이동 중이면 범위 공격 안함
+        if (movement != null && movement.isMoving)
         {
-            return false;
+            return;
         }
+        
+        // 범위 공격 로직...
     }
-    
-    // 점프 중인지 확인
-    if (jumpSystem != null && movement != null)
-    {
-        if (movement.IsJumping() || movement.IsJumpingAcross())
-        {
-            return false;
-        }
-    }
-    
-    return true;
-}
-
-// CharacterCombat.cs 수정 부분 (358번 줄 근처)
-// 범위 공격 체크 수정
-private void CheckAreaAttack()
-{
-    if (!character.isAreaAttack) return;
-    
-    // 이동 중이면 범위 공격 안함
-    if (movement != null && movement.isMoving)
-    {
-        return;
-    }
-    
-    // 범위 공격 로직...
 }

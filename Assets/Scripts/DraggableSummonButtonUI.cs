@@ -322,65 +322,66 @@ public class DraggableSummonButtonUI : MonoBehaviour, IBeginDragHandler, IDragHa
         
         return null;
     }
-}
 
-
-// DraggableSummonButtonUI.cs의 수정이 필요한 부분들
-
-// 1. OnClickOneButtonSummon 메서드 수정 (130번 줄 근처)
-private void OnClickOneButtonSummon()
-{
-    Debug.Log($"[DraggableSummonButtonUI] 원 버튼 소환 클릭! 캐릭터 인덱스: {summonCharacterIndex}");
-    
-    if (summonCharacterIndex < 0)
+    /// <summary>
+    /// OnClickOneButtonSummon 메서드 수정
+    /// </summary>
+    private void OnClickOneButtonSummon()
     {
-        Debug.LogWarning("[DraggableSummonButtonUI] 소환할 캐릭터 인덱스가 설정되지 않았습니다!");
-        return;
-    }
-    
-    // SummonManager를 통해 랜덤 위치에 소환
-    SummonManager summonManager = SummonManager.Instance;
-    if (summonManager != null)
-    {
-        // CoreDataManager에서 캐릭터 데이터 가져오기
-        CoreDataManager coreData = CoreDataManager.Instance;
-        if (coreData != null && coreData.characterDatabase != null)
+        Debug.Log($"[DraggableSummonButtonUI] 원 버튼 소환 클릭! 캐릭터 인덱스: {summonCharacterIndex}");
+        
+        if (summonCharacterIndex < 0)
         {
-            CharacterData[] characters = coreData.characterDatabase.currentRegisteredCharacters;
-            if (summonCharacterIndex >= 0 && summonCharacterIndex < characters.Length)
+            Debug.LogWarning("[DraggableSummonButtonUI] 소환할 캐릭터 인덱스가 설정되지 않았습니다!");
+            return;
+        }
+        
+        // SummonManager를 통해 랜덤 위치에 소환
+        SummonManager summonManager = SummonManager.Instance;
+        if (summonManager != null)
+        {
+            // CoreDataManager에서 캐릭터 데이터 가져오기
+            CoreDataManager coreData = CoreDataManager.Instance;
+            if (coreData != null && coreData.characterDatabase != null)
             {
-                CharacterData charData = characters[summonCharacterIndex];
-                if (charData != null)
+                CharacterData[] characters = coreData.characterDatabase.currentRegisteredCharacters;
+                if (summonCharacterIndex >= 0 && summonCharacterIndex < characters.Length)
                 {
-                    summonManager.OnClickRandomSummon();
+                    CharacterData charData = characters[summonCharacterIndex];
+                    if (charData != null)
+                    {
+                        summonManager.OnClickRandomSummon();
+                    }
                 }
             }
         }
+        
+        // CharacterSelectUI에 알림
+        if (parentSelectUI != null)
+        {
+            parentSelectUI.OnDragUseCard(summonCharacterIndex);
+        }
     }
-    
-    // CharacterSelectUI에 알림
-    if (parentSelectUI != null)
-    {
-        parentSelectUI.OnDragUseCard(summonCharacterIndex);
-    }
-}
 
-// 2. GetCharacterDataFromIndex 메서드 수정 (265번 줄 근처)
-private CharacterData GetCharacterDataFromIndex(int index)
-{
-    CoreDataManager coreData = CoreDataManager.Instance;
-    if (coreData == null || coreData.characterDatabase == null)
+    /// <summary>
+    /// GetCharacterDataFromIndex 메서드 수정
+    /// </summary>
+    private CharacterData GetCharacterDataFromIndex(int index)
     {
-        Debug.LogError("[DraggableSummonButtonUI] CoreDataManager 또는 characterDatabase가 null입니다!");
-        return null;
+        CoreDataManager coreData = CoreDataManager.Instance;
+        if (coreData == null || coreData.characterDatabase == null)
+        {
+            Debug.LogError("[DraggableSummonButtonUI] CoreDataManager 또는 characterDatabase가 null입니다!");
+            return null;
+        }
+        
+        CharacterData[] characters = coreData.characterDatabase.currentRegisteredCharacters;
+        if (index < 0 || index >= characters.Length)
+        {
+            Debug.LogError($"[DraggableSummonButtonUI] 잘못된 캐릭터 인덱스: {index}");
+            return null;
+        }
+        
+        return characters[index];
     }
-    
-    CharacterData[] characters = coreData.characterDatabase.currentRegisteredCharacters;
-    if (index < 0 || index >= characters.Length)
-    {
-        Debug.LogError($"[DraggableSummonButtonUI] 잘못된 캐릭터 인덱스: {index}");
-        return null;
-    }
-    
-    return characters[index];
 }

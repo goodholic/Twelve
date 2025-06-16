@@ -1,91 +1,70 @@
-// Assets\OX UI Scripts\CharacterSelectUI.cs
-
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
-using System.Linq;
 
 /// <summary>
-/// 캐릭터 선택 UI. 1~9 캐릭터 (또는 덱)에서 4장(Hand) + Next 1장 + Reserve 4장 로직을 다룸.
-/// OnClickUse4CardsAtRandom()에서 '지역1'에 placable/placeTile이 꽉 찼을 경우 walkable에 배치하도록 수정함.
+/// 캐릭터 선택 UI - 4+1 카드 시스템
+/// 게임 기획서: Hand 4장 + Next 1장 -> Reserve
 /// </summary>
 public class CharacterSelectUI : MonoBehaviour
 {
-    [Header("Placement Manager 참조")]
-    public PlacementManager placementManager; // 캐릭터 배치(소환) 담당
-
+    [Header("캐릭터 덱 (로비에서 가져옴)")]
+    public CharacterData[] deckFromLobby = new CharacterData[10];
+    
+    // 카드 시스템: Hand(4) + Next(1) + Reserve(5)
+    private int[] handIndices = new int[4] { 0, 1, 2, 3 };  // Hand에 있는 덱 인덱스들
+    private int nextIndex = 4;                                // Next 카드의 덱 인덱스
+    private List<int> reserveIndices = new List<int> { 5, 6, 7, 8, 9 }; // Reserve의 덱 인덱스들
+    
+    [Header("UI - 4장 카드 버튼")]
+    public SelectButton[] selectButtons = new SelectButton[4];
+    
+    [Header("Next Unit UI")]
+    public Image nextUnitImage;
+    public TextMeshProUGUI nextUnitCost;
+    
+    [Header("주사위 버튼 (자동 합성)")]
+    public Button diceButton;
+    
+    [Header("UI 패널")]
+    public GameObject selectButtonParent;
+    
+    [Header("매니저 참조")]
+    private PlacementManager placementManager;
+    private CharacterInventoryManager characterInventory;
+    
+    // 카드 선택 상태
+    private bool hasPendingCard = false;
+    private int pendingCardIndex = -1;
+    
     [System.Serializable]
     public class SelectButton
     {
         public Button button;
         public Image iconImage;
         public TextMeshProUGUI costText;
-        public int characterIndex;  // 0~8
-        public bool isEmpty;
+        public bool isEmpty = false;
+        public int characterIndex = -1;
     }
-
-    [Header("소환 버튼(4개)")]
-    public SelectButton[] selectButtons = new SelectButton[4];
-
-    [Header("Next Unit (다음 카드)")]
-    public Image nextUnitImage;
-    public TextMeshProUGUI nextUnitCost;
-
-    // =========================================
-    // 1~9 캐릭터(인덱스 0..8) 저장
-    // =========================================
-    private CharacterData[] deckFromLobby = new CharacterData[9];
-
-    // "handIndices"(4개), "nextIndex"(1개), "reserveIndices"(4개)
-    private int[] handIndices = new int[4];
-    private int nextIndex = -1;
-    private List<int> reserveIndices = new List<int>(4);
-
-    private List<int> allIndices = new List<int>();
-
-    // =========================================
-    // [추가] 클릭으로 카드 하나가 선택 중이면,
-    //        그 카드가 배치될 때까지 다른 클릭을 무시하기 위한 플래그
-    // =========================================
-    private bool hasPendingCard = false;   // 이미 카드 하나가 선택된 상태인지?
-    private int pendingCardIndex = -1;     // 현재 선택된(아직 배치 안 된) 카드 인덱스
-
-    // =======================================================================
-    // (1) 인벤토리 표시 => CharacterInventoryManager의 sharedSlotData200 활용
-    // =====================================================================
-
-    [Header("CharacterInventoryManager (인벤토리)")]
-    [SerializeField] private CharacterInventoryManager characterInventory;
-
-    // =========================================
-    // [추가] 주사위 버튼 추가
-    // =========================================
-    [Header("자동 합성 버튼 (주사위)")]
-    [SerializeField] private Button diceButton;
-
+    
     private void Start()
     {
-        // CoreDataManager 초기화 대기
-        StartCoroutine(InitializeDelayed());
+        StartCoroutine(InitializeAfterDelay());
     }
-
-    private System.Collections.IEnumerator InitializeDelayed()
+    
+    private IEnumerator InitializeAfterDelay()
     {
-        // CoreDataManager가 초기화될 때까지 대기
-        int waitCount = 0;
-        while (CoreDataManager.Instance == null && waitCount < 30)
-        {
-            yield return null;
-            waitCount++;
-        }
-
+        yield return new WaitForSeconds(0.1f);
+        
+        // CoreDataManager 체크
         if (CoreDataManager.Instance == null)
         {
-            Debug.LogError("[CharacterSelectUI] CoreDataManager를 찾을 수 없습니다!");
+            Debug.LogError("[CharacterSelectUI] CoreDataManager.Instance가 null입니다!");
             yield break;
         }
-
+        
         // 1) 1~9 캐릭터
         if (GameManager.Instance != null &&
             GameManager.Instance.currentRegisteredCharacters != null &&
@@ -138,71 +117,97 @@ public class CharacterSelectUI : MonoBehaviour
                 Debug.LogWarning("[CharacterSelectUI] CharacterInventoryManager를 찾을 수 없습니다.");
             }
         }
-
-        // 2) 카드 풀 초기화
-        InitializeCardPool();
-
-        // 3) 주사위 버튼 이벤트 설정
+        
+        // 초기 UI 설정
+        RefreshSelectButtonsUI();
+        RefreshNextUnitUI();
+        
+        // 주사위 버튼 설정
         if (diceButton != null)
         {
             diceButton.onClick.RemoveAllListeners();
             diceButton.onClick.AddListener(OnClickDiceButton);
         }
-
-        Debug.Log("[CharacterSelectUI] 초기화 완료");
     }
-
+    
     /// <summary>
-    /// 카드 풀(Hand, Next, Reserve) 초기 설정
+    /// [신규] 드래그로 카드 사용 시 호출
     /// </summary>
-    private void InitializeCardPool()
+    public void OnDragUseCard(int usedCharIndex)
     {
-        // 1) 인덱스 리스트 설정 (0~8)
-        allIndices.Clear();
-        for (int i = 0; i < 9; i++)
+        Debug.Log($"[CharacterSelectUI] 드래그로 카드 사용: 인덱스 {usedCharIndex}");
+        
+        // Hand에서 사용한 카드의 슬롯 찾기
+        int handSlot = -1;
+        for (int i = 0; i < handIndices.Length; i++)
         {
-            allIndices.Add(i);
+            if (handIndices[i] == usedCharIndex)
+            {
+                handSlot = i;
+                break;
+            }
         }
-
-        // 2) 셔플 (무작위)
-        System.Random rng = new System.Random();
-        allIndices = allIndices.OrderBy(x => rng.Next()).ToList();
-
-        // 3) Hand 4장
-        for (int i = 0; i < 4; i++)
+        
+        if (handSlot >= 0)
         {
-            handIndices[i] = allIndices[i];
+            // SelectButton을 통해 카드 사용 처리
+            if (selectButtons[handSlot] != null)
+            {
+                OnUseCard(selectButtons[handSlot]);
+            }
         }
-
-        // 4) Next 1장
-        nextIndex = allIndices[4];
-
-        // 5) Reserve 4장
-        reserveIndices.Clear();
-        for (int i = 5; i < 9; i++)
+        else
         {
-            reserveIndices.Add(allIndices[i]);
+            Debug.LogWarning($"[CharacterSelectUI] 사용한 카드 인덱스 {usedCharIndex}를 Hand에서 찾을 수 없습니다!");
         }
-
-        // 6) UI 갱신
-        RefreshSelectButtonsUI();
-        RefreshNextUnitUI();
     }
-
+    
     /// <summary>
-    /// Hand(4개) 버튼 UI 갱신
+    /// 카드 사용 시 처리
+    /// </summary>
+    private void OnUseCard(SelectButton usedButton)
+    {
+        if (usedButton == null || usedButton.isEmpty) return;
+        
+        int usedCharIndex = usedButton.characterIndex;
+        
+        // Hand에서 사용한 카드의 슬롯 찾기
+        int handSlot = -1;
+        for (int i = 0; i < selectButtons.Length; i++)
+        {
+            if (selectButtons[i] == usedButton)
+            {
+                handSlot = i;
+                break;
+            }
+        }
+        
+        if (handSlot < 0)
+        {
+            Debug.LogError("[CharacterSelectUI] 사용한 버튼을 selectButtons에서 찾을 수 없습니다!");
+            return;
+        }
+        
+        // 카드 순환
+        RotateCards(handSlot, usedCharIndex);
+    }
+    
+    /// <summary>
+    /// 4장 카드 버튼 UI 갱신
     /// </summary>
     private void RefreshSelectButtonsUI()
     {
-        for (int i = 0; i < selectButtons.Length; i++)
+        for (int i = 0; i < selectButtons.Length && i < handIndices.Length; i++)
         {
-            var sb = selectButtons[i];
-            if (sb == null || sb.button == null) continue;
-
+            SelectButton sb = selectButtons[i];
+            if (sb == null) continue;
+            
             int idx = handIndices[i];
+            
+            // 유효하지 않은 인덱스면 빈 카드로 표시
             if (idx < 0 || idx >= deckFromLobby.Length || deckFromLobby[idx] == null)
             {
-                // 빈 카드 처리
+                // 빈 카드
                 sb.isEmpty = true;
                 sb.characterIndex = -1;
                 if (sb.iconImage != null)
@@ -333,80 +338,16 @@ public class CharacterSelectUI : MonoBehaviour
         {
             Debug.LogError("[CharacterSelectUI] PlacementManager가 null입니다!");
         }
-        
-        Debug.Log($"[CharacterSelectUI] 카드({clickedIndex}) 클릭 -> 자동 배치 시도");
     }
-
+    
     /// <summary>
-    /// (드래그 소환) 드롭 성공 시 OnDragUseCard(usedIndex) 호출
+    /// 카드 순환 처리
     /// </summary>
-    public void OnDragUseCard(int usedIndex)
+    private void RotateCards(int handSlot, int usedCharIndex)
     {
-        for (int i = 0; i < selectButtons.Length; i++)
+        if (handSlot < 0 || handSlot >= handIndices.Length)
         {
-            if (selectButtons[i].characterIndex == usedIndex)
-            {
-                OnUseCard(selectButtons[i]);
-                break;
-            }
-        }
-    }
-
-    /// <summary>
-    /// [신규] "클릭으로 선택된 카드"가 실제로 배치 성공했을 때(PlacementManager) 호출되는 메서드.
-    /// </summary>
-    public void MarkCardAsUsed(int usedIndex)
-    {
-        if (!hasPendingCard || pendingCardIndex != usedIndex)
-        {
-            Debug.LogWarning($"[CharacterSelectUI] MarkCardAsUsed({usedIndex})가 호출됐지만 대기중인 카드와 불일치 -> 무시");
-            return;
-        }
-
-        // 실제로 OnUseCard() 실행
-        for (int i = 0; i < selectButtons.Length; i++)
-        {
-            if (selectButtons[i].characterIndex == usedIndex)
-            {
-                OnUseCard(selectButtons[i]);
-                break;
-            }
-        }
-
-        // ▼▼ [수정] 카드 사용 후에도 선택 상태 유지 (연속 배치 가능) ▼▼
-        // hasPendingCard = false;
-        // pendingCardIndex = -1;
-        Debug.Log($"[CharacterSelectUI] 카드({usedIndex}) 사용됨. 선택 상태는 유지됩니다.");
-    }
-
-    /// <summary>
-    /// 카드 사용 처리 (Hand -> Next -> Reserve 순환)
-    /// </summary>
-    private void OnUseCard(SelectButton usedButton)
-    {
-        if (usedButton.isEmpty)
-        {
-            Debug.Log("[CharacterSelectUI] 빈 카드는 사용할 수 없습니다.");
-            return;
-        }
-
-        int usedCharIndex = usedButton.characterIndex;
-        Debug.Log($"[CharacterSelectUI] 카드 사용: 캐릭터 인덱스 {usedCharIndex}");
-
-        // Hand에서 해당 카드 위치 찾기
-        int handSlot = -1;
-        for (int i = 0; i < handIndices.Length; i++)
-        {
-            if (handIndices[i] == usedCharIndex)
-            {
-                handSlot = i;
-                break;
-            }
-        }
-
-        if (handSlot == -1)
-        {
-            Debug.LogError($"[CharacterSelectUI] handIndices에 {usedCharIndex}가 없습니다!");
+            Debug.LogError($"[CharacterSelectUI] 잘못된 handSlot: {handSlot}");
             return;
         }
 
@@ -545,31 +486,33 @@ public class CharacterSelectUI : MonoBehaviour
 
         Debug.Log($"[CharacterSelectUI] 자동 배치 완료: {placedCount}개 캐릭터 배치됨");
     }
-}
-
-// CharacterSelectUI.cs의 수정 부분 (530번 줄 근처)
-private void SummonCharacterAtTile(int characterIndex, Tile tile)
-{
-    if (characterIndex < 0 || characterIndex >= deckFromLobby.Length)
-    {
-        Debug.LogError($"[CharacterSelectUI] 잘못된 캐릭터 인덱스: {characterIndex}");
-        return;
-    }
     
-    CharacterData charData = deckFromLobby[characterIndex];
-    if (charData == null)
+    /// <summary>
+    /// SummonCharacterAtTile 메서드 수정
+    /// </summary>
+    private void SummonCharacterAtTile(int characterIndex, Tile tile)
     {
-        Debug.LogError($"[CharacterSelectUI] 캐릭터 데이터[{characterIndex}]가 null입니다!");
-        return;
-    }
-    
-    // PlacementManager를 통해 소환
-    if (PlacementManager.Instance != null)
-    {
-        Character newChar = PlacementManager.Instance.SummonCharacterOnTile(charData, tile, false);
-        if (newChar != null)
+        if (characterIndex < 0 || characterIndex >= deckFromLobby.Length)
         {
-            Debug.Log($"[CharacterSelectUI] {charData.characterName}을(를) {tile.name}에 소환 성공!");
+            Debug.LogError($"[CharacterSelectUI] 잘못된 캐릭터 인덱스: {characterIndex}");
+            return;
+        }
+        
+        CharacterData charData = deckFromLobby[characterIndex];
+        if (charData == null)
+        {
+            Debug.LogError($"[CharacterSelectUI] 캐릭터 데이터[{characterIndex}]가 null입니다!");
+            return;
+        }
+        
+        // PlacementManager를 통해 소환
+        if (PlacementManager.Instance != null)
+        {
+            Character newChar = PlacementManager.Instance.SummonCharacterOnTile(charData, tile, false);
+            if (newChar != null)
+            {
+                Debug.Log($"[CharacterSelectUI] {charData.characterName}을(를) {tile.name}에 소환 성공!");
+            }
         }
     }
 }
