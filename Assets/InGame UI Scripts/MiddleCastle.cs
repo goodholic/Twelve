@@ -4,7 +4,7 @@ using TMPro;
 using System.Collections;
 
 /// <summary>
-/// 중간성 시스템 - 3라인의 중간 지점에 위치한 성
+/// 중간성 시스템 - 각 라인의 첫 번째 방어선
 /// </summary>
 public class MiddleCastle : MonoBehaviour, IDamageable
 {
@@ -12,13 +12,13 @@ public class MiddleCastle : MonoBehaviour, IDamageable
     public float maxHealth = 500f;
     public float currentHealth;
     
-    [Header("라인 정보")]
-    [Tooltip("이 중간성이 속한 라인 (Left/Center/Right)")]
-    public RouteType routeType = RouteType.Center;
-    
     [Header("지역 정보")]
     [Tooltip("이 중간성이 속한 지역 (1 또는 2)")]
     public int areaIndex = 1;
+    
+    [Header("라우트 정보")]
+    [Tooltip("이 중간성이 담당하는 라우트")]
+    public RouteType routeType = RouteType.Center;
     
     [Header("공격 설정")]
     [Tooltip("공격력")]
@@ -26,7 +26,7 @@ public class MiddleCastle : MonoBehaviour, IDamageable
     [Tooltip("공격 사거리")]
     public float attackRange = 5f;
     [Tooltip("공격 쿨다운")]
-    public float attackCooldown = 1.5f;
+    public float attackCooldown = 1f;
     [Tooltip("공격 타입")]
     public AttackTargetType attackTargetType = AttackTargetType.All;
     
@@ -39,6 +39,7 @@ public class MiddleCastle : MonoBehaviour, IDamageable
     [SerializeField] private Canvas hpBarCanvas;
     [SerializeField] private Image hpFillImage;
     [SerializeField] private TextMeshProUGUI castleNameText;
+    [SerializeField] private TextMeshProUGUI healthText;
     
     [Header("파괴 시 이펙트")]
     [SerializeField] private GameObject destroyEffectPrefab;
@@ -48,7 +49,7 @@ public class MiddleCastle : MonoBehaviour, IDamageable
     private IDamageable currentTarget;
     
     // 중간성 파괴 이벤트
-    public System.Action<RouteType, int> OnMiddleCastleDestroyed;
+    public System.Action<RouteType> OnMiddleCastleDestroyed;
     
     // 코루틴
     private Coroutine attackCoroutine;
@@ -67,7 +68,7 @@ public class MiddleCastle : MonoBehaviour, IDamageable
         {
             GameObject fp = new GameObject("FirePoint");
             fp.transform.SetParent(transform);
-            fp.transform.localPosition = new Vector3(0, 0.5f, 0);
+            fp.transform.localPosition = new Vector3(0, 1f, 0);
             firePoint = fp.transform;
         }
         
@@ -136,48 +137,39 @@ public class MiddleCastle : MonoBehaviour, IDamageable
     private void FindAndAttackTarget()
     {
         if (isDestroyed) return;
+        if (Time.time - lastAttackTime < attackCooldown) return;
         
         IDamageable bestTarget = null;
         GameObject targetObject = null;
         float closestDistance = float.MaxValue;
         
         // attackTargetType에 따라 타겟 찾기
-        switch (attackTargetType)
+        if (attackTargetType == AttackTargetType.Monster || 
+            attackTargetType == AttackTargetType.All ||
+            attackTargetType == AttackTargetType.Both)
         {
-            case AttackTargetType.Monster:
-            case AttackTargetType.All:
-                // 몬스터 찾기
-                Monster[] monsters = FindObjectsByType<Monster>(FindObjectsSortMode.None);
-                foreach (var monster in monsters)
-                {
-                    if (monster == null || !monster.IsAlive()) continue;
-                    if (monster.areaIndex == areaIndex) continue; // 같은 지역 몬스터는 공격하지 않음
-                    
-                    float distance = Vector3.Distance(transform.position, monster.transform.position);
-                    if (distance <= attackRange && distance < closestDistance)
-                    {
-                        closestDistance = distance;
-                        bestTarget = monster;
-                        targetObject = monster.gameObject;
-                    }
-                }
+            // 몬스터 찾기
+            Monster[] monsters = FindObjectsByType<Monster>(FindObjectsSortMode.None);
+            foreach (var monster in monsters)
+            {
+                if (monster == null || !monster.IsAlive()) continue;
+                if (monster.areaIndex == areaIndex) continue; // 같은 지역 몬스터는 공격하지 않음
                 
-                if (attackTargetType == AttackTargetType.Monster && bestTarget != null)
+                float distance = Vector3.Distance(transform.position, monster.transform.position);
+                if (distance <= attackRange && distance < closestDistance)
                 {
-                    AttackTarget(bestTarget, targetObject);
-                    return;
+                    closestDistance = distance;
+                    bestTarget = monster;
+                    targetObject = monster.gameObject;
                 }
-                break;
-                
-            case AttackTargetType.Character:
-                break; // Character 타겟은 아래에서 처리
+            }
         }
         
-        // 캐릭터 찾기 (Character 또는 All 타입일 때)
         if (attackTargetType == AttackTargetType.Character || 
             attackTargetType == AttackTargetType.All ||
             attackTargetType == AttackTargetType.Both)
         {
+            // 캐릭터 찾기
             Character[] characters = FindObjectsByType<Character>(FindObjectsSortMode.None);
             foreach (var character in characters)
             {
@@ -281,6 +273,11 @@ public class MiddleCastle : MonoBehaviour, IDamageable
             else
                 hpFillImage.color = Color.red;
         }
+        
+        if (healthText != null)
+        {
+            healthText.text = $"{currentHealth:F0}/{maxHealth:F0}";
+        }
     }
     
     private void DestroyMiddleCastle()
@@ -297,71 +294,52 @@ public class MiddleCastle : MonoBehaviour, IDamageable
             attackCoroutine = null;
         }
         
-        // 파괴 이펙트 생성
+        // 파괴 이펙트
         if (destroyEffectPrefab != null)
         {
             GameObject effect = Instantiate(destroyEffectPrefab, transform.position, Quaternion.identity);
-            Destroy(effect, 3f);
+            Destroy(effect, 2f);
         }
         
         // 이벤트 호출
-        OnMiddleCastleDestroyed?.Invoke(routeType, areaIndex);
+        OnMiddleCastleDestroyed?.Invoke(routeType);
         
         // CastleHealthManager에 알림
-        CastleHealthManager castleManager = FindFirstObjectByType<CastleHealthManager>();
-        if (castleManager != null)
+        if (CastleHealthManager.Instance != null)
         {
-            Debug.Log($"[MiddleCastle] CastleHealthManager에 파괴 알림");
-            // CastleHealthManager의 중간성 파괴 처리는 TakeDamage를 통해 자동으로 됨
+            // 이미 파괴된 상태로 처리
         }
         
-        // HP바 비활성화 (성 자체는 비활성화하지 않음)
-        if (hpBarCanvas != null)
-        {
-            hpBarCanvas.gameObject.SetActive(false);
-        }
-        
-        // 스프라이트 변경 또는 파괴된 모습 표시
+        // 스프라이트 변경 또는 비활성화
         SpriteRenderer spriteRenderer = GetComponent<SpriteRenderer>();
         if (spriteRenderer != null)
         {
-            spriteRenderer.color = new Color(0.5f, 0.5f, 0.5f, 0.5f); // 어둡게 표시
+            spriteRenderer.color = new Color(0.3f, 0.3f, 0.3f, 0.5f);
+        }
+        
+        // Collider 비활성화
+        Collider2D col = GetComponent<Collider2D>();
+        if (col != null)
+        {
+            col.enabled = false;
         }
     }
     
     /// <summary>
-    /// 디버그용 공격 범위 표시
+    /// 파괴 상태 확인
+    /// </summary>
+    public bool IsDestroyed()
+    {
+        return isDestroyed;
+    }
+    
+    /// <summary>
+    /// 디버그용 - 성 정보 출력
     /// </summary>
     private void OnDrawGizmosSelected()
     {
         // 공격 범위 표시
         Gizmos.color = Color.red;
         Gizmos.DrawWireSphere(transform.position, attackRange);
-        
-        // 현재 타겟이 있으면 선으로 연결
-        if (currentTarget != null)
-        {
-            MonoBehaviour targetMono = currentTarget as MonoBehaviour;
-            if (targetMono != null)
-            {
-                Gizmos.color = Color.yellow;
-                Gizmos.DrawLine(transform.position, targetMono.transform.position);
-            }
-        }
-    }
-    
-    public bool IsDestroyed()
-    {
-        return isDestroyed;
-    }
-    
-    public float GetCurrentHealth()
-    {
-        return currentHealth;
-    }
-    
-    public float GetMaxHealth()
-    {
-        return maxHealth;
     }
 }

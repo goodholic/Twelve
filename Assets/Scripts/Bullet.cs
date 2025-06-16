@@ -1,105 +1,136 @@
 using UnityEngine;
 
 /// <summary>
-/// 총알 클래스 - 캐릭터와 성이 발사하는 투사체
+/// 총알 시스템 - 캐릭터, 몬스터, 성이 발사하는 투사체
 /// </summary>
+[RequireComponent(typeof(Collider2D))]
 public class Bullet : MonoBehaviour
 {
     [Header("총알 설정")]
     public float damage = 10f;
     public float speed = 5f;
-    public float lifetime = 5f;
+    public float lifeTime = 5f;
+    
+    [Header("타겟 정보")]
     public GameObject targetObject;
     public Vector3 direction;
+    public bool isHoming = false;
+    public float homingStrength = 5f;
     
     [Header("소유자 정보")]
-    public bool isFromCastle = false;
     public int ownerAreaIndex = 1;
+    public bool isFromCastle = false; // 성에서 발사된 총알인지
     
     [Header("이펙트")]
     public GameObject hitEffectPrefab;
     public GameObject trailEffectPrefab;
     
-    [Header("방향별 스프라이트")]
-    public Sprite bulletUpDirectionSprite;
-    public Sprite bulletDownDirectionSprite;
-    
-    [Header("소유자 및 타겟 정보")]
-    public GameObject target;
-    public Character owner;
-    
-    private float spawnTime;
+    // 컴포넌트
+    private Rigidbody2D rb;
+    private Collider2D col;
     private SpriteRenderer spriteRenderer;
     private TrailRenderer trailRenderer;
     
+    // 상태
+    private float elapsedTime = 0f;
+    private bool hasHit = false;
+    
     private void Awake()
     {
+        // Rigidbody2D 설정
+        rb = GetComponent<Rigidbody2D>();
+        if (rb == null)
+        {
+            rb = gameObject.AddComponent<Rigidbody2D>();
+        }
+        rb.bodyType = RigidbodyType2D.Kinematic;
+        
+        // Collider 설정
+        col = GetComponent<Collider2D>();
+        if (col == null)
+        {
+            col = gameObject.AddComponent<CircleCollider2D>();
+        }
+        col.isTrigger = true;
+        
+        // SpriteRenderer 설정
         spriteRenderer = GetComponent<SpriteRenderer>();
         if (spriteRenderer == null)
         {
             spriteRenderer = gameObject.AddComponent<SpriteRenderer>();
         }
         
-        // Layer 설정
-        gameObject.layer = LayerMask.NameToLayer("Bullet");
-        
-        // Collider 설정
-        CircleCollider2D collider = GetComponent<CircleCollider2D>();
-        if (collider == null)
+        // 기본 스프라이트 설정 (원형)
+        if (spriteRenderer.sprite == null)
         {
-            collider = gameObject.AddComponent<CircleCollider2D>();
-        }
-        collider.isTrigger = true;
-        collider.radius = 0.1f;
-        
-        // Trail 효과 추가
-        if (trailEffectPrefab == null)
-        {
-            trailRenderer = gameObject.AddComponent<TrailRenderer>();
-            trailRenderer.time = 0.2f;
-            trailRenderer.startWidth = 0.1f;
-            trailRenderer.endWidth = 0f;
-            trailRenderer.material = new Material(Shader.Find("Sprites/Default"));
+            // 기본 원형 스프라이트 생성
+            Texture2D texture = new Texture2D(16, 16);
+            for (int x = 0; x < 16; x++)
+            {
+                for (int y = 0; y < 16; y++)
+                {
+                    float distance = Vector2.Distance(new Vector2(x, y), new Vector2(8, 8));
+                    if (distance < 8)
+                    {
+                        texture.SetPixel(x, y, Color.white);
+                    }
+                    else
+                    {
+                        texture.SetPixel(x, y, Color.clear);
+                    }
+                }
+            }
+            texture.Apply();
             
-            // 소유자에 따른 색상 설정
-            if (isFromCastle)
-            {
-                trailRenderer.startColor = new Color(1f, 0.8f, 0f, 1f); // 황금색
-                trailRenderer.endColor = new Color(1f, 0.8f, 0f, 0f);
-            }
-            else
-            {
-                trailRenderer.startColor = new Color(0f, 1f, 1f, 1f); // 청록색
-                trailRenderer.endColor = new Color(0f, 1f, 1f, 0f);
-            }
+            spriteRenderer.sprite = Sprite.Create(texture, new Rect(0, 0, 16, 16), new Vector2(0.5f, 0.5f), 16);
+            spriteRenderer.color = Color.yellow;
+        }
+        
+        // Layer 설정
+        gameObject.layer = LayerMask.NameToLayer("Projectile");
+        
+        // Trail 효과
+        if (trailEffectPrefab != null)
+        {
+            GameObject trail = Instantiate(trailEffectPrefab, transform);
+            trailRenderer = trail.GetComponent<TrailRenderer>();
         }
     }
     
     private void Start()
     {
-        spawnTime = Time.time;
-        
-        // Sorting Layer 설정
-        if (spriteRenderer != null)
+        // 방향이 설정되지 않았고 타겟이 있으면 타겟 방향으로 설정
+        if (direction == Vector3.zero && targetObject != null)
         {
-            spriteRenderer.sortingLayerName = "Bullets";
-            spriteRenderer.sortingOrder = 10;
+            direction = (targetObject.transform.position - transform.position).normalized;
+        }
+        
+        // 방향으로 회전
+        if (direction != Vector3.zero)
+        {
+            float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
+            transform.rotation = Quaternion.AngleAxis(angle - 90f, Vector3.forward);
         }
     }
     
     private void Update()
     {
+        if (hasHit) return;
+        
         // 수명 체크
-        if (Time.time - spawnTime > lifetime)
+        elapsedTime += Time.deltaTime;
+        if (elapsedTime >= lifeTime)
         {
             DestroyBullet();
             return;
         }
         
-        // 타겟이 있으면 추적
-        if (targetObject != null && targetObject.activeInHierarchy)
+        // 이동
+        if (isHoming && targetObject != null)
         {
-            direction = (targetObject.transform.position - transform.position).normalized;
+            // 유도 미사일
+            Vector3 targetDirection = (targetObject.transform.position - transform.position).normalized;
+            direction = Vector3.Lerp(direction, targetDirection, homingStrength * Time.deltaTime).normalized;
             
             // 회전 업데이트
             float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
@@ -112,20 +143,18 @@ public class Bullet : MonoBehaviour
     
     private void OnTriggerEnter2D(Collider2D other)
     {
+        if (hasHit) return;
         if (other == null) return;
         
-        // 같은 지역의 오브젝트는 무시
-        bool shouldIgnore = false;
+        // 자기 자신은 무시
+        if (other.transform == transform.parent) return;
         
         // 몬스터 체크
         Monster monster = other.GetComponent<Monster>();
-        if (monster != null)
+        if (monster != null && monster.IsAlive())
         {
-            if (monster.areaIndex == ownerAreaIndex)
-            {
-                shouldIgnore = true;
-            }
-            else if (monster.IsAlive())
+            // 같은 지역 몬스터는 맞추지 않음
+            if (monster.areaIndex != ownerAreaIndex)
             {
                 monster.TakeDamage(damage);
                 CreateHitEffect(other.transform.position);
@@ -136,13 +165,10 @@ public class Bullet : MonoBehaviour
         
         // 캐릭터 체크
         Character character = other.GetComponent<Character>();
-        if (character != null)
+        if (character != null && character.currentHP > 0)
         {
-            if (character.areaIndex == ownerAreaIndex)
-            {
-                shouldIgnore = true;
-            }
-            else if (character.currentHP > 0)
+            // 같은 지역 캐릭터는 맞추지 않음
+            if (character.areaIndex != ownerAreaIndex)
             {
                 character.TakeDamage(damage);
                 CreateHitEffect(other.transform.position);
@@ -203,6 +229,8 @@ public class Bullet : MonoBehaviour
     /// </summary>
     private void DestroyBullet()
     {
+        hasHit = true;
+        
         // 트레일이 자연스럽게 사라지도록
         if (trailRenderer != null)
         {
@@ -231,58 +259,14 @@ public class Bullet : MonoBehaviour
     }
     
     /// <summary>
-    /// 총알 방향 설정
+    /// 방향 설정
     /// </summary>
-    public void SetBulletDirection(Vector3 dir)
+    public void SetDirection(Vector3 dir)
     {
         direction = dir.normalized;
         
-        // 방향에 따른 스프라이트 변경
-        if (spriteRenderer != null)
-        {
-            if (dir.y > 0 && bulletUpDirectionSprite != null)
-            {
-                spriteRenderer.sprite = bulletUpDirectionSprite;
-            }
-            else if (dir.y < 0 && bulletDownDirectionSprite != null)
-            {
-                spriteRenderer.sprite = bulletDownDirectionSprite;
-            }
-        }
-        
-        // 회전 설정
-        float angle = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg;
+        // 회전 업데이트
+        float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
         transform.rotation = Quaternion.AngleAxis(angle - 90f, Vector3.forward);
-    }
-    
-    /// <summary>
-    /// 총알 초기화 (CharacterCombat에서 호출)
-    /// </summary>
-    public void Init(float damage, float speed, GameObject targetObj, int areaIndex, bool fromCastle = false)
-    {
-        this.damage = damage;
-        this.speed = speed;
-        this.target = targetObj;
-        this.targetObject = targetObj;
-        this.ownerAreaIndex = areaIndex;
-        this.isFromCastle = fromCastle;
-        
-        if (targetObj != null)
-        {
-            direction = (targetObj.transform.position - transform.position).normalized;
-            SetBulletDirection(direction);
-        }
-    }
-    
-    /// <summary>
-    /// 소스 캐릭터 설정
-    /// </summary>
-    public void SetSourceCharacter(Character sourceCharacter)
-    {
-        owner = sourceCharacter;
-        if (sourceCharacter != null)
-        {
-            ownerAreaIndex = sourceCharacter.areaIndex;
-        }
     }
 }

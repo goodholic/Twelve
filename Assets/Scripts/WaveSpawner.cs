@@ -370,9 +370,8 @@ public class WaveSpawner : MonoBehaviour
         if (monster != null)
         {
             // 몬스터 설정
-            monster.pathWaypoints = selectedWaypoints;
-            monster.currentChapter = monsterChapter;
             monster.areaIndex = 1;  // 지역1 몬스터
+            monster.SetChapter(monsterChapter);
             
             // 라인 정보 설정
             RouteType routeType = RouteType.Center;
@@ -382,7 +381,9 @@ public class WaveSpawner : MonoBehaviour
                 case 1: routeType = RouteType.Center; break;
                 case 2: routeType = RouteType.Right; break;
             }
-            monster.SetMonsterRoute(routeType);  // 몬스터에 라인 정보 전달
+            
+            // 경로 설정
+            monster.SetPath(selectedWaypoints, routeType);
 
             // 이벤트 연결
             monster.OnDeath += HandleMonsterDeath;

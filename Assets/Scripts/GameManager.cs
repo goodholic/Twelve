@@ -293,4 +293,22 @@ public class GameManager : MonoBehaviour
         // 게임 일시정지
         Time.timeScale = 0f;
     }
+
+    /// <summary>
+    /// 골드 추가 (몬스터 처치 보상 등)
+    /// </summary>
+    public void AddGold(int amount)
+    {
+        Debug.Log($"[GameManager] 골드 {amount} 획득!");
+        
+        // ShopManager가 있으면 연동
+        if (ShopManager.Instance != null)
+        {
+            ShopManager.Instance.AddGold(amount);
+        }
+        else
+        {
+            Debug.LogWarning("[GameManager] ShopManager.Instance가 null입니다!");
+        }
+    }
 }

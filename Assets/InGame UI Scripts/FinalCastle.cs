@@ -159,35 +159,31 @@ public class FinalCastle : MonoBehaviour, IDamageable
                             targetObject = monster.gameObject;
                         }
                     }
-                    
-                    if (attackTargetType == AttackTargetType.Monster && bestTarget != null)
-                    {
-                        AttackTarget(bestTarget, targetObject);
-                        return;
-                    }
                     break;
             }
             
-            // 캐릭터 찾기 (Character, Both 또는 All 타입일 때)
-            if (attackTargetType == AttackTargetType.Character || 
-                attackTargetType == AttackTargetType.All ||
-                attackTargetType == AttackTargetType.Both)
+            switch (attackTargetType)
             {
-                Character[] characters = FindObjectsByType<Character>(FindObjectsSortMode.None);
-                foreach (var character in characters)
-                {
-                    if (character == null || character.currentHP <= 0) continue;
-                    if (character.areaIndex == areaIndex) continue; // 같은 지역 캐릭터는 공격하지 않음
-                    if (character.isHero) continue; // 히어로는 공격하지 않음
-                    
-                    float distance = Vector3.Distance(transform.position, character.transform.position);
-                    if (distance <= attackRange && distance < closestDistance)
+                case AttackTargetType.Character:
+                case AttackTargetType.All:
+                case AttackTargetType.Both:
+                    // 캐릭터 찾기
+                    Character[] characters = FindObjectsByType<Character>(FindObjectsSortMode.None);
+                    foreach (var character in characters)
                     {
-                        closestDistance = distance;
-                        bestTarget = character;
-                        targetObject = character.gameObject;
+                        if (character == null || character.currentHP <= 0) continue;
+                        if (character.areaIndex == areaIndex) continue; // 같은 지역 캐릭터는 공격하지 않음
+                        if (character.isHero) continue; // 히어로는 공격하지 않음
+                        
+                        float distance = Vector3.Distance(transform.position, character.transform.position);
+                        if (distance <= attackRange && distance < closestDistance)
+                        {
+                            closestDistance = distance;
+                            bestTarget = character;
+                            targetObject = character.gameObject;
+                        }
                     }
-                }
+                    break;
             }
             
             // 타겟이 있으면 공격
@@ -199,7 +195,7 @@ public class FinalCastle : MonoBehaviour, IDamageable
     }
     
     /// <summary>
-    /// 단일 타겟 공격
+    /// 타겟 공격
     /// </summary>
     private void AttackTarget(IDamageable target, GameObject targetObject)
     {
@@ -211,9 +207,7 @@ public class FinalCastle : MonoBehaviour, IDamageable
         // 모든 발사 위치에서 총알 발사
         foreach (var firePoint in firePoints)
         {
-            if (firePoint == null) continue;
-            
-            if (bulletPrefab != null)
+            if (bulletPrefab != null && firePoint != null)
             {
                 GameObject bullet = Instantiate(bulletPrefab, firePoint.position, Quaternion.identity);
                 
@@ -371,41 +365,49 @@ public class FinalCastle : MonoBehaviour, IDamageable
             attackCoroutine = null;
         }
         
-        // 파괴 이펙트 생성
+        // 파괴 이펙트
         if (destroyEffectPrefab != null)
         {
             GameObject effect = Instantiate(destroyEffectPrefab, transform.position, Quaternion.identity);
+            effect.transform.localScale = Vector3.one * 2f; // 큰 크기로
             Destroy(effect, 3f);
         }
         
         // 이벤트 호출
         OnFinalCastleDestroyed?.Invoke(areaIndex);
         
-        // GameManager에 게임 종료 알림
+        // GameManager에 알림
         if (GameManager.Instance != null)
         {
-            // 지역1 최종성 파괴 = 플레이어 패배
-            // 지역2 최종성 파괴 = 플레이어 승리
-            bool isVictory = (areaIndex == 2);
-            GameManager.Instance.SetGameOver(isVictory);
+            bool isPlayerCastle = (areaIndex == 1);
+            GameManager.Instance.SetGameOver(!isPlayerCastle); // 플레이어 성이면 패배, AI 성이면 승리
         }
         
-        // HP바 비활성화 (성 자체는 비활성화하지 않음)
-        if (hpBarCanvas != null)
-        {
-            hpBarCanvas.gameObject.SetActive(false);
-        }
-        
-        // 스프라이트 변경 또는 파괴된 모습 표시
+        // 스프라이트 변경 또는 비활성화
         SpriteRenderer spriteRenderer = GetComponent<SpriteRenderer>();
         if (spriteRenderer != null)
         {
-            spriteRenderer.color = new Color(0.3f, 0.3f, 0.3f, 0.5f); // 더 어둡게 표시
+            spriteRenderer.color = new Color(0.2f, 0.2f, 0.2f, 0.5f);
+        }
+        
+        // Collider 비활성화
+        Collider2D col = GetComponent<Collider2D>();
+        if (col != null)
+        {
+            col.enabled = false;
         }
     }
     
     /// <summary>
-    /// 디버그용 공격 범위 표시
+    /// 파괴 상태 확인
+    /// </summary>
+    public bool IsDestroyed()
+    {
+        return isDestroyed;
+    }
+    
+    /// <summary>
+    /// 디버그용 - 성 정보 출력
     /// </summary>
     private void OnDrawGizmosSelected()
     {
@@ -419,31 +421,5 @@ public class FinalCastle : MonoBehaviour, IDamageable
             Gizmos.color = Color.yellow;
             Gizmos.DrawWireSphere(transform.position, areaAttackRadius);
         }
-        
-        // 현재 타겟이 있으면 선으로 연결
-        if (currentTarget != null)
-        {
-            MonoBehaviour targetMono = currentTarget as MonoBehaviour;
-            if (targetMono != null)
-            {
-                Gizmos.color = Color.magenta;
-                Gizmos.DrawLine(transform.position, targetMono.transform.position);
-            }
-        }
-    }
-    
-    public bool IsDestroyed()
-    {
-        return isDestroyed;
-    }
-    
-    public float GetCurrentHealth()
-    {
-        return currentHealth;
-    }
-    
-    public float GetMaxHealth()
-    {
-        return maxHealth;
     }
 }

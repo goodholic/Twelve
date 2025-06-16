@@ -177,9 +177,6 @@ public class Character : MonoBehaviour, IDamageable
         if (movement != null)
             movement.Initialize(this, stats);
             
-        if (combat != null)
-            combat.Initialize(this, stats, visual, movement, jumpSystem);
-            
         if (jumpSystem != null)
             jumpSystem.Initialize(this, movement);
 
