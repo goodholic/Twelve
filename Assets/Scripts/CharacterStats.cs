@@ -1,11 +1,27 @@
 using UnityEngine;
 
+/// <summary>
+/// 캐릭터 스탯 관리 컴포넌트
+/// 게임 기획서: 별 등급에 따른 스탯 보정, 종족별 강화
+/// </summary>
 public class CharacterStats : MonoBehaviour
 {
     private Character character;
     private CharacterVisual visual;
     private float attackCooldown;
     
+    /// <summary>
+    /// 스탯 초기화
+    /// </summary>
+    public void Initialize(Character character)
+    {
+        this.character = character;
+        InitializeStats(character);
+    }
+    
+    /// <summary>
+    /// 캐릭터 스탯 초기화
+    /// </summary>
     public void InitializeStats(Character character)
     {
         this.character = character;
@@ -40,11 +56,17 @@ public class CharacterStats : MonoBehaviour
                   $"사거리: {character.attackRange}, 공격속도: {character.attackSpeed}");
     }
     
+    /// <summary>
+    /// 공격 쿨다운 시간 반환
+    /// </summary>
     public float GetAttackCooldown()
     {
         return attackCooldown;
     }
     
+    /// <summary>
+    /// 데미지 받기
+    /// </summary>
     public void TakeDamage(float damage)
     {
         // 히어로는 무적 (게임 기획서: 주인공 캐릭터)

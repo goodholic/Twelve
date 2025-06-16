@@ -1,202 +1,168 @@
-using UnityEngine;
 using System.Collections.Generic;
-using System.Linq;
-#if UNITY_EDITOR
-using UnityEditor;
-#endif
+using UnityEngine;
 
 /// <summary>
-/// 월드 좌표 기반 타일 클래스
-/// 캐릭터 배치, 이동 경로 등을 관리합니다.
+/// 월드 좌표 기반 타일 컴포넌트
+/// 게임 기획서: 타일 기반 소환 시스템
 /// </summary>
-[RequireComponent(typeof(Collider2D))]
 public class Tile : MonoBehaviour
 {
-    [Header("타일 기본 설정")]
-    [SerializeField] private TileType tileType = TileType.None;
-    [SerializeField] private int tileIndex;
-    [SerializeField] public bool isBlocked = false;
-    [SerializeField] public bool isRegion2 = false;
-
-    [Header("시각적 프리팹")]
-    [SerializeField] private GameObject placeTilePrefab;
-    [SerializeField] private GameObject placedTilePrefab;
-    [SerializeField] private GameObject placeableTilePrefab;
-    [SerializeField] private GameObject walkableTilePrefab;
-    [SerializeField] private GameObject blockedTilePrefab;
-
-    [Header("색상 설정")]
-    [SerializeField] private Color defaultColor = Color.white;
-    [SerializeField] private Color highlightColor = Color.yellow;
-    [SerializeField] private Color blockedColor = Color.red;
-    [SerializeField] private Color validPlacementColor = new Color(0.5f, 1f, 0.5f, 0.8f);
-
-    [Header("캐릭터 배치")]
-    [SerializeField] private int maxCharactersPerTile = 3;
-    private List<Character> occupyingCharacters = new List<Character>();
-
-    // 컴포넌트
-    private SpriteRenderer spriteRenderer;
-    private Collider2D col2D;
-    private GameObject currentVisual;
-
-    // 상태
-    private bool isHighlighted = false;
-    private Color currentColor;
-
+    // ================================
+    // 타일 타입 정의
+    // ================================
     public enum TileType
     {
         None,
-        PlaceTile,
-        Placed,
-        Placeable,
         Walkable,
+        Walkable2,
         WalkableLeft,
         WalkableCenter,
         WalkableRight,
-        Place2Tile,
-        Placed2,
-        Placeable2,
-        Walkable2,
         Walkable2Left,
         Walkable2Center,
-        Walkable2Right
+        Walkable2Right,
+        Placeable,
+        Placeable2,
+        PlaceTile,
+        Placed2
     }
 
+    [Header("타일 설정")]
+    [SerializeField] private TileType tileType = TileType.None;
+    [SerializeField] private bool isBlocked = false;
+    
+    [Header("타일 위치 정보")]
+    public int row;
+    public int column;
+    public int tileIndex;
+    public int belongingRoute = -1; // 소속 루트 (0: 왼쪽, 1: 중앙, 2: 오른쪽)
+    
+    [Header("시각적 표현")]
+    [SerializeField] private GameObject walkableTilePrefab;
+    [SerializeField] private GameObject placeableTilePrefab;
+    [SerializeField] public GameObject placeTilePrefab;  // public으로 변경
+    [SerializeField] private GameObject placedTilePrefab;
+    [SerializeField] private GameObject blockedTilePrefab;
+    
+    // 캐릭터 관리
+    private List<Character> occupyingCharacters = new List<Character>();
+    private const int maxCharactersPerTile = 3; // 같은 종류 캐릭터 최대 3개
+    
+    // 시각적 오브젝트 참조
+    private GameObject currentVisual;
+    private SpriteRenderer spriteRenderer;
+    
     private void Awake()
     {
-        col2D = GetComponent<Collider2D>();
-        if (col2D == null)
-        {
-            col2D = gameObject.AddComponent<BoxCollider2D>();
-        }
-        col2D.isTrigger = true;
-
-        // 스프라이트 렌더러 찾기 또는 생성
-        spriteRenderer = GetComponentInChildren<SpriteRenderer>();
+        spriteRenderer = GetComponent<SpriteRenderer>();
         if (spriteRenderer == null)
         {
-            GameObject spriteObj = new GameObject("TileSprite");
-            spriteObj.transform.SetParent(transform);
-            spriteObj.transform.localPosition = Vector3.zero;
-            spriteRenderer = spriteObj.AddComponent<SpriteRenderer>();
-            spriteRenderer.sortingLayerName = "Tiles";
-            spriteRenderer.sortingOrder = 0;
+            spriteRenderer = gameObject.AddComponent<SpriteRenderer>();
         }
-
-        currentColor = defaultColor;
         
-        // Layer 설정
-        gameObject.layer = LayerMask.NameToLayer("Tile");
-    }
-
-    private void Start()
-    {
+        // 타일 기본 설정
+        gameObject.layer = LayerMask.NameToLayer("Default");
+        
+        // 콜라이더 설정
+        BoxCollider2D collider = GetComponent<BoxCollider2D>();
+        if (collider == null)
+        {
+            collider = gameObject.AddComponent<BoxCollider2D>();
+        }
+        collider.isTrigger = true;
+        
         UpdateTileVisual();
-        UpdateTileColor();
     }
 
-    /// <summary>
-    /// 타일 타입 설정
-    /// </summary>
+    // ================================
+    // 타일 타입 확인 메서드들
+    // ================================
+    public bool IsWalkable() => tileType == TileType.Walkable;
+    public bool IsWalkable2() => tileType == TileType.Walkable2;
+    public bool IsWalkableLeft() => tileType == TileType.WalkableLeft;
+    public bool IsWalkableCenter() => tileType == TileType.WalkableCenter;
+    public bool IsWalkableRight() => tileType == TileType.WalkableRight;
+    public bool IsWalkable2Left() => tileType == TileType.Walkable2Left;
+    public bool IsWalkable2Center() => tileType == TileType.Walkable2Center;
+    public bool IsWalkable2Right() => tileType == TileType.Walkable2Right;
+    public bool IsPlaceable() => tileType == TileType.Placeable;
+    public bool IsPlaceable2() => tileType == TileType.Placeable2;
+    public bool IsPlaceTile() => tileType == TileType.PlaceTile;
+    public bool IsPlaced2() => tileType == TileType.Placed2;
+    
+    public bool IsWalkableType()
+    {
+        return IsWalkable() || IsWalkable2() || 
+               IsWalkableLeft() || IsWalkableCenter() || IsWalkableRight() ||
+               IsWalkable2Left() || IsWalkable2Center() || IsWalkable2Right();
+    }
+    
+    public bool IsPlaceableType()
+    {
+        return IsPlaceable() || IsPlaceable2() || IsPlaceTile() || IsPlaced2();
+    }
+
+    // ================================
+    // 타일 상태 변경
+    // ================================
     public void SetTileType(TileType newType)
     {
         tileType = newType;
         UpdateTileVisual();
-        UpdateTileColor();
+    }
+    
+    public void SetBlocked(bool blocked)
+    {
+        isBlocked = blocked;
+        UpdateTileVisual();
     }
 
-    /// <summary>
-    /// 타일 타입 확인 메서드들
-    /// </summary>
-    public bool IsPlaceTile() => tileType == TileType.PlaceTile;
-    public bool IsPlaced() => tileType == TileType.Placed;
-    public bool IsPlacable() => tileType == TileType.Placeable;
-    public bool IsWalkable() => tileType == TileType.Walkable;
-    public bool IsWalkableLeft() => tileType == TileType.WalkableLeft;
-    public bool IsWalkableCenter() => tileType == TileType.WalkableCenter;
-    public bool IsWalkableRight() => tileType == TileType.WalkableRight;
-    public bool IsPlaced2() => tileType == TileType.Placed2;
-    public bool IsPlacable2() => tileType == TileType.Placeable2;
-    public bool IsWalkable2() => tileType == TileType.Walkable2;
-    public bool IsWalkable2Left() => tileType == TileType.Walkable2Left;
-    public bool IsWalkable2Center() => tileType == TileType.Walkable2Center;
-    public bool IsWalkable2Right() => tileType == TileType.Walkable2Right;
-
-    /// <summary>
-    /// 타일이 이동 가능한 경로인지 확인
-    /// </summary>
-    public bool IsWalkablePath()
+    // ================================
+    // 캐릭터 관리
+    // ================================
+    public List<Character> GetOccupyingCharacters()
     {
-        return IsWalkable() || IsWalkableLeft() || IsWalkableCenter() || IsWalkableRight() ||
-               IsWalkable2() || IsWalkable2Left() || IsWalkable2Center() || IsWalkable2Right();
+        // null 캐릭터 제거
+        occupyingCharacters.RemoveAll(c => c == null);
+        return new List<Character>(occupyingCharacters);
     }
-
-    /// <summary>
-    /// 타일이 배치 가능한지 확인
-    /// </summary>
-    public bool IsPlaceableType()
+    
+    public void AddOccupyingCharacter(Character character)
     {
-        return IsPlaceTile() || IsPlaced() || IsPlacable() || 
-               IsPlaced2() || IsPlacable2();
-    }
-
-    /// <summary>
-    /// 캐릭터를 타일에 추가
-    /// </summary>
-    public bool AddOccupyingCharacter(Character character)
-    {
-        if (character == null) return false;
-        
-        if (!occupyingCharacters.Contains(character))
+        if (character != null && !occupyingCharacters.Contains(character))
         {
             occupyingCharacters.Add(character);
             UpdateCharacterPositions();
             
             // PlaceTile로 변경
-            if (IsPlacable())
+            if (IsPlaceable())
             {
                 SetTileType(TileType.PlaceTile);
             }
-            else if (IsPlacable2())
+            else if (IsPlaceable2())
             {
-                SetTileType(TileType.Place2Tile);
+                SetTileType(TileType.Placed2);
             }
             
-            Debug.Log($"[Tile] {name}에 {character.characterName} 추가됨. 현재 캐릭터 수: {occupyingCharacters.Count}");
-            return true;
+            Debug.Log($"[Tile] {name}에 {character.characterName} 추가. 현재 캐릭터 수: {occupyingCharacters.Count}");
         }
-        return false;
     }
-
-    /// <summary>
-    /// 캐릭터를 타일에서 제거
-    /// </summary>
+    
     public bool RemoveOccupyingCharacter(Character character)
     {
-        if (character == null) return false;
-        
         bool removed = occupyingCharacters.Remove(character);
         if (removed)
         {
             UpdateCharacterPositions();
-            
-            // 타일이 비었으면 Placeable로 변경
-            if (occupyingCharacters.Count == 0)
-            {
-                if (IsPlaceTile())
-                {
-                    SetTileType(TileType.Placeable);
-                }
-                else if (IsPlaced2())
-                {
-                    SetTileType(TileType.Placeable2);
-                }
-            }
-            
-            Debug.Log($"[Tile] {name}에서 {character.characterName} 제거됨. 남은 캐릭터 수: {occupyingCharacters.Count}");
+            Debug.Log($"[Tile] {name}에서 {character.characterName} 제거. 남은 캐릭터 수: {occupyingCharacters.Count}");
         }
         return removed;
+    }
+    
+    public void RemoveAllOccupyingCharacters()
+    {
+        occupyingCharacters.Clear();
+        Debug.Log($"[Tile] {name}의 모든 캐릭터 제거");
     }
 
     /// <summary>
@@ -289,19 +255,16 @@ public class Tile : MonoBehaviour
         switch (tileType)
         {
             case TileType.PlaceTile:
-            case TileType.Place2Tile:
-                return placedTilePrefab;
-            case TileType.Placed:
             case TileType.Placed2:
                 return placedTilePrefab;
             case TileType.Placeable:
             case TileType.Placeable2:
                 return placeableTilePrefab;
             case TileType.Walkable:
+            case TileType.Walkable2:
             case TileType.WalkableLeft:
             case TileType.WalkableCenter:
             case TileType.WalkableRight:
-            case TileType.Walkable2:
             case TileType.Walkable2Left:
             case TileType.Walkable2Center:
             case TileType.Walkable2Right:
@@ -312,99 +275,62 @@ public class Tile : MonoBehaviour
     }
 
     /// <summary>
-    /// 타일 색상 업데이트
+    /// 마우스 클릭 처리
     /// </summary>
-    private void UpdateTileColor()
+    private void OnMouseDown()
     {
-        if (spriteRenderer == null) return;
-
-        if (isBlocked)
-        {
-            currentColor = blockedColor;
-        }
-        else if (isHighlighted)
-        {
-            currentColor = highlightColor;
-        }
-        else if (IsPlaceableType() && occupyingCharacters.Count == 0)
-        {
-            currentColor = validPlacementColor;
-        }
-        else
-        {
-            currentColor = defaultColor;
-        }
-
-        spriteRenderer.color = currentColor;
-    }
-
-    /// <summary>
-    /// 타일 하이라이트
-    /// </summary>
-    public void HighlightTile(bool canPlace = true)
-    {
-        isHighlighted = true;
-        if (spriteRenderer != null)
-        {
-            spriteRenderer.color = canPlace ? highlightColor : blockedColor;
-        }
-    }
-
-    public void UnhighlightTile()
-    {
-        isHighlighted = false;
-        UpdateTileColor();
-    }
-
-    /// <summary>
-    /// 점유 중인 캐릭터 목록 반환
-    /// </summary>
-    public List<Character> GetOccupyingCharacters()
-    {
-        // null 제거
-        occupyingCharacters.RemoveAll(c => c == null);
-        return new List<Character>(occupyingCharacters);
-    }
-
-    /// <summary>
-    /// 타일 정리 (null 캐릭터 제거)
-    /// </summary>
-    public void CleanupNullCharacters()
-    {
-        occupyingCharacters.RemoveAll(c => c == null);
-        UpdateCharacterPositions();
+        if (isBlocked) return;
         
-        if (occupyingCharacters.Count == 0 && (IsPlaceTile() || IsPlaced2()))
+        // 타일 클릭 시 캐릭터 소환 시도
+        if (IsPlaceableType())
         {
-            SetTileType(isRegion2 ? TileType.Placeable2 : TileType.Placeable);
+            SummonManager summonManager = SummonManager.Instance;
+            if (summonManager != null)
+            {
+                summonManager.PlaceCharacterOnTile(this);
+            }
         }
     }
 
-#if UNITY_EDITOR
-    public void RefreshInEditor()
+    /// <summary>
+    /// 타일 상태 설정 메서드들
+    /// </summary>
+    public void SetPlacable()
     {
-        if (Application.isPlaying)
+        SetTileType(TileType.Placeable);
+    }
+    
+    public void SetPlacable2()
+    {
+        SetTileType(TileType.Placeable2);
+    }
+    
+    /// <summary>
+    /// 타일 시각 효과 갱신
+    /// </summary>
+    public void RefreshTileVisual()
+    {
+        UpdateTileVisual();
+        
+        // 캐릭터가 있으면 위치 재조정
+        if (occupyingCharacters.Count > 0)
         {
-            UpdateTileVisual();
-            UpdateTileColor();
+            UpdateCharacterPositions();
         }
     }
 
+    // 디버그용
     private void OnDrawGizmos()
     {
-        // 타일 타입에 따른 기즈모 표시
-        Gizmos.color = isBlocked ? Color.red : Color.green;
+        if (!Application.isPlaying) return;
         
-        if (IsWalkablePath())
-        {
-            Gizmos.color = Color.blue;
-        }
-        else if (IsPlaceableType())
+        Gizmos.color = IsPlaceableType() ? Color.green : Color.red;
+        Gizmos.DrawWireCube(transform.position, Vector3.one * 0.9f);
+        
+        if (occupyingCharacters.Count > 0)
         {
             Gizmos.color = Color.yellow;
+            Gizmos.DrawSphere(transform.position, 0.2f);
         }
-        
-        Gizmos.DrawWireCube(transform.position, Vector3.one * 0.9f);
     }
-#endif
 }

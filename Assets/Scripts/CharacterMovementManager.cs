@@ -1,333 +1,221 @@
-using UnityEngine;
 using System.Collections;
-using System.Collections.Generic;
+using UnityEngine;
 
 /// <summary>
-/// 캐릭터 이동, 드래그 처리
-/// 기획서: 드래그로 3라인(좌/중/우) 변경 가능
-/// ★★★ 수정: 같은 캐릭터끼리는 한 타일에 최대 3개까지 배치 가능
+/// 캐릭터 이동 관리 컴포넌트
+/// 게임 기획서: 3라인 시스템 (왼쪽/중앙/오른쪽 웨이포인트)
 /// </summary>
-public class CharacterMovementManager : MonoBehaviour
+public class CharacterMovement : MonoBehaviour
 {
-    private static CharacterMovementManager instance;
-    public static CharacterMovementManager Instance
-    {
-        get
-        {
-            if (instance == null)
-            {
-                instance = FindFirstObjectByType<CharacterMovementManager>();
-                if (instance == null)
-                {
-                    GameObject go = new GameObject("CharacterMovementManager");
-                    instance = go.AddComponent<CharacterMovementManager>();
-                }
-            }
-            return instance;
-        }
-    }
-
-    private void Awake()
-    {
-        if (instance != null && instance != this)
-        {
-            Destroy(gameObject);
-            return;
-        }
-        instance = this;
-    }
-
+    private Character character;
+    private CharacterStats stats;
+    private CharacterVisual visual;
+    
+    [Header("이동 설정")]
+    public float moveSpeed = 3f;
+    public float jumpSpeed = 5f;
+    
+    // 웨이포인트 관련
+    [HideInInspector] public Transform[] pathWaypoints;
+    [HideInInspector] public int currentWaypointIndex = -1;
+    [HideInInspector] public int maxWaypointIndex = -1;
+    
+    // 이동 상태
+    public bool isMoving { get; private set; }
+    private bool isJumpingAcross = false;
+    private bool hasJumped = false;
+    private bool isInCombat = false;
+    
+    // 경로 및 지역 정보
+    private int currentRegion = 1;
+    private Transform castleTarget;
+    
+    // 코루틴 참조
+    private Coroutine moveCoroutine;
+    
     /// <summary>
-    /// ★★★ 수정: 캐릭터 드롭 처리
+    /// 이동 시스템 초기화
     /// </summary>
-    public void OnDropCharacter(Character movingChar, Tile newTile)
+    public void Initialize(Character character, CharacterStats stats, CharacterVisual visual)
     {
-        if (movingChar == null || newTile == null) 
-        {
-            Debug.LogWarning("[CharacterMovementManager] OnDropCharacter: movingChar 또는 newTile이 null");
-            return;
-        }
-
-        // 히어로는 타 지역으로 이동할 수 없음
-        if (movingChar.isHero)
-        {
-            // 이동하려는 타일이 다른 지역인지 확인
-            bool isMovingToDifferentRegion = false;
-            
-            if (movingChar.areaIndex == 1 && (newTile.isRegion2 || newTile.IsWalkable2() || newTile.IsWalkable2Left() || 
-                newTile.IsWalkable2Center() || newTile.IsWalkable2Right() || newTile.IsPlacable2() || newTile.IsPlaced2()))
-            {
-                isMovingToDifferentRegion = true;
-            }
-            else if (movingChar.areaIndex == 2 && (!newTile.isRegion2 && (newTile.IsWalkable() || newTile.IsWalkableLeft() || 
-                newTile.IsWalkableCenter() || newTile.IsWalkableRight() || newTile.IsPlacable() || newTile.IsPlaceTile())))
-            {
-                isMovingToDifferentRegion = true;
-            }
-            
-            if (isMovingToDifferentRegion)
-            {
-                Debug.LogWarning($"[CharacterMovementManager] 히어로 {movingChar.characterName}은(는) 타 지역으로 이동할 수 없습니다!");
-                return;
-            }
-        }
-
-        // 원래 타일 백업
-        Tile oldTile = movingChar.currentTile;
-
-        // ★★★ 수정: 새 타일에 캐릭터 배치 가능한지 확인
-        if (!newTile.CanPlaceCharacter(movingChar))
-        {
-            Debug.LogWarning($"[CharacterMovementManager] {newTile.name}에 {movingChar.characterName}을(를) 배치할 수 없습니다.");
-            
-            // 원래 위치로 복귀
-            if (oldTile != null)
-            {
-                MoveCharacterToTile(movingChar, oldTile);
-            }
-            return;
-        }
-
-        // 타일에 있는 캐릭터들 확인
-        List<Character> targetChars = newTile.GetOccupyingCharacters();
+        this.character = character;
+        this.stats = stats;
+        this.visual = visual;
         
-        // 같은 캐릭터가 2개 있고, 이동 캐릭터까지 합치면 3개가 되는 경우
-        if (targetChars.Count == 2 && 
-            targetChars[0].characterName == movingChar.characterName && 
-            targetChars[0].star == movingChar.star &&
-            movingChar.star != CharacterStar.ThreeStar) // 3성은 합성 불가
-        {
-            // 합성 처리를 PlacementManager에 위임
-            if (PlacementManager.Instance != null)
-            {
-                PlacementManager.Instance.OnDropCharacter(movingChar, newTile);
-                return;
-            }
-        }
-
-        // 일반 이동 처리
-        ProcessCharacterMovement(movingChar, oldTile, newTile);
+        // 초기 지역 설정
+        currentRegion = character.areaIndex;
+        
+        Debug.Log($"[CharacterMovement] {character.characterName} 이동 시스템 초기화");
     }
-
+    
     /// <summary>
-    /// 캐릭터 이동 처리
+    /// 웨이포인트 설정
     /// </summary>
-    private void ProcessCharacterMovement(Character movingChar, Tile oldTile, Tile newTile)
+    public void SetWaypoints(Transform[] waypoints, int startIndex = 0)
     {
-        // walkable 타일로 이동하는 경우
-        if (newTile.IsWalkable() || newTile.IsWalkableLeft() || newTile.IsWalkableCenter() || newTile.IsWalkableRight())
+        pathWaypoints = waypoints;
+        currentWaypointIndex = startIndex;
+        maxWaypointIndex = waypoints.Length - 1;
+        
+        Debug.Log($"[CharacterMovement] 웨이포인트 설정 완료 - 총 {waypoints.Length}개");
+    }
+    
+    /// <summary>
+    /// 이동 시작
+    /// </summary>
+    public void StartMoving()
+    {
+        if (pathWaypoints == null || pathWaypoints.Length == 0)
         {
-            if (movingChar.areaIndex == 1)
-            {
-                HandleWalkableMovement(movingChar, oldTile, newTile, false);
-            }
-            else
-            {
-                // walkable은 지역1 전용이므로 지역2 캐릭터는 이동 불가
-                Debug.LogWarning("[CharacterMovementManager] 지역2 캐릭터는 walkable 타일로 이동할 수 없습니다.");
-                RestoreCharacterPosition(movingChar, oldTile);
-            }
+            Debug.LogWarning($"[CharacterMovement] {character.characterName} 웨이포인트가 설정되지 않음");
+            return;
         }
-        // walkable2 타일로 이동하는 경우
-        else if (newTile.IsWalkable2() || newTile.IsWalkable2Left() || newTile.IsWalkable2Center() || newTile.IsWalkable2Right())
+        
+        isMoving = true;
+        
+        if (moveCoroutine != null)
         {
-            if (movingChar.areaIndex == 2)
-            {
-                HandleWalkableMovement(movingChar, oldTile, newTile, true);
-            }
-            else
-            {
-                // walkable2는 지역2 전용이므로 지역1 캐릭터는 이동 불가
-                Debug.LogWarning("[CharacterMovementManager] 지역1 캐릭터는 walkable2 타일로 이동할 수 없습니다.");
-                RestoreCharacterPosition(movingChar, oldTile);
-            }
+            StopCoroutine(moveCoroutine);
         }
-        else
+        
+        moveCoroutine = StartCoroutine(MoveAlongPath());
+    }
+    
+    /// <summary>
+    /// 이동 중지
+    /// </summary>
+    public void StopMoving()
+    {
+        isMoving = false;
+        
+        if (moveCoroutine != null)
         {
-            // 일반 타일로 이동
-            MoveCharacterToTile(movingChar, newTile);
-            movingChar.currentWaypointIndex = -1;
-            movingChar.maxWaypointIndex = -1;
-            movingChar.isCharAttack = false;
+            StopCoroutine(moveCoroutine);
+            moveCoroutine = null;
         }
     }
-
+    
     /// <summary>
-    /// Walkable 타일로의 이동 처리
+    /// 경로를 따라 이동하는 코루틴
     /// </summary>
-    private void HandleWalkableMovement(Character movingChar, Tile oldTile, Tile newTile, bool isArea2)
+    private IEnumerator MoveAlongPath()
     {
-        // 기존 타일에서 캐릭터 제거
-        if (oldTile != null)
+        while (isMoving && pathWaypoints != null && currentWaypointIndex <= maxWaypointIndex)
         {
-            oldTile.RemoveOccupyingCharacter(movingChar);
-            if (oldTile.GetOccupyingCharacters().Count == 0)
+            // 전투 중이 아닐 때만 이동
+            if (!isInCombat)
             {
-                TileManager.Instance.RemovePlaceTileChild(oldTile);
-            }
-        }
-
-        // RouteManager를 통해 루트 설정
-        if (RouteManager.Instance != null)
-        {
-            RouteType selectedRoute;
-            if (isArea2)
-            {
-                selectedRoute = RouteManager.Instance.DetermineRouteFromTile(newTile, GameSceneManager.Instance.spawner2);
-            }
-            else
-            {
-                selectedRoute = RouteManager.Instance.DetermineRouteFromTile(newTile, GameSceneManager.Instance.spawner);
-            }
-
-            GameObject[] waypoints = null;
-            if (isArea2)
-            {
-                waypoints = RouteManager.Instance.GetWaypointsForRegion2(selectedRoute);
-                if (waypoints != null && waypoints.Length > 0)
+                Transform targetWaypoint = pathWaypoints[currentWaypointIndex];
+                
+                if (targetWaypoint != null)
                 {
-                    movingChar.currentTile = null;
-                    movingChar.currentWaypointIndex = 0;
-                    movingChar.pathWaypoints = ConvertGameObjectsToTransforms(waypoints);
-                    movingChar.maxWaypointIndex = waypoints.Length - 1;
-                    movingChar.areaIndex = 2;
-                    movingChar.selectedRoute = selectedRoute;
-                    movingChar.isCharAttack = !movingChar.isHero;
-
-                    Debug.Log($"[CharacterMovementManager] 지역2 walkable 이동 => {selectedRoute} 루트 선택");
+                    // 목표 지점으로 이동
+                    while (Vector3.Distance(transform.position, targetWaypoint.position) > 0.1f)
+                    {
+                        if (!isMoving || isInCombat) break;
+                        
+                        Vector3 direction = (targetWaypoint.position - transform.position).normalized;
+                        transform.position += direction * moveSpeed * Time.deltaTime;
+                        
+                        // 방향에 따른 스프라이트 업데이트
+                        UpdateCharacterDirectionSprite();
+                        
+                        yield return null;
+                    }
+                    
+                    // 다음 웨이포인트로
+                    currentWaypointIndex++;
                 }
             }
             else
             {
-                waypoints = RouteManager.Instance.GetWaypointsForRegion1(selectedRoute);
-                if (waypoints != null && waypoints.Length > 0)
-                {
-                    movingChar.currentTile = null;
-                    movingChar.currentWaypointIndex = 0;
-                    movingChar.pathWaypoints = ConvertGameObjectsToTransforms(waypoints);
-                    movingChar.maxWaypointIndex = waypoints.Length - 1;
-                    movingChar.areaIndex = 1;
-                    movingChar.selectedRoute = selectedRoute;
-                    movingChar.isCharAttack = !movingChar.isHero;
-
-                    Debug.Log($"[CharacterMovementManager] 지역1 walkable 이동 => {selectedRoute} 루트 선택");
-                }
+                // 전투 중일 때는 대기
+                yield return new WaitForSeconds(0.1f);
             }
         }
-        else
+        
+        // 경로 끝에 도달했을 때
+        if (currentWaypointIndex > maxWaypointIndex)
         {
-            Debug.LogError("[CharacterMovementManager] RouteManager.Instance가 없습니다!");
-            RestoreCharacterPosition(movingChar, oldTile);
+            Debug.Log($"[CharacterMovement] {character.characterName} 경로 끝 도달");
+            OnReachedPathEnd();
         }
     }
-
+    
     /// <summary>
-    /// ★★★ 수정: 캐릭터를 타일로 이동
+    /// 경로 끝에 도달했을 때
     /// </summary>
-    private void MoveCharacterToTile(Character character, Tile newTile)
+    private void OnReachedPathEnd()
     {
-        if (character == null || newTile == null) return;
-        
-        // 이전 타일에서 캐릭터 제거
-        if (character.currentTile != null)
+        // 성 공격 시도
+        if (currentRegion == 1)
         {
-            character.currentTile.RemoveOccupyingCharacter(character);
-            
-            // 이전 타일이 비었으면 정리
-            if (character.currentTile.GetOccupyingCharacters().Count == 0)
-            {
-                TileManager.Instance.OnCharacterRemovedFromTile(character.currentTile);
-            }
+            // Region1 캐릭터는 Region2 성 공격
+            FindAndAttackCastle(2);
         }
-        
-        // 새 타일에 캐릭터 추가
-        if (!newTile.AddOccupyingCharacter(character))
+        else if (currentRegion == 2)
         {
-            Debug.LogError($"[CharacterMovementManager] {character.characterName}을(를) {newTile.name}에 추가할 수 없습니다!");
-            return;
+            // Region2 캐릭터는 Region1 성 공격
+            FindAndAttackCastle(1);
         }
-        
-        // 캐릭터의 타일 참조 업데이트
-        character.currentTile = newTile;
-        
-        // 타일 상태 업데이트
-        if (!newTile.IsPlaceTile() && !newTile.IsPlaced2())
-        {
-            TileManager.Instance.CreatePlaceTileChild(newTile);
-        }
-        
-        Debug.Log($"[CharacterMovementManager] {character.characterName}을(를) {newTile.name}으로 이동");
     }
-
+    
     /// <summary>
-    /// 캐릭터를 원래 위치로 복귀
+    /// 성 찾아서 공격
     /// </summary>
-    private void RestoreCharacterPosition(Character character, Tile originalTile)
+    private void FindAndAttackCastle(int targetRegion)
     {
-        if (character == null) return;
-
-        if (originalTile != null)
+        // GameManager를 통해 성 공격
+        GameManager gameManager = GameManager.Instance;
+        if (gameManager != null)
         {
-            MoveCharacterToTile(character, originalTile);
-        }
-        else
-        {
-            // 원래 타일이 없으면 캐릭터 패널의 원래 위치로
-            RectTransform charRect = character.GetComponent<RectTransform>();
-            if (charRect != null)
+            if (targetRegion == 2)
             {
-                charRect.anchoredPosition = Vector2.zero;
+                gameManager.TakeDamageToRegion2(character.attackPower);
+                Debug.Log($"[CharacterMovement] {character.characterName}이(가) Region2 성 공격!");
             }
+            else
+            {
+                // Region1 성 공격 메서드 추가 필요
+                Debug.Log($"[CharacterMovement] {character.characterName}이(가) Region1 성 공격!");
+            }
+            
+            // 공격 후 캐릭터 제거
+            DestroyCharacter();
         }
     }
-
+    
     /// <summary>
-    /// ★★★ 수정: 타일에 같은 캐릭터가 2개 있고, 이동 캐릭터까지 합치면 3개가 되는지 확인
-    /// 기획서: 1성×3 → 2성, 2성×3 → 3성
+    /// 새로운 지역으로 웨이포인트 변경
     /// </summary>
-    private bool CheckAndMergeIfPossible(Character movingChar, Tile tile)
+    public void SetWaypointsForNewRegion(Transform[] newWaypoints)
     {
-        List<Character> sameCharacters = new List<Character>();
-        List<Character> tileChars = tile.GetOccupyingCharacters();
+        pathWaypoints = newWaypoints;
+        currentWaypointIndex = 0;
+        maxWaypointIndex = newWaypoints.Length - 1;
         
-        // 타일에서 같은 캐릭터 찾기
-        foreach (var otherChar in tileChars)
+        Debug.Log($"[CharacterMovement] 새로운 웨이포인트로 변경 - 총 {newWaypoints.Length}개");
+        
+        // 이동 재시작
+        if (isMoving)
         {
-            if (otherChar == null || otherChar == movingChar) continue;
-            
-            if (otherChar.star == movingChar.star && otherChar.characterName == movingChar.characterName)
-            {
-                sameCharacters.Add(otherChar);
-            }
+            StopMoving();
+            StartMoving();
         }
-        
-        // 이동 캐릭터 포함해서 3개가 되면 합성
-        if (sameCharacters.Count >= 2)
-        {
-            sameCharacters.Add(movingChar);
-            
-            // 3성은 더 이상 합성 불가
-            if (movingChar.star == CharacterStar.ThreeStar)
-            {
-                Debug.Log("[CharacterMovementManager] 3성은 더 이상 합성할 수 없습니다.");
-                return false;
-            }
-            
-            // 합성 처리를 PlacementManager에 위임
-            if (PlacementManager.Instance != null)
-            {
-                PlacementManager.Instance.OnDropCharacter(movingChar, tile);
-                return true;
-            }
-        }
-        
-        return false;
     }
-
+    
+    /// <summary>
+    /// 전투 상태 설정
+    /// </summary>
+    public void SetInCombat(bool inCombat)
+    {
+        isInCombat = inCombat;
+    }
+    
     /// <summary>
     /// GameObject 배열을 Transform 배열로 변환
     /// </summary>
-    private Transform[] ConvertGameObjectsToTransforms(GameObject[] gameObjects)
+    private Transform[] ConvertToTransforms(GameObject[] gameObjects)
     {
         if (gameObjects == null) return null;
         
@@ -338,4 +226,52 @@ public class CharacterMovementManager : MonoBehaviour
         }
         return transforms;
     }
+    
+    /// <summary>
+    /// 캐릭터 제거
+    /// </summary>
+    private void DestroyCharacter()
+    {
+        if (character.currentTile != null)
+        {
+            Tile tile = character.currentTile;
+            if (PlacementManager.Instance != null && PlacementManager.Instance.gameObject.activeInHierarchy)
+            {
+                PlacementManager.Instance.ClearCharacterTileReference(character);
+                PlacementManager.Instance.OnCharacterRemovedFromTile(tile);
+            }
+            else
+            {
+                character.currentTile = null;
+            }
+        }
+        
+        character.currentTarget = null;
+        character.currentCharTarget = null;
+        pathWaypoints = null;
+        
+        StopAllCoroutines();
+        Destroy(character.gameObject);
+    }
+    
+    /// <summary>
+    /// 캐릭터 방향 스프라이트 업데이트
+    /// </summary>
+    private void UpdateCharacterDirectionSprite()
+    {
+        if (visual != null)
+        {
+            visual.UpdateCharacterDirectionSprite(this);
+        }
+    }
+    
+    // Public 접근자들
+    public bool IsJumping() => isJumpingAcross;
+    public bool IsJumpingAcross() => isJumpingAcross;
+    public bool HasJumped() => hasJumped;
+    public bool IsInCombat() => isInCombat;
+    public Transform GetCurrentWaypoint() => (pathWaypoints != null && currentWaypointIndex >= 0 && currentWaypointIndex < pathWaypoints.Length) ? pathWaypoints[currentWaypointIndex] : null;
+    
+    public void SetJumpingAcross(bool value) => isJumpingAcross = value;
+    public void SetHasJumped(bool value) => hasJumped = value;
 }

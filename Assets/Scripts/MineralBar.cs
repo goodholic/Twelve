@@ -176,36 +176,57 @@ public class MineralBar : MonoBehaviour
     }
 
     /// <summary>
-    /// 소비한 미네랄을 환불합니다. (소환 실패 시 사용)
+    /// 소비한 미네랄을 환불합니다.
     /// </summary>
     /// <param name="amount">환불할 미네랄 양</param>
-    public void RefundMinerals(int amount)
+    public void Refund(int amount)
     {
-        // 최대치 초과하지 않도록 제한
         currentMinerals = Mathf.Min(currentMinerals + amount, maxMinerals);
-        // 시각적 업데이트
         UpdateVisual();
-        
-        // 이벤트 호출
         OnMineralChanged?.Invoke(currentMinerals);
         
-        Debug.Log($"[MineralBar] {amount} 미네랄 환불됨. 현재: {currentMinerals}/{maxMinerals}");
+        Debug.Log($"[MineralBar] {amount} 미네랄 환불. 현재 미네랄: {currentMinerals}/{maxMinerals}");
     }
 
     /// <summary>
-    /// 현재 미네랄 수 반환
+    /// 현재 미네랄 수를 반환합니다.
     /// </summary>
-    public int GetCurrentMinerals()
+    public int GetMineral()
     {
         return currentMinerals;
     }
 
     /// <summary>
-    /// 특정 비용을 지불할 수 있는지 확인
+    /// 미네랄을 추가합니다. (몬스터 처치 보상 등)
     /// </summary>
-    public bool CanAfford(int cost)
+    public void AddMineral(int amount)
     {
-        return currentMinerals >= cost;
+        currentMinerals = Mathf.Min(currentMinerals + amount, maxMinerals);
+        UpdateVisual();
+        PlayMineralGainEffect();
+        OnMineralChanged?.Invoke(currentMinerals);
+        
+        Debug.Log($"[MineralBar] {amount} 미네랄 추가. 현재 미네랄: {currentMinerals}/{maxMinerals}");
+    }
+
+    /// <summary>
+    /// 미네랄을 사용합니다.
+    /// </summary>
+    public bool UseMineral(int amount)
+    {
+        if (currentMinerals >= amount)
+        {
+            currentMinerals -= amount;
+            UpdateVisual();
+            PlayMineralSpendEffect();
+            OnMineralChanged?.Invoke(currentMinerals);
+            
+            Debug.Log($"[MineralBar] {amount} 미네랄 사용. 남은 미네랄: {currentMinerals}/{maxMinerals}");
+            return true;
+        }
+        
+        Debug.LogWarning($"[MineralBar] 미네랄 부족! 필요: {amount}, 현재: {currentMinerals}");
+        return false;
     }
 
     /// <summary>
@@ -215,8 +236,7 @@ public class MineralBar : MonoBehaviour
     {
         if (mineralGainEffect != null)
         {
-            GameObject effect = Instantiate(mineralGainEffect, fillBar.position, Quaternion.identity);
-            effect.transform.SetParent(transform, true);
+            GameObject effect = Instantiate(mineralGainEffect, transform.position, Quaternion.identity, transform);
             Destroy(effect, 1f);
         }
     }
@@ -228,65 +248,40 @@ public class MineralBar : MonoBehaviour
     {
         if (mineralSpendEffect != null)
         {
-            GameObject effect = Instantiate(mineralSpendEffect, fillBar.position, Quaternion.identity);
-            effect.transform.SetParent(transform, true);
+            GameObject effect = Instantiate(mineralSpendEffect, transform.position, Quaternion.identity, transform);
             Destroy(effect, 1f);
         }
     }
 
     /// <summary>
-    /// 미네랄을 즉시 추가 (보상, 특수 이벤트 등)
+    /// 미네랄 바 초기화
     /// </summary>
-    public void AddMinerals(int amount)
+    public void ResetMinerals()
     {
-        currentMinerals = Mathf.Min(currentMinerals + amount, maxMinerals);
+        currentMinerals = 0;
         UpdateVisual();
-        PlayMineralGainEffect();
-        
         OnMineralChanged?.Invoke(currentMinerals);
         
-        Debug.Log($"[MineralBar] {amount} 미네랄 추가됨. 현재: {currentMinerals}/{maxMinerals}");
+        Debug.Log("[MineralBar] 미네랄 바가 초기화되었습니다.");
     }
 
     /// <summary>
-    /// 미네랄 최대치 변경 (업그레이드 등)
+    /// 최대 미네랄 수 변경
     /// </summary>
     public void SetMaxMinerals(int newMax)
     {
-        maxMinerals = Mathf.Max(1, newMax);
+        maxMinerals = newMax;
         currentMinerals = Mathf.Min(currentMinerals, maxMinerals);
         UpdateVisual();
         
         Debug.Log($"[MineralBar] 최대 미네랄이 {maxMinerals}로 변경되었습니다.");
     }
 
-    /// <summary>
-    /// 게임 오브젝트가 비활성화될 때 코루틴 정리
-    /// </summary>
-    private void OnDisable()
+    private void OnDestroy()
     {
         if (fillCoroutine != null)
         {
             StopCoroutine(fillCoroutine);
-            fillCoroutine = null;
         }
-    }
-
-    /// <summary>
-    /// 미네랄 시스템 리셋 (새 게임 시작 시 등)
-    /// </summary>
-    public void ResetMinerals()
-    {
-        currentMinerals = 0;
-        UpdateVisual();
-        
-        if (fillCoroutine != null)
-        {
-            StopCoroutine(fillCoroutine);
-        }
-        
-        StartFilling();
-        
-        Debug.Log("[MineralBar] 미네랄 시스템이 리셋되었습니다.");
     }
 }
