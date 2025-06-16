@@ -29,6 +29,16 @@ public class CharacterData
     [Header("비용")]
     public int cost = 10;
     
+    [Header("이동 속도")]
+    public float moveSpeed = 1.0f;
+    
+    [Header("경험치")]
+    public float currentExp = 0f;
+    public float expToNextLevel = 100f;
+    
+    [Header("특수 속성")]
+    public bool isFreeSlotOnly = false;
+    
     [Header("스프라이트")]
     public Sprite characterSprite;
     public Sprite frontSprite;
@@ -36,57 +46,11 @@ public class CharacterData
     
     [Header("프리팹")]
     public GameObject spawnPrefab;
+    public GameObject motionPrefab;
     
     [Header("UI 아이콘")]
     public Sprite buttonIcon;  // Image에서 Sprite로 변경
     
     [Header("초기 별 등급")]
     public CharacterStar initialStar = CharacterStar.OneStar;
-}
-
-/// <summary>
-/// 캐릭터 종족
-/// 게임 기획서: 휴먼, 오크, 엘프 (각 종족 3명 + 자유 1명)
-/// </summary>
-[System.Serializable]
-public enum CharacterRace
-{
-    Human,
-    Orc,
-    Elf,
-    Undead, // 추가 종족
-    Etc     // 기타
-}
-
-/// <summary>
-/// 캐릭터 별 등급
-/// 게임 기획서: 1성×3 → 2성, 2성×3 → 3성
-/// </summary>
-[System.Serializable]
-public enum CharacterStar
-{
-    OneStar = 1,
-    TwoStar = 2,
-    ThreeStar = 3
-}
-
-/// <summary>
-/// 공격 타겟 타입
-/// </summary>
-[System.Serializable]
-public enum AttackTargetType
-{
-    Character,  // 캐릭터만
-    Monster,    // 몬스터만
-    Both        // 둘 다
-}
-
-/// <summary>
-/// 공격 사거리 타입
-/// </summary>
-[System.Serializable]
-public enum RangeType
-{
-    Melee,      // 근접
-    Ranged      // 원거리
 }

@@ -201,7 +201,7 @@ public class CharacterMovementManager : MonoBehaviour
         {
             if (targetRegion == 2)
             {
-                gameManager.TakeDamageToRegion2(character.attackPower);
+                gameManager.TakeDamageToRegion2((int)character.attackPower);
                 Debug.Log($"[CharacterMovementManager] {character.characterName}이(가) Region2 성 공격!");
             }
             else
@@ -291,7 +291,12 @@ public class CharacterMovementManager : MonoBehaviour
     {
         if (visual != null)
         {
-            visual.UpdateCharacterDirectionSprite(this);
+            // CharacterMovement 컴포넌트를 찾아서 전달
+            CharacterMovement movement = character.GetComponent<CharacterMovement>();
+            if (movement != null)
+            {
+                visual.UpdateCharacterDirectionSprite(movement);
+            }
         }
     }
     
@@ -332,12 +337,26 @@ public class CharacterMovementManager : MonoBehaviour
             if (droppedCharacter.areaIndex == 1)
             {
                 WaveSpawner spawner = FindFirstObjectByType<WaveSpawner>();
-                newRoute = routeManager.DetermineRouteFromTile(targetTile, spawner);
+                if (spawner != null)
+                {
+                    newRoute = routeManager.DetermineRouteFromTile(targetTile, spawner);
+                }
+                else
+                {
+                    newRoute = RouteType.Center; // 기본값
+                }
             }
             else
             {
                 WaveSpawnerRegion2 spawner2 = FindFirstObjectByType<WaveSpawnerRegion2>();
-                newRoute = routeManager.DetermineRouteFromTile(targetTile, spawner2);
+                if (spawner2 != null)
+                {
+                    newRoute = routeManager.DetermineRouteFromTile(targetTile, spawner2);
+                }
+                else
+                {
+                    newRoute = RouteType.Center; // 기본값
+                }
             }
             
             // 캐릭터의 CharacterMovement 컴포넌트 찾기

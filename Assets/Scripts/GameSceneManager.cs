@@ -129,7 +129,7 @@ public class GameSceneManager : MonoBehaviour
                     if (c != null)
                     {
                         slotImages9[i].gameObject.SetActive(true);
-                        slotImages9[i].sprite = (c.buttonIcon != null) ? c.buttonIcon.sprite : null;
+                        slotImages9[i].sprite = (c.buttonIcon != null) ? c.buttonIcon : null;
 
                         slotTexts9[i].gameObject.SetActive(true);
                         slotTexts9[i].text = $"{c.characterName}\nLv.{c.level}\n{GetRaceString(c.race)}";

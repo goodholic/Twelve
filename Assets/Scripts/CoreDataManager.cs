@@ -69,6 +69,14 @@ public class CoreDataManager : MonoBehaviour
     // 현재 선택된 캐릭터 인덱스 (임시로 여기에 저장)
     [HideInInspector] public int currentCharacterIndex = 0;
 
+    [Header("데이터베이스")]
+    public CharacterDatabaseObject allyDatabase;
+    public CharacterDatabaseObject enemyDatabase;
+    
+    [Header("스타 머지 데이터베이스")]
+    public StarMergeDatabaseObject starMergeDatabase;
+    public StarMergeDatabaseObject starMergeDatabaseRegion2;
+
     private void Awake()
     {
         if (instance != null && instance != this)

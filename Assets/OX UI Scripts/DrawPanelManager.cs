@@ -151,7 +151,7 @@ public class DrawPanelManager : MonoBehaviour
 
                 // 아이콘이 있으면 사용, 없으면 null
                 drawResultImage.sprite = (newChar.buttonIcon != null)
-                    ? newChar.buttonIcon.sprite
+                    ? newChar.buttonIcon
                     : null;
             }
 
@@ -282,7 +282,7 @@ public class DrawPanelManager : MonoBehaviour
             // 캐릭터 정보 표시
             if (iconImage != null && character.buttonIcon != null)
             {
-                iconImage.sprite = character.buttonIcon.sprite;
+                iconImage.sprite = character.buttonIcon;
             }
             
             if (nameText != null)

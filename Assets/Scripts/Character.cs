@@ -2,6 +2,53 @@ using UnityEngine;
 using System.Collections.Generic;
 
 /// <summary>
+/// 캐릭터 별 등급
+/// </summary>
+[System.Serializable]
+public enum CharacterStar
+{
+    OneStar = 1,
+    TwoStar = 2,
+    ThreeStar = 3
+}
+
+/// <summary>
+/// 캐릭터 종족
+/// </summary>
+[System.Serializable]
+public enum CharacterRace
+{
+    Human,
+    Orc,
+    Elf,
+    Undead
+}
+
+/// <summary>
+/// 공격 범위 타입
+/// </summary>
+[System.Serializable]
+public enum RangeType
+{
+    Melee,      // 근거리 (근접)
+    Ranged,     // 원거리
+    LongRange   // 장거리 (추가)
+}
+
+/// <summary>
+/// 공격 타겟 타입
+/// </summary>
+[System.Serializable]
+public enum AttackTargetType
+{
+    Character,      // 캐릭터만 (CharacterOnly와 호환)
+    Monster,        // 몬스터만 (MonsterOnly와 호환)
+    Both,           // 캐릭터와 몬스터 둘 다
+    CastleOnly,     // 성만
+    All             // 모든 타겟
+}
+
+/// <summary>
 /// 캐릭터 메인 클래스 - 월드 좌표 기반
 /// 게임 기획서: 타워형 캐릭터 (고정 타워처럼 작동)
 /// </summary>
@@ -218,7 +265,7 @@ public class Character : MonoBehaviour, IDamageable
     /// <summary>
     /// HP바 업데이트
     /// </summary>
-    private void UpdateHPBar()
+    public void UpdateHPBar()
     {
         if (hpBarFillImage != null)
         {
@@ -233,6 +280,19 @@ public class Character : MonoBehaviour, IDamageable
             else
                 hpBarFillImage.color = Color.red;
         }
+    }
+
+    /// <summary>
+    /// 최대 HP 설정
+    /// </summary>
+    public void SetMaxHP(float hp)
+    {
+        maxHP = hp;
+        if (currentHP > maxHP)
+        {
+            currentHP = maxHP;
+        }
+        UpdateHPBar();
     }
 
     /// <summary>
@@ -321,7 +381,7 @@ public class Character : MonoBehaviour, IDamageable
     {
         if (visual != null)
         {
-            visual.ApplyStarVisual();
+            visual.ApplyStarVisual(star);
         }
         else
         {
@@ -332,7 +392,7 @@ public class Character : MonoBehaviour, IDamageable
                 visual = gameObject.AddComponent<CharacterVisual>();
                 visual.Initialize(this, spriteRenderer);
             }
-            visual.ApplyStarVisual();
+            visual.ApplyStarVisual(star);
         }
     }
 

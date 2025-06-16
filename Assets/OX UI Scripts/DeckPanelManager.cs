@@ -263,7 +263,7 @@ public class DeckPanelManager : MonoBehaviour
 
             if (cData != null)
             {
-                slotImg.sprite = (cData.buttonIcon != null) ? cData.buttonIcon.sprite : emptyInventorySlotSprite;
+                slotImg.sprite = (cData.buttonIcon != null) ? cData.buttonIcon : emptyInventorySlotSprite;
                 slotBtn.onClick.RemoveAllListeners();
                 slotBtn.interactable = true;
 
@@ -352,7 +352,7 @@ public class DeckPanelManager : MonoBehaviour
         }
         else
         {
-            slotImg.sprite = (cData.buttonIcon != null) ? cData.buttonIcon.sprite : emptyDeckSlotSprite;
+            slotImg.sprite = (cData.buttonIcon != null) ? cData.buttonIcon : emptyDeckSlotSprite;
             if (lvlText != null) lvlText.text = $"Lv.{cData.level}";
         }
     }

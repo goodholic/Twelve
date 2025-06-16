@@ -10,4 +10,8 @@ public class CharacterDatabaseObject : ScriptableObject
     [Header("Character Data List (.asset)")]
     [Tooltip("각 인덱스에 대응하는 캐릭터 설정 정보들")]
     public CharacterData[] characters;
+    
+    [Header("현재 등록된 캐릭터 (호환성)")]
+    [Tooltip("CharacterDatabase와의 호환성을 위한 속성")]
+    public CharacterData[] currentRegisteredCharacters;
 }

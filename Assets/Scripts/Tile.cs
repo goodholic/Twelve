@@ -19,6 +19,10 @@ public class Tile : MonoBehaviour
     [Header("캐릭터 정보")]
     [SerializeField] private List<Character> occupyingCharacters = new List<Character>();
     
+    // 이전 버전 호환성을 위한 속성들
+    public bool isOccupied => occupyingCharacters.Count > 0;
+    public Character occupyingCharacter => occupyingCharacters.Count > 0 ? occupyingCharacters[0] : null;
+    
     [Header("라우트 정보")]
     public RouteType belongingRoute = RouteType.Center;
 
@@ -123,6 +127,16 @@ public class Tile : MonoBehaviour
     {
         isBlocked = blocked;
         UpdateTileVisual();
+    }
+    
+    public void SetPlacable()
+    {
+        SetTileType(TileType.Placeable);
+    }
+    
+    public void SetPlacable2()
+    {
+        SetTileType(TileType.Placeable2);
     }
 
     // ================================
@@ -249,17 +263,8 @@ public class Tile : MonoBehaviour
     }
 
     // ================================
-    // 타일 상태 설정 메서드
+    // 타일 상태 설정 메서드 (이미 위에 정의됨)
     // ================================
-    public void SetPlacable()
-    {
-        SetTileType(TileType.Placeable);
-    }
-    
-    public void SetPlacable2()
-    {
-        SetTileType(TileType.Placeable2);
-    }
 
     // ================================
     // 시각적 업데이트

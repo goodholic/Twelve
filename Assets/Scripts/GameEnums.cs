@@ -15,6 +15,7 @@ public interface IDamageable
 /// <summary>
 /// 라우트 타입 - 3라인 시스템 (게임 기획서 참조)
 /// </summary>
+[System.Serializable]
 public enum RouteType
 {
     Left = 0,    // 왼쪽 라인
@@ -23,18 +24,9 @@ public enum RouteType
 }
 
 /// <summary>
-/// 공격 범위 타입
-/// </summary>
-public enum RangeType
-{
-    Melee,      // 근거리
-    Ranged,     // 원거리
-    LongRange   // 장거리
-}
-
-/// <summary>
 /// 인종 타입 - 캐릭터/몬스터 인종 구분
 /// </summary>
+[System.Serializable]
 public enum RaceType
 {
     Human,      // 인간족
@@ -42,29 +34,4 @@ public enum RaceType
     Elf,        // 엘프족
     Undead,     // 언데드족
     Etc         // 기타
-}
-
-using UnityEngine;
-
-/// <summary>
-/// 라인/경로 타입 정의
-/// 게임 기획서: 3라인 시스템 (왼쪽/중앙/오른쪽)
-/// </summary>
-[System.Serializable]
-public enum RouteType
-{
-    Left,    // 왼쪽 라인
-    Center,  // 중앙 라인
-    Right    // 오른쪽 라인
-}
-
-/// <summary>
-/// 종족 타입 정의
-/// </summary>
-[System.Serializable]
-public enum RaceType
-{
-    Human,
-    Orc,
-    Elf,
 }

@@ -65,6 +65,14 @@ public class CharacterStats : MonoBehaviour
     }
     
     /// <summary>
+    /// 공격 속도 가져오기
+    /// </summary>
+    public float GetAttackSpeed()
+    {
+        return character.attackSpeed;
+    }
+    
+    /// <summary>
     /// 데미지 받기
     /// </summary>
     public void TakeDamage(float damage)

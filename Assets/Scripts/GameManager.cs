@@ -68,6 +68,14 @@ public class GameManager : MonoBehaviour
     
     [Header("게임 상태")]
     public bool isGameEnded = false;
+    public bool isGameStarted = false;
+    public bool isGamePaused = false;
+    public bool isGameOver = false;
+    public bool isVictory = false;  // 승리 상태 추가
+    
+    [Header("게임 오버")]
+    public GameObject gameOverUI;
+    public GameObject victoryUI;
     
     private void Awake()
     {
@@ -259,5 +267,30 @@ public class GameManager : MonoBehaviour
     public void ForceDefeat()
     {
         EndGame(false, "디버그: 강제 패배");
+    }
+
+    /// <summary>
+    /// 게임 오버 설정
+    /// </summary>
+    public void SetGameOver(bool victory = false)
+    {
+        isGameOver = true;
+        isVictory = victory;
+        
+        if (victory)
+        {
+            Debug.Log("[GameManager] 게임 승리!");
+            if (victoryUI != null)
+                victoryUI.SetActive(true);
+        }
+        else
+        {
+            Debug.Log("[GameManager] 게임 오버!");
+            if (gameOverUI != null)
+                gameOverUI.SetActive(true);
+        }
+        
+        // 게임 일시정지
+        Time.timeScale = 0f;
     }
 }

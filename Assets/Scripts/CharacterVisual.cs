@@ -250,4 +250,32 @@ public class CharacterVisual : MonoBehaviour
                 break;
         }
     }
+    
+    /// <summary>
+    /// 별 등급에 따른 시각적 효과 적용
+    /// </summary>
+    public void ApplyStarVisual(CharacterStar star)
+    {
+        // 별 등급에 따른 시각적 효과
+        switch (star)
+        {
+            case CharacterStar.OneStar:
+                // 1성 효과 (기본)
+                break;
+            case CharacterStar.TwoStar:
+                // 2성 효과 (약간의 글로우)
+                if (spriteRenderer != null)
+                {
+                    spriteRenderer.color = new Color(1f, 1f, 1f, 1f);
+                }
+                break;
+            case CharacterStar.ThreeStar:
+                // 3성 효과 (강한 글로우)
+                if (spriteRenderer != null)
+                {
+                    spriteRenderer.color = new Color(1.2f, 1.2f, 1f, 1f);
+                }
+                break;
+        }
+    }
 }

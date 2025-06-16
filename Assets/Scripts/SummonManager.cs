@@ -32,7 +32,7 @@ public class SummonManager : MonoBehaviour
     [Header("소환 효과")]
     public GameObject summonEffectPrefab;
     
-    private CharacterDatabase characterDatabase;
+    private CharacterDatabaseObject characterDatabase;
     private PlacementManager placementManager;
     private TileManager tileManager;
 
@@ -51,7 +51,7 @@ public class SummonManager : MonoBehaviour
         var coreData = CoreDataManager.Instance;
         if (coreData != null)
         {
-            characterDatabase = coreData.characterDatabase;
+            characterDatabase = coreData.allyDatabase;
         }
         
         placementManager = PlacementManager.Instance;
@@ -480,15 +480,15 @@ public class SummonManager : MonoBehaviour
         var coreData = CoreDataManager.Instance;
         if (coreData == null) return -1;
         
-        if (coreData.enemyDatabase == null || coreData.enemyDatabase.characters == null)
+        if (coreData.enemyDatabase == null || coreData.enemyDatabase.currentRegisteredCharacters == null)
         {
             Debug.LogWarning("[SummonManager] enemyDatabase가 null이거나 비어있습니다.");
             return -1;
         }
 
-        for (int i = 0; i < coreData.enemyDatabase.characters.Length; i++)
+        for (int i = 0; i < coreData.enemyDatabase.currentRegisteredCharacters.Length; i++)
         {
-            CharacterData data = coreData.enemyDatabase.characters[i];
+            CharacterData data = coreData.enemyDatabase.currentRegisteredCharacters[i];
             if (data != null && data.characterName == character.characterName)
             {
                 return i;

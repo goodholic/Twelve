@@ -237,7 +237,7 @@ public class CharacterSelectUI : MonoBehaviour
                 if (sb.iconImage != null && charData.buttonIcon != null)
                 {
                     sb.iconImage.gameObject.SetActive(true);
-                    sb.iconImage.sprite = charData.buttonIcon.sprite;
+                    sb.iconImage.sprite = charData.buttonIcon;
                 }
 
                 // 코스트 표시
@@ -291,7 +291,7 @@ public class CharacterSelectUI : MonoBehaviour
             if (nextUnitImage != null && nextData.buttonIcon != null)
             {
                 nextUnitImage.gameObject.SetActive(true);
-                nextUnitImage.sprite = nextData.buttonIcon.sprite;
+                nextUnitImage.sprite = nextData.buttonIcon;
             }
             if (nextUnitCost != null)
             {

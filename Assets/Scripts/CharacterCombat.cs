@@ -187,14 +187,14 @@ public class CharacterCombat : MonoBehaviour
         // 타겟 타입에 따라 우선순위 처리
         switch (character.attackTargetType)
         {
-            case AttackTargetType.CharacterOnly:
+            case AttackTargetType.Character:
                 var charResult = FindCharacterTargetInRange();
                 target = charResult.Item1;
                 targetGameObject = charResult.Item2;
                 targetName = charResult.Item3;
                 break;
                 
-            case AttackTargetType.MonsterOnly:
+            case AttackTargetType.Monster:
                 var monResult = FindMonsterTargetInRange();
                 target = monResult.Item1;
                 targetGameObject = monResult.Item2;
@@ -308,7 +308,10 @@ public class CharacterCombat : MonoBehaviour
         {
             // 총알 생성
             CreateBullet(target, targetGameObject, targetName);
+            return true;
         }
+        
+        return false;
     }
     
     /// <summary>

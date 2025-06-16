@@ -156,7 +156,7 @@ public class UpgradePanelManager : MonoBehaviour
             // 캐릭터 있음
             if (slotImg && cData.buttonIcon != null)
             {
-                slotImg.sprite = cData.buttonIcon.sprite;
+                slotImg.sprite = cData.buttonIcon;
             }
             if (lvlText != null)
             {

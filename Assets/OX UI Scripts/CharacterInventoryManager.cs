@@ -474,7 +474,7 @@ public class CharacterInventoryManager : MonoBehaviour
             {
                 name = c.characterName,
                 level = c.level,
-                currentExp = c.currentExp,
+                currentExp = (int)c.currentExp,
                 isInDeck = false
             };
             saveDataList.Add(sd);
@@ -487,7 +487,7 @@ public class CharacterInventoryManager : MonoBehaviour
             {
                 name = c.characterName,
                 level = c.level,
-                currentExp = c.currentExp,
+                currentExp = (int)c.currentExp,
                 isInDeck = true
             };
             saveDataList.Add(sd);
@@ -559,7 +559,7 @@ public class CharacterInventoryManager : MonoBehaviour
 
                 var loadedChar = CreateNewCharacter(template);
                 loadedChar.level = sd.level;
-                loadedChar.currentExp = sd.currentExp;
+                loadedChar.currentExp = (float)sd.currentExp;
 
                 if (sd.isInDeck)
                 {

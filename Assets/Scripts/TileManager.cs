@@ -30,8 +30,9 @@ public class TileManager : MonoBehaviour
     private List<Tile> centerRouteTiles = new List<Tile>();
     private List<Tile> rightRouteTiles = new List<Tile>();
     
-    private List<Tile> playerSummonableTiles = new List<Tile>();
-    private List<Tile> aiSummonableTiles = new List<Tile>();
+    [Header("소환 가능한 타일들")]
+    public List<Tile> playerSummonableTiles = new List<Tile>();
+    public List<Tile> aiSummonableTiles = new List<Tile>();
     
     private void Awake()
     {
@@ -422,5 +423,28 @@ public class TileManager : MonoBehaviour
         }
         
         return null;
+    }
+
+    /// <summary>
+    /// 타일에서 자식 오브젝트 제거
+    /// </summary>
+    public void RemovePlaceTileChild(Tile tile)
+    {
+        if (tile != null && tile.transform.childCount > 0)
+        {
+            // 타일의 자식 오브젝트들을 제거
+            for (int i = tile.transform.childCount - 1; i >= 0; i--)
+            {
+                Transform child = tile.transform.GetChild(i);
+                if (child != null)
+                {
+                    DestroyImmediate(child.gameObject);
+                }
+            }
+            
+            // 타일 상태 초기화 (isOccupied와 occupyingCharacter는 읽기 전용이므로 제거)
+            // 타일의 캐릭터 리스트를 정리하여 상태를 업데이트
+            tile.RemoveAllOccupyingCharacters();
+        }
     }
 }

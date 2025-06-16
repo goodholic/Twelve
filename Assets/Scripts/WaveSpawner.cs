@@ -90,6 +90,12 @@ public class WaveSpawner : MonoBehaviour
     [Tooltip("예: index=0 => 1챕터 몬스터, index=1 => 2챕터 몬스터, ..., index=100 => 101챕터 몬스터")]
     public GameObject[] chapterMonsters = new GameObject[101];
 
+    [Header("웨이브 스폰 설정")]
+    [Tooltip("최초 웨이브 지연 시간")]
+    public float firstWaveDelay = 10f;
+    [Tooltip("자동 웨이브 시작 여부")]
+    public bool autoStartWaves = true;
+
     private void Start()
     {
         if (itemPanel != null)
@@ -466,5 +472,37 @@ public class WaveSpawner : MonoBehaviour
         {
             Debug.LogWarning("[WaveSpawner] 보상 캐릭터를 가져올 수 없습니다!");
         }
+    }
+
+    /// <summary>
+    /// 웨이브 스폰너 초기화
+    /// </summary>
+    public void Initialize()
+    {
+        Debug.Log("[WaveSpawner] Initialize() 호출");
+        
+        // 중간성/최종성 체력 설정
+        SetupCastleHealth();
+        
+        // 자동 웨이브 시작이 활성화되어 있으면 시작
+        if (autoStartWaves)
+        {
+            StartCoroutine(DelayFirstWaveRoutine(firstWaveDelay));
+        }
+    }
+    
+    /// <summary>
+    /// 웨이브 스폰 중지
+    /// </summary>
+    public void StopSpawning()
+    {
+        Debug.Log("[WaveSpawner] StopSpawning() 호출");
+        
+        // 모든 코루틴 중지
+        StopAllCoroutines();
+        
+        // 스폰 상태 초기화
+        isSpawning = false;
+        autoStarted = false;
     }
 }

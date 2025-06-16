@@ -162,7 +162,7 @@ public class BookPanelManager : MonoBehaviour
         CharacterData cData = slot.charData;
         if (slot.iconImage)
         {
-            Sprite iconSpr = (cData.buttonIcon != null) ? cData.buttonIcon.sprite : null;
+            Sprite iconSpr = (cData.buttonIcon != null) ? cData.buttonIcon : null;
             slot.iconImage.sprite = iconSpr;
             slot.iconImage.color  = isOwned ? ownedColor : notOwnedColor;
         }
@@ -235,7 +235,7 @@ public class BookPanelManager : MonoBehaviour
             CharacterData cData = dbChars[i];
             bool isOwned = CheckIfOwned(ownedList, cData.characterName);
 
-            Sprite portraitSpr = (cData.buttonIcon != null) ? cData.buttonIcon.sprite : null;
+            Sprite portraitSpr = (cData.buttonIcon != null) ? cData.buttonIcon : null;
             img.sprite = portraitSpr;
             img.color  = isOwned ? ownedColor : notOwnedColor;
         }

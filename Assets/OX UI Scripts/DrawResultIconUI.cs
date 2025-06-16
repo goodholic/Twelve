@@ -27,11 +27,10 @@ public class DrawResultIconUI : MonoBehaviour
     {
         if (character == null) return;
         
-        // 아이콘 설정
-        if (characterIcon != null && character.buttonIcon != null)
+        // 캐릭터 아이콘 설정
+        if (character != null && character.buttonIcon != null)
         {
-            characterIcon.sprite = character.buttonIcon.sprite;
-            characterIcon.color = Color.white;
+            characterIcon.sprite = character.buttonIcon;
         }
         
         // 이름 설정
