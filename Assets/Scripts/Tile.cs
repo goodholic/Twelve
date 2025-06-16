@@ -57,6 +57,7 @@ public class Tile : MonoBehaviour
         Placeable,
         Placeable2,
         PlaceTile,
+        Placed,
         Placed2,
         Blocked
     }

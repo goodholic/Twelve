@@ -467,8 +467,9 @@ public class CharacterSelectUI : MonoBehaviour
             // 랜덤 타일 선택
             Tile randomTile = emptyTiles[rng.Next(emptyTiles.Count)];
             
-            // 배치 시도
-            bool success = placementManager.SummonCharacterOnTile(charIndex, randomTile);
+            // 배치 시도 - CharacterData를 전달
+            CharacterData charData = deckFromLobby[charIndex];
+            bool success = (placementManager.SummonCharacterOnTile(charData, randomTile) != null);
             if (success)
             {
                 placedCount++;

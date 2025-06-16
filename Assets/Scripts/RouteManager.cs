@@ -350,31 +350,11 @@ public class RouteManager : MonoBehaviour
                     Debug.LogWarning($"[RouteManager] {route} 루트에 null 웨이포인트 발견!");
                 }
             }
-            
-            if (validWaypoints.Count > 0)
-            {
-                // 웨이포인트 간 거리 검사
-                for (int i = 0; i < validWaypoints.Count - 1; i++)
-                {
-                    float distance = Vector2.Distance(validWaypoints[i].position, validWaypoints[i + 1].position);
-                    if (distance > 15f)
-                    {
-                        Debug.LogWarning($"[RouteManager] {route} 루트 웨이포인트[{i}]→[{i+1}] 거리가 너무 멉니다: {distance}");
-                    }
-                }
-                
-                Debug.Log($"[RouteManager] {route} 루트 웨이포인트 검증 완료: {validWaypoints.Count}개 (원본: {waypoints.Length}개)");
-                return validWaypoints.ToArray();
-            }
-            else
-            {
-                Debug.LogError($"[RouteManager] {route} 루트에 유효한 웨이포인트가 없습니다!");
-                return GetFallbackWaypoints(route, 1); // 지역1용 fallback
-            }
+            return validWaypoints.ToArray();
         }
         
-        Debug.LogWarning($"[RouteManager] {route} 루트의 웨이포인트 배열이 null이거나 비어있습니다!");
-        return GetFallbackWaypoints(route, 1); // 지역1용 fallback
+        Debug.LogWarning($"[RouteManager] {route} 루트의 웨이포인트가 없습니다!");
+        return new Transform[0];
     }
 
     public Transform[] GetWaypointsForRoute(WaveSpawnerRegion2 spawner, RouteType route)
@@ -406,105 +386,11 @@ public class RouteManager : MonoBehaviour
                 {
                     validWaypoints.Add(wp);
                 }
-                else
-                {
-                    Debug.LogWarning($"[RouteManager] 지역2 {route} 루트에 null 웨이포인트 발견!");
-                }
             }
-            
-            if (validWaypoints.Count > 0)
-            {
-                Debug.Log($"[RouteManager] 지역2 {route} 루트 웨이포인트 검증 완료: {validWaypoints.Count}개");
-                return validWaypoints.ToArray();
-            }
-            else
-            {
-                Debug.LogError($"[RouteManager] 지역2 {route} 루트에 유효한 웨이포인트가 없습니다!");
-                return GetFallbackWaypoints(route, 2); // 지역2용 fallback
-            }
+            return validWaypoints.ToArray();
         }
         
-        Debug.LogWarning($"[RouteManager] 지역2 {route} 루트의 웨이포인트 배열이 null이거나 비어있습니다!");
-        return GetFallbackWaypoints(route, 2); // 지역2용 fallback
-    }
-
-    /// <summary>
-    /// 웨이포인트 상실 시 중간성/최종성으로 가는 경로 반환
-    /// </summary>
-    private Transform[] GetFallbackWaypoints(RouteType route, int areaIndex)
-    {
-        List<Transform> fallbackWaypoints = new List<Transform>();
-        
-        if (areaIndex == 1)
-        {
-            // 게임 기획서: 웨이포인트 상실 시 중간성 목표
-            switch (route)
-            {
-                case RouteType.Left:
-                    if (region1LeftMiddleCastle != null)
-                    {
-                        fallbackWaypoints.Add(region1LeftMiddleCastle.transform);
-                        Debug.Log("[RouteManager] 지역1 왼쪽 루트 웨이포인트 상실 → 왼쪽 중간성(체력 500) 목표");
-                    }
-                    break;
-                case RouteType.Right:
-                    if (region1RightMiddleCastle != null)
-                    {
-                        fallbackWaypoints.Add(region1RightMiddleCastle.transform);
-                        Debug.Log("[RouteManager] 지역1 오른쪽 루트 웨이포인트 상실 → 오른쪽 중간성(체력 500) 목표");
-                    }
-                    break;
-                case RouteType.Center:
-                    if (region1CenterMiddleCastle != null)
-                    {
-                        fallbackWaypoints.Add(region1CenterMiddleCastle.transform);
-                        Debug.Log("[RouteManager] 지역1 중앙 루트 웨이포인트 상실 → 중앙 중간성(체력 500) 목표");
-                    }
-                    break;
-            }
-            
-            // 게임 기획서: 중간성이 파괴되면 최종성으로
-            if (fallbackWaypoints.Count == 0 && region1FinalCastle != null)
-            {
-                fallbackWaypoints.Add(region1FinalCastle.transform);
-                Debug.Log("[RouteManager] 지역1 중간성 파괴 → 최종성(체력 1000) 목표");
-            }
-        }
-        else if (areaIndex == 2)
-        {
-            switch (route)
-            {
-                case RouteType.Left:
-                    if (region2LeftMiddleCastle != null)
-                    {
-                        fallbackWaypoints.Add(region2LeftMiddleCastle.transform);
-                        Debug.Log("[RouteManager] 지역2 왼쪽 루트 웨이포인트 상실 → 왼쪽 중간성(체력 500) 목표");
-                    }
-                    break;
-                case RouteType.Right:
-                    if (region2RightMiddleCastle != null)
-                    {
-                        fallbackWaypoints.Add(region2RightMiddleCastle.transform);
-                        Debug.Log("[RouteManager] 지역2 오른쪽 루트 웨이포인트 상실 → 오른쪽 중간성(체력 500) 목표");
-                    }
-                    break;
-                case RouteType.Center:
-                    if (region2CenterMiddleCastle != null)
-                    {
-                        fallbackWaypoints.Add(region2CenterMiddleCastle.transform);
-                        Debug.Log("[RouteManager] 지역2 중앙 루트 웨이포인트 상실 → 중앙 중간성(체력 500) 목표");
-                    }
-                    break;
-            }
-            
-            if (fallbackWaypoints.Count == 0 && region2FinalCastle != null)
-            {
-                fallbackWaypoints.Add(region2FinalCastle.transform);
-                Debug.Log("[RouteManager] 지역2 중간성 파괴 → 최종성(체력 1000) 목표");
-            }
-        }
-        
-        return fallbackWaypoints.ToArray();
+        return new Transform[0];
     }
 
     public Vector3 GetSpawnPositionForRoute(WaveSpawner spawner, RouteType route)

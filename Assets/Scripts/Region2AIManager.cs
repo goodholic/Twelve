@@ -574,7 +574,8 @@ public class Region2AIManager : MonoBehaviour
                 }
             }
             
-            bool success = PlacementManager.Instance.SummonCharacterOnTile(foundIndex, tile, true);
+            Character spawnedChar = PlacementManager.Instance.SummonCharacterOnTile(chosen, tile, true);
+            bool success = (spawnedChar != null);
             
             if (success)
             {

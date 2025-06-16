@@ -53,6 +53,9 @@ public class Character : MonoBehaviour, IDamageable
     public CharacterStar star = CharacterStar.OneStar;
     public int level = 1;
     
+    [Header("캐릭터 데이터")]
+    public CharacterData characterData;
+    
     // ================================
     // 전투 스탯
     // ================================
