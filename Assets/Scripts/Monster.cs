@@ -125,8 +125,8 @@ public class Monster : MonoBehaviour, IDamageable
         // 상태 효과 업데이트
         UpdateStatusEffects();
         
-        // 성 공격 체크
-        if (!isDead && !isStunned && !isAttacking)
+        // 성 공격 체크 (목적지에 도달하지 않은 경우에만)
+        if (!isDead && !isStunned && !isAttacking && !hasReachedEnd)
         {
             FindAndAttackCastle();
         }

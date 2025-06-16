@@ -266,7 +266,6 @@ GameObject:
   - component: {fileID: 130562667688176808}
   - component: {fileID: 5490369301062840869}
   - component: {fileID: 4020408723978149144}
-  - component: {fileID: 4980099198440753793}
   - component: {fileID: -168794444562179896}
   - component: {fileID: -7019266211563208807}
   - component: {fileID: -6022603282885693891}
@@ -363,29 +362,70 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 410f83dab09a00e4ab011246ce25bedf, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  star: 1
   characterName: 
+  characterIndex: -1
   race: 0
-  attackTargetType: 0
-  movementType: 0
+  star: 1
+  level: 1
+  characterData:
+    characterName: Unknown
+    characterIndex: -1
+    race: 0
+    star: 1
+    level: 1
+    attackPower: 10
+    attackRange: 3
+    range: 3
+    attackSpeed: 1
+    health: 100
+    maxHealth: 100
+    maxHP: 100
+    attackTargetType: 2
+    attackShapeType: 0
+    rangeType: 0
+    tribe: 0
+    isAreaAttack: 0
+    areaAttackRadius: 1.5
+    isBuffSupport: 0
+    cost: 10
+    moveSpeed: 1
+    currentExp: 0
+    expToNextLevel: 100
+    isFreeSlotOnly: 0
+    characterSprite: {fileID: 0}
+    frontSprite: {fileID: 0}
+    backSprite: {fileID: 0}
+    spawnPrefab: {fileID: 0}
+    motionPrefab: {fileID: 0}
+    buttonIcon: {fileID: 0}
+    initialStar: 1
   attackPower: 12
-  attackSpeed: 1.3
   attackRange: 1.1
+  range: 3
+  attackSpeed: 1.3
   currentHP: 200
-  moveSpeed: 1
-  currentTile: {fileID: 0}
-  currentTarget: {fileID: 0}
-  currentCharTarget: {fileID: 0}
-  currentMiddleCastleTarget: {fileID: 0}
-  currentFinalCastleTarget: {fileID: 0}
+  health: 100
+  maxHP: 100
+  maxHealth: 100
+  attackTargetType: 0
+  attackShapeType: 0
+  tribe: 0
   isAreaAttack: 0
   areaAttackRadius: 1
-  isHero: 0
   isDraggable: 1
-  areaIndex: 1
+  cost: 10
+  moveSpeed: 1
+  attackEffectPrefab: {fileID: 0}
+  characterSprite: {fileID: 0}
+  frontSprite: {fileID: 0}
+  backSprite: {fileID: 0}
+  currentTile: {fileID: 0}
   selectedRoute: 0
-  rangeType: 0
+  currentCharTarget: {fileID: 0}
+  areaIndex: 1
+  isHero: 0
   isCharAttack: 0
+  isTower: 0
   pathWaypoints:
   - {fileID: 7533954594709166238, guid: 2c7af040127463842bb538e73144355c, type: 3}
   - {fileID: 375125270241151848, guid: 8210aa4d54b99484ab283b8e5a075126, type: 3}
@@ -395,29 +435,8 @@ MonoBehaviour:
   - {fileID: 8360226188534919249, guid: 975390a5ef2c9ba45a77f5afca985383, type: 3}
   currentWaypointIndex: -1
   maxWaypointIndex: 6
-  bulletPanel: {fileID: 0}
-  opponentBulletPanel: {fileID: 8293515601833126614, guid: 442d773c6cac9b34e88e19f932f717e8, type: 3}
-  vfxPanel: {fileID: 0}
   hpBarCanvas: {fileID: 4312021234716607739}
---- !u!114 &4980099198440753793
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8786608230712049741}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5ef25c6c32a9edc4498664c9cea94a44, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  parentPanel: {fileID: 3504338384272343577, guid: 9a44fedc711c03541adc233db7cd34dd, type: 3}
-  dragScale: 1.1
-  dragYOffset: 30
-  validDropColor: {r: 0.5, g: 1, b: 0.5, a: 1}
-  invalidDropColor: {r: 1, g: 0.5, b: 0.5, a: 1}
-  lineChangeArrowPrefab: {fileID: 0}
-  currentLineHighlight: {r: 1, g: 1, b: 0, a: 0.5}
+  opponentBulletPanel: {fileID: 8293515601833126614, guid: 442d773c6cac9b34e88e19f932f717e8, type: 3}
 --- !u!58 &-168794444562179896
 CircleCollider2D:
   m_ObjectHideFlags: 0
@@ -542,14 +561,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 08c567e188f335f4493f6b5c95446e55, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  bulletPrefab: {fileID: 5991931865243391143, guid: a1bd1ec283839614dbba6e13f48da508, type: 3}
-  bulletSpeed: 5
-  bulletUpDirectionSprite: {fileID: 0}
-  bulletDownDirectionSprite: {fileID: 0}
-  opponentBulletPanel: {fileID: 0}
-  newAttackRangeOnClick: 4
-  attackInfoText: {fileID: 0}
-  attackInfoOffset: {x: 1, y: 0, z: 0}
+  isAttacking: 0
+  projectilePrefab: {fileID: 0}
+  firePoint: {fileID: 0}
 --- !u!114 &4286185119682038654
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -574,24 +588,31 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a912782ca88664f41867d2ab4120b9c4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  rangeIndicatorPrefab: {fileID: 0}
-  showRangeIndicator: 1
-  twoStarOutlineColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
-  twoStarOutlineWidth: 1
-  twoStarEffectPrefab: {fileID: 0}
-  threeStarOutlineColor: {r: 0, g: 1, b: 1, a: 1}
-  threeStarOutlineWidth: 1.5
-  threeStarEffectPrefab: {fileID: 0}
-  star2Prefab: {fileID: 0}
-  star3Prefab: {fileID: 0}
-  hpBarCanvas: {fileID: 0}
-  hpFillImage: {fileID: 0}
-  hpText: {fileID: 0}
-  characterUpDirectionSprite: {fileID: 0}
-  characterDownDirectionSprite: {fileID: 0}
-  characterLeftDirectionSprite: {fileID: 0}
-  characterRightDirectionSprite: {fileID: 0}
-  humanEffectPrefab: {fileID: 0}
-  orcEffectPrefab: {fileID: 0}
-  elfEffectPrefab: {fileID: 0}
-  draggableIndicatorPrefab: {fileID: 0}
+  attackAnimationDuration: 0.3
+  attackAnimationCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  attackEffect: {fileID: 0}
+  hitEffect: {fileID: 0}
+  deathEffect: {fileID: 0}
