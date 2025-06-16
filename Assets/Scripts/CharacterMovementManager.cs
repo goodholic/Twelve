@@ -2,92 +2,51 @@ using System.Collections;
 using UnityEngine;
 
 /// <summary>
-/// 캐릭터 이동 관리 컴포넌트 - CharacterMovement와 이름 충돌 방지를 위해 Manager로 명명
-/// 게임 기획서: 3라인 시스템 (왼쪽/중앙/오른쪽 웨이포인트)
+/// 캐릭터의 이동을 관리하는 컴포넌트
 /// </summary>
 public class CharacterMovementManager : MonoBehaviour
 {
-    // 싱글톤 인스턴스
-    private static CharacterMovementManager instance;
-    public static CharacterMovementManager Instance
-    {
-        get
-        {
-            if (instance == null)
-            {
-                instance = FindFirstObjectByType<CharacterMovementManager>();
-                if (instance == null)
-                {
-                    GameObject go = new GameObject("CharacterMovementManager");
-                    instance = go.AddComponent<CharacterMovementManager>();
-                }
-            }
-            return instance;
-        }
-    }
-    
+    [Header("캐릭터 참조")]
     private Character character;
-    private CharacterStats stats;
-    private CharacterVisual visual;
     
-    [Header("이동 설정")]
-    public float moveSpeed = 3f;
-    public float jumpSpeed = 5f;
+    [Header("이동 경로")]
+    private Transform[] pathWaypoints;
     
-    // 웨이포인트 관련
-    [HideInInspector] public Transform[] pathWaypoints;
-    [HideInInspector] public int currentWaypointIndex = -1;
-    [HideInInspector] public int maxWaypointIndex = -1;
+    [Header("이동 상태")]
+    public bool isMoving = false;
+    private int currentWaypointIndex = 0;
+    private int maxWaypointIndex = 0;
     
-    // 이동 상태
-    public bool isMoving { get; private set; }
-    private bool isJumpingAcross = false;
-    private bool hasJumped = false;
-    private bool isInCombat = false;
+    [Header("현재 지역")]
+    public int currentRegion = 1; // 1 또는 2
     
-    // 경로 및 지역 정보
-    private int currentRegion = 1;
-    private Transform castleTarget;
-    
-    // 코루틴 참조
+    // 코루틴
     private Coroutine moveCoroutine;
+    
+    // 전투 상태
+    private bool isInCombat = false;
     
     private void Awake()
     {
-        if (instance != null && instance != this)
+        character = GetComponent<Character>();
+        if (character == null)
         {
-            Destroy(gameObject);
-            return;
+            Debug.LogError("[CharacterMovementManager] Character 컴포넌트를 찾을 수 없습니다!");
         }
-        instance = this;
-        DontDestroyOnLoad(gameObject);
     }
     
     /// <summary>
-    /// 이동 시스템 초기화
+    /// 이동 경로 설정
     /// </summary>
-    public void Initialize(Character character, CharacterStats stats, CharacterVisual visual)
-    {
-        this.character = character;
-        this.stats = stats;
-        this.visual = visual;
-        
-        // 초기 지역 설정
-        currentRegion = character.areaIndex;
-        
-        Debug.Log($"[CharacterMovementManager] {character.characterName} 이동 시스템 초기화");
-    }
-    
-    /// <summary>
-    /// 웨이포인트 설정
-    /// </summary>
-    public void SetWaypoints(Transform[] waypoints, int startIndex = 0)
+    public void SetPath(Transform[] waypoints)
     {
         pathWaypoints = waypoints;
-        currentWaypointIndex = startIndex;
-        maxWaypointIndex = waypoints.Length - 1;
+        currentWaypointIndex = 0;
         
-        Debug.Log($"[CharacterMovementManager] 웨이포인트 설정 완료 - 총 {waypoints.Length}개");
+        if (waypoints != null && waypoints.Length > 0)
+        {
+            maxWaypointIndex = waypoints.Length - 1;
+        }
     }
     
     /// <summary>
@@ -97,7 +56,7 @@ public class CharacterMovementManager : MonoBehaviour
     {
         if (pathWaypoints == null || pathWaypoints.Length == 0)
         {
-            Debug.LogWarning($"[CharacterMovementManager] {character.characterName} 웨이포인트가 설정되지 않음");
+            Debug.LogWarning("[CharacterMovementManager] 경로가 설정되지 않았습니다!");
             return;
         }
         
@@ -126,20 +85,72 @@ public class CharacterMovementManager : MonoBehaviour
     }
     
     /// <summary>
-    /// 경로를 따라 이동하는 코루틴
+    /// 특정 라인으로 이동 경로 변경
+    /// </summary>
+    public void ChangeRoute(RouteType newRoute, Transform[] newWaypoints)
+    {
+        Debug.Log($"[CharacterMovementManager] {character.characterName} 경로 변경: {newRoute}");
+        
+        // 새로운 경로 설정
+        pathWaypoints = newWaypoints;
+        currentWaypointIndex = FindClosestWaypointIndex();
+        maxWaypointIndex = newWaypoints.Length - 1;
+        
+        // 이동 재시작
+        if (isMoving)
+        {
+            StopMoving();
+            StartMoving();
+        }
+    }
+    
+    /// <summary>
+    /// 가장 가까운 웨이포인트 인덱스 찾기
+    /// </summary>
+    private int FindClosestWaypointIndex()
+    {
+        if (pathWaypoints == null || pathWaypoints.Length == 0) return 0;
+        
+        int closestIndex = 0;
+        float closestDistance = float.MaxValue;
+        
+        for (int i = 0; i < pathWaypoints.Length; i++)
+        {
+            if (pathWaypoints[i] == null) continue;
+            
+            float distance = Vector3.Distance(transform.position, pathWaypoints[i].position);
+            if (distance < closestDistance)
+            {
+                closestDistance = distance;
+                closestIndex = i;
+            }
+        }
+        
+        return closestIndex;
+    }
+    
+    /// <summary>
+    /// 경로를 따라 이동
     /// </summary>
     private IEnumerator MoveAlongPath()
     {
-        while (isMoving && pathWaypoints != null && currentWaypointIndex <= maxWaypointIndex)
+        while (currentWaypointIndex <= maxWaypointIndex && character.currentHP > 0)
         {
             // 전투 중이 아닐 때만 이동
             if (!isInCombat)
             {
-                Transform targetWaypoint = pathWaypoints[currentWaypointIndex];
-                
-                if (targetWaypoint != null)
+                if (currentWaypointIndex < pathWaypoints.Length)
                 {
-                    // 목표 지점으로 이동
+                    Transform targetWaypoint = pathWaypoints[currentWaypointIndex];
+                    if (targetWaypoint == null)
+                    {
+                        currentWaypointIndex++;
+                        continue;
+                    }
+                    
+                    // 웨이포인트로 이동
+                    float moveSpeed = character.moveSpeed;
+                    
                     while (Vector3.Distance(transform.position, targetWaypoint.position) > 0.1f)
                     {
                         if (!isMoving || isInCombat) break;
@@ -173,46 +184,91 @@ public class CharacterMovementManager : MonoBehaviour
     }
     
     /// <summary>
-    /// 경로 끝에 도달했을 때
+    /// 경로 끝에 도달했을 때 - 성을 직접 찾아서 공격
     /// </summary>
     private void OnReachedPathEnd()
     {
-        // 성 공격 시도
-        if (currentRegion == 1)
+        // 가장 가까운 적 성 찾기
+        bool foundCastle = false;
+        float closestDistance = float.MaxValue;
+        IDamageable closestCastle = null;
+        string castleType = "";
+        int targetAreaIndex = (currentRegion == 1) ? 2 : 1; // 반대 지역
+        
+        // 중간성 찾기
+        MiddleCastle[] middleCastles = FindObjectsByType<MiddleCastle>(FindObjectsSortMode.None);
+        foreach (var castle in middleCastles)
         {
-            // Region1 캐릭터는 Region2 성 공격
-            FindAndAttackCastle(2);
+            if (castle == null || castle.IsDestroyed()) continue;
+            if (castle.areaIndex != targetAreaIndex) continue; // 적 지역의 성만 공격
+            
+            float distance = Vector3.Distance(transform.position, castle.transform.position);
+            if (distance < closestDistance)
+            {
+                closestDistance = distance;
+                closestCastle = castle;
+                castleType = "중간성";
+                foundCastle = true;
+            }
         }
-        else if (currentRegion == 2)
+        
+        // 중간성을 못 찾았거나 모두 파괴된 경우 최종성 찾기
+        if (!foundCastle)
         {
-            // Region2 캐릭터는 Region1 성 공격
-            FindAndAttackCastle(1);
+            FinalCastle[] finalCastles = FindObjectsByType<FinalCastle>(FindObjectsSortMode.None);
+            foreach (var castle in finalCastles)
+            {
+                if (castle == null || castle.IsDestroyed()) continue;
+                if (castle.areaIndex != targetAreaIndex) continue; // 적 지역의 성만 공격
+                
+                float distance = Vector3.Distance(transform.position, castle.transform.position);
+                if (distance < closestDistance)
+                {
+                    closestDistance = distance;
+                    closestCastle = castle;
+                    castleType = "최종성";
+                    foundCastle = true;
+                }
+            }
         }
+        
+        // 찾은 성 공격
+        if (foundCastle && closestCastle != null)
+        {
+            Debug.Log($"[CharacterMovementManager] {character.characterName}이(가) 지역{targetAreaIndex} {castleType}을 공격!");
+            closestCastle.TakeDamage(character.attackPower);
+            
+            // 공격 이펙트 (선택사항)
+            if (character.attackEffectPrefab != null)
+            {
+                GameObject effect = Instantiate(character.attackEffectPrefab, transform.position, Quaternion.identity);
+                Destroy(effect, 1f);
+            }
+        }
+        else
+        {
+            Debug.LogWarning($"[CharacterMovementManager] {character.characterName}이(가) 공격할 성을 찾을 수 없습니다!");
+        }
+        
+        // 캐릭터 제거
+        DestroyCharacter();
     }
     
     /// <summary>
-    /// 성 찾아서 공격
+    /// 캐릭터 제거
     /// </summary>
-    private void FindAndAttackCastle(int targetRegion)
+    private void DestroyCharacter()
     {
-        // GameManager를 통해 성 공격
-        GameManager gameManager = GameManager.Instance;
-        if (gameManager != null)
-        {
-            if (targetRegion == 2)
-            {
-                gameManager.TakeDamageToRegion2((int)character.attackPower);
-                Debug.Log($"[CharacterMovementManager] {character.characterName}이(가) Region2 성 공격!");
-            }
-            else
-            {
-                // Region1 성 공격 메서드 추가 필요
-                Debug.Log($"[CharacterMovementManager] {character.characterName}이(가) Region1 성 공격!");
-            }
-            
-            // 공격 후 캐릭터 제거
-            DestroyCharacter();
-        }
+        Debug.Log($"[CharacterMovementManager] {character.characterName} 임무 완료, 제거됨");
+        
+        // 매니저에서 제거 (CharacterManager 없음)
+        // if (CharacterManager.Instance != null)
+        // {
+        //     CharacterManager.Instance.RemoveCharacter(character);
+        // }
+        
+        // 오브젝트 제거
+        Destroy(gameObject);
     }
     
     /// <summary>
@@ -254,128 +310,48 @@ public class CharacterMovementManager : MonoBehaviour
         {
             transforms[i] = gameObjects[i] != null ? gameObjects[i].transform : null;
         }
+        
         return transforms;
     }
     
     /// <summary>
-    /// 캐릭터 제거
-    /// </summary>
-    private void DestroyCharacter()
-    {
-        if (character.currentTile != null)
-        {
-            Tile tile = character.currentTile;
-            if (PlacementManager.Instance != null && PlacementManager.Instance.gameObject.activeInHierarchy)
-            {
-                PlacementManager.Instance.ClearCharacterTileReference(character);
-                PlacementManager.Instance.OnCharacterRemovedFromTile(tile);
-            }
-            else
-            {
-                character.currentTile = null;
-            }
-        }
-        
-        character.currentTarget = null;
-        character.currentCharTarget = null;
-        pathWaypoints = null;
-        
-        StopAllCoroutines();
-        Destroy(character.gameObject);
-    }
-    
-    /// <summary>
-    /// 캐릭터 방향 스프라이트 업데이트
+    /// 캐릭터 방향에 따른 스프라이트 업데이트
     /// </summary>
     private void UpdateCharacterDirectionSprite()
     {
-        if (visual != null)
-        {
-            // CharacterMovement 컴포넌트를 찾아서 전달
-            CharacterMovement movement = character.GetComponent<CharacterMovement>();
-            if (movement != null)
-            {
-                visual.UpdateCharacterDirectionSprite(movement);
-            }
-        }
+        // 캐릭터의 이동 방향에 따라 스프라이트 플립 또는 변경
+        // 구현은 캐릭터의 시각적 요구사항에 따라 달라질 수 있음
     }
     
-    // Public 접근자들
-    public bool IsJumping() => isJumpingAcross;
-    public bool IsJumpingAcross() => isJumpingAcross;
-    public bool HasJumped() => hasJumped;
-    public bool IsInCombat() => isInCombat;
-    public Transform GetCurrentWaypoint() => (pathWaypoints != null && currentWaypointIndex >= 0 && currentWaypointIndex < pathWaypoints.Length) ? pathWaypoints[currentWaypointIndex] : null;
-    
-    public void SetJumpingAcross(bool value) => isJumpingAcross = value;
-    public void SetHasJumped(bool value) => hasJumped = value;
+    /// <summary>
+    /// 현재 웨이포인트 인덱스 가져오기
+    /// </summary>
+    public int GetCurrentWaypointIndex()
+    {
+        return currentWaypointIndex;
+    }
     
     /// <summary>
-    /// 캐릭터를 드롭했을 때 처리 (DraggableCharacter에서 호출)
+    /// 디버그용 - 경로 표시
     /// </summary>
-    public void OnDropCharacter(Character droppedCharacter, Tile targetTile)
+    private void OnDrawGizmosSelected()
     {
-        if (droppedCharacter == null || targetTile == null) return;
+        if (pathWaypoints == null || pathWaypoints.Length == 0) return;
         
-        // 이전 타일에서 캐릭터 제거
-        if (droppedCharacter.currentTile != null)
+        Gizmos.color = Color.blue;
+        
+        // 현재 위치에서 다음 웨이포인트까지 선 그리기
+        if (currentWaypointIndex < pathWaypoints.Length && pathWaypoints[currentWaypointIndex] != null)
         {
-            droppedCharacter.currentTile.RemoveOccupyingCharacter(droppedCharacter);
+            Gizmos.DrawLine(transform.position, pathWaypoints[currentWaypointIndex].position);
         }
         
-        // 새 타일에 캐릭터 배치
-        targetTile.AddOccupyingCharacter(droppedCharacter);
-        droppedCharacter.currentTile = targetTile;
-        droppedCharacter.transform.position = targetTile.transform.position;
-        
-        // 라인 변경 시 웨이포인트 재설정
-        RouteManager routeManager = RouteManager.Instance;
-        if (routeManager != null)
+        // 전체 경로 표시
+        for (int i = 0; i < pathWaypoints.Length - 1; i++)
         {
-            // WaveSpawner 찾기 (지역에 따라 다름)
-            RouteType newRoute;
-            if (droppedCharacter.areaIndex == 1)
+            if (pathWaypoints[i] != null && pathWaypoints[i + 1] != null)
             {
-                WaveSpawner spawner = FindFirstObjectByType<WaveSpawner>();
-                if (spawner != null)
-                {
-                    newRoute = routeManager.DetermineRouteFromTile(targetTile, spawner);
-                }
-                else
-                {
-                    newRoute = RouteType.Center; // 기본값
-                }
-            }
-            else
-            {
-                WaveSpawnerRegion2 spawner2 = FindFirstObjectByType<WaveSpawnerRegion2>();
-                if (spawner2 != null)
-                {
-                    newRoute = routeManager.DetermineRouteFromTile(targetTile, spawner2);
-                }
-                else
-                {
-                    newRoute = RouteType.Center; // 기본값
-                }
-            }
-            
-            // 캐릭터의 CharacterMovement 컴포넌트 찾기
-            CharacterMovement movement = droppedCharacter.GetComponent<CharacterMovement>();
-            if (movement != null)
-            {
-                // 새로운 라우트의 웨이포인트 설정
-                WaypointManager waypointManager = WaypointManager.Instance;
-                if (waypointManager != null)
-                {
-                    Transform[] newWaypoints = waypointManager.GetWaypointsForRoute(droppedCharacter.areaIndex, newRoute);
-                    if (newWaypoints != null && newWaypoints.Length > 0)
-                    {
-                        movement.SetWaypoints(newWaypoints);
-                        movement.StartMoving();
-                        
-                        Debug.Log($"[CharacterMovementManager] {droppedCharacter.characterName}의 라우트를 {newRoute}로 변경");
-                    }
-                }
+                Gizmos.DrawLine(pathWaypoints[i].position, pathWaypoints[i + 1].position);
             }
         }
     }

@@ -278,13 +278,23 @@ public class DraggableCharacter : MonoBehaviour
 
         if (currentHoveredTile != null && CanPlaceOnTile(currentHoveredTile))
         {
-            // CharacterMovementManager를 통해 이동 처리
-            if (CharacterMovementManager.Instance != null)
+            // 캐릭터 이동 처리
+            CharacterMovementManager movementManager = character.GetComponent<CharacterMovementManager>();
+            if (movementManager != null)
             {
-                CharacterMovementManager.Instance.OnDropCharacter(character, currentHoveredTile);
+                // OnDropCharacter 메서드가 없으므로 직접 타일 이동 처리
+                character.SetPositionToTile(currentHoveredTile);
                 dropSuccess = true;
                 
                 Debug.Log($"[DraggableCharacter] {character.characterName}을(를) {currentHoveredTile.name}으로 이동 성공");
+            }
+            else
+            {
+                // CharacterMovementManager가 없는 경우 직접 이동
+                character.SetPositionToTile(currentHoveredTile);
+                dropSuccess = true;
+                
+                Debug.Log($"[DraggableCharacter] {character.characterName}을(를) {currentHoveredTile.name}으로 직접 이동");
             }
         }
 

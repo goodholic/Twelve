@@ -35,18 +35,7 @@ public enum RangeType
     LongRange   // 장거리 (추가)
 }
 
-/// <summary>
-/// 공격 타겟 타입
-/// </summary>
-[System.Serializable]
-public enum AttackTargetType
-{
-    Character,      // 캐릭터만 (CharacterOnly와 호환)
-    Monster,        // 몬스터만 (MonsterOnly와 호환)
-    Both,           // 캐릭터와 몬스터 둘 다
-    CastleOnly,     // 성만
-    All             // 모든 타겟
-}
+
 
 /// <summary>
 /// 캐릭터 메인 클래스 - 월드 좌표 기반
@@ -77,6 +66,18 @@ public class Character : MonoBehaviour, IDamageable
     public bool isAreaAttack = false;
     public float areaAttackRadius = 1.5f;
     public bool isDraggable = true;
+    
+    // ================================
+    // 이동 스탯
+    // ================================
+    [Header("이동 스탯")]
+    public float moveSpeed = 3f;
+    
+    // ================================
+    // 이펙트
+    // ================================
+    [Header("이펙트")]
+    public GameObject attackEffectPrefab;
     
     // ================================
     // 스프라이트

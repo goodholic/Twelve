@@ -2,9 +2,10 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using System.Collections;
+using System.Collections.Generic;
 
 /// <summary>
-/// 최종성 시스템 - 각 지역의 최종 방어선
+/// 최종성 시스템 - 모든 중간성이 파괴된 후 최후의 방어선
 /// </summary>
 public class FinalCastle : MonoBehaviour, IDamageable
 {
@@ -18,22 +19,27 @@ public class FinalCastle : MonoBehaviour, IDamageable
     
     [Header("공격 설정")]
     [Tooltip("공격력")]
-    public float attackPower = 30f;
+    public float attackPower = 50f;
     [Tooltip("공격 사거리")]
-    public float attackRange = 6f;
+    public float attackRange = 8f;
     [Tooltip("공격 쿨다운")]
-    public float attackCooldown = 1.2f;
+    public float attackCooldown = 0.8f;
     [Tooltip("공격 타입")]
     public AttackTargetType attackTargetType = AttackTargetType.All;
-    [Tooltip("범위 공격 여부")]
-    public bool isAreaAttack = false;
+    
+    [Header("특수 능력 - 범위 공격")]
+    [Tooltip("범위 공격 활성화")]
+    public bool useAreaAttack = true;
     [Tooltip("범위 공격 반경")]
-    public float areaAttackRadius = 2f;
+    public float areaAttackRadius = 3f;
+    [Tooltip("범위 공격 쿨다운")]
+    public float areaAttackCooldown = 5f;
+    private float lastAreaAttackTime = 0f;
     
     [Header("총알 설정")]
     public GameObject bulletPrefab;
     public float bulletSpeed = 10f;
-    public Transform[] firePoints; // 다중 발사 위치
+    public Transform firePoint;
     
     [Header("UI 요소")]
     [SerializeField] private Canvas hpBarCanvas;
@@ -43,13 +49,14 @@ public class FinalCastle : MonoBehaviour, IDamageable
     
     [Header("파괴 시 이펙트")]
     [SerializeField] private GameObject destroyEffectPrefab;
+    [SerializeField] private GameObject areaAttackEffectPrefab;
     
     private bool isDestroyed = false;
     private float lastAttackTime = 0f;
     private IDamageable currentTarget;
     
-    // 최종성 파괴 이벤트 (게임 종료)
-    public System.Action<int> OnFinalCastleDestroyed;
+    // 최종성 파괴 이벤트
+    public System.Action<int> OnFinalCastleDestroyed; // areaIndex 전달
     
     // 코루틴
     private Coroutine attackCoroutine;
@@ -64,27 +71,35 @@ public class FinalCastle : MonoBehaviour, IDamageable
         StartAttacking();
         
         // 총알 발사 위치가 없으면 자동 생성
-        if (firePoints == null || firePoints.Length == 0)
+        if (firePoint == null)
         {
-            firePoints = new Transform[1];
             GameObject fp = new GameObject("FirePoint");
             fp.transform.SetParent(transform);
-            fp.transform.localPosition = new Vector3(0, 1f, 0);
-            firePoints[0] = fp.transform;
+            fp.transform.localPosition = new Vector3(0, 1.5f, 0);
+            firePoint = fp.transform;
         }
         
         // 기본 총알 프리팹 설정
         if (bulletPrefab == null)
         {
             Debug.LogWarning($"[FinalCastle] {gameObject.name}의 bulletPrefab이 설정되지 않았습니다!");
-            // CoreDataManager에서 기본 총알 프리팹 가져오기
-            if (CoreDataManager.Instance != null && CoreDataManager.Instance.defaultBulletPrefab != null)
-            {
-                bulletPrefab = CoreDataManager.Instance.defaultBulletPrefab;
-            }
         }
     }
     
+    private void Update()
+    {
+        if (isDestroyed) return;
+        
+        // 범위 공격 체크
+        if (useAreaAttack && Time.time - lastAreaAttackTime >= areaAttackCooldown)
+        {
+            PerformAreaAttack();
+        }
+    }
+    
+    /// <summary>
+    /// 성 이름 업데이트
+    /// </summary>
     private void UpdateCastleName()
     {
         if (castleNameText != null)
@@ -98,7 +113,7 @@ public class FinalCastle : MonoBehaviour, IDamageable
     /// </summary>
     private void StartAttacking()
     {
-        if (attackCoroutine == null && !isDestroyed)
+        if (attackCoroutine == null)
         {
             attackCoroutine = StartCoroutine(AttackRoutine());
         }
@@ -111,86 +126,68 @@ public class FinalCastle : MonoBehaviour, IDamageable
     {
         while (!isDestroyed)
         {
-            // 타겟 찾기
-            FindAndAttackTarget();
-            
-            // 쿨다운 대기
             yield return new WaitForSeconds(attackCooldown);
+            
+            if (!isDestroyed)
+            {
+                FindAndAttackTarget();
+            }
         }
     }
     
     /// <summary>
-    /// 타겟 찾기 및 공격
+    /// 타겟 찾아서 공격
     /// </summary>
     private void FindAndAttackTarget()
     {
-        if (isDestroyed) return;
+        if (Time.time - lastAttackTime < attackCooldown) return;
         
-        if (isAreaAttack)
+        IDamageable bestTarget = null;
+        GameObject targetObject = null;
+        float closestDistance = float.MaxValue;
+        
+        // 몬스터 찾기
+        if (attackTargetType == AttackTargetType.Monster || attackTargetType == AttackTargetType.All)
         {
-            // 범위 공격
-            PerformAreaAttack();
+            Monster[] monsters = FindObjectsByType<Monster>(FindObjectsSortMode.None);
+            foreach (var monster in monsters)
+            {
+                if (monster == null || !monster.IsAlive()) continue;
+                if (monster.areaIndex == areaIndex) continue; // 같은 지역 몬스터는 공격하지 않음
+                
+                float distance = Vector3.Distance(transform.position, monster.transform.position);
+                if (distance <= attackRange && distance < closestDistance)
+                {
+                    closestDistance = distance;
+                    bestTarget = monster;
+                    targetObject = monster.gameObject;
+                }
+            }
         }
-        else
+        
+        // 캐릭터 찾기
+        if (attackTargetType == AttackTargetType.Character || attackTargetType == AttackTargetType.All)
         {
-            // 단일 타겟 공격
-            IDamageable bestTarget = null;
-            GameObject targetObject = null;
-            float closestDistance = float.MaxValue;
-            
-            // attackTargetType에 따라 타겟 찾기
-            switch (attackTargetType)
+            Character[] characters = FindObjectsByType<Character>(FindObjectsSortMode.None);
+            foreach (var character in characters)
             {
-                case AttackTargetType.Monster:
-                case AttackTargetType.All:
-                case AttackTargetType.Both:
-                    // 몬스터 찾기
-                    Monster[] monsters = FindObjectsByType<Monster>(FindObjectsSortMode.None);
-                    foreach (var monster in monsters)
-                    {
-                        if (monster == null || !monster.IsAlive()) continue;
-                        if (monster.areaIndex == areaIndex) continue; // 같은 지역 몬스터는 공격하지 않음
-                        
-                        float distance = Vector3.Distance(transform.position, monster.transform.position);
-                        if (distance <= attackRange && distance < closestDistance)
-                        {
-                            closestDistance = distance;
-                            bestTarget = monster;
-                            targetObject = monster.gameObject;
-                        }
-                    }
-                    break;
+                if (character == null || character.currentHP <= 0) continue;
+                if (character.areaIndex == areaIndex) continue; // 같은 지역 캐릭터는 공격하지 않음
+                
+                float distance = Vector3.Distance(transform.position, character.transform.position);
+                if (distance <= attackRange && distance < closestDistance)
+                {
+                    closestDistance = distance;
+                    bestTarget = character;
+                    targetObject = character.gameObject;
+                }
             }
-            
-            switch (attackTargetType)
-            {
-                case AttackTargetType.Character:
-                case AttackTargetType.All:
-                case AttackTargetType.Both:
-                    // 캐릭터 찾기
-                    Character[] characters = FindObjectsByType<Character>(FindObjectsSortMode.None);
-                    foreach (var character in characters)
-                    {
-                        if (character == null || character.currentHP <= 0) continue;
-                        if (character.areaIndex == areaIndex) continue; // 같은 지역 캐릭터는 공격하지 않음
-                        if (character.isHero) continue; // 히어로는 공격하지 않음
-                        
-                        float distance = Vector3.Distance(transform.position, character.transform.position);
-                        if (distance <= attackRange && distance < closestDistance)
-                        {
-                            closestDistance = distance;
-                            bestTarget = character;
-                            targetObject = character.gameObject;
-                        }
-                    }
-                    break;
-            }
-            
-            // 타겟이 있으면 공격
-            if (bestTarget != null && targetObject != null)
-            {
-                AttackTarget(bestTarget, targetObject);
-            }
+        }
+        
+        // 타겟이 있으면 공격
+        if (bestTarget != null && targetObject != null)
+        {
+            AttackTarget(bestTarget, targetObject);
         }
     }
     
@@ -204,46 +201,60 @@ public class FinalCastle : MonoBehaviour, IDamageable
         currentTarget = target;
         lastAttackTime = Time.time;
         
-        // 모든 발사 위치에서 총알 발사
-        foreach (var firePoint in firePoints)
+        // 총알 발사
+        if (bulletPrefab != null && firePoint != null)
         {
-            if (bulletPrefab != null && firePoint != null)
+            GameObject bullet = Instantiate(bulletPrefab, firePoint.position, Quaternion.identity);
+            
+            // Bullet 컴포넌트 설정
+            Bullet bulletComp = bullet.GetComponent<Bullet>();
+            if (bulletComp == null)
             {
-                GameObject bullet = Instantiate(bulletPrefab, firePoint.position, Quaternion.identity);
-                
-                // Bullet 컴포넌트 설정
-                Bullet bulletComp = bullet.GetComponent<Bullet>();
-                if (bulletComp == null)
-                {
-                    bulletComp = bullet.AddComponent<Bullet>();
-                }
-                
-                // 총알 초기화
-                bulletComp.damage = attackPower;
-                bulletComp.speed = bulletSpeed;
-                bulletComp.targetObject = targetObject;
-                bulletComp.isFromCastle = true;
-                bulletComp.ownerAreaIndex = areaIndex;
-                
-                // 방향 설정
-                Vector3 direction = (targetObject.transform.position - firePoint.position).normalized;
-                bulletComp.direction = direction;
-                
-                // 총알 회전
-                float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
-                bullet.transform.rotation = Quaternion.AngleAxis(angle - 90f, Vector3.forward);
+                bulletComp = bullet.AddComponent<Bullet>();
             }
+            
+            // 총알 초기화
+            bulletComp.damage = attackPower;
+            bulletComp.speed = bulletSpeed;
+            bulletComp.targetObject = targetObject;
+            bulletComp.isFromCastle = true;
+            bulletComp.ownerAreaIndex = areaIndex;
+            
+            // 방향 설정
+            Vector3 direction = (targetObject.transform.position - firePoint.position).normalized;
+            bulletComp.direction = direction;
+            
+            // 총알 회전
+            float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
+            bullet.transform.rotation = Quaternion.AngleAxis(angle - 90f, Vector3.forward);
+            
+            Debug.Log($"[FinalCastle] 지역{areaIndex} 최종성이 {targetObject.name}을(를) 공격!");
         }
-        
-        Debug.Log($"[FinalCastle] {gameObject.name}이(가) {targetObject.name}을(를) 공격!");
+        else
+        {
+            // 총알 없이 직접 데미지
+            target.TakeDamage(attackPower);
+            Debug.Log($"[FinalCastle] 지역{areaIndex} 최종성이 직접 공격! 데미지: {attackPower}");
+        }
     }
     
     /// <summary>
-    /// 범위 공격
+    /// 범위 공격 수행
     /// </summary>
     private void PerformAreaAttack()
     {
-        Collider2D[] colliders = Physics2D.OverlapCircleAll(transform.position, attackRange);
+        lastAreaAttackTime = Time.time;
+        
+        // 범위 공격 이펙트
+        if (areaAttackEffectPrefab != null)
+        {
+            GameObject effect = Instantiate(areaAttackEffectPrefab, transform.position, Quaternion.identity);
+            effect.transform.localScale = Vector3.one * areaAttackRadius;
+            Destroy(effect, 2f);
+        }
+        
+        // 범위 내 적들에게 데미지
+        Collider2D[] colliders = Physics2D.OverlapCircleAll(transform.position, areaAttackRadius);
         int targetsHit = 0;
         
         foreach (var collider in colliders)
@@ -251,51 +262,28 @@ public class FinalCastle : MonoBehaviour, IDamageable
             if (collider == null) continue;
             
             // 몬스터 체크
-            if (attackTargetType == AttackTargetType.Monster || 
-                attackTargetType == AttackTargetType.All ||
-                attackTargetType == AttackTargetType.Both)
+            Monster monster = collider.GetComponent<Monster>();
+            if (monster != null && monster.IsAlive() && monster.areaIndex != areaIndex)
             {
-                Monster monster = collider.GetComponent<Monster>();
-                if (monster != null && monster.IsAlive() && monster.areaIndex != areaIndex)
-                {
-                    // 범위 내 모든 몬스터에게 데미지
-                    float distance = Vector3.Distance(transform.position, monster.transform.position);
-                    if (distance <= areaAttackRadius)
-                    {
-                        monster.TakeDamage(attackPower);
-                        targetsHit++;
-                        
-                        // 이펙트 생성
-                        CreateAttackEffect(monster.transform.position);
-                    }
-                }
+                monster.TakeDamage(attackPower * 0.5f); // 범위 공격은 데미지 50%
+                CreateAttackEffect(monster.transform.position);
+                targetsHit++;
+                continue;
             }
             
             // 캐릭터 체크
-            if (attackTargetType == AttackTargetType.Character || 
-                attackTargetType == AttackTargetType.All ||
-                attackTargetType == AttackTargetType.Both)
+            Character character = collider.GetComponent<Character>();
+            if (character != null && character.currentHP > 0 && character.areaIndex != areaIndex)
             {
-                Character character = collider.GetComponent<Character>();
-                if (character != null && character.currentHP > 0 && 
-                    character.areaIndex != areaIndex && !character.isHero)
-                {
-                    float distance = Vector3.Distance(transform.position, character.transform.position);
-                    if (distance <= areaAttackRadius)
-                    {
-                        character.TakeDamage(attackPower);
-                        targetsHit++;
-                        
-                        // 이펙트 생성
-                        CreateAttackEffect(character.transform.position);
-                    }
-                }
+                character.TakeDamage(attackPower * 0.5f); // 범위 공격은 데미지 50%
+                CreateAttackEffect(character.transform.position);
+                targetsHit++;
             }
         }
         
         if (targetsHit > 0)
         {
-            Debug.Log($"[FinalCastle] {gameObject.name}의 범위 공격! {targetsHit}개 타겟 명중");
+            Debug.Log($"[FinalCastle] 지역{areaIndex} 최종성 범위 공격! {targetsHit}개 타겟 명중");
         }
     }
     
@@ -376,18 +364,20 @@ public class FinalCastle : MonoBehaviour, IDamageable
         // 이벤트 호출
         OnFinalCastleDestroyed?.Invoke(areaIndex);
         
-        // GameManager에 알림
+        // GameManager에 게임 종료 알림
         if (GameManager.Instance != null)
         {
-            bool isPlayerCastle = (areaIndex == 1);
-            GameManager.Instance.SetGameOver(!isPlayerCastle); // 플레이어 성이면 패배, AI 성이면 승리
+            // 지역1 최종성이 파괴되면 플레이어 패배
+            // 지역2 최종성이 파괴되면 플레이어 승리
+            bool playerWin = (areaIndex == 2);
+            GameManager.Instance.SetGameOver(playerWin);
         }
         
         // 스프라이트 변경 또는 비활성화
         SpriteRenderer spriteRenderer = GetComponent<SpriteRenderer>();
         if (spriteRenderer != null)
         {
-            spriteRenderer.color = new Color(0.2f, 0.2f, 0.2f, 0.5f);
+            spriteRenderer.color = new Color(0.2f, 0.2f, 0.2f, 0.3f);
         }
         
         // Collider 비활성화
@@ -411,12 +401,12 @@ public class FinalCastle : MonoBehaviour, IDamageable
     /// </summary>
     private void OnDrawGizmosSelected()
     {
-        // 공격 범위 표시
+        // 일반 공격 범위 표시
         Gizmos.color = Color.red;
         Gizmos.DrawWireSphere(transform.position, attackRange);
         
         // 범위 공격 반경 표시
-        if (isAreaAttack)
+        if (useAreaAttack)
         {
             Gizmos.color = Color.yellow;
             Gizmos.DrawWireSphere(transform.position, areaAttackRadius);

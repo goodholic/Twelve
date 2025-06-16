@@ -4,8 +4,7 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// 월드 좌표 기반 몬스터 클래스
-/// 웨이브로 생성되어 웨이포인트를 따라 이동합니다.
+/// 몬스터 클래스 - 웨이브로 생성되어 경로를 따라 이동하며 성을 공격
 /// </summary>
 [RequireComponent(typeof(Collider2D))]
 public class Monster : MonoBehaviour, IDamageable
@@ -167,21 +166,20 @@ public class Monster : MonoBehaviour, IDamageable
         
         // 체력바 배경
         GameObject bgObj = new GameObject("Background");
-        bgObj.transform.SetParent(hpBarObj.transform);
-        bgObj.transform.localPosition = Vector3.zero;
-        bgObj.transform.localScale = new Vector3(1f, 0.2f, 1f);
+        bgObj.transform.SetParent(hpBarCanvas.transform);
+        RectTransform bgRect = bgObj.AddComponent<RectTransform>();
+        bgRect.anchoredPosition = Vector2.zero;
+        bgRect.sizeDelta = new Vector2(100, 10);
         
         Image bgImage = bgObj.AddComponent<Image>();
         bgImage.color = new Color(0.2f, 0.2f, 0.2f, 0.8f);
         
-        // 체력바 채우기
+        // 체력바 Fill
         GameObject fillObj = new GameObject("Fill");
         fillObj.transform.SetParent(bgObj.transform);
-        fillObj.transform.localPosition = Vector3.zero;
-        
         RectTransform fillRect = fillObj.AddComponent<RectTransform>();
-        fillRect.anchorMin = Vector2.zero;
-        fillRect.anchorMax = Vector2.one;
+        fillRect.anchorMin = new Vector2(0, 0);
+        fillRect.anchorMax = new Vector2(1, 1);
         fillRect.sizeDelta = Vector2.zero;
         fillRect.anchoredPosition = Vector2.zero;
         
@@ -189,7 +187,10 @@ public class Monster : MonoBehaviour, IDamageable
         hpBarFillImage.color = Color.green;
         hpBarFillImage.type = Image.Type.Filled;
         hpBarFillImage.fillMethod = Image.FillMethod.Horizontal;
-        hpBarFillImage.fillOrigin = 0;
+        hpBarFillImage.fillOrigin = (int)Image.OriginHorizontal.Left;
+        
+        // 캔버스 크기 조정
+        hpBarCanvas.transform.localScale = Vector3.one * 0.01f;
     }
     
     /// <summary>
@@ -198,13 +199,29 @@ public class Monster : MonoBehaviour, IDamageable
     public void SetPath(Transform[] waypoints, RouteType route)
     {
         pathWaypoints = waypoints;
-        currentRoute = route;
         currentWaypointIndex = 0;
+        currentRoute = route;
         
         if (waypoints != null && waypoints.Length > 0)
         {
-            transform.position = waypoints[0].position;
+            StartMoving();
         }
+    }
+    
+    /// <summary>
+    /// 챕터 설정
+    /// </summary>
+    public void SetChapter(int chapter)
+    {
+        currentChapter = Mathf.Max(1, chapter);
+        
+        // 체력 재계산
+        float chapterBonus = Mathf.Pow(chapterStatMultiplier, currentChapter - 1);
+        health = health * chapterBonus;
+        currentHealth = health;
+        maxHealth = health;
+        
+        UpdateHealthBar();
     }
     
     /// <summary>
@@ -212,67 +229,64 @@ public class Monster : MonoBehaviour, IDamageable
     /// </summary>
     public void StartMoving()
     {
-        if (moveCoroutine == null && !isDead)
+        if (moveCoroutine != null)
         {
-            moveCoroutine = StartCoroutine(MoveAlongPath());
+            StopCoroutine(moveCoroutine);
         }
+        
+        moveCoroutine = StartCoroutine(MoveAlongPath());
     }
     
     /// <summary>
-    /// 경로 따라 이동
+    /// 경로를 따라 이동
     /// </summary>
     private IEnumerator MoveAlongPath()
     {
-        while (!isDead && currentWaypointIndex < pathWaypoints.Length)
+        while (currentWaypointIndex < pathWaypoints.Length && !isDead)
         {
             if (isStunned)
             {
-                yield return null;
+                yield return new WaitForSeconds(0.1f);
                 continue;
             }
             
             Transform targetWaypoint = pathWaypoints[currentWaypointIndex];
             
+            // 웨이포인트로 이동
             while (Vector3.Distance(transform.position, targetWaypoint.position) > 0.1f)
             {
-                if (isDead || isStunned || isAttacking)
-                {
-                    yield return null;
-                    continue;
-                }
+                if (isDead || isStunned || isAttacking) break;
+                
+                // 이동 속도 계산 (슬로우 효과 적용)
+                float currentSpeed = moveSpeed * slowAmount;
                 
                 // 이동
-                float currentSpeed = moveSpeed * slowAmount;
                 Vector3 direction = (targetWaypoint.position - transform.position).normalized;
                 transform.position += direction * currentSpeed * Time.deltaTime;
-                
-                // 방향에 따른 스프라이트 뒤집기
-                if (direction.x > 0)
-                    spriteRenderer.flipX = false;
-                else if (direction.x < 0)
-                    spriteRenderer.flipX = true;
                 
                 yield return null;
             }
             
-            currentWaypointIndex++;
+            if (!isDead && !isStunned && !isAttacking)
+            {
+                currentWaypointIndex++;
+            }
+            
+            yield return null;
         }
         
         // 경로 끝에 도달
-        if (!isDead && !hasReachedEnd)
+        if (!isDead && currentWaypointIndex >= pathWaypoints.Length)
         {
             OnReachEnd();
         }
-        
-        moveCoroutine = null;
     }
     
     /// <summary>
-    /// 성 찾기 및 공격
+    /// 근처 성 찾아서 공격
     /// </summary>
     private void FindAndAttackCastle()
     {
-        if (isDead || isStunned) return;
         if (Time.time - lastAttackTime < attackCooldown) return;
         
         // 중간성 체크
@@ -351,17 +365,65 @@ public class Monster : MonoBehaviour, IDamageable
     }
     
     /// <summary>
-    /// 경로 끝 도달 처리
+    /// 경로 끝 도달 처리 - 성을 직접 찾아서 공격
     /// </summary>
     private void OnReachEnd()
     {
         Debug.Log($"[Monster] {monsterName}이(가) 목적지에 도달했습니다!");
         hasReachedEnd = true;
         
-        // 성에 데미지
-        if (CastleHealthManager.Instance != null)
+        // 가장 가까운 성 찾기
+        bool foundCastle = false;
+        float closestDistance = float.MaxValue;
+        IDamageable closestCastle = null;
+        string castleType = "";
+        
+        // 중간성 찾기
+        MiddleCastle[] middleCastles = FindObjectsByType<MiddleCastle>(FindObjectsSortMode.None);
+        foreach (var castle in middleCastles)
         {
-            CastleHealthManager.Instance.TakeDamageToMidCastle(currentRoute, damageToCastle);
+            if (castle == null || castle.IsDestroyed()) continue;
+            if (castle.areaIndex == areaIndex) continue; // 같은 지역 성은 공격하지 않음
+            
+            // 자신의 루트에 해당하는 중간성만 공격
+            if (castle.routeType == currentRoute)
+            {
+                float distance = Vector3.Distance(transform.position, castle.transform.position);
+                if (distance < closestDistance)
+                {
+                    closestDistance = distance;
+                    closestCastle = castle;
+                    castleType = "중간성";
+                    foundCastle = true;
+                }
+            }
+        }
+        
+        // 중간성을 못 찾았거나 파괴된 경우 최종성 찾기
+        if (!foundCastle)
+        {
+            FinalCastle[] finalCastles = FindObjectsByType<FinalCastle>(FindObjectsSortMode.None);
+            foreach (var castle in finalCastles)
+            {
+                if (castle == null || castle.IsDestroyed()) continue;
+                if (castle.areaIndex == areaIndex) continue; // 같은 지역 성은 공격하지 않음
+                
+                float distance = Vector3.Distance(transform.position, castle.transform.position);
+                if (distance < closestDistance)
+                {
+                    closestDistance = distance;
+                    closestCastle = castle;
+                    castleType = "최종성";
+                    foundCastle = true;
+                }
+            }
+        }
+        
+        // 찾은 성 공격
+        if (foundCastle && closestCastle != null)
+        {
+            Debug.Log($"[Monster] {monsterName}이(가) {castleType}을 공격합니다!");
+            closestCastle.TakeDamage(damageToCastle);
         }
         
         OnReachedCastle?.Invoke(this);
@@ -436,63 +498,37 @@ public class Monster : MonoBehaviour, IDamageable
             if (stunDuration <= 0)
             {
                 isStunned = false;
-                if (moveCoroutine == null && !isDead)
+                // 이동 재개
+                if (!isDead && moveCoroutine == null)
                 {
                     StartMoving();
                 }
             }
         }
+        
+        // 출혈 효과는 코루틴에서 처리
     }
     
     /// <summary>
-    /// 슬로우 적용
+    /// 슬로우 효과 적용
     /// </summary>
-    public void ApplySlow(float duration, float slowPercent)
+    public void ApplySlow(float slowPercentage, float duration)
     {
+        slowAmount = 1f - (slowPercentage / 100f);
         slowDuration = duration;
-        slowAmount = 1f - slowPercent;
-        Debug.Log($"[Monster] {monsterName} 슬로우 적용: {slowPercent * 100}% 감소, {duration}초간");
+        
+        Debug.Log($"[Monster] {monsterName}에게 슬로우 {slowPercentage}% 적용 ({duration}초)");
     }
     
     /// <summary>
-    /// 출혈 적용
-    /// </summary>
-    public void ApplyBleed(float duration, float damagePerSec)
-    {
-        bleedDuration = duration;
-        bleedDamagePerSec = damagePerSec;
-        
-        if (bleedCoroutine != null)
-        {
-            StopCoroutine(bleedCoroutine);
-        }
-        
-        bleedCoroutine = StartCoroutine(BleedRoutine());
-        Debug.Log($"[Monster] {monsterName} 출혈 적용: 초당 {damagePerSec} 데미지, {duration}초간");
-    }
-    
-    /// <summary>
-    /// 출혈 루틴
-    /// </summary>
-    private IEnumerator BleedRoutine()
-    {
-        while (bleedDuration > 0 && !isDead)
-        {
-            TakeDamage(bleedDamagePerSec);
-            bleedDuration -= 1f;
-            yield return new WaitForSeconds(1f);
-        }
-        
-        bleedCoroutine = null;
-    }
-    
-    /// <summary>
-    /// 스턴 적용
+    /// 스턴 효과 적용
     /// </summary>
     public void ApplyStun(float duration)
     {
-        stunDuration = duration;
+        if (isDead) return;
+        
         isStunned = true;
+        stunDuration = duration;
         
         // 이동 중지
         if (moveCoroutine != null)
@@ -501,7 +537,62 @@ public class Monster : MonoBehaviour, IDamageable
             moveCoroutine = null;
         }
         
-        Debug.Log($"[Monster] {monsterName} 스턴 적용: {duration}초간");
+        Debug.Log($"[Monster] {monsterName}에게 스턴 {duration}초 적용");
+    }
+    
+    /// <summary>
+    /// 출혈 효과 적용
+    /// </summary>
+    public void ApplyBleed(float damagePerSec, float duration)
+    {
+        if (isDead) return;
+        
+        bleedDamagePerSec = damagePerSec;
+        bleedDuration = duration;
+        
+        if (bleedCoroutine != null)
+        {
+            StopCoroutine(bleedCoroutine);
+        }
+        
+        bleedCoroutine = StartCoroutine(BleedCoroutine());
+        
+        Debug.Log($"[Monster] {monsterName}에게 출혈 효과 적용 (초당 {damagePerSec} 데미지, {duration}초)");
+    }
+    
+    /// <summary>
+    /// 출혈 코루틴
+    /// </summary>
+    private IEnumerator BleedCoroutine()
+    {
+        float elapsed = 0f;
+        
+        while (elapsed < bleedDuration && !isDead)
+        {
+            TakeDamage(bleedDamagePerSec);
+            
+            // 출혈 이펙트
+            if (hitEffectPrefab != null)
+            {
+                GameObject effect = Instantiate(hitEffectPrefab, transform.position, Quaternion.identity);
+                effect.transform.localScale = Vector3.one * 0.5f;
+                
+                // 빨간색으로 변경
+                SpriteRenderer effectSprite = effect.GetComponent<SpriteRenderer>();
+                if (effectSprite != null)
+                {
+                    effectSprite.color = Color.red;
+                }
+                
+                Destroy(effect, 0.5f);
+            }
+            
+            yield return new WaitForSeconds(1f);
+            elapsed += 1f;
+        }
+        
+        bleedDuration = 0f;
+        bleedDamagePerSec = 0f;
     }
     
     /// <summary>
@@ -513,6 +604,22 @@ public class Monster : MonoBehaviour, IDamageable
         
         isDead = true;
         
+        Debug.Log($"[Monster] {monsterName} 사망");
+        
+        // 이동 중지
+        if (moveCoroutine != null)
+        {
+            StopCoroutine(moveCoroutine);
+            moveCoroutine = null;
+        }
+        
+        // 출혈 중지
+        if (bleedCoroutine != null)
+        {
+            StopCoroutine(bleedCoroutine);
+            bleedCoroutine = null;
+        }
+        
         // 사망 이펙트
         if (deathEffectPrefab != null)
         {
@@ -520,41 +627,11 @@ public class Monster : MonoBehaviour, IDamageable
             Destroy(effect, 2f);
         }
         
-        // 보상 드롭
-        DropReward();
-        
-        // 이벤트 호출
+        // 이벤트 발생
         OnDeath?.Invoke();
-        
-        // 코루틴 정리
-        if (moveCoroutine != null)
-        {
-            StopCoroutine(moveCoroutine);
-        }
-        
-        if (bleedCoroutine != null)
-        {
-            StopCoroutine(bleedCoroutine);
-        }
         
         // 오브젝트 제거
         Destroy(gameObject);
-    }
-    
-    /// <summary>
-    /// 보상 드롭
-    /// </summary>
-    private void DropReward()
-    {
-        // 골드 드롭 (예시)
-        int goldAmount = UnityEngine.Random.Range(5, 15);
-        Debug.Log($"[Monster] {monsterName} 처치! 골드 {goldAmount} 획득");
-        
-        // GameManager에 골드 추가
-        if (GameManager.Instance != null)
-        {
-            GameManager.Instance.AddGold(goldAmount);
-        }
     }
     
     /// <summary>
@@ -566,26 +643,25 @@ public class Monster : MonoBehaviour, IDamageable
     }
     
     /// <summary>
-    /// 현재 라우트 반환
+    /// 디버그용 기즈모
     /// </summary>
-    public RouteType GetCurrentRoute()
+    private void OnDrawGizmosSelected()
     {
-        return currentRoute;
-    }
-    
-    /// <summary>
-    /// 챕터 설정
-    /// </summary>
-    public void SetChapter(int chapter)
-    {
-        currentChapter = chapter;
+        // 공격 범위 표시
+        Gizmos.color = Color.red;
+        Gizmos.DrawWireSphere(transform.position, attackRange);
         
-        // 체력 재계산
-        float chapterBonus = Mathf.Pow(chapterStatMultiplier, chapter - 1);
-        health *= chapterBonus;
-        currentHealth = health;
-        maxHealth = health;
-        
-        UpdateHealthBar();
+        // 경로 표시
+        if (pathWaypoints != null && pathWaypoints.Length > 0)
+        {
+            Gizmos.color = Color.yellow;
+            for (int i = 0; i < pathWaypoints.Length - 1; i++)
+            {
+                if (pathWaypoints[i] != null && pathWaypoints[i + 1] != null)
+                {
+                    Gizmos.DrawLine(pathWaypoints[i].position, pathWaypoints[i + 1].position);
+                }
+            }
+        }
     }
 }
