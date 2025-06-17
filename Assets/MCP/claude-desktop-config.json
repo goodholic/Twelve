@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "unity-game-server": {
+      "command": "node",
+      "args": ["unity-mcp-server.js"],
+      "cwd": "./Assets/MCP",
+      "env": {
+        "UNITY_PROJECT_PATH": "../.."
+      }
+    }
+  }
+} 

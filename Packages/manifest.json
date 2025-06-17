@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "com.justinpbarnett.unity-mcp": "https://github.com/justinpbarnett/unity-mcp.git?path=/UnityMcpBridge",
     "com.unity.2d.enhancers": "1.0.0-pre.1",
     "com.unity.ai.assistant": "1.0.0-pre.6",
     "com.unity.ai.generators": "1.0.0-pre.12",

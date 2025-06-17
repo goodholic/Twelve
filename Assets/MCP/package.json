@@ -1,0 +1,24 @@
+{
+  "name": "unity-mcp-server",
+  "version": "1.0.0",
+  "description": "Unity 게임 프로젝트를 위한 MCP 서버",
+  "main": "unity-mcp-server.js",
+  "scripts": {
+    "start": "node unity-mcp-server.js",
+    "install-deps": "npm install @modelcontextprotocol/sdk"
+  },
+  "keywords": [
+    "unity",
+    "mcp",
+    "model-context-protocol",
+    "game-development"
+  ],
+  "author": "Unity Developer",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^0.4.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+} 
