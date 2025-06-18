@@ -5,6 +5,7 @@ const { StdioServerTransport } = require('@modelcontextprotocol/sdk/server/stdio
 const { CallToolRequestSchema, ListToolsRequestSchema } = require('@modelcontextprotocol/sdk/types.js');
 const fs = require('fs');
 const path = require('path');
+const net = require('net');
 
 // Unity 프로젝트 경로 설정
 const UNITY_PROJECT_PATH = process.env.UNITY_PROJECT_PATH || path.resolve(__dirname, '../..');
@@ -22,7 +23,74 @@ class UnityMCPServer {
       },
     });
 
+    this.unityLogs = [];
+    this.unityClient = null;
     this.setupToolHandlers();
+    this.connectToUnity();
+  }
+
+  connectToUnity() {
+    // Unity MCP 서버에 연결 시도
+    this.unityClient = new net.Socket();
+    
+    this.unityClient.on('connect', () => {
+      console.error('🔗 Unity MCP 서버에 연결되었습니다!');
+    });
+    
+    this.unityClient.on('data', (data) => {
+      const logData = data.toString();
+      this.processUnityLog(logData);
+    });
+    
+    this.unityClient.on('error', (err) => {
+      console.error('❌ Unity 연결 오류:', err.message);
+      // 5초 후 재연결 시도
+      setTimeout(() => this.connectToUnity(), 5000);
+    });
+    
+    this.unityClient.on('close', () => {
+      console.error('🔌 Unity 연결이 끊어졌습니다. 재연결 시도 중...');
+      setTimeout(() => this.connectToUnity(), 5000);
+    });
+    
+    // Unity 서버에 연결 (포트 8080)
+    this.unityClient.connect(8080, 'localhost');
+  }
+
+  processUnityLog(logData) {
+    const lines = logData.split('\n').filter(line => line.trim());
+    
+    lines.forEach(line => {
+      if (line.startsWith('UNITY_LOG|')) {
+        const parts = line.split('|');
+        if (parts.length >= 4) {
+          const timestamp = parts[1];
+          const level = parts[2];
+          const message = parts[3];
+          const stackTrace = parts[4] || '';
+          
+          const logEntry = {
+            timestamp,
+            level,
+            message,
+            stackTrace,
+            source: 'Unity Console'
+          };
+          
+          this.unityLogs.push(logEntry);
+          
+          // 최대 100개 로그만 유지
+          if (this.unityLogs.length > 100) {
+            this.unityLogs.shift();
+          }
+          
+          // 에러나 경고인 경우 즉시 출력
+          if (level === 'ERROR' || level === 'WARNING') {
+            console.error(`[${timestamp}] Unity ${level}: ${message}`);
+          }
+        }
+      }
+    });
   }
 
   setupToolHandlers() {
@@ -30,6 +98,33 @@ class UnityMCPServer {
     this.server.setRequestHandler(ListToolsRequestSchema, async () => {
       return {
         tools: [
+          {
+            name: 'get_unity_console_logs',
+            description: 'Unity 콘솔 로그를 가져와서 Problems 탭에 표시합니다',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                logLevel: {
+                  type: 'string',
+                  description: '로그 레벨 필터 (ALL, ERROR, WARNING, INFO)',
+                  default: 'ALL',
+                },
+                count: {
+                  type: 'number',
+                  description: '가져올 로그 개수 (기본: 20)',
+                  default: 20,
+                },
+              },
+            },
+          },
+          {
+            name: 'clear_unity_console_logs',
+            description: 'Unity 콘솔 로그를 지웁니다',
+            inputSchema: {
+              type: 'object',
+              properties: {},
+            },
+          },
           {
             name: 'read_unity_script',
             description: 'Unity C# 스크립트 파일을 읽습니다',
@@ -116,6 +211,12 @@ class UnityMCPServer {
 
       try {
         switch (name) {
+          case 'get_unity_console_logs':
+            return await this.getUnityConsoleLogs(args.logLevel || 'ALL', args.count || 20);
+          
+          case 'clear_unity_console_logs':
+            return await this.clearUnityConsoleLogs();
+          
           case 'read_unity_script':
             return await this.readUnityScript(args.scriptPath);
           
@@ -149,6 +250,78 @@ class UnityMCPServer {
         };
       }
     });
+  }
+
+  async getUnityConsoleLogs(logLevel, count) {
+    let filteredLogs = this.unityLogs;
+    
+    // 로그 레벨 필터링
+    if (logLevel !== 'ALL') {
+      filteredLogs = this.unityLogs.filter(log => log.level === logLevel);
+    }
+    
+    // 최근 로그부터 가져오기
+    const recentLogs = filteredLogs.slice(-count);
+    
+    let result = `🔍 **Unity 콘솔 로그** (최근 ${recentLogs.length}개)\n\n`;
+    
+    if (recentLogs.length === 0) {
+      result += `❌ Unity 콘솔 로그가 없습니다.\n\n`;
+      result += `💡 **확인사항:**\n`;
+      result += `1. Unity가 실행 중인지 확인\n`;
+      result += `2. Unity 씬에 UnityMCPServer 컴포넌트가 있는지 확인\n`;
+      result += `3. Unity MCP 서버가 포트 8080에서 실행 중인지 확인\n`;
+    } else {
+      recentLogs.forEach(log => {
+        const emoji = this.getLogEmoji(log.level);
+        result += `${emoji} **[${log.timestamp}] ${log.level}**\n`;
+        result += `📝 ${log.message}\n`;
+        
+        if (log.stackTrace && log.level === 'ERROR') {
+          result += `📍 **스택 트레이스:**\n\`\`\`\n${log.stackTrace}\n\`\`\`\n`;
+        }
+        result += `\n`;
+      });
+    }
+    
+    return {
+      content: [
+        {
+          type: 'text',
+          text: result,
+        },
+      ],
+    };
+  }
+
+  async clearUnityConsoleLogs() {
+    const logCount = this.unityLogs.length;
+    this.unityLogs = [];
+    
+    // Unity 서버에도 로그 지우기 명령 전송
+    if (this.unityClient && this.unityClient.readyState === 'open') {
+      this.unityClient.write('clear_logs');
+    }
+    
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `✅ Unity 콘솔 로그 ${logCount}개가 지워졌습니다.`,
+        },
+      ],
+    };
+  }
+
+  getLogEmoji(level) {
+    switch (level) {
+      case 'ERROR': return '🔴';
+      case 'WARNING': return '🟡';
+      case 'INFO': return '🔵';
+      case 'ASSERT': return '🟠';
+      case 'EXCEPTION': return '💥';
+      default: return '📝';
+    }
   }
 
   async readUnityScript(scriptPath) {
