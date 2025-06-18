@@ -78,7 +78,41 @@ namespace GifImporter.Editors
 
             if (Directory.Exists(spritesDirPath))
             {
-                Directory.Delete(spritesDirPath, true);
+                try
+                {
+                    // 읽기 전용 속성 제거 시도
+                    var directoryInfo = new DirectoryInfo(spritesDirPath);
+                    if (directoryInfo.Exists && (directoryInfo.Attributes & FileAttributes.ReadOnly) == FileAttributes.ReadOnly)
+                    {
+                        directoryInfo.Attributes &= ~FileAttributes.ReadOnly;
+                    }
+                    
+                    // 하위 파일들의 읽기 전용 속성도 제거
+                    foreach (var subFile in directoryInfo.GetFiles("*", SearchOption.AllDirectories))
+                    {
+                        if ((subFile.Attributes & FileAttributes.ReadOnly) == FileAttributes.ReadOnly)
+                        {
+                            subFile.Attributes &= ~FileAttributes.ReadOnly;
+                        }
+                    }
+                    
+                    Directory.Delete(spritesDirPath, true);
+                }
+                catch (UnauthorizedAccessException ex)
+                {
+                    Debug.LogWarning($"[GifImporter] 폴더 삭제 권한이 없습니다: {spritesDirPath}. 경고: {ex.Message}");
+                    // 삭제에 실패해도 계속 진행
+                }
+                catch (IOException ex)
+                {
+                    Debug.LogWarning($"[GifImporter] 폴더 삭제 중 IO 오류 발생: {spritesDirPath}. 경고: {ex.Message}");
+                    // 삭제에 실패해도 계속 진행
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogWarning($"[GifImporter] 폴더 삭제 중 예상치 못한 오류: {spritesDirPath}. 경고: {ex.Message}");
+                    // 삭제에 실패해도 계속 진행
+                }
             }
 
             Directory.CreateDirectory(spritesDirPath);

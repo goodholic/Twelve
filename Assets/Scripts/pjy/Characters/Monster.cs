@@ -76,6 +76,9 @@ public class Monster : MonoBehaviour, IDamageable
     private IDamageable currentTarget;
     private bool isAttacking = false;
     
+    // 소유자
+    private PlayerController ownerPlayer;
+    
     private void Awake()
     {
         // Collider 설정
@@ -666,5 +669,40 @@ public class Monster : MonoBehaviour, IDamageable
         }
     }
     #endif
+    
+    /// <summary>
+    /// 소유자 플레이어 설정
+    /// </summary>
+    public void SetOwnerPlayer(PlayerController player)
+    {
+        ownerPlayer = player;
+    }
+    
+    /// <summary>
+    /// 소유자 플레이어 반환
+    /// </summary>
+    public PlayerController GetOwnerPlayer()
+    {
+        return ownerPlayer;
+    }
+    
+    /// <summary>
+    /// 웨이포인트 설정
+    /// </summary>
+    public void SetWaypoints(Transform[] waypoints)
+    {
+        pathWaypoints = waypoints;
+        currentWaypointIndex = 0;
+        
+        if (waypoints != null && waypoints.Length > 0)
+        {
+            StartMoving();
+        }
+    }
+    
+    /// <summary>
+    /// 선택된 루트 (MonsterSpawnManager에서 사용)
+    /// </summary>
+    public int selectedRoute { get; set; } = 0;
 
 }

@@ -1,0 +1,73 @@
+﻿# Unity 프로젝트 사용자 가이드
+
+## 프로젝트 정보
+- 프로젝트명: Twelve
+- 요청사항: 원래 Canvas 상에서 작업을 했었는데, 월드 좌표 2D로 옮길려고 하니, 자세하게 작업해주세요
+1. 같은 캐릭터끼리는 같은 위치에 타워로써 놓일수 있지만, 크기가 작아져서 한자리에 3개까지 놓을수 있다. : 
+2. 기존의 하트를 없애는 방식에서 변경하여, 몬스터는 중간 성이나 최종 성과 전투를 하게된다. 
+3. 50마리까지만 소환할수 있도록 하자
+4. 몬스터는 성을 공격 할수 있도록 해주고, 성은 몬스터와 캐릭터를 공격하도록 해주세요. 
+   캐릭터는 성과 캐릭터를 공격하도록 해주세요
+5. 캐릭터를 좌측, 중간, 우측에 놓을시 각각의 웨이포인트대로 가도록 해주세요
+6. AI 플레이어와, 일반 플레이어가 하는 일에 대해서 게임 오브젝트와 같은 코드를 입력해주고, is AI 체크 하는 여부로 플레이어가 하는 것과, AI가 하는것을 나누자. AI에는 추가적으로 Ai의 스크립트를 넣는 식으로 하자
+- 완료일: 2025-06-18 20:28:31
+
+## Unity에서 프로젝트 사용 방법
+
+### 1. 프로젝트 열기
+1. Unity Hub를 실행하세요
+2. 'Open' 또는 '열기' 버튼을 클릭
+3. 이 폴더를 선택하세요: C:\Users\super\OneDrive\문서\GitHub\Twelve
+4. Unity 에디터가 열릴 때까지 기다리세요
+
+### 2. 프로젝트 구조 확인
+- Assets/Scripts: 핵심 게임 로직
+- Assets/OX UI Scripts: OX 게임 관련 UI
+- Assets/InGame UI Scripts: 인게임 UI 컴포넌트  
+- Assets/Editor: 에디터 확장 도구
+- Assets/CSV: 데이터 파일
+
+### 3. 테스트 실행
+1. Unity 에디터 상단의 ▶️ Play 버튼을 클릭
+2. Game 창에서 게임이 실행되는지 확인
+3. Console 창(Window > General > Console)에서 오류가 없는지 확인
+
+### 4. 씬 설정 (필요시)
+1. Project 창에서 Scenes 폴더 확인
+2. Main Scene이나 SampleScene을 더블클릭하여 열기
+3. Hierarchy 창에서 게임 오브젝트들 확인
+
+### 5. 스크립트 연결 (필요시)
+1. Hierarchy에서 게임 오브젝트 선택
+2. Inspector 창에서 'Add Component' 버튼 클릭
+3. 생성된 스크립트들을 검색하여 추가
+
+### 6. 빌드 (선택사항)
+1. File > Build Settings 메뉴 선택
+2. 플랫폼 선택 (PC, Mac & Linux Standalone 권장)
+3. 'Build' 버튼을 클릭하여 실행 파일 생성
+
+## 문제 해결
+
+### Console에 오류가 표시되는 경우
+- 빨간색 Error: 스크립트 수정 필요, Cursor AI에 문의
+- 노란색 Warning: 대부분 무시 가능
+
+### 게임이 실행되지 않는 경우  
+1. Console 창에서 오류 메시지 확인
+2. 모든 스크립트가 올바르게 연결되었는지 확인
+3. 필요한 에셋이 누락되지 않았는지 확인
+
+### 성능이 느린 경우
+- Profiler 창(Window > Analysis > Profiler)에서 성능 분석
+- Quality Settings(Edit > Project Settings > Quality)에서 품질 조정
+
+## 추가 개발이 필요한 경우
+1. 이 도구의 메모 창에 추가 요청사항 입력
+2. 1단계부터 다시 실행하여 기능 추가 가능
+
+## 지원
+- Unity 공식 문서: https://docs.unity3d.com/
+- Unity Learn: https://learn.unity.com/
+
+마지막 업데이트: 2025-06-18 20:28:31

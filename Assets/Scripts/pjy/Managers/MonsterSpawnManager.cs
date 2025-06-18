@@ -14,7 +14,7 @@ public class MonsterSpawnManager : MonoBehaviour
         {
             if (instance == null)
             {
-                instance = FindObjectOfType<MonsterSpawnManager>();
+                instance = FindFirstObjectByType<MonsterSpawnManager>();
                 if (instance == null)
                 {
                     GameObject go = new GameObject("MonsterSpawnManager");
@@ -203,7 +203,7 @@ public class MonsterSpawnManager : MonoBehaviour
         if (spawnPoints != null && spawnPoints.Length > 0)
         {
             // 플레이어 지역에 따른 스폰 포인트 선택
-            int spawnIndex = player.areaIndex == 1 ? 0 : spawnPoints.Length - 1;
+            int spawnIndex = player.AreaIndex == 1 ? 0 : spawnPoints.Length - 1;
             if (spawnIndex < spawnPoints.Length)
                 return spawnPoints[spawnIndex];
         }
@@ -219,7 +219,7 @@ public class MonsterSpawnManager : MonoBehaviour
         // WaypointManager에서 웨이포인트 가져오기
         if (WaypointManager.Instance != null)
         {
-            return WaypointManager.Instance.GetWaypoints(player.areaIndex, routeIndex);
+            return WaypointManager.Instance.GetWaypoints(player.AreaIndex, routeIndex);
         }
         
         return null;

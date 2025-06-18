@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections.Generic;
 using System.Linq;
+using pjy.Managers;
 
 /// <summary>
 /// 캐릭터 배치 및 관리를 담당하는 매니저
@@ -59,6 +60,17 @@ public class PlacementManager : MonoBehaviour
         // 매니저 컴포넌트 찾기
         tileManager = GetComponent<TileManager>();
         autoMergeManager = GetComponent<AutoMergeManager>();
+        
+        // 컴포넌트가 없으면 경고 표시 (필수 컴포넌트가 아닐 수 있음)
+        if (tileManager == null)
+        {
+            Debug.LogWarning("[PlacementManager] TileManager 컴포넌트를 찾을 수 없습니다. 일부 기능이 제한될 수 있습니다.");
+        }
+        
+        if (autoMergeManager == null)
+        {
+            Debug.LogWarning("[PlacementManager] AutoMergeManager 컴포넌트를 찾을 수 없습니다. 자동 합성 기능이 제한될 수 있습니다.");
+        }
     }
     
     private void OnDestroy()
@@ -375,32 +387,41 @@ public class PlacementManager : MonoBehaviour
     /// </summary>
     private void SetCharacterRoute(Character character, Tile tile, bool isOpponent)
     {
-        // 타일 위치에 따라 라우트 결정
-        Vector3 tilePos = tile.transform.position;
-        
-        // Y 좌표로 라인 판단 (왼쪽, 중앙, 오른쪽)
-        RouteType route;
-        if (tilePos.y > 1.5f)
+        // 새로운 RouteWaypointManager 사용
+        RouteWaypointManager waypointManager = RouteWaypointManager.Instance;
+        if (waypointManager != null)
         {
-            route = RouteType.Left;
-        }
-        else if (tilePos.y < -1.5f)
-        {
-            route = RouteType.Right;
+            waypointManager.SetupCharacterRoute(character, tile);
         }
         else
         {
-            route = RouteType.Center;
+            // 기존 방식 폴백
+            Vector3 tilePos = tile.transform.position;
+            
+            // Y 좌표로 라인 판단 (왼쪽, 중앙, 오른쪽)
+            RouteType route;
+            if (tilePos.y > 1.5f)
+            {
+                route = RouteType.Left;
+            }
+            else if (tilePos.y < -1.5f)
+            {
+                route = RouteType.Right;
+            }
+            else
+            {
+                route = RouteType.Center;
+            }
+            
+            // 웨이포인트 설정은 CharacterMovement 컴포넌트에서 처리
+            CharacterMovement movement = character.GetComponent<CharacterMovement>();
+            if (movement != null)
+            {
+                movement.SetRoute(route);
+            }
+            
+            Debug.Log($"[PlacementManager] {character.characterName}의 라우트 설정: {route} (기존 방식)");
         }
-        
-        // 웨이포인트 설정은 CharacterMovement 컴포넌트에서 처리
-        CharacterMovement movement = character.GetComponent<CharacterMovement>();
-        if (movement != null)
-        {
-            movement.SetRoute(route);
-        }
-        
-        Debug.Log($"[PlacementManager] {character.characterName}의 라우트 설정: {route}");
     }
     
     /// <summary>

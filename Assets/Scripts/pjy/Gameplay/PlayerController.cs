@@ -17,6 +17,9 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private int currentMinerals = 100;
     [SerializeField] private int maxCharacters = 50;
     
+    [Header("Game Area")]
+    [SerializeField] private int areaIndex = 1; // 1: 플레이어 지역, 2: AI 지역
+    
     private AIBehavior aiBehavior;
     private List<Character> ownedCharacters = new List<Character>();
     private float lastAIDecisionTime;
@@ -27,6 +30,7 @@ public class PlayerController : MonoBehaviour
     public int CurrentMinerals => currentMinerals;
     public int CharacterCount => ownedCharacters.Count;
     public List<Character> OwnedCharacters => ownedCharacters;
+    public int AreaIndex => areaIndex;
     
     private void Awake()
     {

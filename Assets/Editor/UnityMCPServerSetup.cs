@@ -50,7 +50,7 @@ public class UnityMCPServerSetup
     public static void EnsureMCPServerExists()
     {
         // 이미 존재하는지 확인
-        UnityMCPServer existingServer = Object.FindObjectOfType<UnityMCPServer>();
+        UnityMCPServer existingServer = Object.FindFirstObjectByType<UnityMCPServer>();
         
         if (existingServer == null)
         {
@@ -95,7 +95,7 @@ public class UnityMCPServerSetup
     [MenuItem("Unity MCP/서버 제거", false, 2)]
     public static void RemoveMCPServer()
     {
-        UnityMCPServer[] servers = Object.FindObjectsOfType<UnityMCPServer>();
+        UnityMCPServer[] servers = Object.FindObjectsByType<UnityMCPServer>(FindObjectsSortMode.None);
         
         foreach (var server in servers)
         {
@@ -123,7 +123,7 @@ public class UnityMCPServerSetup
     [MenuItem("Unity MCP/서버 상태 확인", false, 3)]
     public static void CheckMCPServerStatus()
     {
-        UnityMCPServer[] servers = Object.FindObjectsOfType<UnityMCPServer>();
+        UnityMCPServer[] servers = Object.FindObjectsByType<UnityMCPServer>(FindObjectsSortMode.None);
         
         if (servers.Length == 0)
         {

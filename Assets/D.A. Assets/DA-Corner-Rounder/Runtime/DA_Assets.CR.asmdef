@@ -1,7 +1,9 @@
 {
     "name": "DA_Assets.CR",
     "rootNamespace": "",
-    "references": [],
+    "references": [
+        "UnityEngine.UI"
+    ],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,

@@ -37,6 +37,17 @@ public class CharacterCombat : MonoBehaviour
             return;
         }
         
+        // movement와 visual은 선택적 컴포넌트이므로 null이어도 오류를 발생시키지 않음
+        if (movement == null)
+        {
+            Debug.LogWarning("[CharacterCombat] CharacterMovement 컴포넌트를 찾을 수 없습니다. 이동 관련 기능이 제한됩니다.");
+        }
+        
+        if (visual == null)
+        {
+            Debug.LogWarning("[CharacterCombat] CharacterVisual 컴포넌트를 찾을 수 없습니다. 시각 효과가 제한됩니다.");
+        }
+        
         // 발사 위치가 없으면 생성
         if (firePoint == null)
         {

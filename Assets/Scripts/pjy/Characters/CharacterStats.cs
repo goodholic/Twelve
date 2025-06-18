@@ -10,6 +10,11 @@ public class CharacterStats : MonoBehaviour
     private CharacterVisual visual;
     private float attackCooldown;
     
+    [Header("Stack Bonuses")]
+    public float stackDamageMultiplier = 1f;
+    public float stackAttackSpeedMultiplier = 1f;
+    public string characterID;
+    
     /// <summary>
     /// 스탯 초기화
     /// </summary>
@@ -25,6 +30,7 @@ public class CharacterStats : MonoBehaviour
     public void InitializeStats(Character character)
     {
         this.character = character;
+        characterID = character.characterName + "_" + character.star.ToString();
         
         // 별에 따른 기초 스탯 보정 (게임 기획서: 1성 < 2성 < 3성)
         switch (character.star)

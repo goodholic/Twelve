@@ -1,7 +1,8 @@
 {
     "name": "AllIn1SpriteShaderAssembly",
     "references": [
-        "GUID:7ab3663edede26740845931880bf22af"
+        "GUID:7ab3663edede26740845931880bf22af",
+        "UnityEngine.UI"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

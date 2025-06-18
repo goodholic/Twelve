@@ -351,6 +351,33 @@ public class DraggableCharacter : MonoBehaviour
         return null;
     }
 
+    /// <summary>
+    /// 수동으로 드래그를 시작하는 메서드 (HumanPlayer에서 호출)
+    /// </summary>
+    public void StartDragging()
+    {
+        if (isDragging) return;
+        
+        isDragging = true;
+        originalPosition = transform.position;
+        originalTile = character?.currentTile;
+        
+        // 원래 라우트 저장
+        if (originalTile != null)
+        {
+            originalRoute = GetTileRoute(originalTile);
+        }
+
+        // 드래그 중 시각 효과
+        transform.localScale = originalScale * dragScale;
+        if (spriteRenderer != null)
+        {
+            spriteRenderer.sortingOrder = originalSortingOrder + 100;
+        }
+
+        Debug.Log($"[DraggableCharacter] {character?.characterName} 수동 드래그 시작");
+    }
+
     private void OnDestroy()
     {
         if (lineChangeIndicator != null)

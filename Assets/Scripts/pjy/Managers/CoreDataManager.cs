@@ -172,7 +172,14 @@ public class CoreDataManager : MonoBehaviour
             if (mineralBarObj != null)
             {
                 region2MineralBar = mineralBarObj.GetComponent<MineralBar>();
-                Debug.Log("[CoreDataManager] Region2MineralBar를 자동으로 찾았습니다.");
+                if (region2MineralBar != null)
+                {
+                    Debug.Log("[CoreDataManager] Region2MineralBar를 자동으로 찾았습니다.");
+                }
+                else
+                {
+                    Debug.LogError("[CoreDataManager] Region2MineralBar 오브젝트에 MineralBar 컴포넌트가 없습니다!");
+                }
             }
             else
             {
@@ -187,7 +194,14 @@ public class CoreDataManager : MonoBehaviour
             if (panelObj != null)
             {
                 characterPanel = panelObj.GetComponent<RectTransform>();
-                Debug.Log("[CoreDataManager] CharacterPanel을 자동으로 찾았습니다.");
+                if (characterPanel != null)
+                {
+                    Debug.Log("[CoreDataManager] CharacterPanel을 자동으로 찾았습니다.");
+                }
+                else
+                {
+                    Debug.LogError("[CoreDataManager] CharacterPanel 오브젝트에 RectTransform 컴포넌트가 없습니다!");
+                }
             }
         }
         

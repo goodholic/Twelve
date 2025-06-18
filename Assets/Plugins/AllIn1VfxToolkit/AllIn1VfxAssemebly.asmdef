@@ -1,3 +1,16 @@
 ﻿{
-	"name": "AllIn1VfxAssmebly"
+	"name": "AllIn1VfxAssmebly",
+	"rootNamespace": "",
+	"references": [
+		"UnityEngine.UI"
+	],
+	"includePlatforms": [],
+	"excludePlatforms": [],
+	"allowUnsafeCode": false,
+	"overrideReferences": false,
+	"precompiledReferences": [],
+	"autoReferenced": true,
+	"defineConstraints": [],
+	"versionDefines": [],
+	"noEngineReferences": false
 }
