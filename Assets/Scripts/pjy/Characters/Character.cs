@@ -1,39 +1,7 @@
 using UnityEngine;
 using System.Collections.Generic;
 
-/// <summary>
-/// 캐릭터 별 등급
-/// </summary>
-[System.Serializable]
-public enum CharacterStar
-{
-    OneStar = 1,
-    TwoStar = 2,
-    ThreeStar = 3
-}
-
-/// <summary>
-/// 캐릭터 종족
-/// </summary>
-[System.Serializable]
-public enum CharacterRace
-{
-    Human,
-    Orc,
-    Elf,
-    Undead
-}
-
-/// <summary>
-/// 공격 범위 타입
-/// </summary>
-[System.Serializable]
-public enum RangeType
-{
-    Melee,      // 근거리 (근접)
-    Ranged,     // 원거리
-    LongRange   // 장거리 (추가)
-}
+// enum 정의들은 GameEnums.cs로 이동됨
 
 
 

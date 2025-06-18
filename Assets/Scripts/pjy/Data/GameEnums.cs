@@ -52,3 +52,37 @@ public enum AttackShapeType
     Rectangle,      // 사각형 범위
     Sector          // 부채꼴 범위
 }
+
+/// <summary>
+/// 캐릭터 종족 (CharacterData용)
+/// </summary>
+[System.Serializable]
+public enum CharacterRace
+{
+    Human,          // 인간족
+    Orc,            // 오크족
+    Elf,            // 엘프족
+    Undead          // 언데드족
+}
+
+/// <summary>
+/// 캐릭터 별 등급
+/// </summary>
+[System.Serializable]
+public enum CharacterStar
+{
+    OneStar = 1,    // 1성
+    TwoStar = 2,    // 2성
+    ThreeStar = 3   // 3성
+}
+
+/// <summary>
+/// 공격 범위 타입
+/// </summary>
+[System.Serializable]
+public enum RangeType
+{
+    Melee,          // 근접 공격
+    Ranged,         // 원거리 공격
+    LongRange       // 장거리 공격
+}

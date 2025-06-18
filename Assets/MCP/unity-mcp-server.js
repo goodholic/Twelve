@@ -53,8 +53,8 @@ class UnityMCPServer {
       setTimeout(() => this.connectToUnity(), 5000);
     });
     
-    // Unity 서버에 연결 (포트 8080)
-    this.unityClient.connect(8080, 'localhost');
+         // Unity 서버에 연결 (포트 8081)
+     this.unityClient.connect(8081, 'localhost');
   }
 
   processUnityLog(logData) {
