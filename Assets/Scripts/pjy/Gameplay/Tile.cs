@@ -331,7 +331,7 @@ public class Tile : MonoBehaviour
     /// <summary>
     /// 타일 시각적 표현 업데이트
     /// </summary>
-    private void UpdateTileVisual()
+    public void UpdateTileVisual()
     {
         if (currentVisual != null)
         {

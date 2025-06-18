@@ -96,6 +96,14 @@ public class Character : MonoBehaviour, IDamageable
     public bool isTower = false;
 
     // ================================
+    // 버프 시스템
+    // ================================
+    [Header("버프 시스템")]
+    private float defenseBoost = 0f;
+    private float defenseBoostEndTime = 0f;
+    private float originalDefense = 1f;
+    
+    // ================================
     // 컴포넌트 참조
     // ================================
     private CharacterStats stats;
@@ -347,13 +355,49 @@ public class Character : MonoBehaviour, IDamageable
             return;
         }
         
-        currentHP = Mathf.Max(0, currentHP - damage);
+        // 방어 버프 적용
+        float actualDamage = damage;
+        if (Time.time < defenseBoostEndTime && defenseBoost > 0)
+        {
+            actualDamage = damage * (1f - defenseBoost);
+            Debug.Log($"[Character] {characterName} 방어 버프로 데미지 감소: {damage} → {actualDamage}");
+        }
+        
+        currentHP = Mathf.Max(0, currentHP - actualDamage);
         UpdateHPBar();
         
         if (currentHP <= 0)
         {
             Die();
         }
+    }
+    
+    /// <summary>
+    /// 방어 버프 적용 (향상된 성 시스템에서 호출)
+    /// </summary>
+    public void ApplyDefenseBoost(float boostAmount, float duration)
+    {
+        defenseBoost = boostAmount;
+        defenseBoostEndTime = Time.time + duration;
+        
+        // 버프 시각 효과 (선택사항)
+        if (spriteRenderer != null)
+        {
+            StartCoroutine(ShowDefenseBoostEffect());
+        }
+    }
+    
+    /// <summary>
+    /// 방어 버프 시각 효과
+    /// </summary>
+    private System.Collections.IEnumerator ShowDefenseBoostEffect()
+    {
+        Color originalColor = spriteRenderer.color;
+        Color buffColor = new Color(0.5f, 0.8f, 1f, 1f); // 하늘색
+        
+        spriteRenderer.color = buffColor;
+        yield return new WaitForSeconds(0.5f);
+        spriteRenderer.color = originalColor;
     }
 
     /// <summary>
