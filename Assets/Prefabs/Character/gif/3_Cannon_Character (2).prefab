@@ -184,43 +184,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 410f83dab09a00e4ab011246ce25bedf, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  characterName: 
+  characterName: 3_Cannon_Character (2)
   characterIndex: -1
   race: 0
   star: 1
   level: 1
-  characterData:
-    characterName: Unknown
-    characterIndex: -1
-    race: 0
-    star: 1
-    level: 1
-    attackPower: 10
-    attackRange: 3
-    range: 3
-    attackSpeed: 1
-    health: 100
-    maxHealth: 100
-    maxHP: 100
-    attackTargetType: 2
-    attackShapeType: 0
-    rangeType: 0
-    tribe: 0
-    isAreaAttack: 0
-    areaAttackRadius: 1.5
-    isBuffSupport: 0
-    cost: 10
-    moveSpeed: 1
-    currentExp: 0
-    expToNextLevel: 100
-    isFreeSlotOnly: 0
-    characterSprite: {fileID: 0}
-    frontSprite: {fileID: 0}
-    backSprite: {fileID: 0}
-    spawnPrefab: {fileID: 0}
-    motionPrefab: {fileID: 0}
-    buttonIcon: {fileID: 0}
-    initialStar: 1
+  characterData: {fileID: 0}
   attackPower: 20
   attackRange: 3.5
   range: 3
@@ -231,6 +200,7 @@ MonoBehaviour:
   maxHealth: 100
   attackTargetType: 0
   attackShapeType: 0
+  rangeType: 0
   tribe: 0
   isAreaAttack: 1
   areaAttackRadius: 2.5
@@ -367,8 +337,8 @@ MonoBehaviour:
   region2CenterJumpEnd: {fileID: 8849791757388328933, guid: 18a066fd9053bdf4d972a18a8c0d7804, type: 3}
   region2RightJumpStart: {fileID: 8383681622649238009, guid: 969b2bae51f31a84181d379038ea0664, type: 3}
   region2RightJumpEnd: {fileID: 5092398501469691122, guid: d1f77ced7d82bd649a4f8d0cb5377c34, type: 3}
-  startTileRect: {fileID: 0}
-  endTileRect: {fileID: 0}
+  startTile: {fileID: 0}
+  endTile: {fileID: 0}
   autoJumpOnStart: 0
   isJumping: 0
 --- !u!114 &133747215804466122

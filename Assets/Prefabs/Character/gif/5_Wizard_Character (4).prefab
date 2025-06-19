@@ -266,7 +266,6 @@ GameObject:
   - component: {fileID: 7643800267745795384}
   - component: {fileID: 8519823030489811609}
   - component: {fileID: -3484021477516835002}
-  - component: {fileID: 4078812631583206235}
   - component: {fileID: 8293950167138075370}
   - component: {fileID: -1280375214095741299}
   - component: {fileID: -4951894638923552255}
@@ -363,29 +362,40 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 410f83dab09a00e4ab011246ce25bedf, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  star: 1
-  characterName: 
+  characterName: 5_Wizard_Character (4)
+  characterIndex: -1
   race: 1
-  attackTargetType: 0
-  movementType: 0
+  star: 1
+  level: 1
+  characterData: {fileID: 0}
   attackPower: 13
-  attackSpeed: 1.1
   attackRange: 2.5
+  range: 3
+  attackSpeed: 1.1
   currentHP: 100
-  moveSpeed: 1
-  currentTile: {fileID: 0}
-  currentTarget: {fileID: 0}
-  currentCharTarget: {fileID: 0}
-  currentMiddleCastleTarget: {fileID: 0}
-  currentFinalCastleTarget: {fileID: 0}
+  health: 100
+  maxHP: 100
+  maxHealth: 100
+  attackTargetType: 0
+  attackShapeType: 0
+  rangeType: 0
+  tribe: 0
   isAreaAttack: 0
   areaAttackRadius: 1
-  isHero: 0
   isDraggable: 1
-  areaIndex: 1
+  cost: 10
+  moveSpeed: 1
+  attackEffectPrefab: {fileID: 0}
+  characterSprite: {fileID: 0}
+  frontSprite: {fileID: 0}
+  backSprite: {fileID: 0}
+  currentTile: {fileID: 0}
   selectedRoute: 0
-  rangeType: 0
+  currentCharTarget: {fileID: 0}
+  areaIndex: 1
+  isHero: 0
   isCharAttack: 0
+  isTower: 0
   pathWaypoints:
   - {fileID: 7533954594709166238, guid: 2c7af040127463842bb538e73144355c, type: 3}
   - {fileID: 375125270241151848, guid: 8210aa4d54b99484ab283b8e5a075126, type: 3}
@@ -395,29 +405,8 @@ MonoBehaviour:
   - {fileID: 8360226188534919249, guid: 975390a5ef2c9ba45a77f5afca985383, type: 3}
   currentWaypointIndex: -1
   maxWaypointIndex: 6
-  bulletPanel: {fileID: 0}
-  opponentBulletPanel: {fileID: 8293515601833126614, guid: 442d773c6cac9b34e88e19f932f717e8, type: 3}
-  vfxPanel: {fileID: 0}
   hpBarCanvas: {fileID: 3860561435096850143}
---- !u!114 &4078812631583206235
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 9176415509751804172}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5ef25c6c32a9edc4498664c9cea94a44, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  parentPanel: {fileID: 3504338384272343577, guid: 9a44fedc711c03541adc233db7cd34dd, type: 3}
-  dragScale: 1.1
-  dragYOffset: 30
-  validDropColor: {r: 0.5, g: 1, b: 0.5, a: 1}
-  invalidDropColor: {r: 1, g: 0.5, b: 0.5, a: 1}
-  lineChangeArrowPrefab: {fileID: 0}
-  currentLineHighlight: {r: 1, g: 1, b: 0, a: 0.5}
+  opponentBulletPanel: {fileID: 8293515601833126614, guid: 442d773c6cac9b34e88e19f932f717e8, type: 3}
 --- !u!58 &8293950167138075370
 CircleCollider2D:
   m_ObjectHideFlags: 0
@@ -526,8 +515,8 @@ MonoBehaviour:
   region2CenterJumpEnd: {fileID: 8849791757388328933, guid: 18a066fd9053bdf4d972a18a8c0d7804, type: 3}
   region2RightJumpStart: {fileID: 8383681622649238009, guid: 969b2bae51f31a84181d379038ea0664, type: 3}
   region2RightJumpEnd: {fileID: 5092398501469691122, guid: d1f77ced7d82bd649a4f8d0cb5377c34, type: 3}
-  startTileRect: {fileID: 0}
-  endTileRect: {fileID: 0}
+  startTile: {fileID: 0}
+  endTile: {fileID: 0}
   autoJumpOnStart: 0
   isJumping: 0
 --- !u!114 &-1165225022950635168
@@ -542,14 +531,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 08c567e188f335f4493f6b5c95446e55, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  bulletPrefab: {fileID: 4981713407830389979, guid: fd278dad8fe460b49982870a2bba35db, type: 3}
-  bulletSpeed: 5
-  bulletUpDirectionSprite: {fileID: 0}
-  bulletDownDirectionSprite: {fileID: 0}
-  opponentBulletPanel: {fileID: 0}
-  newAttackRangeOnClick: 4
-  attackInfoText: {fileID: 0}
-  attackInfoOffset: {x: 1, y: 0, z: 0}
+  isAttacking: 0
+  projectilePrefab: {fileID: 0}
+  firePoint: {fileID: 0}
 --- !u!114 &-8267704269296432709
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -574,24 +558,31 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a912782ca88664f41867d2ab4120b9c4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  rangeIndicatorPrefab: {fileID: 0}
-  showRangeIndicator: 1
-  twoStarOutlineColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
-  twoStarOutlineWidth: 1
-  twoStarEffectPrefab: {fileID: 0}
-  threeStarOutlineColor: {r: 0, g: 1, b: 1, a: 1}
-  threeStarOutlineWidth: 1.5
-  threeStarEffectPrefab: {fileID: 0}
-  star2Prefab: {fileID: 0}
-  star3Prefab: {fileID: 0}
-  hpBarCanvas: {fileID: 0}
-  hpFillImage: {fileID: 0}
-  hpText: {fileID: 0}
-  characterUpDirectionSprite: {fileID: 0}
-  characterDownDirectionSprite: {fileID: 0}
-  characterLeftDirectionSprite: {fileID: 0}
-  characterRightDirectionSprite: {fileID: 0}
-  humanEffectPrefab: {fileID: 0}
-  orcEffectPrefab: {fileID: 0}
-  elfEffectPrefab: {fileID: 0}
-  draggableIndicatorPrefab: {fileID: 0}
+  attackAnimationDuration: 0.3
+  attackAnimationCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  attackEffect: {fileID: 0}
+  hitEffect: {fileID: 0}
+  deathEffect: {fileID: 0}
