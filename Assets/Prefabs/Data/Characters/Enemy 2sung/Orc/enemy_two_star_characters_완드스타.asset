@@ -1,0 +1,46 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 67eadf1039687fc4cbdc49b5572aa689, type: 3}
+  m_Name: "enemy_two_star_characters_\uC644\uB4DC\uC2A4\uD0C0"
+  m_EditorClassIdentifier: Assembly-CSharp::CharacterData
+  characterName: "\uC644\uB4DC\uC2A4\uD0C0"
+  characterIndex: -1
+  race: 1
+  star: 2
+  level: 1
+  attackPower: 28
+  attackRange: 3
+  range: 3
+  attackSpeed: 1.1
+  health: 170
+  maxHealth: 170
+  maxHP: 170
+  attackTargetType: 2
+  attackShapeType: 0
+  rangeType: 1
+  tribe: 1
+  isAreaAttack: 0
+  areaAttackRadius: 1.5
+  isBuffSupport: 0
+  cost: 10
+  moveSpeed: 3
+  currentExp: 0
+  expToNextLevel: 100
+  isFreeSlotOnly: 0
+  characterSprite: {fileID: 0}
+  frontSprite: {fileID: 0}
+  backSprite: {fileID: 0}
+  spawnPrefab: {fileID: 0}
+  motionPrefab: {fileID: 0}
+  prefabName: 
+  buttonIcon: {fileID: 0}
+  initialStar: 2
