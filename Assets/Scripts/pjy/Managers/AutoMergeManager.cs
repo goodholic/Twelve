@@ -69,6 +69,64 @@ public class AutoMergeManager : MonoBehaviour
         Debug.Log($"[AutoMergeManager] 주사위 버튼 클릭 - 지역{areaIndex} 자동 합성 시작");
         StartAutoMerge(areaIndex);
     }
+    
+    /// <summary>
+    /// README.md에 명시된 자동 합성 메서드
+    /// </summary>
+    public void PerformAutoMerge()
+    {
+        Debug.Log($"[AutoMergeManager] PerformAutoMerge() 호출됨");
+        
+        // 필드의 모든 캐릭터 스캔
+        Dictionary<string, List<Character>> mergeGroups = new Dictionary<string, List<Character>>();
+        
+        // 플레이어 영역(areaIndex = 1)의 캐릭터만 대상으로
+        Character[] allCharacters = FindObjectsByType<Character>(FindObjectsSortMode.None);
+        var playerCharacters = allCharacters.Where(c => 
+            c != null && 
+            c.areaIndex == 1 && 
+            c.star != CharacterStar.ThreeStar && // 3성은 합성 불가
+            !c.isHero // 히어로는 합성 제외
+        ).ToList();
+        
+        // 같은 이름/등급별로 그룹화
+        foreach (var character in playerCharacters)
+        {
+            string key = $"{character.characterName}_{character.star}";
+            if (!mergeGroups.ContainsKey(key))
+                mergeGroups[key] = new List<Character>();
+            mergeGroups[key].Add(character);
+        }
+        
+        // 3개 이상인 그룹 찾아 합성
+        int totalMerged = 0;
+        foreach (var group in mergeGroups.Values)
+        {
+            while (group.Count >= 3)
+            {
+                // 3개씩 합성
+                var charactersToMerge = group.Take(3).ToArray();
+                MergeCharacters(charactersToMerge);
+                
+                // 합성된 캐릭터들을 리스트에서 제거
+                foreach (var mergedChar in charactersToMerge)
+                {
+                    group.Remove(mergedChar);
+                }
+                
+                totalMerged++;
+            }
+        }
+        
+        if (totalMerged > 0)
+        {
+            Debug.Log($"[AutoMergeManager] 총 {totalMerged}번의 자동 합성을 완료했습니다!");
+        }
+        else
+        {
+            Debug.Log("[AutoMergeManager] 합성 가능한 캐릭터가 없습니다. (같은 캐릭터 3개 이상 필요)");
+        }
+    }
 
     /// <summary>
     /// 자동 합성 프로세스
@@ -318,24 +376,8 @@ public class AutoMergeManager : MonoBehaviour
             return;
         }
 
-        // 새 캐릭터 생성
-        RectTransform targetParent = (areaIndex == 2 && coreData.opponentCharacterPanel != null) 
-            ? coreData.opponentCharacterPanel : coreData.characterPanel;
-            
-        GameObject mergedObj = Instantiate(newCharData.spawnPrefab, targetParent);
-        
-        // 위치 설정
-        RectTransform mergedRect = mergedObj.GetComponent<RectTransform>();
-        if (mergedRect != null && targetTile != null)
-        {
-            RectTransform tileRect = targetTile.GetComponent<RectTransform>();
-            if (tileRect != null)
-            {
-                Vector2 localPos = targetParent.InverseTransformPoint(tileRect.transform.position);
-                mergedRect.anchoredPosition = localPos;
-                mergedRect.localRotation = Quaternion.identity;
-            }
-        }
+        // 새 캐릭터 생성 (좌표계에 맞는 방식 사용)
+        GameObject mergedObj = CreateMergedCharacterSafely(newCharData, targetTile, areaIndex);
 
         // Character 컴포넌트 설정
         Character mergedChar = mergedObj.GetComponent<Character>();
@@ -447,5 +489,65 @@ public class AutoMergeManager : MonoBehaviour
         
         PerformMerge(group);
         Debug.Log($"[AutoMergeManager] 직접 합성 완료: {first.characterName} {first.star}성 3개 → {(CharacterStar)((int)first.star + 1)}성");
+    }
+    
+    /// <summary>
+    /// 좌표계에 맞는 안전한 캐릭터 생성
+    /// </summary>
+    private GameObject CreateMergedCharacterSafely(CharacterData newCharData, Tile targetTile, int areaIndex)
+    {
+        GameObject mergedObj = null;
+        
+        try
+        {
+            // 타일의 좌표계 확인
+            bool isWorldSpace = targetTile.GetComponent<RectTransform>() == null;
+            
+            if (isWorldSpace)
+            {
+                // World Space: 타일 위치에 직접 생성
+                Vector3 worldPosition = targetTile.transform.position;
+                mergedObj = Instantiate(newCharData.spawnPrefab, worldPosition, Quaternion.identity);
+            }
+            else
+            {
+                // UI Space: UI 패널의 자식으로 생성
+                var coreData = CoreDataManager.Instance;
+                RectTransform targetParent = (areaIndex == 2 && coreData.opponentCharacterPanel != null) 
+                    ? coreData.opponentCharacterPanel : coreData.characterPanel;
+                
+                mergedObj = Instantiate(newCharData.spawnPrefab, targetParent);
+                
+                // UI 위치 설정
+                RectTransform mergedRect = mergedObj.GetComponent<RectTransform>();
+                RectTransform tileRect = targetTile.GetComponent<RectTransform>();
+                
+                if (mergedRect != null && tileRect != null)
+                {
+                    // UI 좌표계에서 위치 동기화
+                    Vector2 localPos = targetParent.InverseTransformPoint(tileRect.transform.position);
+                    mergedRect.anchoredPosition = localPos;
+                    mergedRect.localRotation = Quaternion.identity;
+                }
+            }
+            
+            if (mergedObj == null)
+            {
+                throw new System.Exception("캐릭터 생성 실패");
+            }
+            
+            return mergedObj;
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[AutoMergeManager] 캐릭터 생성 중 오류: {e.Message}");
+            
+            // Fallback: 기본 위치에 생성
+            Vector3 fallbackPosition = targetTile != null ? targetTile.transform.position : Vector3.zero;
+            GameObject fallbackObj = Instantiate(newCharData.spawnPrefab, fallbackPosition, Quaternion.identity);
+            
+            Debug.LogWarning($"[AutoMergeManager] Fallback으로 월드 좌표에 캐릭터 생성: {fallbackPosition}");
+            return fallbackObj;
+        }
     }
 }

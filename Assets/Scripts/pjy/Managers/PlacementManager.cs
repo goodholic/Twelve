@@ -327,6 +327,18 @@ public class PlacementManager : MonoBehaviour
         // ★ 자동 합성 체크: 같은 타일에 같은 캐릭터가 3개가 되면 자동으로 합성 시도
         CheckAndMergeOnTile(tile);
         
+        // ★ 종족 시너지 시스템에 알림
+        if (RaceSynergyManager.Instance != null && !forceEnemyArea2)
+        {
+            RaceSynergyManager.Instance.OnCharacterSpawned(character);
+        }
+        
+        // ★ 인게임 강화 시스템에 알림
+        if (InGameEnhanceManager.Instance != null && !forceEnemyArea2)
+        {
+            InGameEnhanceManager.Instance.OnCharacterSpawned(character);
+        }
+        
         Debug.Log($"[PlacementManager] {data.characterName}을(를) {tile.name}에 소환 완료! " +
                   $"(별: {character.star}, 레벨: {character.level}, 공격력: {character.attackPower})");
         

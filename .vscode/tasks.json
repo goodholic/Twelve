@@ -1,0 +1,125 @@
+﻿{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Monitor Unity Logs (PowerShell)",
+            "type": "shell",
+            "command": "PowerShell",
+            "args": [
+                "-ExecutionPolicy", "Bypass",
+                "-File", "./Scripts/Watch-UnityLogs.ps1"
+            ],
+            "problemMatcher": [],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "new",
+                "showReuseMessage": false,
+                "clear": false
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "Monitor Unity Errors Only (PowerShell)",
+            "type": "shell",
+            "command": "PowerShell",
+            "args": [
+                "-ExecutionPolicy", "Bypass",
+                "-File", "./Scripts/Watch-UnityLogs.ps1",
+                "-ErrorsOnly"
+            ],
+            "problemMatcher": [],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "new",
+                "showReuseMessage": false,
+                "clear": false
+            }
+        },
+        {
+            "label": "Monitor Unity Logs (WSL)",
+            "type": "shell",
+            "command": "wsl",
+            "args": ["bash", "./Scripts/monitor-unity-logs.sh"],
+            "problemMatcher": [],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "new",
+                "showReuseMessage": false,
+                "clear": false
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            }
+        },
+        {
+            "label": "Monitor Unity Errors Only (WSL)",
+            "type": "shell",
+            "command": "wsl",
+            "args": ["bash", "./Scripts/monitor-unity-logs.sh", "-e"],
+            "problemMatcher": [],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "new",
+                "showReuseMessage": false,
+                "clear": false
+            }
+        },
+        {
+            "label": "Unity Log Summary",
+            "type": "shell",
+            "command": "wsl",
+            "args": ["bash", "./Scripts/unity-log-utils.sh", "summary"],
+            "problemMatcher": [],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": true,
+                "panel": "shared",
+                "showReuseMessage": false,
+                "clear": true
+            }
+        },
+        {
+            "label": "Clear Unity Logs",
+            "type": "shell",
+            "command": "wsl",
+            "args": ["bash", "./Scripts/unity-log-utils.sh", "clear"],
+            "problemMatcher": [],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": true,
+                "panel": "shared",
+                "showReuseMessage": false,
+                "clear": true
+            }
+        },
+        {
+            "label": "Export Unity Errors",
+            "type": "shell",
+            "command": "wsl",
+            "args": ["bash", "./Scripts/unity-log-utils.sh", "export-errors"],
+            "problemMatcher": [],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": true,
+                "panel": "shared",
+                "showReuseMessage": false,
+                "clear": true
+            }
+        }
+    ]
+}

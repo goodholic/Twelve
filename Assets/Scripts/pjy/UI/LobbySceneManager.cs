@@ -629,4 +629,17 @@ public class LobbySceneManager : MonoBehaviour
     {
         deckPanelManager.RefreshInventoryUI();
     }
+    
+    /// <summary>
+    /// 화폐 표시 업데이트 (리사이클 등 외부에서 호출용)
+    /// </summary>
+    public void UpdateCurrencyDisplay()
+    {
+        // PlayerPrefs에서 최신 값 읽기
+        gold = PlayerPrefs.GetInt("Gold", 0);
+        diamond = PlayerPrefs.GetInt("Diamond", 0);
+        
+        // UI 업데이트
+        UpdateGoldAndDiamondUI();
+    }
 }

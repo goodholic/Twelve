@@ -429,5 +429,27 @@ public class ShopManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 골드 차감 (GuildManager 호환용)
+    /// </summary>
+    /// <param name="amount">차감할 골드 양</param>
+    /// <returns>차감 성공 여부</returns>
+    public bool SpendGold(int amount)
+    {
+        return TrySpendGold(amount);
+    }
+
+    /// <summary>
+    /// 다이아몬드 추가 (GuildManager 호환용)
+    /// </summary>
+    /// <param name="amount">추가할 다이아몬드 양</param>
+    public void AddDiamond(int amount)
+    {
+        playerDiamonds += amount;
+        UpdateUI();
+        SavePlayerData();
+        Debug.Log($"[ShopManager] 보상으로 다이아몬드 {amount}개 추가, 현재 다이아몬드: {playerDiamonds}");
+    }
+
     #endregion
 }  

@@ -1,113 +1,133 @@
-#if UNITY_EDITOR
+﻿using System;
+using System.IO;
 using UnityEngine;
 using UnityEditor;
-using System.IO;
-using System;
 
-/// <summary>
-/// Unity 콘솔 로그를 터미널에서 읽을 수 있는 파일로 출력하는 스크립트
-/// </summary>
 [InitializeOnLoad]
 public class UnityLogToTerminal
 {
-    private static string logFilePath;
     private static StreamWriter logWriter;
-    
+    private static string logFilePath;
+    private static readonly object lockObject = new object();
+
     static UnityLogToTerminal()
     {
-        // 로그 파일 경로 설정
-        string projectPath = Application.dataPath.Replace("/Assets", "");
-        logFilePath = Path.Combine(projectPath, "Logs", "unity-console.log");
-        
-        // 로그 디렉토리 생성
-        Directory.CreateDirectory(Path.GetDirectoryName(logFilePath));
-        
-        // 로그 파일 초기화
-        InitializeLogFile();
-        
-        // Unity 콘솔 로그 캡처 시작
+        InitializeLogging();
         Application.logMessageReceived += OnLogMessageReceived;
-        
-        Debug.Log("🔍 Unity 로그가 터미널용 파일로 출력됩니다: " + logFilePath);
+        EditorApplication.quitting += OnEditorQuitting;
     }
-    
-    private static void InitializeLogFile()
+
+    private static void InitializeLogging()
     {
         try
         {
-            // 기존 로그 파일 백업
+            string logDirectory = Path.Combine(Application.dataPath, "..", "Logs");
+            if (!Directory.Exists(logDirectory))
+            {
+                Directory.CreateDirectory(logDirectory);
+            }
+
+            logFilePath = Path.Combine(logDirectory, "unity-console.log");
+            
+            // 기존 로그 파일이 있으면 백업
             if (File.Exists(logFilePath))
             {
-                string backupPath = logFilePath + ".backup";
-                File.Copy(logFilePath, backupPath, true);
+                string backupPath = logFilePath + ".backup." + DateTime.Now.ToString("yyyyMMdd_HHmmss");
+                File.Move(logFilePath, backupPath);
             }
-            
-            // 새 로그 파일 생성
-            logWriter = new StreamWriter(logFilePath, false, System.Text.Encoding.UTF8);
-            logWriter.AutoFlush = true;
-            
-            // 헤더 작성
-            logWriter.WriteLine($"# Unity Console Log - {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
-            logWriter.WriteLine($"# Project: {Application.productName}");
-            logWriter.WriteLine($"# Unity Version: {Application.unityVersion}");
-            logWriter.WriteLine("# Format: [TIMESTAMP] LEVEL: MESSAGE");
-            logWriter.WriteLine("");
+
+            logWriter = new StreamWriter(logFilePath, false)
+            {
+                AutoFlush = true // 실시간 업데이트를 위해
+            };
+
+            string startMessage = $"=== Unity Log Session Started at {DateTime.Now:yyyy-MM-dd HH:mm:ss} ===";
+            logWriter.WriteLine(startMessage);
+            Debug.Log("[LogToTerminal] 로그 파일이 생성되었습니다: " + logFilePath);
         }
-        catch (Exception e)
+        catch (Exception ex)
         {
-            Debug.LogError($"로그 파일 초기화 실패: {e.Message}");
+            Debug.LogError("[LogToTerminal] 로그 파일 초기화 실패: " + ex.Message);
         }
     }
-    
+
     private static void OnLogMessageReceived(string logString, string stackTrace, LogType type)
     {
         if (logWriter == null) return;
-        
-        try
+
+        lock (lockObject)
         {
-            string timestamp = DateTime.Now.ToString("HH:mm:ss.fff");
-            string logLevel = GetLogLevelString(type);
-            
-            // 기본 로그 라인
-            string logLine = $"[{timestamp}] {logLevel}: {logString}";
-            logWriter.WriteLine(logLine);
-            
-            // 에러나 예외인 경우 스택 트레이스 추가
-            if ((type == LogType.Error || type == LogType.Exception) && !string.IsNullOrEmpty(stackTrace))
+            try
             {
-                logWriter.WriteLine($"[{timestamp}] STACK: {stackTrace}");
+                string timestamp = DateTime.Now.ToString("HH:mm:ss.fff");
+                string logLevel = GetLogLevel(type);
+                string formattedMessage = $"[{timestamp}] {logLevel}: {logString}";
+
+                logWriter.WriteLine(formattedMessage);
+
+                // 스택 트레이스가 있고 에러/예외인 경우 추가
+                if (!string.IsNullOrEmpty(stackTrace) && (type == LogType.Error || type == LogType.Exception))
+                {
+                    string[] stackLines = stackTrace.Split('\n');
+                    foreach (string line in stackLines)
+                    {
+                        if (!string.IsNullOrWhiteSpace(line))
+                        {
+                            logWriter.WriteLine($"[{timestamp}] STACK: {line.Trim()}");
+                        }
+                    }
+                }
             }
-            
-            // 터미널에서 읽기 쉽도록 구분선 추가 (에러/경고만)
-            if (type == LogType.Error || type == LogType.Warning)
+            catch (Exception ex)
             {
-                logWriter.WriteLine("---");
+                Debug.LogError("[LogToTerminal] 로그 쓰기 실패: " + ex.Message);
             }
-        }
-        catch (Exception e)
-        {
-            Debug.LogError($"로그 파일 쓰기 실패: {e.Message}");
         }
     }
-    
-    private static string GetLogLevelString(LogType type)
+
+    private static string GetLogLevel(LogType type)
     {
         switch (type)
         {
-            case LogType.Error: return "ERROR";
-            case LogType.Assert: return "ASSERT";
-            case LogType.Warning: return "WARNING";
-            case LogType.Log: return "INFO";
-            case LogType.Exception: return "EXCEPTION";
-            default: return "INFO";
+            case LogType.Error:
+                return "ERROR";
+            case LogType.Assert:
+                return "ASSERT";
+            case LogType.Warning:
+                return "WARNING";
+            case LogType.Log:
+                return "INFO";
+            case LogType.Exception:
+                return "EXCEPTION";
+            default:
+                return "LOG";
         }
     }
-    
-    /// <summary>
-    /// Unity 에디터 종료 시 로그 파일 정리
-    /// </summary>
-    [MenuItem("Unity Log/로그 파일 열기", false, 1)]
-    public static void OpenLogFile()
+
+    private static void OnEditorQuitting()
+    {
+        if (logWriter != null)
+        {
+            lock (lockObject)
+            {
+                try
+                {
+                    string endMessage = $"=== Unity Log Session Ended at {DateTime.Now:yyyy-MM-dd HH:mm:ss} ===";
+                    logWriter.WriteLine(endMessage);
+                    logWriter.Close();
+                    logWriter.Dispose();
+                    logWriter = null;
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogError("[LogToTerminal] 로그 파일 종료 실패: " + ex.Message);
+                }
+            }
+        }
+    }
+
+    [MenuItem("Unity Log/로그 파일 열기")]
+    private static void OpenLogFile()
     {
         if (File.Exists(logFilePath))
         {
@@ -118,34 +138,22 @@ public class UnityLogToTerminal
             Debug.LogWarning("로그 파일이 존재하지 않습니다: " + logFilePath);
         }
     }
-    
-    [MenuItem("Unity Log/로그 파일 경로 복사", false, 2)]
-    public static void CopyLogFilePath()
+
+    [MenuItem("Unity Log/로그 파일 경로 복사")]
+    private static void CopyLogPath()
     {
-        EditorGUIUtility.systemCopyBuffer = logFilePath;
-        Debug.Log("로그 파일 경로가 클립보드에 복사되었습니다: " + logFilePath);
-    }
-    
-    [MenuItem("Unity Log/터미널 모니터링 명령어 생성", false, 3)]
-    public static void GenerateTerminalCommand()
-    {
-        string command = $"Get-Content -Path \"{logFilePath}\" -Wait -Tail 10";
-        EditorGUIUtility.systemCopyBuffer = command;
-        
-        Debug.Log("터미널 모니터링 명령어가 클립보드에 복사되었습니다:");
-        Debug.Log(command);
-        Debug.Log("\n사용법: PowerShell에서 위 명령어를 실행하면 Unity 로그를 실시간으로 볼 수 있습니다.");
-    }
-    
-    // Unity 에디터 종료 시 정리
-    static void OnApplicationQuit()
-    {
-        if (logWriter != null)
+        if (!string.IsNullOrEmpty(logFilePath))
         {
-            logWriter.WriteLine($"# Unity Editor Closed - {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
-            logWriter.Close();
-            logWriter = null;
+            EditorGUIUtility.systemCopyBuffer = logFilePath;
+            Debug.Log("로그 파일 경로가 클립보드에 복사되었습니다: " + logFilePath);
         }
     }
+
+    [MenuItem("Unity Log/모니터링 명령어 생성")]
+    private static void GenerateMonitoringCommand()
+    {
+        string command = $"PowerShell -ExecutionPolicy Bypass -File \"{Application.dataPath}\\..\\Scripts\\Watch-UnityLogs.ps1\"";
+        EditorGUIUtility.systemCopyBuffer = command;
+        Debug.Log("PowerShell 모니터링 명령어가 클립보드에 복사되었습니다:\n" + command);
+    }
 }
-#endif 

@@ -409,6 +409,12 @@ public class Character : MonoBehaviour, IDamageable
         {
             Debug.Log($"[Character] {characterName} 사망!");
             
+            // 종족 시너지 시스템에서 제거
+            if (pjy.Managers.RaceSynergyManager.Instance != null)
+            {
+                pjy.Managers.RaceSynergyManager.Instance.OnCharacterRemoved(this);
+            }
+            
             // 타일에서 제거
             if (currentTile != null)
             {
@@ -612,6 +618,221 @@ public class Character : MonoBehaviour, IDamageable
     public float GetMaxHealth()
     {
         return maxHP;
+    }
+    
+    // ================================
+    // 종족 시너지 시스템
+    // ================================
+    private float raceSynergyAttackBonus = 0f;
+    private float raceSynergyHealthBonus = 0f;
+    private float raceSynergyAttackSpeedBonus = 0f;
+    
+    /// <summary>
+    /// 종족 시너지 버프 적용
+    /// </summary>
+    public void ApplyRaceSynergy(float attackBonusPercent, float healthBonusPercent, float attackSpeedBonusPercent)
+    {
+        // 이전 시너지 제거
+        RemoveRaceSynergy();
+        
+        // 새 시너지 저장
+        raceSynergyAttackBonus = attackBonusPercent;
+        raceSynergyHealthBonus = healthBonusPercent;
+        raceSynergyAttackSpeedBonus = attackSpeedBonusPercent;
+        
+        // 스탯 재계산
+        RecalculateStats();
+        
+        // 시너지 적용 시각 효과
+        if (attackBonusPercent > 0 || healthBonusPercent > 0 || attackSpeedBonusPercent > 0)
+        {
+            ShowSynergyEffect();
+        }
+        
+        Debug.Log($"[Character] {characterName}에 종족 시너지 적용: 공격력+{attackBonusPercent}%, 체력+{healthBonusPercent}%, 공격속도+{attackSpeedBonusPercent}%");
+    }
+    
+    /// <summary>
+    /// 종족 시너지 제거
+    /// </summary>
+    private void RemoveRaceSynergy()
+    {
+        raceSynergyAttackBonus = 0f;
+        raceSynergyHealthBonus = 0f;
+        raceSynergyAttackSpeedBonus = 0f;
+    }
+    
+    /// <summary>
+    /// 스탯 재계산 (시너지 + 길드 버프 포함)
+    /// </summary>
+    private void RecalculateStats()
+    {
+        if (characterData != null)
+        {
+            // 기본 공격력 + 시너지 보너스 + 길드 보너스
+            float baseAttack = characterData.attackPower;
+            attackPower = baseAttack * (1f + raceSynergyAttackBonus / 100f) * (1f + guildAttackBonus);
+            
+            // 기본 공격속도 + 시너지 보너스
+            float baseAttackSpeed = characterData.attackSpeed;
+            attackSpeed = baseAttackSpeed * (1f - raceSynergyAttackSpeedBonus / 100f); // 공격속도는 낮을수록 빠름
+            
+            // 기본 체력 + 시너지 보너스 + 길드 보너스
+            float baseHealth = characterData.maxHP;
+            float newMaxHP = baseHealth * (1f + raceSynergyHealthBonus / 100f) * (1f + guildHealthBonus);
+            
+            // 체력 비율 유지하면서 최대 체력 변경
+            float healthRatio = currentHP / maxHP;
+            maxHP = newMaxHP;
+            maxHealth = newMaxHP;
+            currentHP = maxHP * healthRatio;
+            health = currentHP;
+            
+            // 체력바 업데이트
+            UpdateHPBar();
+            
+            // 전투 컴포넌트에도 알림
+            if (combat != null)
+            {
+                combat.UpdateAttackStats(attackPower, attackSpeed);
+            }
+        }
+    }
+    
+    /// <summary>
+    /// 시너지 효과 표시
+    /// </summary>
+    private void ShowSynergyEffect()
+    {
+        // 시각적 효과 (반짝임)
+        StartCoroutine(SynergyFlashEffect());
+        
+        // 버프 아이콘 표시 (옵션)
+        ShowBuffIcon();
+    }
+    
+    /// <summary>
+    /// 시너지 반짝임 효과
+    /// </summary>
+    private System.Collections.IEnumerator SynergyFlashEffect()
+    {
+        if (spriteRenderer != null)
+        {
+            Color originalColor = spriteRenderer.color;
+            Color synergyColor = GetRaceSynergyColor();
+            
+            // 3번 반짝임
+            for (int i = 0; i < 3; i++)
+            {
+                spriteRenderer.color = Color.Lerp(originalColor, synergyColor, 0.5f);
+                yield return new WaitForSeconds(0.1f);
+                spriteRenderer.color = originalColor;
+                yield return new WaitForSeconds(0.1f);
+            }
+        }
+    }
+    
+    /// <summary>
+    /// 종족별 시너지 색상
+    /// </summary>
+    private Color GetRaceSynergyColor()
+    {
+        switch (race)
+        {
+            case CharacterRace.Human:
+                return new Color(0.3f, 0.5f, 1f); // 파란색
+            case CharacterRace.Orc:
+                return new Color(1f, 0.3f, 0.3f); // 빨간색
+            case CharacterRace.Elf:
+                return new Color(0.3f, 1f, 0.3f); // 초록색
+            default:
+                return Color.white;
+        }
+    }
+    
+    /// <summary>
+    /// 버프 아이콘 표시
+    /// </summary>
+    private void ShowBuffIcon()
+    {
+        // 버프 아이콘이 이미 있다면 업데이트만
+        Transform buffIcon = transform.Find("BuffIcon");
+        if (buffIcon == null)
+        {
+            GameObject iconObj = new GameObject("BuffIcon");
+            iconObj.transform.SetParent(transform);
+            iconObj.transform.localPosition = new Vector3(0.5f, 0.5f, 0);
+            
+            SpriteRenderer iconRenderer = iconObj.AddComponent<SpriteRenderer>();
+            iconRenderer.sortingOrder = spriteRenderer.sortingOrder + 1;
+            iconRenderer.color = GetRaceSynergyColor();
+            
+            // 간단한 원형 스프라이트 생성 (실제로는 아이콘 스프라이트 사용)
+            iconRenderer.sprite = CreateCircleSprite();
+            iconObj.transform.localScale = Vector3.one * 0.3f;
+        }
+    }
+    
+    /// <summary>
+    /// 임시 원형 스프라이트 생성
+    /// </summary>
+    private Sprite CreateCircleSprite()
+    {
+        Texture2D texture = new Texture2D(32, 32);
+        Vector2 center = new Vector2(16, 16);
+        
+        for (int x = 0; x < 32; x++)
+        {
+            for (int y = 0; y < 32; y++)
+            {
+                float distance = Vector2.Distance(new Vector2(x, y), center);
+                if (distance <= 15)
+                {
+                    texture.SetPixel(x, y, Color.white);
+                }
+                else
+                {
+                    texture.SetPixel(x, y, Color.clear);
+                }
+            }
+        }
+        
+        texture.Apply();
+        return Sprite.Create(texture, new Rect(0, 0, 32, 32), new Vector2(0.5f, 0.5f));
+    }
+
+    // ================================
+    // 길드 버프 시스템
+    // ================================
+    private float guildAttackBonus = 0f;
+    private float guildHealthBonus = 0f;
+    
+    /// <summary>
+    /// 길드 버프 적용
+    /// </summary>
+    public void ApplyGuildBuff(float attackBonus, float healthBonus)
+    {
+        guildAttackBonus = attackBonus;
+        guildHealthBonus = healthBonus;
+        
+        // 스탯 재계산
+        RecalculateStats();
+        
+        Debug.Log($"[Character] {characterName}에 길드 버프 적용: 공격력+{attackBonus*100}%, 체력+{healthBonus*100}%");
+    }
+    
+    /// <summary>
+    /// 길드 버프 제거
+    /// </summary>
+    public void RemoveGuildBuff()
+    {
+        guildAttackBonus = 0f;
+        guildHealthBonus = 0f;
+        
+        // 스탯 재계산
+        RecalculateStats();
+        
+        Debug.Log($"[Character] {characterName}의 길드 버프 제거됨");
     }
 
 }

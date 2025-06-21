@@ -50,14 +50,51 @@ public class SummonManager : MonoBehaviour
 
     private void Start()
     {
+        StartCoroutine(InitializeManagerSafely());
+    }
+    
+    /// <summary>
+    /// 안전한 매니저 초기화 (의존성 확인)
+    /// </summary>
+    private System.Collections.IEnumerator InitializeManagerSafely()
+    {
+        // CoreDataManager 대기
+        float timeout = 10f;
+        float elapsed = 0f;
+        
+        while (CoreDataManager.Instance == null && elapsed < timeout)
+        {
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
+        
         var coreData = CoreDataManager.Instance;
-        if (coreData != null)
+        if (coreData != null && coreData.allyDatabase != null)
         {
             characterDatabase = coreData.allyDatabase;
         }
+        else
+        {
+            // Fallback: 직접 로드 시도
+            Debug.LogWarning("[SummonManager] CoreDataManager에서 데이터 로드 실패, 직접 로드 시도");
+            characterDatabase = Resources.Load<CharacterDatabaseObject>("Data/CharacterDatabase");
+            
+            if (characterDatabase == null)
+            {
+                Debug.LogError("[SummonManager] 캐릭터 데이터베이스를 찾을 수 없습니다!");
+            }
+        }
         
+        // 의존성 매니저들 초기화
         placementManager = PlacementManager.Instance;
         tileManager = TileManager.Instance;
+        
+        if (placementManager == null)
+            Debug.LogError("[SummonManager] PlacementManager를 찾을 수 없습니다!");
+        if (tileManager == null)
+            Debug.LogError("[SummonManager] TileManager를 찾을 수 없습니다!");
+            
+        Debug.Log("[SummonManager] 초기화 완료");
     }
 
     /// <summary>
@@ -71,26 +108,12 @@ public class SummonManager : MonoBehaviour
             return null;
         }
         
-        // 캐릭터 프리팹 생성 - 빌드 호환성을 위한 안전한 로드
-        GameObject characterPrefab = null;
-        
-        // CharacterData에서 직접 프리팹 참조가 있으면 사용
-        if (characterData.spawnPrefab != null)
+        // 캐릭터 프리팹 안전한 로딩
+        GameObject characterPrefab = GetCharacterPrefabSafely(characterData);
+        if (characterPrefab == null)
         {
-            characterPrefab = characterData.spawnPrefab;
-        }
-        else
-        {
-            // Resources.Load 사용 시 경로 검증
-            string prefabPath = $"Prefabs/Characters/{characterData.prefabName}";
-            characterPrefab = Resources.Load<GameObject>(prefabPath);
-            
-            if (characterPrefab == null)
-            {
-                Debug.LogError($"[SummonManager] 캐릭터 프리팹을 찾을 수 없습니다: {prefabPath}");
-                Debug.LogError($"[SummonManager] Resources 폴더 내 경로를 확인하세요.");
-                return null;
-            }
+            Debug.LogError($"[SummonManager] 캐릭터 프리팹 로딩 실패: {characterData.characterName}");
+            return null;
         }
         
         // 캐릭터 인스턴스 생성
@@ -496,15 +519,14 @@ public class SummonManager : MonoBehaviour
         if (coreData != null && coreData.enemyDatabase != null)
         {
             Debug.Log("[SummonManager] 아군 데이터베이스에서 찾지 못해 적 데이터베이스 검색 중...");
-            return -1;
-        }
-
-        for (int i = 0; i < coreData.enemyDatabase.currentRegisteredCharacters.Length; i++)
-        {
-            CharacterData data = coreData.enemyDatabase.currentRegisteredCharacters[i];
-            if (data != null && data.characterName == character.characterName)
+            
+            for (int i = 0; i < coreData.enemyDatabase.currentRegisteredCharacters.Length; i++)
             {
-                return i;
+                CharacterData data = coreData.enemyDatabase.currentRegisteredCharacters[i];
+                if (data != null && data.characterName == character.characterName)
+                {
+                    return i;
+                }
             }
         }
         return -1;
@@ -565,5 +587,64 @@ public class SummonManager : MonoBehaviour
                 Debug.Log($"  - {tile.name}: 배치 가능");
             }
         }
+    }
+    
+    /// <summary>
+    /// 안전한 캐릭터 프리팹 로딩 (fallback 지원)
+    /// </summary>
+    private GameObject GetCharacterPrefabSafely(CharacterData characterData)
+    {
+        // 1차: CharacterData에서 직접 프리팹 참조
+        if (characterData.spawnPrefab != null)
+        {
+            return characterData.spawnPrefab;
+        }
+        
+        // 2차: motionPrefab 시도
+        if (characterData.motionPrefab != null)
+        {
+            return characterData.motionPrefab;
+        }
+        
+        // 3차: prefabName으로 Resources 로드
+        if (!string.IsNullOrEmpty(characterData.prefabName))
+        {
+            GameObject prefab = Resources.Load<GameObject>($"Prefabs/Characters/{characterData.prefabName}");
+            if (prefab != null) return prefab;
+            
+            // 다른 경로들 시도
+            prefab = Resources.Load<GameObject>($"Characters/{characterData.prefabName}");
+            if (prefab != null) return prefab;
+            
+            prefab = Resources.Load<GameObject>(characterData.prefabName);
+            if (prefab != null) return prefab;
+        }
+        
+        // 4차: characterName으로 시도
+        if (!string.IsNullOrEmpty(characterData.characterName))
+        {
+            string safeName = characterData.characterName.Replace(" ", "_");
+            GameObject prefab = Resources.Load<GameObject>($"Prefabs/Characters/{safeName}");
+            if (prefab != null) return prefab;
+            
+            prefab = Resources.Load<GameObject>($"Characters/{safeName}");
+            if (prefab != null) return prefab;
+        }
+        
+        // 5차: 기본 캐릭터 프리팹 사용
+        GameObject defaultPrefab = Resources.Load<GameObject>("Prefabs/DefaultCharacter");
+        if (defaultPrefab != null)
+        {
+            Debug.LogWarning($"[SummonManager] {characterData.characterName}의 프리팹을 찾을 수 없어 기본 프리팹 사용");
+            return defaultPrefab;
+        }
+        
+        Debug.LogError($"[SummonManager] 모든 프리팹 로딩 시도 실패: {characterData.characterName}");
+        Debug.LogError($"[SummonManager] 확인 필요 경로들:");
+        Debug.LogError($"  - Resources/Prefabs/Characters/{characterData.prefabName}");
+        Debug.LogError($"  - Resources/Characters/{characterData.prefabName}");
+        Debug.LogError($"  - Resources/Prefabs/DefaultCharacter");
+        
+        return null;
     }
 }

@@ -3,6 +3,24 @@ using UnityEngine;
 
 public class CharacterInventoryManager : MonoBehaviour
 {
+    // 싱글톤 인스턴스
+    private static CharacterInventoryManager instance;
+    public static CharacterInventoryManager Instance
+    {
+        get
+        {
+            if (instance == null)
+            {
+                instance = FindFirstObjectByType<CharacterInventoryManager>();
+                if (instance == null)
+                {
+                    Debug.LogWarning("[CharacterInventoryManager] No instance found in scene!");
+                }
+            }
+            return instance;
+        }
+    }
+
     [Header("ScriptableObject DB 참조")]
     [SerializeField] public CharacterDatabaseObject characterDatabaseObject;
 
@@ -20,6 +38,14 @@ public class CharacterInventoryManager : MonoBehaviour
 
     private void Awake()
     {
+        // 싱글톤 초기화
+        if (instance != null && instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        instance = this;
+        
         Debug.LogError("[CharacterInventoryManager] ===== AWAKE CALLED =====");
         
         Debug.LogError($"[CharacterInventoryManager] characterDatabaseObject null 체크: {characterDatabaseObject == null}");
@@ -795,5 +821,72 @@ public class CharacterInventoryManager : MonoBehaviour
         }
         
         Debug.LogError($"[CharacterInventoryManager] 기본 캐릭터 {gachaPool.Count}개 생성 완료");
+    }
+    
+    /// <summary>
+    /// 인벤토리 디스플레이를 새로고침 (리사이클 등 외부 변경 시 호출)
+    /// </summary>
+    public void RefreshInventoryDisplay()
+    {
+        Debug.Log("[CharacterInventoryManager] RefreshInventoryDisplay() 호출됨");
+        
+        // sharedSlotData200 재정렬
+        CondenseAndReorderSharedSlots();
+        SyncOwnedFromSharedSlots();
+        
+        // 저장
+        SaveCharacters();
+        
+        // UI 업데이트 이벤트 발생 (필요한 경우)
+        // 예: OnInventoryUpdated?.Invoke();
+    }
+    
+    /// <summary>
+    /// 캐릭터 추가 (WaveRewardUI에서 사용)
+    /// </summary>
+    public void AddCharacter(CharacterData character)
+    {
+        if (character != null)
+        {
+            AddToInventory(character);
+        }
+    }
+    
+    /// <summary>
+    /// 캐릭터 보유 여부 확인
+    /// </summary>
+    public bool IsCharacterOwned(int characterID)
+    {
+        foreach (var character in ownedCharacters)
+        {
+            if (character != null && character.characterIndex == characterID)
+            {
+                return true;
+            }
+        }
+        
+        foreach (var character in deckCharacters)
+        {
+            if (character != null && character.characterIndex == characterID)
+            {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+    
+    /// <summary>
+    /// 캐릭터 조각 추가 (중복 캐릭터 처리용)
+    /// </summary>
+    public void AddCharacterFragments(int characterID, int fragmentCount)
+    {
+        Debug.Log($"[CharacterInventoryManager] 캐릭터 ID {characterID}의 조각 {fragmentCount}개 추가");
+        
+        // 현재는 단순히 로그만 출력하고 나중에 조각 시스템 구현 시 확장 가능
+        // TODO: 실제 조각 시스템 구현 시 여기에 조각 저장 로직 추가
+        
+        // 임시로 경험치나 다른 보상으로 대체할 수 있음
+        // 예: 조각 1개당 골드 100 지급 등
     }
 }

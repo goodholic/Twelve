@@ -428,6 +428,12 @@ public class WaveSpawner : MonoBehaviour
         
         // 죽은 몬스터 리스트에서 제거 (메모리 관리)
         CleanupDeadMonsters();
+        
+        // 웨이브 클리어 체크
+        if (aliveMonsters == 0 && !isSpawning)
+        {
+            OnWaveClear();
+        }
     }
 
     private void HandleMonsterReachedCastle(Monster monster)
@@ -440,10 +446,18 @@ public class WaveSpawner : MonoBehaviour
     {
         Debug.Log($"[WaveSpawner] Wave {currentWave} Clear!");
 
-        // 5웨이브마다 보상
-        if (currentWave % 5 == 0)
+        // WaveRewardManager에 웨이브 완료 알림
+        if (pjy.Managers.WaveRewardManager.Instance != null)
         {
-            ShowRewardSelection();
+            pjy.Managers.WaveRewardManager.Instance.OnWaveCompleted(currentWave);
+        }
+        else
+        {
+            // 기존 방식 폴백
+            if (currentWave % 5 == 0)
+            {
+                ShowRewardSelection();
+            }
         }
     }
     

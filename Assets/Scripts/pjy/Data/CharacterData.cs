@@ -15,21 +15,40 @@ public class CharacterData : ScriptableObject
     public CharacterStar star = CharacterStar.OneStar;
     public int level = 1;
     
+    // 호환성을 위한 추가 속성들
+    [System.Obsolete("Use star instead")]
+    public int starLevel { get => (int)star; set => star = (CharacterStar)value; }
+    
+    [System.Obsolete("Use attackPower instead")]
+    public float attack { get => attackPower; set => attackPower = value; }
+    
+    [System.Obsolete("Use characterIndex instead")]
+    public int characterID { get => characterIndex; set => characterIndex = value; }
+    
     [Header("전투 스탯")]
     public float attackPower = 10f;
     public float attackRange = 3f;
-    public float range = 3f; // attackRange와 동일한 값
     public float attackSpeed = 1f;
-    public float health = 100f;
-    public float maxHealth = 100f; // maxHP와 동일한 값
     public float maxHP = 100f;
     public AttackTargetType attackTargetType = AttackTargetType.Both;
     public AttackShapeType attackShapeType = AttackShapeType.Single;
     public RangeType rangeType = RangeType.Melee;
-    public RaceType tribe = RaceType.Human; // race와 동일한 의미
     public bool isAreaAttack = false;
     public float areaAttackRadius = 1.5f;
     public bool isBuffSupport = false;
+    
+    // 호환성을 위한 프로퍼티들 (deprecated 중복 필드들)
+    [System.Obsolete("Use attackRange instead")]
+    public float range { get => attackRange; set => attackRange = value; }
+    
+    [System.Obsolete("Use maxHP instead")]
+    public float health { get => maxHP; set => maxHP = value; }
+    
+    [System.Obsolete("Use maxHP instead")]  
+    public float maxHealth { get => maxHP; set => maxHP = value; }
+    
+    [System.Obsolete("Use race instead")]
+    public RaceType tribe { get => (RaceType)race; set => race = (CharacterRace)value; }
     
     [Header("비용")]
     public int cost = 10;

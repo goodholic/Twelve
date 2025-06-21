@@ -286,13 +286,38 @@ public class Monster : MonoBehaviour, IDamageable
     }
     
     /// <summary>
-    /// 근처 성 찾아서 공격
+    /// 근처 적 찾아서 공격 (캐릭터 우선, 그 다음 성)
     /// </summary>
     private void FindAndAttackCastle()
     {
         if (Time.time - lastAttackTime < attackCooldown) return;
         
-        // 중간성 체크
+        // 1순위: 적 캐릭터 공격 (거리가 가까운 적을 우선 공격)
+        Character[] characters = FindObjectsByType<Character>(FindObjectsSortMode.None);
+        Character nearestCharacter = null;
+        float nearestCharacterDistance = float.MaxValue;
+        
+        foreach (var character in characters)
+        {
+            if (character == null || character.currentHP <= 0) continue;
+            if (character.areaIndex == areaIndex) continue; // 같은 지역 캐릭터는 공격하지 않음
+            
+            float distance = Vector3.Distance(transform.position, character.transform.position);
+            if (distance <= attackRange && distance < nearestCharacterDistance)
+            {
+                nearestCharacterDistance = distance;
+                nearestCharacter = character;
+            }
+        }
+        
+        // 캐릭터가 있으면 캐릭터 공격
+        if (nearestCharacter != null)
+        {
+            AttackTarget(nearestCharacter, "캐릭터");
+            return;
+        }
+        
+        // 2순위: 중간성 공격
         MiddleCastle[] middleCastles = FindObjectsByType<MiddleCastle>(FindObjectsSortMode.None);
         foreach (var castle in middleCastles)
         {
@@ -302,12 +327,12 @@ public class Monster : MonoBehaviour, IDamageable
             float distance = Vector3.Distance(transform.position, castle.transform.position);
             if (distance <= attackRange)
             {
-                AttackCastle(castle);
+                AttackTarget(castle, "중간성");
                 return;
             }
         }
         
-        // 최종성 체크
+        // 3순위: 최종성 공격
         FinalCastle[] finalCastles = FindObjectsByType<FinalCastle>(FindObjectsSortMode.None);
         foreach (var castle in finalCastles)
         {
@@ -317,20 +342,20 @@ public class Monster : MonoBehaviour, IDamageable
             float distance = Vector3.Distance(transform.position, castle.transform.position);
             if (distance <= attackRange)
             {
-                AttackCastle(castle);
+                AttackTarget(castle, "최종성");
                 return;
             }
         }
     }
     
     /// <summary>
-    /// 성 공격
+    /// 타겟 공격 (캐릭터, 성 모두 지원)
     /// </summary>
-    private void AttackCastle(IDamageable castle)
+    private void AttackTarget(IDamageable target, string targetType)
     {
-        if (castle == null) return;
+        if (target == null) return;
         
-        currentTarget = castle;
+        currentTarget = target;
         isAttacking = true;
         lastAttackTime = Time.time;
         
@@ -338,7 +363,7 @@ public class Monster : MonoBehaviour, IDamageable
         // PlayAttackAnimation();
         
         // 데미지 적용
-        castle.TakeDamage(damageToCastle);
+        target.TakeDamage(damageToCastle);
         
         // 공격 이펙트
         if (hitEffectPrefab != null)
@@ -347,10 +372,18 @@ public class Monster : MonoBehaviour, IDamageable
             Destroy(effect, 1f);
         }
         
-        Debug.Log($"[Monster] {monsterName}이(가) 성을 공격! 데미지: {damageToCastle}");
+        Debug.Log($"[Monster] {monsterName}이(가) {targetType}을(를) 공격! 데미지: {damageToCastle}");
         
         // 공격 후 이동 재개
         StartCoroutine(ResumeMovingAfterAttack());
+    }
+    
+    /// <summary>
+    /// 성 공격 (호환성 유지용)
+    /// </summary>
+    private void AttackCastle(IDamageable castle)
+    {
+        AttackTarget(castle, "성");
     }
     
     /// <summary>

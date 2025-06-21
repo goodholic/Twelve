@@ -1,4 +1,5 @@
 using UnityEngine;
+using pjy.Data;
 
 /// <summary>
 /// GameScene에 존재하는 CharacterDatabase (MonoBehaviour).
@@ -44,38 +45,46 @@ public class CharacterDatabase : MonoBehaviour
     
     private void OnDestroy()
     {
+        // 이벤트 구독 해제
+        GameManager.OnGameManagerReady -= OnGameManagerReady;
+        
         if (instance == this)
         {
             instance = null;
         }
     }
 
+    // 이벤트 기반 초기화를 위한 델리게이트
+    public static System.Action<CharacterDatabase> OnDatabaseInitialized;
+    private bool isInitialized = false;
+    
     private void Start()
     {
-        StartCoroutine(InitializeAfterGameManager());
+        // GameManager 이벤트에 구독
+        GameManager.OnGameManagerReady += OnGameManagerReady;
+        
+        // GameManager가 이미 준비되어 있는 경우 즉시 초기화
+        if (GameManager.Instance != null)
+        {
+            OnGameManagerReady();
+        }
     }
     
-    private System.Collections.IEnumerator InitializeAfterGameManager()
+    /// <summary>
+    /// GameManager가 준비되었을 때 호출되는 이벤트 핸들러
+    /// </summary>
+    private void OnGameManagerReady()
     {
-        // Wait for GameManager to be available
-        float timeout = 5f;
-        float elapsed = 0f;
+        if (isInitialized) return;
         
-        while (GameManager.Instance == null && elapsed < timeout)
-        {
-            elapsed += Time.deltaTime;
-            yield return null;
-        }
-        
-        // 1) GameManager 인스턴스 확인
         GameManager gm = GameManager.Instance;
         if (gm == null)
         {
-            Debug.LogError("[CharacterDatabase] GameManager.Instance가 없습니다! (Timeout)");
-            yield break;
+            Debug.LogError("[CharacterDatabase] GameManager.Instance가 여전히 null입니다!");
+            return;
         }
 
-        // 2) GameManager의 currentRegisteredCharacters(10) 를 가져와 동기화
+        // GameManager의 currentRegisteredCharacters와 동기화
         if (gm.currentRegisteredCharacters != null && gm.currentRegisteredCharacters.Length >= 10)
         {
             for (int i = 0; i < 10; i++)
@@ -85,15 +94,42 @@ public class CharacterDatabase : MonoBehaviour
         }
         else
         {
-            Debug.LogError("[CharacterDatabase] GameManager.currentRegisteredCharacters is invalid!");
-            yield break;
+            Debug.LogWarning("[CharacterDatabase] GameManager.currentRegisteredCharacters가 유효하지 않습니다. 기본 캐릭터를 생성합니다.");
+            CreateDefaultCharacters();
         }
 
-        // 3) 종족별 캐릭터 개수 카운트
+        // 종족별 캐릭터 개수 카운트
         CountCharactersByRace();
+        
+        isInitialized = true;
+        OnDatabaseInitialized?.Invoke(this);
 
-        Debug.Log($"[CharacterDatabase] 현재 등록된 캐릭터 10개를 GameManager에서 받아왔습니다.");
-        Debug.Log($"[CharacterDatabase] 휴먼: {humanCount}명, 오크: {orcCount}명, 엘프: {elfCount}명");
+        Debug.Log($"[CharacterDatabase] 초기화 완료 - 휴먼: {humanCount}명, 오크: {orcCount}명, 엘프: {elfCount}명");
+    }
+    
+    /// <summary>
+    /// 기본 캐릭터 생성 (CSV 데이터가 없을 때 사용)
+    /// </summary>
+    private void CreateDefaultCharacters()
+    {
+        // CSV 데이터 로드 시도
+        var csvData = Resources.Load<CharacterCSVDatabase>("Data/CharacterCSVDatabase");
+        if (csvData != null && csvData.characters.Count > 0)
+        {
+            var characterDataList = csvData.GenerateCharacterData();
+            int maxCount = Mathf.Min(10, characterDataList.Count);
+            
+            for (int i = 0; i < maxCount; i++)
+            {
+                currentRegisteredCharacters[i] = characterDataList[i];
+            }
+            
+            Debug.Log($"[CharacterDatabase] CSV에서 {maxCount}개 캐릭터를 로드했습니다.");
+        }
+        else
+        {
+            Debug.LogWarning("[CharacterDatabase] CSV 데이터를 찾을 수 없습니다. 빈 슬롯으로 초기화합니다.");
+        }
     }
 
     /// <summary>

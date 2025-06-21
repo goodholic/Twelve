@@ -414,11 +414,37 @@ public class CharacterCombat : MonoBehaviour
     }
     
     /// <summary>
+    /// 타겟이 여전히 유효한지 확인
+    /// </summary>
+    private bool IsTargetValid(IDamageable target)
+    {
+        if (target == null) return false;
+        
+        if (target is Character character)
+            return character.currentHP > 0;
+        else if (target is Monster monster)
+            return monster.IsAlive();
+        else if (target is MiddleCastle castle)
+            return !castle.IsDestroyed();
+        else if (target is FinalCastle finalCastle)
+            return !finalCastle.IsDestroyed();
+            
+        return false;
+    }
+    
+    /// <summary>
     /// 공격 실행
     /// </summary>
     private void Attack()
     {
         if (currentTarget == null) return;
+        
+        // 타겟 유효성 검증
+        if (!IsTargetValid(currentTarget))
+        {
+            currentTarget = null;
+            return;
+        }
         
         lastAttackTime = Time.time;
         isAttacking = true;
@@ -591,5 +617,23 @@ public class CharacterCombat : MonoBehaviour
         }
         
         // 범위 공격 로직...
+    }
+    
+    /// <summary>
+    /// 공격 스탯 업데이트 (시너지 시스템용)
+    /// </summary>
+    public void UpdateAttackStats(float newAttackPower, float newAttackSpeed)
+    {
+        // 캐릭터의 공격력과 공격속도가 이미 Character 클래스에서 업데이트됨
+        // 여기서는 추가적인 처리가 필요한 경우를 위한 메서드
+        
+        Debug.Log($"[CharacterCombat] {character.characterName}의 공격 스탯 업데이트: 공격력={newAttackPower}, 공격속도={newAttackSpeed}");
+        
+        // 현재 진행 중인 공격이 있다면 새로운 공격속도 적용을 위해 재시작
+        if (currentTarget != null && attackCoroutine != null)
+        {
+            StopCoroutine(attackCoroutine);
+            attackCoroutine = StartCoroutine(AttackRoutine());
+        }
     }
 }

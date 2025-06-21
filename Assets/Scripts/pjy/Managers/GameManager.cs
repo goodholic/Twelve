@@ -6,8 +6,21 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEngine.UI; // ▼▼ [추가] Image 클래스 사용을 위해 추가 ▼▼
 
+// 게임 상태 열거형 정의
+public enum GameState
+{
+    Menu,
+    Playing,
+    Paused,
+    GameOver,
+    Victory
+}
+
 public class GameManager : MonoBehaviour
 {
+    // GameManager 준비 완료 이벤트
+    public static System.Action OnGameManagerReady;
+    
     private static GameManager instance;
     public static GameManager Instance
     {
@@ -67,6 +80,7 @@ public class GameManager : MonoBehaviour
     public int completedWaves = 0;
     
     [Header("게임 상태")]
+    public GameState gameState = GameState.Menu;
     public bool isGameEnded = false;
     public bool isGameStarted = false;
     public bool isGamePaused = false;
@@ -90,6 +104,9 @@ public class GameManager : MonoBehaviour
             return;
         }
         instance = this;
+        
+        // GameManager 준비 완료 이벤트 호출
+        OnGameManagerReady?.Invoke();
     }
 
     void Start()
@@ -131,6 +148,12 @@ public class GameManager : MonoBehaviour
         {
             Debug.LogError($"[GameManager] 초기화 중 오류 발생: {e.Message}\n{e.StackTrace}");
         }
+    }
+    
+    void Update()
+    {
+        // 미네랄 자동 생성
+        UpdateMineralGeneration();
     }
 
     /// <summary>
@@ -194,7 +217,18 @@ public class GameManager : MonoBehaviour
     private void GiveWaveReward()
     {
         Debug.Log($"[GameManager] {completedWaves}웨이브 보상! 랜덤 2성 캐릭터 선택 가능");
-        // TODO: 보상 UI 표시 및 캐릭터 선택 로직
+        
+        // WaveRewardUI를 통해 보상 선택 UI 표시
+        if (pjy.UI.WaveRewardUI.Instance != null)
+        {
+            pjy.UI.WaveRewardUI.Instance.ShowWaveReward(completedWaves);
+        }
+        else
+        {
+            Debug.LogWarning("[GameManager] WaveRewardUI.Instance가 null입니다!");
+            // 기본 보상 대신 골드 지급
+            AddGold(100 * completedWaves / 5); // 5웨이브당 100골드씩 증가
+        }
     }
     
     /// <summary>
@@ -272,6 +306,48 @@ public class GameManager : MonoBehaviour
     {
         currentWave = waveNumber;
         Debug.Log($"[GameManager] 웨이브 {currentWave} 시작!");
+    }
+    
+    /// <summary>
+    /// 게임 시작 (튜토리얼에서 호출)
+    /// </summary>
+    public void StartGame()
+    {
+        if (isGameStarted)
+        {
+            Debug.LogWarning("[GameManager] 게임이 이미 시작되었습니다!");
+            return;
+        }
+        
+        isGameStarted = true;
+        gameState = GameState.Playing;
+        isGamePaused = false;
+        isGameOver = false;
+        isVictory = false;
+        isGameEnded = false;
+        
+        // 게임 시간 정상화
+        Time.timeScale = 1f;
+        
+        // 웨이브 시작
+        if (waveSpawner != null)
+        {
+            waveSpawner.StartNextWave();
+        }
+        
+        Debug.Log("[GameManager] 게임이 시작되었습니다!");
+    }
+    
+    /// <summary>
+    /// 게임 일시정지/재개
+    /// </summary>
+    public void PauseGame(bool pause)
+    {
+        isGamePaused = pause;
+        gameState = pause ? GameState.Paused : GameState.Playing;
+        Time.timeScale = pause ? 0f : 1f;
+        
+        Debug.Log($"[GameManager] 게임 {(pause ? "일시정지" : "재개")}");
     }
     
     /// <summary>
@@ -472,6 +548,74 @@ public class GameManager : MonoBehaviour
             player.SetAIDifficulty(difficulty);
         }
         Debug.Log($"[GameManager] 모든 AI 플레이어 난이도를 {difficulty}로 설정");
+    }
+    
+    #endregion
+    
+    #region 미네랄 시스템
+    
+    [Header("자원 관리")]
+    [SerializeField] private int playerMineral = 100;
+    [SerializeField] private int mineralPerSecond = 10;
+    [SerializeField] private TextMeshProUGUI mineralText;
+    
+    private float mineralTimer = 0f;
+    
+    /// <summary>
+    /// 미네랄 자동 생성 업데이트
+    /// </summary>
+    private void UpdateMineralGeneration()
+    {
+        if (gameState != GameState.Playing) return;
+        
+        mineralTimer += Time.deltaTime;
+        if (mineralTimer >= 1f)
+        {
+            mineralTimer -= 1f;
+            AddMineral(mineralPerSecond);
+        }
+    }
+    
+    /// <summary>
+    /// 현재 미네랄 반환
+    /// </summary>
+    public int GetPlayerMineral()
+    {
+        return playerMineral;
+    }
+    
+    /// <summary>
+    /// 미네랄 추가
+    /// </summary>
+    public void AddMineral(int amount)
+    {
+        playerMineral += amount;
+        UpdateMineralUI();
+    }
+    
+    /// <summary>
+    /// 미네랄 사용
+    /// </summary>
+    public bool SpendMineral(int amount)
+    {
+        if (playerMineral >= amount)
+        {
+            playerMineral -= amount;
+            UpdateMineralUI();
+            return true;
+        }
+        return false;
+    }
+    
+    /// <summary>
+    /// 미네랄 UI 업데이트
+    /// </summary>
+    private void UpdateMineralUI()
+    {
+        if (mineralText != null)
+        {
+            mineralText.text = playerMineral.ToString();
+        }
     }
     
     #endregion
