@@ -9,6 +9,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 4830180313694343674}
+  - component: {fileID: 5700616059329213321}
   m_Layer: 5
   m_Name: IntroManager
   m_TagString: Untagged
@@ -35,3 +36,27 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &5700616059329213321
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8414564819132851290}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c82d0bde7841d3a46bbd772d5a4aaaa8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  tutorialPanels:
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  nextButton: {fileID: 7590225385719629626, guid: 83009eb1999cbcc489d24fc3e770b5e7, type: 3}
+  autoNextTime: 0
+  panelTitleText: {fileID: 0}
+  panelDescriptionText: {fileID: 0}
+  lobbyUI: {fileID: 0}
+  autoStartTutorial: 1
+  panelTransitionTime: 5

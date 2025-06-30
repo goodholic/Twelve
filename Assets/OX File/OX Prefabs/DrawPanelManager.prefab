@@ -48,7 +48,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 444eb50c1f9565c4aa0ca7095d515430, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  cardInventory: {fileID: 0}
+  characterInventory: {fileID: 0}
+  shopManager: {fileID: 0}
   drawResultText: {fileID: 0}
   drawResultImage: {fileID: 0}
   drawButton: {fileID: 0}
+  drawTenButton: {fileID: 0}
+  drawCost: 10
+  drawTenCost: 90
+  errorMessagePanel: {fileID: 0}
+  errorMessageText: {fileID: 0}
+  multiDrawResultPanel: {fileID: 0}
+  multiDrawResultContainer: {fileID: 0}
+  drawResultIconPrefab: {fileID: 0}

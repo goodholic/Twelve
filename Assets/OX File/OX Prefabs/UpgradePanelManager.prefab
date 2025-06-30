@@ -48,9 +48,39 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8f93874ae2444474eb0dbacc337145f9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  cardInventory: {fileID: 0}
-  upgradeSlots: []
-  upgradeChar1Button: {fileID: 0}
-  upgradeChar2Button: {fileID: 0}
-  upgradeChar3Button: {fileID: 0}
-  upgradeChar4Button: {fileID: 0}
+  characterInventory: {fileID: 0}
+  deckPanelManager: {fileID: 0}
+  shopManager: {fileID: 0}
+  upgradeCost: 10
+  emptyUpgradeSlotSprite: {fileID: 1164048972685356577, guid: ff9e9aa2ffff48544aff9c35fc325d97, type: 3}
+  upgradeRegisteredSlotImages:
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  upgradeRegisteredSlotLevelTexts: []
+  upgradeResultPanel: {fileID: 0}
+  upgradeResultText: {fileID: 0}
+  statBarsPanel: {fileID: 0}
+  attackPowerBar: {fileID: 0}
+  attackSpeedBar: {fileID: 0}
+  hpBar: {fileID: 0}
+  moveSpeedBar: {fileID: 0}
+  attackRangeBar: {fileID: 0}
+  upgradeButtons:
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
