@@ -1,0 +1,22 @@
+ID,CharacterName,DialogueText,Position,Expression,Effect,Duration,NextID,Background,BGM,SFX
+100,나레이션,"옛날 옛적, 모험가들이 꿈을 품고 모이는 대륙이 있었습니다...",,,FadeIn,3,101,Continent,EpicTheme,
+101,나레이션,"그곳에서 한 젊은이가 자신만의 길드를 만들기로 결심했습니다.",,,,3,102,Continent,,
+102,길드장,"드디어... 이 순간이 왔구나.",Left,Normal,,0,103,GuildHall,MainTheme,
+103,길드장,"아버지가 남겨주신 이 건물로 길드를 시작할 수 있게 됐어.",Left,Sad,,0,104,GuildHall,,
+104,??,"실례합니다! 여기가 새로 생긴 길드 맞나요?",Right,Normal,,0,105,GuildHall,,Door
+105,길드장,"어? 네, 맞습니다만...",Left,Surprised,,0,106,GuildHall,,
+106,엘리나,"안녕하세요! 저는 엘리나라고 해요. 길드 운영을 도와드리러 왔어요!",Right,Happy,,0,107,GuildHall,,
+107,길드장,"정말요? 하지만 저희는 이제 막 시작해서...",Left,Normal,,0,108,GuildHall,,
+108,엘리나,"괜찮아요! 모든 위대한 길드도 처음엔 작게 시작했답니다.",Right,Normal,,0,109,GuildHall,,
+109,엘리나,"저도 신참이지만 열심히 도와드릴게요!",Right,Happy,,0,110,GuildHall,,
+110,길드장,"고마워요, 엘리나. 함께 최고의 길드를 만들어봐요!",Left,Happy,,0,111,GuildHall,,
+111,,"[엘리나가 동료가 되었습니다!]",,,Flash,2,112,GuildHall,,Fanfare
+112,엘리나,"그런데 길드장님, 혹시 이 대륙의 전설을 아시나요?",Right,Normal,,0,113,GuildHall,MysteryTheme,
+113,길드장,"전설이요?",Left,Surprised,,0,114,GuildHall,,
+114,엘리나,"네, 고대의 마왕이 봉인되어 있다는 전설이요.",Right,Normal,,0,115,GuildHall,,
+115,엘리나,"최근 들어 이상한 일들이 일어나고 있어요. 몬스터들이 흉포해지고...",Right,Sad,,0,116,GuildHall,,
+116,길드장,"그래서 모험가 길드가 필요한 거군요.",Left,Normal,,0,117,GuildHall,,
+117,엘리나,"맞아요! 우리 길드가 이 대륙을 지키는 희망이 될 거예요!",Right,Happy,,0,118,GuildHall,MainTheme,
+118,길드장,"좋아! 그럼 먼저 실력 있는 모험가들을 모집하는 것부터 시작하자!",Left,Happy,,0,119,GuildHall,,
+119,엘리나,"네! 제가 모집 공고를 내볼게요!",Right,Happy,,0,120,GuildHall,,
+120,,"[Chapter 1: 길드의 시작 - 완료]",,,,3,,GuildHall,,Complete

@@ -1,0 +1,16 @@
+buildingId,effectType,baseValue,perLevelIncrease,description
+guild_hall,ReputationGain,10,2,길드 명성 획득량 증가
+guild_hall,MaxAdventurers,10,5,최대 모험가 수 증가
+training_ground,TrainingSpeed,20,5,모험가 훈련 속도 증가
+laboratory,ResearchSpeed,15,3,연구 속도 증가
+dormitory,MaxAdventurers,20,10,최대 모험가 수용 인원 증가
+armory,AttackBonus,5,2,모든 유닛 공격력 증가
+armory,DefenseBonus,3,1,모든 유닛 방어력 증가
+mage_tower,ResearchSpeed,10,2,마법 연구 속도 증가
+temple,TrainingSpeed,10,2,성직자 훈련 속도 증가
+warehouse,StorageCapacity,1000,500,자원 저장 용량 증가
+scout_post,ResearchSpeed,5,1,탐험 속도 증가
+library,ResearchSpeed,25,5,모든 연구 속도 대폭 증가
+forge,AttackBonus,3,1,무기 강화로 공격력 증가
+barracks,AttackBonus,10,3,군사 유닛 공격력 증가
+barracks,DefenseBonus,8,2,군사 유닛 방어력 증가

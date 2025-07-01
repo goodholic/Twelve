@@ -15,10 +15,11 @@ public class UnityMCPServerSetup
     {
         // 에디터가 시작될 때와 플레이 모드 변경 시 MCP 서버 확인
         EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
-        EditorSceneManager.sceneOpened += OnSceneOpened;
+        // 씬 열기 이벤트는 제거 (에디터 모드에서 문제 발생)
+        // EditorSceneManager.sceneOpened += OnSceneOpened;
         
-        // 현재 씬에 MCP 서버가 있는지 확인
-        CheckMCPServerInCurrentScene();
+        // 초기 씬 체크는 하지 않음
+        // CheckMCPServerInCurrentScene();
     }
     
     private static void OnPlayModeStateChanged(PlayModeStateChange state)
@@ -32,13 +33,17 @@ public class UnityMCPServerSetup
     
     private static void OnSceneOpened(UnityEngine.SceneManagement.Scene scene, OpenSceneMode mode)
     {
-        // 새 씬이 열릴 때 MCP 서버 확인
-        CheckMCPServerInCurrentScene();
+        // 플레이 모드에서만 MCP 서버 확인
+        if (Application.isPlaying)
+        {
+            EnsureMCPServerExists();
+        }
     }
     
     private static void CheckMCPServerInCurrentScene()
     {
-        if (!Application.isPlaying)
+        // 플레이 모드에서만 실행
+        if (Application.isPlaying)
         {
             EnsureMCPServerExists();
         }
@@ -49,6 +54,9 @@ public class UnityMCPServerSetup
     /// </summary>
     public static void EnsureMCPServerExists()
     {
+        // 플레이 모드가 아닐 때는 실행하지 않음
+        if (!Application.isPlaying) return;
+        
         // 이미 존재하는지 확인
         UnityMCPServer existingServer = Object.FindFirstObjectByType<UnityMCPServer>();
         
@@ -62,16 +70,13 @@ public class UnityMCPServerSetup
                 mcpServerObj = new GameObject(MCP_SERVER_OBJECT_NAME);
                 mcpServerObj.AddComponent<UnityMCPServer>();
                 
-                // DontDestroyOnLoad 설정으로 씬 전환 시에도 유지
-                Object.DontDestroyOnLoad(mcpServerObj);
+                // 플레이 모드에서만 DontDestroyOnLoad 설정
+                if (Application.isPlaying)
+                {
+                    Object.DontDestroyOnLoad(mcpServerObj);
+                }
                 
                 Debug.Log("✅ Unity MCP 서버가 자동으로 생성되었습니다!");
-                
-                // 에디터에서만 씬을 더티로 마킹 (플레이 모드가 아닐 때만)
-                if (!Application.isPlaying)
-                {
-                    EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
-                }
             }
         }
         else
@@ -86,7 +91,14 @@ public class UnityMCPServerSetup
     [MenuItem("Unity MCP/서버 생성", false, 1)]
     public static void CreateMCPServer()
     {
-        EnsureMCPServerExists();
+        if (Application.isPlaying)
+        {
+            EnsureMCPServerExists();
+        }
+        else
+        {
+            Debug.LogWarning("⚠️ MCP 서버는 플레이 모드에서만 생성할 수 있습니다.");
+        }
     }
     
     /// <summary>

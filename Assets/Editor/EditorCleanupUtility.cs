@@ -8,6 +8,9 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEditor.Experimental.SceneManagement;
 using System.Collections.Generic;
+using GuildMaster.Battle;
+using GuildMaster.Data;
+using GuildMaster.Game;
 
 /// <summary>
 /// 에디터 내에서 문제가 되는 참조들을 정리하기 위한 유틸리티:
@@ -141,7 +144,7 @@ public static class EditorCleanupUtility
                 }
 
                 // (D) 추가적으로, Character의 bulletPanel이 null이면 연결 시도(예: PlacementManager)
-                Character character = obj.GetComponent<Character>();
+                GuildMaster.Data.Character character = obj.GetComponent<GuildMaster.Data.Character>();
                 if (character != null)
                 {
                     FixCharacterBulletPanel(character);
@@ -277,16 +280,16 @@ public static class EditorCleanupUtility
     /// <summary>
     /// Character 컴포넌트의 bulletPanel이 null이면, PlacementManager에서 가져와 연결 시도
     /// </summary>
-    private static void FixCharacterBulletPanel(Character character)
+    private static void FixCharacterBulletPanel(GuildMaster.Data.Character character)
     {
         try
         {
             if (character == null) return;
-            if (character.GetComponent<Character>() == null) return;
+            if (character.GetComponent<GuildMaster.Data.Character>() == null) return;
 
             if (character != null)
             {
-                PlacementManager manager = Object.FindAnyObjectByType<PlacementManager>();
+                GuildMaster.Game.PlacementManager manager = Object.FindAnyObjectByType<GuildMaster.Game.PlacementManager>();
                 if (manager != null && manager.bulletPanel != null && character != null)
                 {
                     // 이미 연결되어 있지 않으면 할당

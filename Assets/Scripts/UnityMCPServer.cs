@@ -257,7 +257,7 @@ public class UnityMCPServer : MonoBehaviour
                 scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name,
                 isHost = CoreDataManager.Instance?.isHost ?? false,
                 characterCount = CoreDataManager.Instance?.characterDatabase?.currentRegisteredCharacters?.Length ?? 0,
-                gameManagerExists = GameManager.Instance != null,
+                gameManagerExists = GuildMaster.Core.GameManager.Instance != null,
                 timestamp = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ")
             };
 
