@@ -3,7 +3,6 @@ using UnityEditor;
 using System.IO;
 using System.Collections.Generic;
 using GuildMaster.Data;
-using GuildMaster.Guild;
 
 namespace GuildMaster.Editor
 {
@@ -215,47 +214,10 @@ namespace GuildMaster.Editor
             {
                 if (string.IsNullOrWhiteSpace(lines[i])) continue;
                 
-                // Parse CSV data
-                var csvData = BuildingDataCSV.FromCSVLine(lines[i]);
-                
-                // Create BuildingDataSO and set properties
                 var building = ScriptableObject.CreateInstance<BuildingDataSO>();
-                building.buildingName = csvData.buildingName;
-                building.description = csvData.description;
-                building.buildingType = csvData.buildingType;
-                building.constructionTime = csvData.constructionTime;
-                building.maxWorkers = csvData.maxWorkers;
-                building.requiredGuildLevel = csvData.requiredLevel;
-                building.size = new Vector2Int(csvData.width, csvData.height);
+                building.InitializeFromCSV(lines[i]);
                 
-                // Set construction costs
-                building.constructionCost[Core.ResourceType.Gold] = csvData.baseCostGold;
-                if (csvData.baseCostWood > 0)
-                    building.constructionCost[Core.ResourceType.Wood] = csvData.baseCostWood;
-                if (csvData.baseCostStone > 0)
-                    building.constructionCost[Core.ResourceType.Stone] = csvData.baseCostStone;
-                
-                // Set production rates if applicable
-                if (csvData.canProduce && csvData.productionAmount > 0)
-                {
-                    // Convert ResourceType to Core.ResourceType
-                    if (csvData.productionType == ResourceType.Gold)
-                        building.baseProductionRates[Core.ResourceType.Gold] = csvData.productionAmount;
-                    else if (csvData.productionType == ResourceType.Wood)
-                        building.baseProductionRates[Core.ResourceType.Wood] = csvData.productionAmount;
-                    else if (csvData.productionType == ResourceType.Stone)
-                        building.baseProductionRates[Core.ResourceType.Stone] = csvData.productionAmount;
-                    
-                    building.productionInterval = csvData.productionTime;
-                }
-                
-                // Set storage capacity if applicable
-                if (csvData.maxStorage > 0)
-                {
-                    building.baseStorageCapacity[Core.ResourceType.Gold] = csvData.maxStorage;
-                }
-                
-                string outputPath = Path.Combine(soOutputPath, "Buildings", $"{csvData.buildingId}.asset");
+                string outputPath = Path.Combine(soOutputPath, "Buildings", $"{building.buildingId}.asset");
                 
                 // Create directory if it doesn't exist
                 Directory.CreateDirectory(Path.GetDirectoryName(outputPath));

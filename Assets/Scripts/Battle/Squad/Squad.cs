@@ -167,42 +167,6 @@ namespace GuildMaster.Battle
             return aliveUnits;
         }
         
-        public Unit GetUnitAt(int row, int col)
-        {
-            return GetUnit(row, col);
-        }
-        
-        public int GetUnitCount()
-        {
-            return unitsList.Count;
-        }
-        
-        public bool IsFull()
-        {
-            return unitsList.Count >= MAX_UNITS;
-        }
-        
-        public void ClearSquad()
-        {
-            // 모든 유닛 제거
-            var unitsToRemove = new List<Unit>(unitsList);
-            foreach (var unit in unitsToRemove)
-            {
-                RemoveUnit(unit);
-            }
-            
-            // 그리드 초기화
-            for (int row = 0; row < ROWS; row++)
-            {
-                for (int col = 0; col < COLS; col++)
-                {
-                    unitsGrid[row, col] = null;
-                }
-            }
-            
-            unitsList.Clear();
-        }
-        
         // Position Management
         Vector2Int? FindBestPosition(Unit unit)
         {
@@ -520,6 +484,33 @@ namespace GuildMaster.Battle
             return totalPower;
         }
 
+        // Helper method to clear the squad
+        public void ClearSquad()
+        {
+            for (int row = 0; row < ROWS; row++)
+            {
+                for (int col = 0; col < COLS; col++)
+                {
+                    if (unitsGrid[row, col] != null)
+                    {
+                        unitsGrid[row, col].OnDeath -= HandleUnitDeath;
+                        unitsGrid[row, col] = null;
+                    }
+                }
+            }
+            unitsList.Clear();
+        }
 
+        // Helper method to get unit count
+        public int GetUnitCount()
+        {
+            return unitsList.Count;
+        }
+
+        // Helper method to check if squad is full
+        public bool IsFull()
+        {
+            return unitsList.Count >= MAX_UNITS;
+        }
     }
 }

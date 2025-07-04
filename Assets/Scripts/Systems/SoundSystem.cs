@@ -8,235 +8,620 @@ namespace GuildMaster.Systems
 {
     public class SoundSystem : MonoBehaviour
     {
-        private static SoundSystem instance;
+        private static SoundSystem _instance;
         public static SoundSystem Instance
         {
             get
             {
-                if (instance == null)
+                if (_instance == null)
                 {
-                    instance = FindFirstObjectByType<SoundSystem>();
-                    if (instance == null)
+                    _instance = FindObjectOfType<SoundSystem>();
+                    if (_instance == null)
                     {
                         GameObject go = new GameObject("SoundSystem");
-                        instance = go.AddComponent<SoundSystem>();
+                        _instance = go.AddComponent<SoundSystem>();
+                        DontDestroyOnLoad(go);
                     }
                 }
-                return instance;
+                return _instance;
             }
         }
         
-        [Header("사운드 설정")]
-        public AudioSource musicSource;
-        public AudioSource sfxSource;
-        public AudioSource voiceSource;
-        public float masterVolume = 1f;
-        public float musicVolume = 1f;
-        public float sfxVolume = 1f;
-        public float voiceVolume = 1f;
-        public float ambientVolume = 1f;
-        
-        [Header("사운드 클립")]
-        public AudioClip[] musicClips;
-        public AudioClip[] sfxClips;
-        
-        [Header("환경음 소스들")]
-        public AudioSource[] ambientSources = new AudioSource[4];
-        
-        private Dictionary<string, AudioClip> soundLibrary = new Dictionary<string, AudioClip>();
-        
-        private void Awake()
+        [System.Serializable]
+        public class AudioClipData
         {
-            if (instance == null)
+            public string clipId;
+            public AudioClip audioClip;
+            public float volume = 1f;
+            public float pitch = 1f;
+            public bool loop = false;
+            public AudioMixerGroup mixerGroup;
+        }
+        
+        [System.Serializable]
+        public class MusicTrack
+        {
+            public string trackId;
+            public string trackName;
+            public AudioClip audioClip;
+            public MusicCategory category;
+            public float fadeInTime = 1f;
+            public float fadeOutTime = 1f;
+            public bool loop = true;
+        }
+        
+        public enum MusicCategory
+        {
+            MainMenu,
+            Guild,
+            Battle,
+            Victory,
+            Defeat,
+            Boss,
+            Exploration,
+            Event
+        }
+        
+        public enum SoundCategory
+        {
+            UI,
+            Battle,
+            Skill,
+            Building,
+            Ambient,
+            Notification,
+            Voice
+        }
+        
+        [Header("Audio Mixers")]
+        [SerializeField] private AudioMixer mainMixer;
+        [SerializeField] private AudioMixerGroup masterGroup;
+        [SerializeField] private AudioMixerGroup musicGroup;
+        [SerializeField] private AudioMixerGroup sfxGroup;
+        [SerializeField] private AudioMixerGroup voiceGroup;
+        [SerializeField] private AudioMixerGroup ambientGroup;
+        
+        [Header("Audio Sources")]
+        [SerializeField] private AudioSource musicSource;
+        [SerializeField] private AudioSource ambientSource;
+        private List<AudioSource> sfxSources;
+        private const int MAX_SFX_SOURCES = 10;
+        
+        [Header("Audio Libraries")]
+        [SerializeField] private List<AudioClipData> soundEffects;
+        [SerializeField] private List<MusicTrack> musicTracks;
+        
+        private Dictionary<string, AudioClipData> soundLibrary;
+        private Dictionary<string, MusicTrack> musicLibrary;
+        private MusicTrack currentMusic;
+        private Coroutine musicFadeCoroutine;
+        
+        // Volume settings
+        private float masterVolume = 1f;
+        private float musicVolume = 0.7f;
+        private float sfxVolume = 1f;
+        private float voiceVolume = 1f;
+        private float ambientVolume = 0.5f;
+        
+        // Events
+        public event Action<MusicTrack> OnMusicChanged;
+        public event Action<string> OnSoundPlayed;
+        
+        void Awake()
+        {
+            if (_instance == null)
             {
-                instance = this;
+                _instance = this;
                 DontDestroyOnLoad(gameObject);
-                InitializeSoundSystem();
             }
-            else if (instance != this)
+            else if (_instance != this)
             {
                 Destroy(gameObject);
             }
+            
+            Initialize();
         }
         
-        private void InitializeSoundSystem()
+        void Initialize()
         {
-            // AudioSource 컴포넌트 초기화
+            // 오디오 소스 초기화
+            SetupAudioSources();
+            
+            // 라이브러리 초기화
+            InitializeLibraries();
+            
+            // 저장된 볼륨 설정 로드
+            LoadVolumeSettings();
+            
+            // 기본 음악 재생
+            PlayMusic("guild_theme");
+        }
+        
+        void SetupAudioSources()
+        {
+            // 음악 소스
             if (musicSource == null)
             {
-                musicSource = gameObject.AddComponent<AudioSource>();
-                musicSource.loop = true;
-                musicSource.playOnAwake = false;
+                GameObject musicGO = new GameObject("MusicSource");
+                musicGO.transform.SetParent(transform);
+                musicSource = musicGO.AddComponent<AudioSource>();
             }
+            musicSource.outputAudioMixerGroup = musicGroup;
+            musicSource.loop = true;
+            musicSource.priority = 0;
             
-            if (sfxSource == null)
+            // 환경음 소스
+            if (ambientSource == null)
             {
-                sfxSource = gameObject.AddComponent<AudioSource>();
-                sfxSource.loop = false;
-                sfxSource.playOnAwake = false;
+                GameObject ambientGO = new GameObject("AmbientSource");
+                ambientGO.transform.SetParent(transform);
+                ambientSource = ambientGO.AddComponent<AudioSource>();
             }
+            ambientSource.outputAudioMixerGroup = ambientGroup;
+            ambientSource.loop = true;
+            ambientSource.priority = 10;
             
-            if (voiceSource == null)
+            // 효과음 소스 풀
+            sfxSources = new List<AudioSource>();
+            for (int i = 0; i < MAX_SFX_SOURCES; i++)
             {
-                voiceSource = gameObject.AddComponent<AudioSource>();
-                voiceSource.loop = false;
-                voiceSource.playOnAwake = false;
+                GameObject sfxGO = new GameObject($"SFXSource_{i}");
+                sfxGO.transform.SetParent(transform);
+                AudioSource source = sfxGO.AddComponent<AudioSource>();
+                source.outputAudioMixerGroup = sfxGroup;
+                source.playOnAwake = false;
+                sfxSources.Add(source);
             }
-            
-            // 기본 사운드 라이브러리 구축
-            BuildSoundLibrary();
         }
         
-        private void BuildSoundLibrary()
+        void InitializeLibraries()
         {
-            // 기본 UI 사운드들 추가
-            soundLibrary["ui_click"] = Resources.Load<AudioClip>("Sounds/UI/ui_click");
-            soundLibrary["ui_success"] = Resources.Load<AudioClip>("Sounds/UI/ui_success");
-            soundLibrary["ui_error"] = Resources.Load<AudioClip>("Sounds/UI/ui_error");
-            soundLibrary["ui_sparkle"] = Resources.Load<AudioClip>("Sounds/UI/ui_sparkle");
+            // 사운드 라이브러리 초기화
+            soundLibrary = new Dictionary<string, AudioClipData>();
+            if (soundEffects == null) soundEffects = new List<AudioClipData>();
             
-            // 배틀 사운드들 추가 (예시)
-            soundLibrary["battle_start"] = Resources.Load<AudioClip>("Sounds/Battle/battle_start");
-            soundLibrary["character_spawn"] = Resources.Load<AudioClip>("Sounds/Battle/character_spawn");
+            // 기본 사운드 효과 추가
+            AddDefaultSoundEffects();
+            
+            foreach (var sound in soundEffects)
+            {
+                if (!string.IsNullOrEmpty(sound.clipId) && sound.audioClip != null)
+                {
+                    soundLibrary[sound.clipId] = sound;
+                }
+            }
+            
+            // 음악 라이브러리 초기화
+            musicLibrary = new Dictionary<string, MusicTrack>();
+            if (musicTracks == null) musicTracks = new List<MusicTrack>();
+            
+            // 기본 음악 트랙 추가
+            AddDefaultMusicTracks();
+            
+            foreach (var track in musicTracks)
+            {
+                if (!string.IsNullOrEmpty(track.trackId) && track.audioClip != null)
+                {
+                    musicLibrary[track.trackId] = track;
+                }
+            }
         }
         
-        /// <summary>
-        /// 사운드 재생
-        /// </summary>
-        public void PlaySound(string soundName)
+        void AddDefaultSoundEffects()
         {
-            if (soundLibrary.ContainsKey(soundName) && soundLibrary[soundName] != null)
+            // UI 사운드
+            AddSoundEffect("ui_click", SoundCategory.UI, 0.7f);
+            AddSoundEffect("ui_hover", SoundCategory.UI, 0.5f);
+            AddSoundEffect("ui_success", SoundCategory.UI, 0.8f);
+            AddSoundEffect("ui_error", SoundCategory.UI, 0.8f);
+            AddSoundEffect("ui_open", SoundCategory.UI, 0.6f);
+            AddSoundEffect("ui_close", SoundCategory.UI, 0.6f);
+            
+            // 전투 사운드
+            AddSoundEffect("sword_swing", SoundCategory.Battle, 0.8f);
+            AddSoundEffect("arrow_shot", SoundCategory.Battle, 0.7f);
+            AddSoundEffect("magic_cast", SoundCategory.Battle, 0.9f);
+            AddSoundEffect("shield_block", SoundCategory.Battle, 0.8f);
+            AddSoundEffect("damage_taken", SoundCategory.Battle, 0.7f);
+            AddSoundEffect("critical_hit", SoundCategory.Battle, 1f);
+            
+            // 스킬 사운드
+            AddSoundEffect("heal_cast", SoundCategory.Skill, 0.8f);
+            AddSoundEffect("buff_apply", SoundCategory.Skill, 0.7f);
+            AddSoundEffect("debuff_apply", SoundCategory.Skill, 0.7f);
+            AddSoundEffect("ultimate_skill", SoundCategory.Skill, 1f);
+            
+            // 건설 사운드
+            AddSoundEffect("building_place", SoundCategory.Building, 0.9f);
+            AddSoundEffect("building_complete", SoundCategory.Building, 1f);
+            AddSoundEffect("building_upgrade", SoundCategory.Building, 0.9f);
+            AddSoundEffect("building_demolish", SoundCategory.Building, 0.8f);
+            
+            // 알림 사운드
+            AddSoundEffect("notification_quest", SoundCategory.Notification, 0.8f);
+            AddSoundEffect("notification_achievement", SoundCategory.Notification, 1f);
+            AddSoundEffect("notification_levelup", SoundCategory.Notification, 1f);
+            AddSoundEffect("notification_reward", SoundCategory.Notification, 0.9f);
+        }
+        
+        void AddSoundEffect(string id, SoundCategory category, float volume)
+        {
+            // 실제 AudioClip은 Unity Editor에서 할당
+            soundEffects.Add(new AudioClipData
             {
-                sfxSource.PlayOneShot(soundLibrary[soundName], sfxVolume * masterVolume);
+                clipId = id,
+                volume = volume,
+                pitch = 1f,
+                loop = false
+            });
+        }
+        
+        void AddDefaultMusicTracks()
+        {
+            // 메인 메뉴
+            musicTracks.Add(new MusicTrack
+            {
+                trackId = "main_menu",
+                trackName = "Main Menu Theme",
+                category = MusicCategory.MainMenu,
+                fadeInTime = 2f,
+                fadeOutTime = 1f
+            });
+            
+            // 길드 테마
+            musicTracks.Add(new MusicTrack
+            {
+                trackId = "guild_theme",
+                trackName = "Guild Hall",
+                category = MusicCategory.Guild,
+                fadeInTime = 1.5f,
+                fadeOutTime = 1f
+            });
+            
+            // 전투 음악
+            musicTracks.Add(new MusicTrack
+            {
+                trackId = "battle_normal",
+                trackName = "Battle Theme",
+                category = MusicCategory.Battle,
+                fadeInTime = 0.5f,
+                fadeOutTime = 0.5f
+            });
+            
+            musicTracks.Add(new MusicTrack
+            {
+                trackId = "battle_boss",
+                trackName = "Boss Battle",
+                category = MusicCategory.Boss,
+                fadeInTime = 0.3f,
+                fadeOutTime = 0.5f
+            });
+            
+            // 승리/패배
+            musicTracks.Add(new MusicTrack
+            {
+                trackId = "victory",
+                trackName = "Victory Fanfare",
+                category = MusicCategory.Victory,
+                fadeInTime = 0f,
+                fadeOutTime = 1f,
+                loop = false
+            });
+            
+            musicTracks.Add(new MusicTrack
+            {
+                trackId = "defeat",
+                trackName = "Defeat Theme",
+                category = MusicCategory.Defeat,
+                fadeInTime = 0.5f,
+                fadeOutTime = 1f,
+                loop = false
+            });
+            
+            // 탐험
+            musicTracks.Add(new MusicTrack
+            {
+                trackId = "exploration",
+                trackName = "Exploration Theme",
+                category = MusicCategory.Exploration,
+                fadeInTime = 2f,
+                fadeOutTime = 1.5f
+            });
+        }
+        
+        // 음악 재생
+        public void PlayMusic(string trackId, bool immediate = false)
+        {
+            if (!musicLibrary.ContainsKey(trackId))
+            {
+                Debug.LogWarning($"Music track {trackId} not found!");
+                return;
+            }
+            
+            var track = musicLibrary[trackId];
+            
+            if (currentMusic != null && currentMusic.trackId == trackId)
+                return;
+            
+            if (musicFadeCoroutine != null)
+            {
+                StopCoroutine(musicFadeCoroutine);
+            }
+            
+            if (immediate)
+            {
+                musicSource.Stop();
+                musicSource.clip = track.audioClip;
+                musicSource.volume = musicVolume;
+                musicSource.loop = track.loop;
+                musicSource.Play();
+                currentMusic = track;
+                OnMusicChanged?.Invoke(track);
             }
             else
             {
-                Debug.LogWarning($"Sound '{soundName}' not found in library!");
+                musicFadeCoroutine = StartCoroutine(CrossfadeMusic(track));
             }
         }
         
-        /// <summary>
-        /// 음악 재생
-        /// </summary>
-        public void PlayMusic(string musicName)
+        IEnumerator CrossfadeMusic(MusicTrack newTrack)
         {
-            if (soundLibrary.ContainsKey(musicName) && soundLibrary[musicName] != null)
+            float fadeOutTime = currentMusic?.fadeOutTime ?? 0f;
+            float fadeInTime = newTrack.fadeInTime;
+            
+            // Fade out current music
+            if (musicSource.isPlaying && fadeOutTime > 0)
             {
-                musicSource.clip = soundLibrary[musicName];
-                musicSource.volume = musicVolume * masterVolume;
-                musicSource.Play();
+                float startVolume = musicSource.volume;
+                float timer = 0;
+                
+                while (timer < fadeOutTime)
+                {
+                    timer += Time.deltaTime;
+                    musicSource.volume = Mathf.Lerp(startVolume, 0, timer / fadeOutTime);
+                    yield return null;
+                }
+            }
+            
+            // Switch track
+            musicSource.Stop();
+            musicSource.clip = newTrack.audioClip;
+            musicSource.loop = newTrack.loop;
+            currentMusic = newTrack;
+            
+            // Fade in new music
+            musicSource.Play();
+            float targetVolume = musicVolume;
+            float fadeTimer = 0;
+            
+            while (fadeTimer < fadeInTime)
+            {
+                fadeTimer += Time.deltaTime;
+                musicSource.volume = Mathf.Lerp(0, targetVolume, fadeTimer / fadeInTime);
+                yield return null;
+            }
+            
+            musicSource.volume = targetVolume;
+            OnMusicChanged?.Invoke(newTrack);
+        }
+        
+        // 사운드 효과 재생
+        public void PlaySound(string soundId, float volumeMultiplier = 1f, float pitchVariation = 0f)
+        {
+            if (!soundLibrary.ContainsKey(soundId))
+            {
+                Debug.LogWarning($"Sound effect {soundId} not found!");
+                return;
+            }
+            
+            var soundData = soundLibrary[soundId];
+            AudioSource source = GetAvailableSFXSource();
+            
+            if (source != null && soundData.audioClip != null)
+            {
+                source.clip = soundData.audioClip;
+                source.volume = soundData.volume * volumeMultiplier * sfxVolume;
+                source.pitch = soundData.pitch + UnityEngine.Random.Range(-pitchVariation, pitchVariation);
+                source.loop = soundData.loop;
+                source.Play();
+                
+                OnSoundPlayed?.Invoke(soundId);
+                
+                if (!soundData.loop)
+                {
+                    StartCoroutine(ReturnSourceToPool(source, soundData.audioClip.length));
+                }
             }
         }
         
-        /// <summary>
-        /// 음악 정지
-        /// </summary>
-        public void StopMusic()
+        AudioSource GetAvailableSFXSource()
         {
-            musicSource.Stop();
+            foreach (var source in sfxSources)
+            {
+                if (!source.isPlaying)
+                    return source;
+            }
+            
+            // 모두 사용 중이면 가장 오래 재생된 것을 반환
+            return sfxSources[0];
         }
         
-        /// <summary>
-        /// 볼륨 설정
-        /// </summary>
+        IEnumerator ReturnSourceToPool(AudioSource source, float delay)
+        {
+            yield return new WaitForSeconds(delay);
+            source.Stop();
+            source.clip = null;
+        }
+        
+        // 3D 사운드 재생
+        public void PlaySoundAtPosition(string soundId, Vector3 position, float volumeMultiplier = 1f)
+        {
+            if (!soundLibrary.ContainsKey(soundId))
+                return;
+            
+            var soundData = soundLibrary[soundId];
+            GameObject tempGO = new GameObject("TempAudio");
+            tempGO.transform.position = position;
+            
+            AudioSource tempSource = tempGO.AddComponent<AudioSource>();
+            tempSource.clip = soundData.audioClip;
+            tempSource.volume = soundData.volume * volumeMultiplier * sfxVolume;
+            tempSource.pitch = soundData.pitch;
+            tempSource.spatialBlend = 1f; // 3D sound
+            tempSource.minDistance = 5f;
+            tempSource.maxDistance = 50f;
+            tempSource.rolloffMode = AudioRolloffMode.Linear;
+            tempSource.outputAudioMixerGroup = sfxGroup;
+            
+            tempSource.Play();
+            
+            Destroy(tempGO, soundData.audioClip.length);
+        }
+        
+        // 환경음 재생
+        public void PlayAmbient(string soundId, float volume = 1f)
+        {
+            if (!soundLibrary.ContainsKey(soundId))
+                return;
+            
+            var soundData = soundLibrary[soundId];
+            ambientSource.clip = soundData.audioClip;
+            ambientSource.volume = volume * ambientVolume;
+            ambientSource.Play();
+        }
+        
+        public void StopAmbient()
+        {
+            ambientSource.Stop();
+        }
+        
+        // 볼륨 설정
         public void SetMasterVolume(float volume)
         {
             masterVolume = Mathf.Clamp01(volume);
-            UpdateVolumes();
+            mainMixer?.SetFloat("MasterVolume", Mathf.Log10(masterVolume) * 20);
+            SaveVolumeSettings();
         }
         
         public void SetMusicVolume(float volume)
         {
             musicVolume = Mathf.Clamp01(volume);
-            UpdateVolumes();
+            mainMixer?.SetFloat("MusicVolume", Mathf.Log10(musicVolume) * 20);
+            
+            if (musicSource != null && currentMusic != null)
+            {
+                musicSource.volume = musicVolume;
+            }
+            
+            SaveVolumeSettings();
         }
         
         public void SetSFXVolume(float volume)
         {
             sfxVolume = Mathf.Clamp01(volume);
-            UpdateVolumes();
+            mainMixer?.SetFloat("SFXVolume", Mathf.Log10(sfxVolume) * 20);
+            SaveVolumeSettings();
         }
         
-        private void UpdateVolumes()
-        {
-            if (musicSource != null)
-                musicSource.volume = musicVolume * masterVolume;
-            
-            if (sfxSource != null)
-                sfxSource.volume = sfxVolume * masterVolume;
-        }
-        
-        /// <summary>
-        /// 음성 볼륨 설정
-        /// </summary>
         public void SetVoiceVolume(float volume)
         {
             voiceVolume = Mathf.Clamp01(volume);
-            PlayerPrefs.SetFloat("VoiceVolume", voiceVolume);
-            
-            // 현재 재생 중인 음성 오디오에 적용
-            if (voiceSource != null)
-            {
-                voiceSource.volume = voiceVolume * masterVolume;
-            }
+            mainMixer?.SetFloat("VoiceVolume", Mathf.Log10(voiceVolume) * 20);
+            SaveVolumeSettings();
         }
         
-        /// <summary>
-        /// 환경음 볼륨 설정
-        /// </summary>
         public void SetAmbientVolume(float volume)
         {
             ambientVolume = Mathf.Clamp01(volume);
-            PlayerPrefs.SetFloat("AmbientVolume", ambientVolume);
+            mainMixer?.SetFloat("AmbientVolume", Mathf.Log10(ambientVolume) * 20);
             
-            // 현재 재생 중인 환경음에 적용
-            foreach (var source in ambientSources)
+            if (ambientSource != null)
             {
-                if (source != null)
-                {
-                    source.volume = ambientVolume * masterVolume;
-                }
+                ambientSource.volume = ambientVolume;
+            }
+            
+            SaveVolumeSettings();
+        }
+        
+        // 음소거
+        public void ToggleMute()
+        {
+            float currentVolume;
+            mainMixer.GetFloat("MasterVolume", out currentVolume);
+            
+            if (currentVolume < -40f)
+            {
+                SetMasterVolume(masterVolume);
+            }
+            else
+            {
+                mainMixer.SetFloat("MasterVolume", -80f);
             }
         }
         
-        /// <summary>
-        /// 마스터 볼륨 가져오기
-        /// </summary>
-        public float GetMasterVolume()
+        // 설정 저장/로드
+        void SaveVolumeSettings()
         {
-            return masterVolume;
+            PlayerPrefs.SetFloat("MasterVolume", masterVolume);
+            PlayerPrefs.SetFloat("MusicVolume", musicVolume);
+            PlayerPrefs.SetFloat("SFXVolume", sfxVolume);
+            PlayerPrefs.SetFloat("VoiceVolume", voiceVolume);
+            PlayerPrefs.SetFloat("AmbientVolume", ambientVolume);
+            PlayerPrefs.Save();
         }
         
-        /// <summary>
-        /// 음악 볼륨 가져오기
-        /// </summary>
-        public float GetMusicVolume()
+        void LoadVolumeSettings()
         {
-            return musicVolume;
+            masterVolume = PlayerPrefs.GetFloat("MasterVolume", 1f);
+            musicVolume = PlayerPrefs.GetFloat("MusicVolume", 0.7f);
+            sfxVolume = PlayerPrefs.GetFloat("SFXVolume", 1f);
+            voiceVolume = PlayerPrefs.GetFloat("VoiceVolume", 1f);
+            ambientVolume = PlayerPrefs.GetFloat("AmbientVolume", 0.5f);
+            
+            SetMasterVolume(masterVolume);
+            SetMusicVolume(musicVolume);
+            SetSFXVolume(sfxVolume);
+            SetVoiceVolume(voiceVolume);
+            SetAmbientVolume(ambientVolume);
         }
         
-        /// <summary>
-        /// SFX 볼륨 가져오기
-        /// </summary>
-        public float GetSFXVolume()
+        // 상황별 음악 자동 재생
+        public void OnBattleStart(bool isBoss = false)
         {
-            return sfxVolume;
+            PlayMusic(isBoss ? "battle_boss" : "battle_normal");
         }
         
-        /// <summary>
-        /// 음성 볼륨 가져오기
-        /// </summary>
-        public float GetVoiceVolume()
+        public void OnBattleEnd(bool victory)
         {
-            return voiceVolume;
+            PlayMusic(victory ? "victory" : "defeat");
+            
+            // 일정 시간 후 길드 테마로 복귀
+            StartCoroutine(ReturnToGuildMusic(victory ? 5f : 8f));
         }
         
-        /// <summary>
-        /// 환경음 볼륨 가져오기
-        /// </summary>
-        public float GetAmbientVolume()
+        IEnumerator ReturnToGuildMusic(float delay)
         {
-            return ambientVolume;
+            yield return new WaitForSeconds(delay);
+            PlayMusic("guild_theme");
         }
+        
+        public void OnEnterDungeon()
+        {
+            PlayMusic("exploration");
+            PlayAmbient("dungeon_ambient");
+        }
+        
+        public void OnExitDungeon()
+        {
+            PlayMusic("guild_theme");
+            StopAmbient();
+        }
+        
+        // 현재 볼륨 반환
+        public float GetMasterVolume() => masterVolume;
+        public float GetMusicVolume() => musicVolume;
+        public float GetSFXVolume() => sfxVolume;
+        public float GetVoiceVolume() => voiceVolume;
+        public float GetAmbientVolume() => ambientVolume;
     }
 }

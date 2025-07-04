@@ -225,8 +225,8 @@ namespace GuildMaster.Systems
         public bool CanAutoSweep(string dungeonId)
         {
             // 던전 클리어 여부 확인
-            // var dungeonManager = FindObjectOfType<GuildMaster.Exploration.DungeonManager>();
-            // if (dungeonManager == null) return false;
+            var dungeonManager = FindObjectOfType<GuildMaster.Exploration.DungeonManager>();
+            if (dungeonManager == null) return false;
             
             // 3성 클리어 확인 (구현에 따라 수정 필요)
             return true; // 임시로 true 반환

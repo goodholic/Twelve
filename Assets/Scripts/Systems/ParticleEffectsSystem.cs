@@ -14,11 +14,12 @@ namespace GuildMaster.Systems
             {
                 if (_instance == null)
                 {
-                    _instance = FindFirstObjectByType<ParticleEffectsSystem>();
+                    _instance = FindObjectOfType<ParticleEffectsSystem>();
                     if (_instance == null)
                     {
                         GameObject go = new GameObject("ParticleEffectsSystem");
                         _instance = go.AddComponent<ParticleEffectsSystem>();
+                        DontDestroyOnLoad(go);
                     }
                 }
                 return _instance;

@@ -6,7 +6,6 @@ using UnityEngine.SceneManagement;
 using GuildMaster.Systems;
 using GuildMaster.UI;
 using GuildMaster.Data;
-using GuildMaster.Guild;
 
 namespace GuildMaster.Core
 {
@@ -289,7 +288,7 @@ namespace GuildMaster.Core
             yield return null;
             
             // 길드 시스템
-            CreateSystemManager<GuildMaster.Guild.GuildManager>("GuildManager");
+            CreateSystemManager<GuildManager>("GuildManager");
             yield return null;
             
             // 튜토리얼 시스템
@@ -364,9 +363,11 @@ namespace GuildMaster.Core
         {
             if (currentLoadingScreen != null)
             {
-                currentLoadingScreen.FadeOut();
-                Destroy(currentLoadingScreen.gameObject);
-                SceneManager.LoadScene(mainMenuScene);
+                currentLoadingScreen.FadeOut(() =>
+                {
+                    Destroy(currentLoadingScreen.gameObject);
+                    SceneManager.LoadScene(mainMenuScene);
+                });
             }
             else
             {
@@ -422,8 +423,10 @@ namespace GuildMaster.Core
             // 로딩 화면 제거
             if (currentLoadingScreen != null)
             {
-                currentLoadingScreen.FadeOut();
-                Destroy(currentLoadingScreen.gameObject);
+                currentLoadingScreen.FadeOut(() =>
+                {
+                    Destroy(currentLoadingScreen.gameObject);
+                });
             }
         }
     }

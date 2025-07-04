@@ -3,7 +3,6 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
-using GuildMaster.Core;
 using GuildMaster.Data;
 
 namespace GuildMaster.Core
@@ -250,7 +249,7 @@ namespace GuildMaster.Core
             {
                 slotIndex = slotIndex,
                 isAutoSave = isAutoSave,
-                saveTime = DateTime.Now,
+                saveTime = DateTime.Now.Ticks,
                 gameVersion = Application.version,
                 
                 // 플레이어 데이터
@@ -295,14 +294,14 @@ namespace GuildMaster.Core
                 {
                     adventurers.Add(new AdventurerSaveData
                     {
-                        unitId = unit.unitId,
-                        characterId = unit.characterId,
+                        id = unit.unitId,
                         name = unit.unitName,
                         level = unit.level,
                         experience = unit.experience,
-                        currentHP = unit.CurrentHealth,
-                        currentMP = unit.currentMP,
-                        skillIds = new List<string>() // TODO: 스킬 시스템에서 가져오기
+                        jobClass = unit.jobClass.ToString(),
+                        rarity = unit.rarity.ToString(),
+                        awakenLevel = unit.awakenLevel,
+                        equipmentIds = new List<string>() // TODO: 장비 시스템에서 가져오기
                     });
                 }
             }

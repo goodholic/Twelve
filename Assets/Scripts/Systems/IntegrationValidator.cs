@@ -5,7 +5,6 @@ using System.Linq;
 using UnityEngine;
 using GuildMaster.Core;
 using GuildMaster.Battle;
-using GuildMaster.Battle.AI;
 using GuildMaster.Data;
 using GuildMaster.UI;
 
@@ -203,7 +202,7 @@ namespace GuildMaster.Systems
             try
             {
                 var testSquad = new Squad("Test Squad", 0, true);
-                var testUnit = new GuildMaster.Battle.Unit("Test Warrior", 1, GuildMaster.Battle.JobClass.Warrior, GuildMaster.Battle.Rarity.Common);
+                var testUnit = new Unit("Test Warrior", 1, JobClass.Warrior);
                 testSquad.AddUnit(testUnit);
                 
                 if (testSquad.AliveUnitsCount == 1)
@@ -223,7 +222,7 @@ namespace GuildMaster.Systems
             // Check AI generation
             try
             {
-                var aiSquads = GuildMaster.Battle.AI.AIGuildGenerator.GenerateAIGuild(GuildMaster.Battle.AI.AIGuildGenerator.Difficulty.Novice, 1);
+                var aiSquads = AIGuildGenerator.GenerateAIGuild(AIGuildGenerator.Difficulty.Novice, 1);
                 if (aiSquads != null && aiSquads.Count > 0)
                 {
                     AddResult("AI Guild Generator", ValidationStatus.Passed, $"Generated {aiSquads.Count} AI squads");
@@ -337,14 +336,14 @@ namespace GuildMaster.Systems
             try
             {
                 // Create test save data
-                var testData = new GuildMaster.Core.SaveData
+                var testData = new SaveData
                 {
                     gameVersion = "1.0.0",
                     slotIndex = -1, // Test slot
                     guildName = "Integration Test Guild",
                     guildLevel = 1,
                     totalPlayTime = 100f,
-                    saveTime = DateTime.Now,
+                    saveTime = DateTime.Now.Ticks,
                     isAutoSave = false
                 };
                 
@@ -498,37 +497,6 @@ namespace GuildMaster.Systems
             {
                 Debug.Log($"[IntegrationValidator] {message}");
             }
-        }
-        
-        void ValidateUnit(GuildMaster.Battle.Unit unit, GuildMaster.Battle.JobClass expectedJobClass)
-        {
-            if (unit == null)
-            {
-                LogError("Unit is null");
-                return;
-            }
-
-            if ((GuildMaster.Battle.JobClass)unit.jobClass != expectedJobClass)
-            {
-                LogError($"Unit job class mismatch. Expected: {expectedJobClass}, Actual: {unit.jobClass}");
-            }
-
-            LogInfo($"Unit validation completed for {unit.unitName}");
-        }
-        
-        void LogError(string message)
-        {
-            Debug.LogError($"[IntegrationValidator] {message}");
-        }
-        
-        void LogWarning(string message)
-        {
-            Debug.LogWarning($"[IntegrationValidator] {message}");
-        }
-        
-        void LogInfo(string message)
-        {
-            Debug.Log($"[IntegrationValidator] {message}");
         }
         
         // Public API

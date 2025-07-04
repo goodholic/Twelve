@@ -39,7 +39,7 @@ namespace GuildMaster.Data
         
         [Header("Requirements")]
         public int requiredLevel = 1;
-        public JobClass requiredClass = JobClass.Warrior;
+        public JobClass requiredClass = JobClass.None;
         
         [System.Serializable]
         public class EquipmentStats
@@ -88,7 +88,7 @@ namespace GuildMaster.Data
             if (unit.level < requiredLevel)
                 return false;
                 
-            if (requiredClass != JobClass.Warrior && unit.jobClass != requiredClass)
+            if (requiredClass != JobClass.None && unit.jobClass != requiredClass)
                 return false;
                 
             return true;
@@ -105,7 +105,7 @@ namespace GuildMaster.Data
                 switch (effect.effectType)
                 {
                     case ConsumableEffectType.HealHP:
-                        unit.currentHP = Mathf.Min(unit.maxHP, unit.currentHP + (int)effect.effectValue);
+                        unit.Heal(effect.effectValue);
                         break;
                         
                     case ConsumableEffectType.HealMP:

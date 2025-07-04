@@ -4,20 +4,9 @@ using System.Collections;
 using System.Collections.Generic;
 using GuildMaster.Data;
 using GuildMaster.Systems;
-using GuildMaster.Battle;
-using GuildMaster.Guild;
-using GuildMaster.UI;
 
 namespace GuildMaster.Core
 {
-    /// <summary>
-    /// README 기반 길드 키우기 게임 코어 매니저
-    /// - 싱글플레이어 방치형 JRPG
-    /// - 2:2 부대 전투 (18명 vs 18명)
-    /// - 18명 캐릭터 수집
-    /// - 길드 시뮬레이션
-    /// - 완전 자동화
-    /// </summary>
     public class GameManager : MonoBehaviour
     {
         private static GameManager _instance;
@@ -27,12 +16,11 @@ namespace GuildMaster.Core
             {
                 if (_instance == null)
                 {
-                    _instance = FindFirstObjectByType<GameManager>();
+                    _instance = FindObjectOfType<GameManager>();
                     if (_instance == null)
                     {
                         GameObject go = new GameObject("GameManager");
                         _instance = go.AddComponent<GameManager>();
-                        DontDestroyOnLoad(go);
                     }
                 }
                 return _instance;
@@ -41,17 +29,18 @@ namespace GuildMaster.Core
 
         // Core Systems
         public BattleManager BattleManager { get; private set; }
-        public Guild.GuildManager GuildManager { get; private set; }
+        public GuildManager GuildManager { get; private set; }
         public ResourceManager ResourceManager { get; private set; }
         public SaveManager SaveManager { get; private set; }
         public EventManager EventManager { get; private set; }
         
-        // Additional Systems (필요한 시스템들만 유지)
+        // Additional Systems (기존 시스템들 사용)
         public NPC.MerchantManager MerchantManager { get; private set; }
-        // 삭제된 시스템들: DungeonManager, TerritoryManager
-        
+        public NPC.NPCGuildManager NPCGuildManager { get; private set; }
+        public Exploration.DungeonManager DungeonManager { get; private set; }
         public Systems.StoryManager StoryManager { get; private set; }
         public Systems.DailyContentManager DailyContentManager { get; private set; }
+        public Systems.TerritoryManager TerritoryManager { get; private set; }
         public Equipment.EquipmentManager EquipmentManager { get; private set; }
         public Systems.ResearchManager ResearchManager { get; private set; }
         public Battle.SkillManager SkillManager { get; private set; }
@@ -99,34 +88,14 @@ namespace GuildMaster.Core
             }
         }
 
-        [Header("등록된 캐릭터들")]
-        public CharacterData[] currentRegisteredCharacters = new CharacterData[10]; // 0-8: 일반 슬롯, 9: 히어로 슬롯
-        
-        [Header("게임 설정")]
-        public int maxCharacterSlots = 10;
-        public bool allowDuplicateCharacters = false;
-
-        [Header("게임 시스템들")]
-        [SerializeField] private GuildBattleCore battleCore;
-        [SerializeField] private GuildSimulationCore guildCore;
-        [SerializeField] private IdleGameCore idleCore;
-        [SerializeField] private CSVDataManager dataManager;
-        
-        [Header("UI 매니저")]
-        [SerializeField] private GuildMasterUI uiManager;
-        [SerializeField] private GameSceneManager sceneManager;
-        
-        // 게임 상태
-        public bool IsGameInitialized { get; private set; }
-        public float TotalPlayTime { get; private set; }
-
-        private void Awake()
+        void Awake()
         {
             if (_instance != null && _instance != this)
             {
                 Destroy(gameObject);
                 return;
             }
+
             _instance = this;
             DontDestroyOnLoad(gameObject);
             
@@ -138,17 +107,18 @@ namespace GuildMaster.Core
         {
             // Initialize core systems
             BattleManager = GetOrAddComponent<BattleManager>();
-            GuildManager = GetOrAddComponent<Guild.GuildManager>();
+            GuildManager = GetOrAddComponent<GuildManager>();
             ResourceManager = GetOrAddComponent<ResourceManager>();
             SaveManager = GetOrAddComponent<SaveManager>();
             EventManager = GetOrAddComponent<EventManager>();
             
             // Initialize additional systems
             MerchantManager = GetOrAddComponent<NPC.MerchantManager>();
-            // 삭제된 시스템들 제거: DungeonManager, TerritoryManager
-            
+            NPCGuildManager = GetOrAddComponent<NPC.NPCGuildManager>();
+            DungeonManager = GetOrAddComponent<Exploration.DungeonManager>();
             StoryManager = GetOrAddComponent<Systems.StoryManager>();
             DailyContentManager = GetOrAddComponent<Systems.DailyContentManager>();
+            TerritoryManager = GetOrAddComponent<Systems.TerritoryManager>();
             EquipmentManager = GetOrAddComponent<Equipment.EquipmentManager>();
             ResearchManager = GetOrAddComponent<Systems.ResearchManager>();
             SkillManager = GetOrAddComponent<Battle.SkillManager>();
@@ -175,7 +145,7 @@ namespace GuildMaster.Core
             SaveManager.LoadGame(0);
             
             // Initialize guild
-            // yield return GuildManager.Initialize();
+            yield return GuildManager.Initialize();
             
             // Initialize resources
             yield return ResourceManager.Initialize();
@@ -280,215 +250,6 @@ namespace GuildMaster.Core
         {
             // Start 메서드는 이전에 있었던 초기화 로직을 포함하고 있습니다.
             // 이전 초기화 로직을 유지하면서 새로운 초기화 로직을 추가할 수 있습니다.
-        }
-
-        public void RegisterCharacter(int slotIndex, CharacterData character)
-        {
-            if (slotIndex >= 0 && slotIndex < currentRegisteredCharacters.Length)
-            {
-                currentRegisteredCharacters[slotIndex] = character;
-                Debug.Log($"캐릭터 등록됨: 슬롯 {slotIndex}, {character?.characterName}");
-            }
-        }
-        
-        public void UnregisterCharacter(int slotIndex)
-        {
-            if (slotIndex >= 0 && slotIndex < currentRegisteredCharacters.Length)
-            {
-                currentRegisteredCharacters[slotIndex] = null;
-                Debug.Log($"캐릭터 등록 해제됨: 슬롯 {slotIndex}");
-            }
-        }
-        
-        public CharacterData GetRegisteredCharacter(int slotIndex)
-        {
-            if (slotIndex >= 0 && slotIndex < currentRegisteredCharacters.Length)
-            {
-                return currentRegisteredCharacters[slotIndex];
-            }
-            return null;
-        }
-        
-        public bool IsSlotEmpty(int slotIndex)
-        {
-            return GetRegisteredCharacter(slotIndex) == null;
-        }
-        
-        public int GetEmptySlotCount()
-        {
-            int count = 0;
-            for (int i = 0; i < currentRegisteredCharacters.Length; i++)
-            {
-                if (currentRegisteredCharacters[i] == null)
-                    count++;
-            }
-            return count;
-        }
-        
-        public void ClearAllSlots()
-        {
-            for (int i = 0; i < currentRegisteredCharacters.Length; i++)
-            {
-                currentRegisteredCharacters[i] = null;
-            }
-            Debug.Log("모든 캐릭터 슬롯이 초기화되었습니다.");
-        }
-
-        /// <summary>
-        /// 게임 초기화
-        /// </summary>
-        private void InitializeGame()
-        {
-            Debug.Log("길드마스터 게임 초기화 시작...");
-            
-            // 데이터 시스템 초기화
-            if (dataManager != null)
-            {
-                dataManager.Initialize();
-            }
-            
-            // 직업 시스템은 static 클래스이므로 별도 초기화 불필요
-            
-            // 핵심 시스템들 초기화
-            if (guildCore != null)
-            {
-                guildCore.Initialize();
-            }
-            
-            if (battleCore != null)
-            {
-                battleCore.Initialize();
-            }
-            
-            if (idleCore != null)
-            {
-                idleCore.Initialize();
-            }
-            
-            // UI 초기화
-            if (uiManager != null)
-            {
-                uiManager.Initialize();
-            }
-            
-            IsGameInitialized = true;
-            Debug.Log("길드마스터 게임 초기화 완료!");
-        }
-        
-        private void Update()
-        {
-            if (!IsGameInitialized) return;
-            
-            TotalPlayTime += Time.deltaTime;
-            
-            // 핵심 시스템 업데이트
-            UpdateCoreSystems();
-        }
-        
-        /// <summary>
-        /// 핵심 시스템들 업데이트
-        /// </summary>
-        private void UpdateCoreSystems()
-        {
-            if (guildCore != null)
-            {
-                guildCore.UpdateGuildSystems(Time.deltaTime);
-            }
-            
-            if (battleCore != null)
-            {
-                battleCore.UpdateBattleSystems(Time.deltaTime);
-            }
-            
-            if (idleCore != null)
-            {
-                idleCore.UpdateIdleSystems(Time.deltaTime);
-            }
-        }
-        
-        /// <summary>
-        /// 게임 저장
-        /// </summary>
-        public void SaveGame()
-        {
-            PlayerPrefs.SetFloat("TotalPlayTime", TotalPlayTime);
-            
-            if (guildCore != null)
-            {
-                guildCore.SaveGuildData();
-            }
-            
-            if (battleCore != null)
-            {
-                battleCore.SaveBattleData();
-            }
-            
-            if (idleCore != null)
-            {
-                idleCore.SaveIdleData();
-            }
-            
-            PlayerPrefs.Save();
-            Debug.Log("게임 저장 완료!");
-        }
-        
-        /// <summary>
-        /// 게임 로드
-        /// </summary>
-        public void LoadGame()
-        {
-            TotalPlayTime = PlayerPrefs.GetFloat("TotalPlayTime", 0f);
-            
-            if (guildCore != null)
-            {
-                guildCore.LoadGuildData();
-            }
-            
-            if (battleCore != null)
-            {
-                battleCore.LoadBattleData();
-            }
-            
-            if (idleCore != null)
-            {
-                idleCore.LoadIdleData();
-            }
-            
-            Debug.Log("게임 로드 완료!");
-        }
-        
-        /// <summary>
-        /// 게임 리셋
-        /// </summary>
-        public void ResetGame()
-        {
-            PlayerPrefs.DeleteAll();
-            
-            if (guildCore != null)
-            {
-                guildCore.ResetGuildData();
-            }
-            
-            if (battleCore != null)
-            {
-                battleCore.ResetBattleData();
-            }
-            
-            if (idleCore != null)
-            {
-                idleCore.ResetIdleData();
-            }
-            
-            Debug.Log("게임 리셋 완료!");
-        }
-        
-        /// <summary>
-        /// 게임 종료
-        /// </summary>
-        public void QuitGame()
-        {
-            SaveGame();
-            Application.Quit();
         }
     }
 }

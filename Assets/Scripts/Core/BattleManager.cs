@@ -9,9 +9,6 @@ namespace GuildMaster.Core
 {
     using GuildMaster; // Unit 클래스를 위한 using 추가
     
-    /// <summary>
-    /// 전투 관련 상수와 설정을 관리하는 클래스
-    /// </summary>
     public class BattleManager : MonoBehaviour
     {
         // Battle Configuration

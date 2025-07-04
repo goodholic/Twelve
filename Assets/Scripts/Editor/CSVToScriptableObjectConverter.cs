@@ -95,7 +95,7 @@ namespace GuildMaster.Editor
                 return;
             }
             
-            List<GuildMaster.Data.CharacterData> allCharacters = new List<GuildMaster.Data.CharacterData>();
+            List<CharacterDataSO> allCharacters = new List<CharacterDataSO>();
             
             // Skip header
             for (int i = 1; i < lines.Length; i++)
@@ -103,13 +103,24 @@ namespace GuildMaster.Editor
                 string[] values = ParseCSVLine(lines[i]);
                 if (values.Length < 19) continue;
                 
-                GuildMaster.Data.CharacterData character = new GuildMaster.Data.CharacterData();
+                CharacterDataSO character = null;
                 
-                // Parse data - CharacterData 필드명 사용
-                character.id = values[0];
-                character.name = values[1];
-                character.jobClass = ParseDataJobClass(values[2]);
-                character.level = int.Parse(values[3]);
+                if (createIndividualCharacters)
+                {
+                    // Create individual ScriptableObject
+                    string assetPath = Path.Combine(scriptableObjectPath, "Characters", $"Character_{values[1].Replace(" ", "_")}.asset");
+                    character = CreateOrLoadAsset<CharacterDataSO>(assetPath);
+                }
+                else
+                {
+                    character = ScriptableObject.CreateInstance<CharacterDataSO>();
+                }
+                
+                // Parse data - 올바른 CharacterDataSO 필드명 사용
+                character.id = values[0]; // string id
+                character.characterName = values[1];
+                character.jobClass = ParseJobClass(values[2]);
+                character.baseLevel = int.Parse(values[3]);
                 character.rarity = ParseRarity(values[4]);
                 character.baseHP = int.Parse(values[5]);
                 character.baseMP = int.Parse(values[6]);
@@ -122,11 +133,21 @@ namespace GuildMaster.Editor
                 character.accuracy = float.Parse(values[13]);
                 character.evasion = float.Parse(values[14]);
                 
-                // 스킬 ID들
-                character.skill1Id = values[15];
-                character.skill2Id = values[16];
-                character.skill3Id = values[17];
+                // 스킬 ID들을 리스트로 변환
+                character.skillIds = new List<string>();
+                if (!string.IsNullOrEmpty(values[15]))
+                    character.skillIds.Add(values[15]);
+                if (!string.IsNullOrEmpty(values[16]))
+                    character.skillIds.Add(values[16]);
+                if (!string.IsNullOrEmpty(values[17]))
+                    character.skillIds.Add(values[17]);
+                    
                 character.description = values[18];
+                
+                if (createIndividualCharacters)
+                {
+                    EditorUtility.SetDirty(character);
+                }
                 
                 allCharacters.Add(character);
             }
@@ -136,7 +157,7 @@ namespace GuildMaster.Editor
             {
                 string dbPath = Path.Combine(scriptableObjectPath, "CharacterDatabase.asset");
                 CharacterDatabase database = CreateOrLoadAsset<CharacterDatabase>(dbPath);
-                // database의 characters 설정은 CharacterDatabase 구조에 따라 수정 필요
+                database.characters = allCharacters;
                 EditorUtility.SetDirty(database);
             }
             
@@ -200,46 +221,31 @@ namespace GuildMaster.Editor
             return result.ToArray();
         }
         
-        GuildMaster.Data.JobClass ParseDataJobClass(string className)
+        JobClass ParseJobClass(string className)
         {
             switch (className)
             {
-                case "Warrior": return GuildMaster.Data.JobClass.Warrior;
-                case "Knight": return GuildMaster.Data.JobClass.Paladin;
-                case "Mage": return GuildMaster.Data.JobClass.Mage;
-                case "Priest": return GuildMaster.Data.JobClass.Priest;
-                case "Assassin": return GuildMaster.Data.JobClass.Rogue;
-                case "Ranger": return GuildMaster.Data.JobClass.Archer;
-                case "Sage": return GuildMaster.Data.JobClass.Mage;
-                default: return GuildMaster.Data.JobClass.Warrior;
+                case "Warrior": return JobClass.Warrior;
+                case "Knight": return JobClass.Knight;
+                case "Mage": return JobClass.Mage;
+                case "Priest": return JobClass.Priest;
+                case "Assassin": return JobClass.Assassin;
+                case "Ranger": return JobClass.Ranger;
+                case "Sage": return JobClass.Sage;
+                default: return JobClass.None;
             }
         }
         
-        GuildMaster.Battle.JobClass ParseJobClass(string className)
-        {
-            switch (className)
-            {
-                case "Warrior": return GuildMaster.Battle.JobClass.Warrior;
-                case "Knight": return GuildMaster.Battle.JobClass.Knight;
-                case "Mage": return GuildMaster.Battle.JobClass.Mage;
-                case "Priest": return GuildMaster.Battle.JobClass.Priest;
-                case "Assassin": return GuildMaster.Battle.JobClass.Assassin;
-                case "Ranger": return GuildMaster.Battle.JobClass.Ranger;
-                case "Sage": return GuildMaster.Battle.JobClass.Sage;
-                default: return GuildMaster.Battle.JobClass.None;
-            }
-        }
-        
-        GuildMaster.Data.CharacterRarity ParseRarity(string rarity)
+        Rarity ParseRarity(string rarity)
         {
             switch (rarity)
             {
-                case "Common": return GuildMaster.Data.CharacterRarity.Common;
-                case "Uncommon": return GuildMaster.Data.CharacterRarity.Uncommon;
-                case "Rare": return GuildMaster.Data.CharacterRarity.Rare;
-                case "Epic": return GuildMaster.Data.CharacterRarity.Epic;
-                case "Legendary": return GuildMaster.Data.CharacterRarity.Legendary;
-                default: return GuildMaster.Data.CharacterRarity.Common;
+                case "Common": return Rarity.Common;
+                case "Uncommon": return Rarity.Uncommon;
+                case "Rare": return Rarity.Rare;
+                case "Epic": return Rarity.Epic;
+                case "Legendary": return Rarity.Legendary;
+                default: return Rarity.Common;
             }
         }
     }

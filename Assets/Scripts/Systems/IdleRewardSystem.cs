@@ -7,7 +7,6 @@ using GuildMaster.Core;
 using GuildMaster.Data;
 using GuildMaster.Battle;
 
-
 namespace GuildMaster.Systems
 {
     /// <summary>
@@ -55,8 +54,6 @@ namespace GuildMaster.Systems
         // 진행 상황
         private Dictionary<string, IdleProgress> idleProgress;
         private List<IdleActivity> activeActivities;
-        private Dictionary<string, RecycleReward> recycleRewards;
-        private List<RecycleBonus> levelBonuses;
 
         // 이벤트
         public event Action<IdleRewardData> OnIdleRewardsClaimed;
@@ -68,7 +65,7 @@ namespace GuildMaster.Systems
         public class IdleRewardData
         {
             public float idleTime; // 방치 시간 (초)
-            public Dictionary<GuildMaster.Core.ResourceType, int> resources;
+            public Dictionary<ResourceType, int> resources;
             public int totalExperience;
             public List<string> itemIds;
             public Dictionary<string, int> activityProgress;
@@ -76,7 +73,7 @@ namespace GuildMaster.Systems
 
             public IdleRewardData()
             {
-                resources = new Dictionary<GuildMaster.Core.ResourceType, int>();
+                resources = new Dictionary<ResourceType, int>();
                 itemIds = new List<string>();
                 activityProgress = new Dictionary<string, int>();
                 collectionTime = DateTime.Now;
@@ -144,47 +141,6 @@ namespace GuildMaster.Systems
             public DateTime lastUpdateTime;
         }
 
-        [System.Serializable]
-        public class RecycleReward
-        {
-            public GuildMaster.Core.ResourceType resourceType;
-            public int baseAmount;
-            public float levelMultiplier;
-            public float rarityMultiplier;
-            public bool isGuaranteed;
-            public float dropChance;
-        }
-
-        [System.Serializable]
-        public class RecycleBonus
-        {
-            public int requiredLevel;
-            public Dictionary<GuildMaster.Core.ResourceType, int> bonusResources;
-            public float experienceBonus;
-            public string description;
-
-            public RecycleBonus()
-            {
-                bonusResources = new Dictionary<GuildMaster.Core.ResourceType, int>();
-            }
-        }
-
-        [System.Serializable]
-        public class RecycleResult
-        {
-            public bool success;
-            public Dictionary<GuildMaster.Core.ResourceType, int> rewards;
-            public int experienceGained;
-            public string message;
-            public List<string> bonusItems;
-
-            public RecycleResult()
-            {
-                rewards = new Dictionary<GuildMaster.Core.ResourceType, int>();
-                bonusItems = new List<string>();
-            }
-        }
-
         void Awake()
         {
             if (_instance != null && _instance != this)
@@ -219,8 +175,6 @@ namespace GuildMaster.Systems
             activeIdleBuffs = new List<IdleBuff>();
             idleProgress = new Dictionary<string, IdleProgress>();
             activeActivities = new List<IdleActivity>();
-            recycleRewards = new Dictionary<string, RecycleReward>();
-            levelBonuses = new List<RecycleBonus>();
         }
 
         /// <summary>
@@ -261,16 +215,19 @@ namespace GuildMaster.Systems
             float efficiency = CalculateIdleEfficiency();
 
             // 자원 계산
-            var resourceManager = ResourceManager.Instance;
-            if (resourceManager != null)
+            var resourceProduction = ResourceProductionSystem.Instance?.GetProductionStatistics();
+            if (resourceProduction != null)
             {
-                // 기본 자원 생산
-                rewards.resources[GuildMaster.Core.ResourceType.Gold] = Mathf.FloorToInt(goldPerMinute * (seconds / 60f) * efficiency);
+                foreach (var rate in resourceProduction.CurrentRates)
+                {
+                    float amount = rate.Value * (seconds / 3600f) * efficiency;
+                    rewards.resources[rate.Key] = Mathf.FloorToInt(amount);
+                }
             }
             else
             {
                 // 기본 자원 생산
-                rewards.resources[GuildMaster.Core.ResourceType.Gold] = Mathf.FloorToInt(goldPerMinute * (seconds / 60f) * efficiency);
+                rewards.resources[ResourceType.Gold] = Mathf.FloorToInt(goldPerMinute * (seconds / 60f) * efficiency);
             }
 
             // 경험치 계산
@@ -320,7 +277,7 @@ namespace GuildMaster.Systems
             if (guildManager != null)
             {
                 // 특정 건물이 있으면 효율 증가
-                if (System.Enum.TryParse<BuildingType>("Shop", out var buildingType))
+                if (System.Enum.TryParse<GuildMaster.Core.GuildManager.BuildingType>("Shop", out var buildingType))
                 {
                     efficiency *= 1f + (guildManager.GetBuildingLevel(buildingType) * 0.1f);
                 }
@@ -364,7 +321,7 @@ namespace GuildMaster.Systems
             var claimedRewards = new IdleRewardData
             {
                 idleTime = accumulatedRewards.idleTime,
-                resources = new Dictionary<GuildMaster.Core.ResourceType, int>(accumulatedRewards.resources),
+                resources = new Dictionary<ResourceType, int>(accumulatedRewards.resources),
                 totalExperience = accumulatedRewards.totalExperience,
                 itemIds = new List<string>(accumulatedRewards.itemIds),
                 activityProgress = new Dictionary<string, int>(accumulatedRewards.activityProgress)
@@ -576,13 +533,13 @@ namespace GuildMaster.Systems
             switch (type)
             {
                 case ActivityType.AutoExploration:
-                    rewards.resources[GuildMaster.Core.ResourceType.Gold] = maxProgress * 10;
+                    rewards.resources[ResourceType.Gold] = maxProgress * 10;
                     rewards.totalExperience = maxProgress * 5;
                     break;
                     
                 case ActivityType.ResourceGathering:
-                    rewards.resources[GuildMaster.Core.ResourceType.Wood] = maxProgress * 5;
-                    rewards.resources[GuildMaster.Core.ResourceType.Stone] = maxProgress * 3;
+                    rewards.resources[ResourceType.Wood] = maxProgress * 5;
+                    rewards.resources[ResourceType.Stone] = maxProgress * 3;
                     break;
                     
                 case ActivityType.Training:
@@ -590,7 +547,7 @@ namespace GuildMaster.Systems
                     break;
                     
                 case ActivityType.Research:
-                    rewards.resources[GuildMaster.Core.ResourceType.ManaStone] = maxProgress / 10;
+                    rewards.resources[ResourceType.ManaStone] = maxProgress / 10;
                     break;
             }
 
@@ -666,7 +623,7 @@ namespace GuildMaster.Systems
                 accumulatedRewards.idleTime = PlayerPrefs.GetFloat("IdleSystem_AccumulatedTime");
                 
                 // 자원 로드
-                foreach (GuildMaster.Core.ResourceType type in Enum.GetValues(typeof(GuildMaster.Core.ResourceType)))
+                foreach (ResourceType type in Enum.GetValues(typeof(ResourceType)))
                 {
                     string key = $"IdleSystem_Resource_{type}";
                     if (PlayerPrefs.HasKey(key))
@@ -752,64 +709,6 @@ namespace GuildMaster.Systems
         public IdleProgress GetIdleStatistics()
         {
             return idleProgress.ContainsKey("global") ? idleProgress["global"] : new IdleProgress();
-        }
-
-        void SetupDefaultRecycleRewards()
-        {
-            // 기본 자원 보상
-            recycleRewards["experience"] = new RecycleReward
-            {
-                resourceType = GuildMaster.Core.ResourceType.Experience,
-                baseAmount = 50,
-                levelMultiplier = 1.5f,
-                rarityMultiplier = 2f,
-                isGuaranteed = true,
-                dropChance = 1f
-            };
-
-            recycleRewards["gold"] = new RecycleReward
-            {
-                resourceType = GuildMaster.Core.ResourceType.Gold,
-                baseAmount = 100,
-                levelMultiplier = 2f,
-                rarityMultiplier = 3f,
-                isGuaranteed = true,
-                dropChance = 1f
-            };
-
-            recycleRewards["soul_essence"] = new RecycleReward
-            {
-                resourceType = GuildMaster.Core.ResourceType.Mana, // Soul essence를 Mana로 대체
-                baseAmount = 10,
-                levelMultiplier = 1f,
-                rarityMultiplier = 5f,
-                isGuaranteed = false,
-                dropChance = 0.3f
-            };
-        }
-
-        void SetupLevelBonuses()
-        {
-            // 레벨 10 보너스
-            var bonus10 = new RecycleBonus
-            {
-                requiredLevel = 10,
-                experienceBonus = 0.2f,
-                description = "10레벨 보너스: 20% 추가 경험치"
-            };
-            bonus10.bonusResources[GuildMaster.Core.ResourceType.Gold] = 50;
-            levelBonuses.Add(bonus10);
-
-            // 레벨 25 보너스
-            var bonus25 = new RecycleBonus
-            {
-                requiredLevel = 25,
-                experienceBonus = 0.5f,
-                description = "25레벨 보너스: 50% 추가 경험치"
-            };
-            bonus25.bonusResources[GuildMaster.Core.ResourceType.Gold] = 200;
-            bonus25.bonusResources[GuildMaster.Core.ResourceType.Mana] = 25;
-            levelBonuses.Add(bonus25);
         }
     }
 }

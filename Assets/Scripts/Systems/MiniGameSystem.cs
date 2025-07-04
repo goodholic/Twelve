@@ -1365,16 +1365,16 @@ namespace GuildMaster.Systems
             };
         }
 
-        EventDifficulty GetDifficultyForCharacter(GuildMaster.Data.CharacterData character)
+        EventDifficulty GetDifficultyForCharacter(CharacterData character)
         {
             // Base difficulty on character rarity
             return character.rarity switch
             {
-                GuildMaster.Data.CharacterRarity.Common => EventDifficulty.Easy,
-                GuildMaster.Data.CharacterRarity.Uncommon => EventDifficulty.Normal,
-                GuildMaster.Data.CharacterRarity.Rare => EventDifficulty.Hard,
-                GuildMaster.Data.CharacterRarity.Epic => EventDifficulty.Expert,
-                GuildMaster.Data.CharacterRarity.Legendary => EventDifficulty.Legendary,
+                Rarity.Common => EventDifficulty.Easy,
+                Rarity.Uncommon => EventDifficulty.Normal,
+                Rarity.Rare => EventDifficulty.Hard,
+                Rarity.Epic => EventDifficulty.Expert,
+                Rarity.Legendary => EventDifficulty.Legendary,
                 _ => EventDifficulty.Normal
             };
         }
@@ -1406,9 +1406,9 @@ namespace GuildMaster.Systems
         #region Game-Specific Helper Methods
 
         // Resource Gathering Helpers
-        GuildMaster.Core.ResourceType GetRandomResourceType()
+        ResourceType GetRandomResourceType()
         {
-            return (GuildMaster.Core.ResourceType)Random.Range(0, Enum.GetValues(typeof(GuildMaster.Core.ResourceType)).Length);
+            return (ResourceType)Random.Range(0, Enum.GetValues(typeof(ResourceType)).Length);
         }
 
         int GetTargetAmount(EventDifficulty difficulty, int min, int max)
@@ -1701,25 +1701,25 @@ namespace GuildMaster.Systems
                 CreateTimingGame("Fireworks Display", EventDifficulty.Easy));
         }
 
-        void AddCharacterSpecificMiniGames(SpecialEvent charEvent, GuildMaster.Data.CharacterData character)
+        void AddCharacterSpecificMiniGames(SpecialEvent charEvent, CharacterData character)
         {
             // Add mini-games based on character class
             switch (character.jobClass)
             {
-                case GuildMaster.Data.JobClass.Warrior:
-                case GuildMaster.Data.JobClass.Paladin:
+                case JobClass.Warrior:
+                case JobClass.Knight:
                     charEvent.associatedMiniGames.Add(
                         CreateCombatTrainingGame($"{character.name}'s Training", charEvent.difficulty));
                     break;
                     
-                case GuildMaster.Data.JobClass.Mage:
-                case GuildMaster.Data.JobClass.Priest:
+                case JobClass.Mage:
+                case JobClass.Priest:
                     charEvent.associatedMiniGames.Add(
                         CreatePuzzleGame($"{character.name}'s Research", charEvent.difficulty));
                     break;
                     
-                case GuildMaster.Data.JobClass.Archer:
-                case GuildMaster.Data.JobClass.Rogue:
+                case JobClass.Ranger:
+                case JobClass.Assassin:
                     charEvent.associatedMiniGames.Add(
                         CreateTimingGame($"{character.name}'s Challenge", charEvent.difficulty));
                     break;

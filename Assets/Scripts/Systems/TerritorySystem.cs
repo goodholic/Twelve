@@ -4,9 +4,7 @@ using System.Collections; // IEnumerator를 위해 추가
 using System.Collections.Generic;
 using System.Linq;
 using GuildMaster.Core; // ResourceType을 위해 추가
-using GuildMaster.Guild;
 using GuildMaster.Battle; // Battle 네임스페이스 추가
-using GuildMaster.Battle.AI;
 
 namespace GuildMaster.Systems
 {
@@ -506,17 +504,17 @@ namespace GuildMaster.Systems
             
             // AI 길드 생성기를 사용하여 방어 부대 생성
             // 영토 소유자의 난이도 추정
-            var difficulty = territory.defenseLevel switch
+            AIGuildGenerator.Difficulty difficulty = territory.defenseLevel switch
             {
-                1 => GuildMaster.Battle.AI.AIGuildGenerator.Difficulty.Novice,
-                2 => GuildMaster.Battle.AI.AIGuildGenerator.Difficulty.Bronze,
-                3 => GuildMaster.Battle.AI.AIGuildGenerator.Difficulty.Silver,
-                4 => GuildMaster.Battle.AI.AIGuildGenerator.Difficulty.Gold,
-                5 => GuildMaster.Battle.AI.AIGuildGenerator.Difficulty.Platinum,
-                _ => GuildMaster.Battle.AI.AIGuildGenerator.Difficulty.Novice
+                1 => AIGuildGenerator.Difficulty.Novice,
+                2 => AIGuildGenerator.Difficulty.Bronze,
+                3 => AIGuildGenerator.Difficulty.Silver,
+                4 => AIGuildGenerator.Difficulty.Gold,
+                5 => AIGuildGenerator.Difficulty.Platinum,
+                _ => AIGuildGenerator.Difficulty.Novice
             };
             
-            var aiSquads = GuildMaster.Battle.AI.AIGuildGenerator.GenerateAIGuild(difficulty, 15);
+            var aiSquads = AIGuildGenerator.GenerateAIGuild(difficulty, 15);
             
             for (int i = 0; i < squadCount && i < aiSquads.Count; i++)
             {

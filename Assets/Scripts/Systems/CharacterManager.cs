@@ -1,15 +1,13 @@
-using UnityEngine;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEngine;
 using GuildMaster.Data;
 using GuildMaster.Battle;
+using GuildMaster.Core;
 
 namespace GuildMaster.Systems
 {
-    /// <summary>
-    /// 캐릭터 관리 시스템
-    /// </summary>
     public class CharacterManager : MonoBehaviour
     {
         private static CharacterManager _instance;
@@ -24,26 +22,27 @@ namespace GuildMaster.Systems
                     {
                         GameObject go = new GameObject("CharacterManager");
                         _instance = go.AddComponent<CharacterManager>();
-                        DontDestroyOnLoad(go);
                     }
                 }
                 return _instance;
             }
         }
-
+        
         [Header("Character Database")]
         [SerializeField] private CharacterDatabase characterDatabase;
         
-        private Dictionary<string, CharacterData> characterDataDict = new Dictionary<string, CharacterData>();
-        private List<Battle.Unit> ownedCharacters = new List<Battle.Unit>();
-        private List<Battle.Unit> availableCharacters = new List<Battle.Unit>();
+        // 캐릭터 풀
+        private Dictionary<int, Queue<Unit>> characterPool;
+        private int poolSize = 10;
         
-        // Events
-        public event Action<Battle.Unit> OnCharacterUnlocked;
-        public event Action<Battle.Unit> OnCharacterLevelUp;
-        public event Action<Battle.Unit> OnCharacterPromoted;
-        public event Action<Battle.Unit> OnCharacterRemoved;
-
+        // 생성된 유닛 추적
+        private List<Unit> activeUnits;
+        
+        // 이벤트
+        public event Action<Unit> OnUnitCreated;
+        public event Action<Unit> OnUnitReturned;
+        public event Action<CharacterData> OnCharacterUnlocked;
+        
         void Awake()
         {
             if (_instance != null && _instance != this)
@@ -52,223 +51,373 @@ namespace GuildMaster.Systems
                 return;
             }
             _instance = this;
-            DontDestroyOnLoad(gameObject);
             
-            InitializeCharacterManager();
+            Initialize();
         }
-
-        void InitializeCharacterManager()
+        
+        void Initialize()
         {
+            characterPool = new Dictionary<int, Queue<Unit>>();
+            activeUnits = new List<Unit>();
+            
+            // 데이터베이스 로드
+            if (characterDatabase == null)
+            {
+                characterDatabase = Resources.Load<CharacterDatabase>("Data/CharacterDatabase");
+            }
+            
             if (characterDatabase != null)
             {
-                foreach (var characterData in characterDatabase.characters)
-                {
-                    characterDataDict[characterData.id] = characterData;
-                }
+                characterDatabase.Initialize();
+                Debug.Log($"Loaded {characterDatabase.characters.Count} characters from database.");
+            }
+            else
+            {
+                Debug.LogError("Character database not found!");
             }
         }
-
-        public CharacterData GetCharacterData(string characterId)
+        
+        // 캐릭터 데이터로부터 유닛 생성
+        public Unit CreateUnit(string characterId, int level = 1)
         {
-            characterDataDict.TryGetValue(characterId, out CharacterData data);
-            return data;
-        }
-
-        public List<CharacterData> GetAllCharacterData()
-        {
-            return characterDataDict.Values.ToList();
-        }
-
-        public Battle.Unit CreateCharacter(string characterId, int level = 1)
-        {
-            var characterData = GetCharacterData(characterId);
+            CharacterData characterData = DataManager.Instance.GetCharacterData(characterId);
             if (characterData == null)
             {
-                Debug.LogError($"Character data not found for ID: {characterId}");
+                Debug.LogError($"Character with ID '{characterId}' not found!");
                 return null;
             }
 
-            var unit = new Battle.Unit(characterData.name, level, ConvertJobClass(characterData.jobClass), ConvertRarity(characterData.rarity))
-            {
-                unitId = characterId,
-                maxHP = characterData.baseHP,
-                currentHP = characterData.baseHP,
-                maxMP = characterData.baseMP,
-                currentMP = characterData.baseMP,
-                attackPower = characterData.baseAttack,
-                defense = characterData.baseDefense,
-                magicPower = characterData.baseMagicPower,
-                speed = characterData.baseSpeed,
-                accuracy = characterData.accuracy,
-                evasion = characterData.evasion
-            };
+            return CreateUnitFromCharacterData(characterData, level);
+        }
+        
+        public Unit CreateUnitFromCharacterData(CharacterData characterData, int level = 1)
+        {
+            if (characterData == null) return null;
 
-            // 스킬 추가
-            if (!string.IsNullOrEmpty(characterData.skill1Id))
-                unit.skillIds.Add(int.Parse(characterData.skill1Id));
-            if (!string.IsNullOrEmpty(characterData.skill2Id))
-                unit.skillIds.Add(int.Parse(characterData.skill2Id));
-            if (!string.IsNullOrEmpty(characterData.skill3Id))
-                unit.skillIds.Add(int.Parse(characterData.skill3Id));
-
+            Unit unit = DataManager.Instance.CreateUnitFromData(characterData.id, level);
             return unit;
         }
-
-        public bool UnlockCharacter(string characterId)
+        
+        public CharacterData GetCharacterByName(string name)
         {
-            var characterData = GetCharacterData(characterId);
-            if (characterData == null)
-                return false;
-
-            var unit = CreateCharacter(characterId);
-            if (unit == null)
-                return false;
-
-            if (!ownedCharacters.Any(c => c.unitId == characterId))
-            {
-                ownedCharacters.Add(unit);
-                OnCharacterUnlocked?.Invoke(unit);
-                return true;
-            }
-
-            return false;
+            var characters = DataManager.Instance.GetAllCharacters();
+            return characters.FirstOrDefault(c => c.name.Equals(name, StringComparison.OrdinalIgnoreCase));
         }
-
-        public bool LevelUpCharacter(string characterId)
+        
+        public CharacterData GetRandomCharacter()
         {
-            var character = ownedCharacters.FirstOrDefault(c => c.unitId == characterId);
-            if (character == null)
-                return false;
-
-            character.level++;
+            var characters = DataManager.Instance.GetAllCharacters();
+            if (characters.Count == 0) return null;
             
-            // 스탯 증가
-            var characterData = GetCharacterData(characterId);
-            if (characterData != null)
-            {
-                character.maxHP += characterData.baseHP / 10;
-                character.currentHP = character.maxHP;
-                character.maxMP += characterData.baseMP / 10;
-                character.currentMP = character.maxMP;
-                character.attackPower += characterData.baseAttack / 10;
-                character.defense += characterData.baseDefense / 10;
-                character.magicPower += characterData.baseMagicPower / 10;
-                character.speed += characterData.baseSpeed / 10;
-            }
-
-            OnCharacterLevelUp?.Invoke(character);
-            return true;
+            int randomIndex = UnityEngine.Random.Range(0, characters.Count);
+            return characters[randomIndex];
         }
-
-        public bool PromoteCharacter(string characterId)
+        
+        public CharacterData GetRandomCharacterByRarity(GuildMaster.Battle.Rarity rarity)
         {
-            var character = ownedCharacters.FirstOrDefault(c => c.unitId == characterId);
-            if (character == null)
-                return false;
-
-            // 레어도 상승 (최대 Legendary까지)
-            if (character.rarity < Battle.Rarity.Legendary)
-            {
-                character.rarity = (Battle.Rarity)((int)character.rarity + 1);
-                OnCharacterPromoted?.Invoke(character);
-                return true;
-            }
-
-            return false;
-        }
-
-        public bool RemoveCharacter(string characterId)
-        {
-            var character = ownedCharacters.FirstOrDefault(c => c.unitId == characterId);
-            if (character == null)
-                return false;
-
-            ownedCharacters.Remove(character);
-            OnCharacterRemoved?.Invoke(character);
-            return true;
-        }
-
-        public List<Battle.Unit> GetOwnedCharacters()
-        {
-            return new List<Battle.Unit>(ownedCharacters);
-        }
-
-        public List<Battle.Unit> GetAvailableCharacters()
-        {
-            return new List<Battle.Unit>(availableCharacters);
-        }
-
-        public List<Battle.Unit> GetCharactersByJobClass(Battle.JobClass jobClass)
-        {
-            return ownedCharacters.Where(c => c.jobClass == jobClass).ToList();
-        }
-
-        public List<Battle.Unit> GetCharactersByRarity(Battle.Rarity rarity)
-        {
-            return ownedCharacters.Where(c => c.rarity == rarity).ToList();
-        }
-
-        public Battle.Unit GetCharacterById(string characterId)
-        {
-            return ownedCharacters.FirstOrDefault(c => c.unitId == characterId);
-        }
-
-        public bool HasCharacter(string characterId)
-        {
-            return ownedCharacters.Any(c => c.unitId == characterId);
-        }
-
-        public int GetCharacterCount()
-        {
-            return ownedCharacters.Count;
-        }
-
-        public int GetCharacterCountByJobClass(Battle.JobClass jobClass)
-        {
-            return ownedCharacters.Count(c => c.jobClass == jobClass);
-        }
-
-        public int GetCharacterCountByRarity(Battle.Rarity rarity)
-        {
-            return ownedCharacters.Count(c => c.rarity == rarity);
-        }
-
-        private Battle.JobClass ConvertJobClass(Data.JobClass dataJobClass)
-        {
-            return (Battle.JobClass)dataJobClass;
-        }
-
-        private Battle.Rarity ConvertRarity(CharacterRarity dataRarity)
-        {
-            return (Battle.Rarity)dataRarity;
-        }
-
-        public string GetCharacterReport()
-        {
-            var report = new System.Text.StringBuilder();
-            report.AppendLine("=== Character Manager Report ===");
-            report.AppendLine($"Total Owned Characters: {ownedCharacters.Count}");
-            report.AppendLine($"Total Available Characters: {availableCharacters.Count}");
+            var characters = DataManager.Instance.GetCharactersByRarity(rarity);
+            if (characters.Count == 0) return null;
             
-            foreach (var rarity in Enum.GetValues(typeof(Battle.Rarity)))
+            int randomIndex = UnityEngine.Random.Range(0, characters.Count);
+            return characters[randomIndex];
+        }
+        
+        public Unit RecruitRandomCharacter()
+        {
+            CharacterData characterData = GetRandomCharacter();
+            if (characterData == null) return null;
+
+            return CreateUnitFromCharacterData(characterData);
+        }
+        
+        // 이름으로 유닛 생성
+        public Unit CreateUnitByName(string characterName)
+        {
+            CharacterData data = GetCharacterByName(characterName);
+            if (data == null)
             {
-                var count = GetCharacterCountByRarity((Battle.Rarity)rarity);
-                if (count > 0)
+                Debug.LogError($"Character with name '{characterName}' not found!");
+                return null;
+            }
+            
+            return CreateUnitFromCharacterData(data);
+        }
+        
+        // 랜덤 유닛 생성
+        public Unit CreateRandomUnit()
+        {
+            CharacterData data = GetRandomCharacter();
+            if (data == null) return null;
+            return CreateUnitFromCharacterData(data);
+        }
+        
+        public Unit CreateRandomUnitByRarity(GuildMaster.Battle.Rarity rarity)
+        {
+            CharacterData data = GetRandomCharacterByRarity(rarity);
+            if (data == null) return null;
+            return CreateUnitFromCharacterData(data);
+        }
+        
+        public Unit CreateRandomUnitByClass(JobClass jobClass)
+        {
+            var candidates = GetCharactersByClass(jobClass);
+            if (candidates.Count == 0) return null;
+            
+            CharacterData data = candidates[UnityEngine.Random.Range(0, candidates.Count)];
+            return CreateUnitFromCharacterData(data);
+        }
+        
+        // 유닛을 풀로 반환
+        public void ReturnUnit(Unit unit)
+        {
+            if (unit == null || !activeUnits.Contains(unit)) return;
+            
+            activeUnits.Remove(unit);
+            
+            // 캐릭터 ID 찾기
+            string characterId = GetCharacterIdFromUnit(unit);
+            if (string.IsNullOrEmpty(characterId)) return;
+            
+            // 풀에 추가
+            if (!characterPool.ContainsKey(int.Parse(characterId)))
+            {
+                characterPool[int.Parse(characterId)] = new Queue<Unit>();
+            }
+            
+            if (characterPool[int.Parse(characterId)].Count < poolSize)
+            {
+                characterPool[int.Parse(characterId)].Enqueue(unit);
+                OnUnitReturned?.Invoke(unit);
+            }
+        }
+        
+        // 유닛에서 캐릭터 ID 찾기 (string 타입으로 수정)
+        string GetCharacterIdFromUnit(Unit unit)
+        {
+            // Unit의 unitId는 string 타입이므로 그대로 반환
+            return unit.unitId;
+        }
+        
+        // 가챠 시뮬레이션에서 string ID 사용
+        public List<Unit> PerformGacha(int count, float[] rarityWeights = null)
+        {
+            var results = new List<Unit>();
+            
+            for (int i = 0; i < count; i++)
+            {
+                var rarity = GetRandomRarity(rarityWeights);
+                var character = GetRandomCharacterByRarity(rarity);
+                if (character != null)
                 {
-                    report.AppendLine($"{rarity}: {count}");
+                    var unit = CreateUnitFromCharacterData(character);
+                    if (unit != null)
+                    {
+                        results.Add(unit);
+                    }
                 }
             }
             
-            foreach (var jobClass in Enum.GetValues(typeof(Battle.JobClass)))
+            return results;
+        }
+        
+        Rarity GetRandomRarity(float[] weights)
+        {
+            float random = UnityEngine.Random.value;
+            float cumulative = 0f;
+            
+            for (int i = 0; i < weights.Length; i++)
             {
-                var count = GetCharacterCountByJobClass((Battle.JobClass)jobClass);
-                if (count > 0)
+                cumulative += weights[i];
+                if (random <= cumulative)
                 {
-                    report.AppendLine($"{jobClass}: {count}");
+                    return (Rarity)i;
                 }
             }
             
-            return report.ToString();
+            return Rarity.Common;
+        }
+        
+        // 팀 빌딩 헬퍼
+        public List<Unit> CreateBalancedTeam(int teamSize, int averageLevel = 1)
+        {
+            List<Unit> team = new List<Unit>();
+            
+            // 균형잡힌 팀 구성: 탱커 1-2, 딜러 2-3, 힐러 1, 서포트 0-1
+            JobClass[] teamComposition = new JobClass[]
+            {
+                JobClass.Knight,     // 탱커
+                JobClass.Warrior,    // 근거리 딜러
+                JobClass.Ranger,     // 원거리 딜러
+                JobClass.Priest,     // 힐러
+                JobClass.Mage,       // 마법 딜러
+                JobClass.Assassin    // 암살자
+            };
+            
+            // 팀 사이즈에 맞게 조정
+            for (int i = 0; i < teamSize && i < teamComposition.Length; i++)
+            {
+                Unit unit = CreateRandomUnitByClass(teamComposition[i]);
+                if (unit != null)
+                {
+                    // 레벨 조정
+                    while (unit.level < averageLevel)
+                    {
+                        unit.AddExperience(unit.experienceToNextLevel);
+                    }
+                    team.Add(unit);
+                }
+            }
+            
+            return team;
+        }
+        
+        // 스토리 캐릭터 생성
+        public Unit CreateStoryCharacter(string characterName, int overrideLevel = -1)
+        {
+            Unit unit = CreateUnitByName(characterName);
+            if (unit != null && overrideLevel > 0)
+            {
+                // 스토리용 레벨 조정
+                while (unit.level < overrideLevel)
+                {
+                    unit.AddExperience(unit.experienceToNextLevel);
+                }
+            }
+            return unit;
+        }
+        
+        // 보스 유닛 생성 (강화된 버전)
+        public Unit CreateBossUnit(string characterId, float statMultiplier = 2f)
+        {
+            Unit unit = CreateUnit(characterId);
+            if (unit == null) return null;
+            
+            // 스탯 강화
+            unit.attackPower = Mathf.RoundToInt(unit.attackPower * statMultiplier);
+            unit.defense = Mathf.RoundToInt(unit.defense * statMultiplier);
+            unit.maxHP = Mathf.RoundToInt(unit.maxHP * statMultiplier);
+            unit.maxMP = Mathf.RoundToInt(unit.maxMP * statMultiplier);
+            unit.currentHP = unit.maxHP;
+            unit.currentMP = unit.maxMP;
+            
+            return unit;
+        }
+        
+        // 조회 메서드들
+        public CharacterData GetCharacterData(string id)
+        {
+            return DataManager.Instance.GetCharacterData(id);
+        }
+        
+        public List<CharacterData> GetAllCharacters()
+        {
+            return DataManager.Instance.GetAllCharacters();
+        }
+        
+        public List<CharacterData> GetCharactersByClass(JobClass jobClass)
+        {
+            var characters = DataManager.Instance.GetCharactersByJobClass(jobClass);
+            return characters ?? new List<CharacterData>();
+        }
+        
+        public List<CharacterData> GetCharactersByRarity(GuildMaster.Battle.Rarity rarity)
+        {
+            var characters = DataManager.Instance.GetCharactersByRarity(rarity);
+            return characters ?? new List<CharacterData>();
+        }
+        
+        public List<CharacterData> GetCommonCharacters()
+        {
+            var characters = DataManager.Instance.GetCharactersByRarity(GuildMaster.Battle.Rarity.Common);
+            return characters ?? new List<CharacterData>();
+        }
+        
+        public List<Unit> GetActiveUnits()
+        {
+            return new List<Unit>(activeUnits);
+        }
+        
+        public int GetPooledUnitCount(int characterId)
+        {
+            return characterPool.ContainsKey(characterId) ? characterPool[characterId].Count : 0;
+        }
+        
+        // 데이터베이스 설정
+        public void SetCharacterDatabase(CharacterDatabase database)
+        {
+            characterDatabase = database;
+            if (characterDatabase != null)
+            {
+                characterDatabase.Initialize();
+            }
+        }
+
+        // 새로운 모험가 생성 메서드들
+        public Unit CreateAdventurer(string characterId, int level = 1)
+        {
+            CharacterDataSO charData = characterDatabase.GetCharacter(characterId);
+            if (charData == null) return null;
+
+            Unit newUnit = charData.CreateUnit();
+            
+            // 레벨 적용
+            for (int i = 1; i < level; i++)
+            {
+                LevelUpUnit(newUnit);
+            }
+            
+            return newUnit;
+        }
+
+        private void LevelUpUnit(Unit unit)
+        {
+            unit.Level++;
+            // 스탯 증가 로직
+        }
+
+        // Method group 오류를 해결하기 위해 기존 메서드들을 수정
+        public List<CharacterDataSO> GetRecommendedCharacters(JobClass preferredClass, int maxResults = 3)
+        {
+            var charactersOfClass = characterDatabase.GetCharactersByClass(preferredClass);
+            if (charactersOfClass.Count == 0)
+            {
+                return new List<CharacterDataSO>();
+            }
+
+            return charactersOfClass.Take(maxResults).ToList();
+        }
+
+        public Unit RecruitRandomAdventurer(JobClass jobClass, Rarity rarity)
+        {
+            var availableCharacters = characterDatabase.GetCharactersByClass(jobClass);
+            var filteredByRarity = availableCharacters.Where(c => c.rarity == rarity).ToList();
+            
+            if (filteredByRarity.Count == 0)
+                return null;
+
+            var randomChar = filteredByRarity[UnityEngine.Random.Range(0, filteredByRarity.Count)];
+            return CreateAdventurer(randomChar.id, UnityEngine.Random.Range(1, 10));
+        }
+
+        public Unit CreateRandomAdventurer()
+        {
+            if (characterDatabase.characters.Count == 0) return null;
+            
+            var randomChar = characterDatabase.characters[UnityEngine.Random.Range(0, characterDatabase.characters.Count)];
+            int randomLevel = UnityEngine.Random.Range(1, 10);
+            
+            return CreateAdventurer(randomChar.id, randomLevel);
+        }
+
+        public List<Unit> GetAdventurersByClass(JobClass jobClass)
+        {
+            var charactersOfClass = characterDatabase.GetCharactersByClass(jobClass);
+            if (charactersOfClass.Count == 0)
+            {
+                return new List<Unit>();
+            }
+
+            return charactersOfClass.Select(c => c.CreateUnit()).ToList();
         }
     }
-} 
+}

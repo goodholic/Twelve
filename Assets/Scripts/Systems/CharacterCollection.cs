@@ -39,17 +39,17 @@ namespace GuildMaster.Systems
         public const int UNITS_PER_SQUAD = 18;  // 부대당 18명
 
         [Header("현재 컬렉션")]
-        [SerializeField] private List<GuildMaster.Battle.Unit> collectedCharacters = new List<GuildMaster.Battle.Unit>();
+        [SerializeField] private List<Unit> collectedCharacters = new List<Unit>();
         [SerializeField] private Squad[] battleSquads = new Squad[SQUADS_COUNT];
 
         // 이벤트
-        public event Action<GuildMaster.Battle.Unit> OnCharacterAdded;
-        public event Action<GuildMaster.Battle.Unit> OnCharacterRemoved;
+        public event Action<Unit> OnCharacterAdded;
+        public event Action<Unit> OnCharacterRemoved;
         public event Action<int> OnSquadUpdated;  // squadIndex
         public event Action OnCollectionFull;
 
         // 프로퍼티
-        public List<GuildMaster.Battle.Unit> CollectedCharacters => new List<GuildMaster.Battle.Unit>(collectedCharacters);
+        public List<Unit> CollectedCharacters => new List<Unit>(collectedCharacters);
         public int CurrentCharacterCount => collectedCharacters.Count;
         public bool IsCollectionFull => collectedCharacters.Count >= MAX_CHARACTERS;
         public float CollectionProgress => (float)collectedCharacters.Count / MAX_CHARACTERS;
@@ -78,7 +78,7 @@ namespace GuildMaster.Systems
         /// <summary>
         /// 새로운 캐릭터 추가
         /// </summary>
-        public bool AddCharacter(GuildMaster.Battle.Unit newCharacter)
+        public bool AddCharacter(Unit newCharacter)
         {
             if (newCharacter == null)
             {
@@ -117,7 +117,7 @@ namespace GuildMaster.Systems
         /// <summary>
         /// 캐릭터 제거
         /// </summary>
-        public bool RemoveCharacter(GuildMaster.Battle.Unit character)
+        public bool RemoveCharacter(Unit character)
         {
             if (character == null) return false;
 
@@ -144,7 +144,7 @@ namespace GuildMaster.Systems
         /// <summary>
         /// 캐릭터를 부대에 배치
         /// </summary>
-        public bool AssignCharacterToSquad(GuildMaster.Battle.Unit character, int squadIndex, int row, int col)
+        public bool AssignCharacterToSquad(Unit character, int squadIndex, int row, int col)
         {
             if (character == null || squadIndex < 0 || squadIndex >= SQUADS_COUNT)
                 return false;
@@ -179,7 +179,7 @@ namespace GuildMaster.Systems
         /// <summary>
         /// 부대에서 캐릭터 제거
         /// </summary>
-        public bool RemoveCharacterFromSquad(GuildMaster.Battle.Unit character, int squadIndex)
+        public bool RemoveCharacterFromSquad(Unit character, int squadIndex)
         {
             if (squadIndex < 0 || squadIndex >= SQUADS_COUNT)
                 return false;
@@ -215,7 +215,7 @@ namespace GuildMaster.Systems
         /// <summary>
         /// 캐릭터가 속한 부대 인덱스 찾기
         /// </summary>
-        public int GetCharacterSquadIndex(GuildMaster.Battle.Unit character)
+        public int GetCharacterSquadIndex(Unit character)
         {
             for (int i = 0; i < SQUADS_COUNT; i++)
             {
@@ -226,39 +226,47 @@ namespace GuildMaster.Systems
         }
 
         /// <summary>
-        /// 컬렉션 통계 가져오기
+        /// 컬렉션 통계
         /// </summary>
         public CollectionStats GetCollectionStats()
         {
             var stats = new CollectionStats
             {
-                TotalCharacters = CurrentCharacterCount,
+                TotalCharacters = collectedCharacters.Count,
                 MaxCharacters = MAX_CHARACTERS,
                 CollectionProgress = CollectionProgress,
-                CharactersByJob = new Dictionary<GuildMaster.Battle.JobClass, int>(),
+                CharactersByJob = new Dictionary<JobClass, int>(),
                 CharactersByRarity = new Dictionary<CharacterRarity, int>(),
                 AverageLevel = 0f,
                 TotalCombatPower = 0f
             };
 
-            // 직업별 통계
-            foreach (var character in collectedCharacters)
+            if (collectedCharacters.Count > 0)
             {
-                if (!stats.CharactersByJob.ContainsKey(character.JobClass))
-                    stats.CharactersByJob[character.JobClass] = 0;
-                stats.CharactersByJob[character.JobClass]++;
+                stats.AverageLevel = collectedCharacters.Average(c => c.level);
+                stats.TotalCombatPower = collectedCharacters.Sum(c => c.GetCombatPower());
 
-                if (!stats.CharactersByRarity.ContainsKey((CharacterRarity)character.rarity))
-                    stats.CharactersByRarity[(CharacterRarity)character.rarity] = 0;
-                stats.CharactersByRarity[(CharacterRarity)character.rarity]++;
+                // 직업별 통계
+                foreach (var job in Enum.GetValues(typeof(JobClass)).Cast<JobClass>())
+                {
+                    stats.CharactersByJob[job] = collectedCharacters.Count(c => c.jobClass == job);
+                }
 
-                stats.AverageLevel += character.level;
-                stats.TotalCombatPower += character.GetCombatPower();
-            }
-
-            if (CurrentCharacterCount > 0)
-            {
-                stats.AverageLevel /= CurrentCharacterCount;
+                // 희귀도별 통계 (CharacterData에서 가져오기)
+                var characterManager = CharacterManager.Instance;
+                if (characterManager != null)
+                {
+                    foreach (var character in collectedCharacters)
+                    {
+                        var data = characterManager.GetCharacterData(character.characterId);
+                        if (data != null)
+                        {
+                            if (!stats.CharactersByRarity.ContainsKey(data.Rarity))
+                                stats.CharactersByRarity[data.Rarity] = 0;
+                            stats.CharactersByRarity[data.Rarity]++;
+                        }
+                    }
+                }
             }
 
             return stats;
@@ -298,38 +306,23 @@ namespace GuildMaster.Systems
         }
 
         /// <summary>
-        /// 세이브 데이터 가져오기
+        /// 컬렉션 데이터 저장
         /// </summary>
         public CollectionSaveData GetSaveData()
         {
-            var saveData = new CollectionSaveData();
-            
-            // 수집된 캐릭터 ID들 저장 (string을 int로 변환)
-            foreach (var character in collectedCharacters)
+            var saveData = new CollectionSaveData
             {
-                if (int.TryParse(character.unitId, out int id))
-                {
-                    saveData.CollectedCharacterIds.Add(id);
-                }
-            }
+                CollectedCharacterIds = collectedCharacters.Select(c => c.characterId).ToList(),
+                SquadData = new List<SquadSaveData>()
+            };
 
-            // 부대 데이터 저장
             for (int i = 0; i < SQUADS_COUNT; i++)
             {
                 var squadData = new SquadSaveData
                 {
-                    SquadIndex = i
+                    SquadIndex = i,
+                    CharacterIds = battleSquads[i].Units.Select(u => u.characterId).ToList()
                 };
-
-                var squadUnits = battleSquads[i].GetAllUnits();
-                foreach (var unit in squadUnits)
-                {
-                    if (int.TryParse(unit.unitId, out int id))
-                    {
-                        squadData.CharacterIds.Add(id);
-                    }
-                }
-
                 saveData.SquadData.Add(squadData);
             }
 
@@ -337,44 +330,48 @@ namespace GuildMaster.Systems
         }
 
         /// <summary>
-        /// 세이브 데이터 로드
+        /// 컬렉션 데이터 로드
         /// </summary>
         public void LoadSaveData(CollectionSaveData saveData)
         {
             if (saveData == null) return;
 
-            // 컬렉션 초기화
+            // 기존 데이터 초기화
             collectedCharacters.Clear();
-            
-            // 저장된 캐릭터들 복원 (int ID를 string으로 변환하여 검색)
-            foreach (int characterId in saveData.CollectedCharacterIds)
+            foreach (var squad in battleSquads)
             {
-                var unit = CharacterManager.Instance.CreateCharacter(characterId.ToString(), 1);
-                if (unit != null)
+                squad.ClearSquad();
+            }
+
+            // CharacterManager를 통해 캐릭터 복원
+            var characterManager = CharacterManager.Instance;
+            if (characterManager == null) return;
+
+            // 컬렉션 복원
+            foreach (var characterId in saveData.CollectedCharacterIds)
+            {
+                var character = characterManager.CreateCharacterByIndex(characterId);
+                if (character != null)
                 {
-                    collectedCharacters.Add(unit);
+                    collectedCharacters.Add(character);
                 }
             }
 
-            // 부대 데이터 복원
+            // 부대 복원
             foreach (var squadData in saveData.SquadData)
             {
-                if (squadData.SquadIndex >= 0 && squadData.SquadIndex < SQUADS_COUNT)
+                if (squadData.SquadIndex < 0 || squadData.SquadIndex >= SQUADS_COUNT)
+                    continue;
+
+                foreach (var characterId in squadData.CharacterIds)
                 {
-                    battleSquads[squadData.SquadIndex].ClearSquad();
-                    
-                    foreach (int characterId in squadData.CharacterIds)
+                    var character = collectedCharacters.FirstOrDefault(c => c.characterId == characterId);
+                    if (character != null)
                     {
-                        var character = collectedCharacters.FirstOrDefault(c => c.unitId == characterId.ToString());
-                        if (character != null)
-                        {
-                            battleSquads[squadData.SquadIndex].AddUnit(character);
-                        }
+                        battleSquads[squadData.SquadIndex].AddUnit(character);
                     }
                 }
             }
-
-            Debug.Log($"컬렉션 로드 완료: {CurrentCharacterCount}명의 캐릭터");
         }
     }
 
@@ -387,7 +384,7 @@ namespace GuildMaster.Systems
         public int TotalCharacters;
         public int MaxCharacters;
         public float CollectionProgress;
-        public Dictionary<GuildMaster.Battle.JobClass, int> CharactersByJob;
+        public Dictionary<JobClass, int> CharactersByJob;
         public Dictionary<CharacterRarity, int> CharactersByRarity;
         public float AverageLevel;
         public float TotalCombatPower;

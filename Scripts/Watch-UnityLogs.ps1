@@ -1,40 +1,57 @@
-﻿# Unity Log Monitoring Script for WSL/PowerShell
+# Unity 로그 실시간 모니터링 스크립트
 param(
     [string]$LogPath = ".\Logs\unity-console.log",
     [int]$TailLines = 20,
-    [switch]$ErrorsOnly,
-    [switch]$Help
+    [switch]$ErrorsOnly
 )
 
-function Write-ColorizedLog {
-    param([string]$Line, [string]$Timestamp)
-    $formattedLine = "[$Timestamp] $Line"
-    if ($Line -match "ERROR|EXCEPTION") {
-        Write-Host $formattedLine -ForegroundColor Red
-    } elseif ($Line -match "WARNING") {
-        Write-Host $formattedLine -ForegroundColor Yellow
-    } elseif ($Line -match "INFO") {
-        Write-Host $formattedLine -ForegroundColor White
-    } else {
-        Write-Host $formattedLine -ForegroundColor Gray
-    }
-}
-
-Write-Host " Unity Log Monitoring Starting..." -ForegroundColor Green
-Write-Host " Monitoring: $LogPath" -ForegroundColor Cyan
+Write-Host "🎮 Unity 로그 모니터링 시작..." -ForegroundColor Green
+Write-Host "📁 로그 파일: $LogPath" -ForegroundColor Cyan
 
 if (-not (Test-Path $LogPath)) {
-    Write-Host " Waiting for log file..." -ForegroundColor Yellow
-    do { Start-Sleep 1 } while (-not (Test-Path $LogPath))
+    Write-Host "❌ 로그 파일을 찾을 수 없습니다: $LogPath" -ForegroundColor Red
+    Write-Host "💡 Unity에서 로그가 생성될 때까지 기다립니다..." -ForegroundColor Yellow
+    
+    # 로그 파일이 생성될 때까지 대기
+    while (-not (Test-Path $LogPath)) {
+        Start-Sleep -Seconds 1
+    }
+    Write-Host "✅ 로그 파일이 생성되었습니다!" -ForegroundColor Green
 }
 
-$content = Get-Content $LogPath -Tail $TailLines
-foreach ($line in $content) {
-    if ($ErrorsOnly -and $line -notmatch "ERROR|WARNING|EXCEPTION") { continue }
-    Write-ColorizedLog -Line $line -Timestamp (Get-Date -Format "HH:mm:ss")
+Write-Host "🔍 실시간 로그 모니터링 중... (Ctrl+C로 중지)" -ForegroundColor Yellow
+Write-Host "=" * 60
+
+try {
+    if ($ErrorsOnly) {
+        Get-Content -Path $LogPath -Wait -Tail $TailLines | Where-Object { 
+            $_ -match "ERROR|WARNING|EXCEPTION|ASSERT" 
+        } | ForEach-Object {
+            $timestamp = Get-Date -Format "HH:mm:ss"
+            if ($_ -match "ERROR|EXCEPTION") {
+                Write-Host "[$timestamp] $_" -ForegroundColor Red
+            } elseif ($_ -match "WARNING") {
+                Write-Host "[$timestamp] $_" -ForegroundColor Yellow
+            } else {
+                Write-Host "[$timestamp] $_" -ForegroundColor Magenta
+            }
+        }
+    } else {
+        Get-Content -Path $LogPath -Wait -Tail $TailLines | ForEach-Object {
+            $timestamp = Get-Date -Format "HH:mm:ss"
+            if ($_ -match "ERROR|EXCEPTION") {
+                Write-Host "[$timestamp] $_" -ForegroundColor Red
+            } elseif ($_ -match "WARNING") {
+                Write-Host "[$timestamp] $_" -ForegroundColor Yellow
+            } elseif ($_ -match "INFO") {
+                Write-Host "[$timestamp] $_" -ForegroundColor White
+            } else {
+                Write-Host "[$timestamp] $_" -ForegroundColor Gray
+            }
+        }
+    }
+} catch {
+    Write-Host "❌ 로그 모니터링 중 오류 발생: $_" -ForegroundColor Red
 }
 
-Get-Content $LogPath -Wait -Tail 0 | ForEach-Object {
-    if ($ErrorsOnly -and $_ -notmatch "ERROR|WARNING|EXCEPTION") { return }
-    Write-ColorizedLog -Line $_ -Timestamp (Get-Date -Format "HH:mm:ss.fff")
-}
+Write-Host "`n🔚 로그 모니터링이 종료되었습니다." -ForegroundColor Green 

@@ -1,379 +1,492 @@
-using UnityEngine;
+using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEngine;
+using GuildMaster.Battle;
 using GuildMaster.Data;
 
 namespace GuildMaster.Systems
 {
-    [System.Serializable]
     public class GachaSystem : MonoBehaviour
     {
-        [Header("가챠 설정")]
-        public List<GachaPool> gachaPools = new List<GachaPool>();
-        public int singleDrawCost = 300;
-        public int tenDrawCost = 2700;
-        public bool guaranteedRareIn10Draws = true;
-        
-        [Header("확률 설정")]
-        public float legendaryRate = 0.01f;
-        public float epicRate = 0.05f;
-        public float rareRate = 0.15f;
-        public float uncommonRate = 0.30f;
-        public float commonRate = 0.49f;
-        
-        [Header("천장 시스템")]
-        public int hardPityCount = 90; // 90회 보장
-        public int softPityStart = 75; // 75회부터 확률 증가
-        public float softPityRateIncrease = 0.06f; // 매 뽑기마다 6% 증가
-        
-        [Header("픽업 시스템")]
-        public float pickupRate = 0.5f; // 최고 등급 획득 시 50% 확률로 픽업 캐릭터
-        
-        // 천장 카운터 (풀별로 관리)
-        private Dictionary<string, int> pityCounters = new Dictionary<string, int>();
-        private Dictionary<string, List<GachaHistory>> gachaHistories = new Dictionary<string, List<GachaHistory>>();
-        
-        private static GachaSystem instance;
+        private static GachaSystem _instance;
         public static GachaSystem Instance
         {
             get
             {
-                if (instance == null)
+                if (_instance == null)
                 {
-                    instance = FindObjectOfType<GachaSystem>();
-                    if (instance == null)
+                    _instance = FindObjectOfType<GachaSystem>();
+                    if (_instance == null)
                     {
                         GameObject go = new GameObject("GachaSystem");
-                        instance = go.AddComponent<GachaSystem>();
-                        DontDestroyOnLoad(go);
+                        _instance = go.AddComponent<GachaSystem>();
                     }
                 }
-                return instance;
+                return _instance;
             }
         }
         
-        private void Awake()
+        // 가챠 타입
+        public enum GachaType
         {
-            if (instance == null)
-            {
-                instance = this;
-                DontDestroyOnLoad(gameObject);
-            }
-            else if (instance != this)
+            Normal,     // 일반 가챠
+            Premium,    // 프리미엄 가챠
+            Equipment,  // 장비 전용
+            Limited,    // 한정 가챠
+            Free        // 무료 가챠
+        }
+        
+        // 가챠 배너
+        [System.Serializable]
+        public class GachaBanner
+        {
+            public string bannerId;
+            public string bannerName;
+            public GachaType type;
+            public bool isActive;
+            public DateTime startDate;
+            public DateTime endDate;
+            public int cost;                    // 단일 뽑기 비용
+            public int multiCost;               // 10연차 비용
+            public string currencyType;         // 사용 화폐
+            public RarityRate[] rarityRates;   // 등급별 확률
+            public int guaranteedCount;         // 확정 보장 카운트
+            public List<int> featuredUnits;     // 픽업 유닛 ID
+            public float featuredRate;          // 픽업 확률
+        }
+        
+        // 등급별 확률
+        [System.Serializable]
+        public class RarityRate
+        {
+            public Rarity rarity;
+            public float rate;
+        }
+        
+        // 가챠 결과
+        [System.Serializable]
+        public class GachaResult
+        {
+            public Unit unit;
+            public bool isNew;
+            public bool isFeatured;
+            public int duplicateTokens; // 중복 시 받는 토큰
+        }
+        
+        // 천장 시스템
+        [System.Serializable]
+        public class PitySystem
+        {
+            public string bannerId;
+            public int currentCount;
+            public int pityCount = 90;      // 천장 카운트
+            public int softPityStart = 75;  // 소프트 천장 시작
+            public float rateIncreasePerPull = 0.05f; // 소프트 천장 확률 증가
+        }
+        
+        private Dictionary<string, GachaBanner> activeBanners;
+        private Dictionary<string, PitySystem> playerPity;
+        private Dictionary<string, DateTime> lastFreeGacha;
+        
+        // 이벤트
+        public event Action<GachaResult> OnSingleGachaComplete;
+        public event Action<List<GachaResult>> OnMultiGachaComplete;
+        public event Action<string, int> OnPityUpdated;
+        
+        void Awake()
+        {
+            if (_instance != null && _instance != this)
             {
                 Destroy(gameObject);
+                return;
             }
+            _instance = this;
+            
+            Initialize();
         }
         
-        public List<CharacterData> DrawSingle(string poolId = "default")
+        void Initialize()
         {
-            var pool = GetGachaPool(poolId);
-            if (pool == null) return new List<CharacterData>();
+            activeBanners = new Dictionary<string, GachaBanner>();
+            playerPity = new Dictionary<string, PitySystem>();
+            lastFreeGacha = new Dictionary<string, DateTime>();
             
-            var result = new List<CharacterData>();
-            var character = DrawCharacter(pool);
-            if (character != null)
+            // 기본 배너 설정
+            SetupDefaultBanners();
+            
+            // 배너 업데이트 체크
+            StartCoroutine(BannerUpdateChecker());
+        }
+        
+        void SetupDefaultBanners()
+        {
+            // 일반 가챠 배너
+            var normalBanner = new GachaBanner
             {
-                result.Add(character);
+                bannerId = "normal_gacha",
+                bannerName = "일반 모집",
+                type = GachaType.Normal,
+                isActive = true,
+                cost = 300,
+                multiCost = 2700,
+                currencyType = "gold",
+                rarityRates = new RarityRate[]
+                {
+                    new RarityRate { rarity = Rarity.Common, rate = 0.60f },
+                    new RarityRate { rarity = Rarity.Uncommon, rate = 0.27f },
+                    new RarityRate { rarity = Rarity.Rare, rate = 0.10f },
+                    new RarityRate { rarity = Rarity.Epic, rate = 0.025f },
+                    new RarityRate { rarity = Rarity.Legendary, rate = 0.005f }
+                },
+                guaranteedCount = 0
+            };
+            activeBanners["normal_gacha"] = normalBanner;
+            
+            // 프리미엄 가챠 배너
+            var premiumBanner = new GachaBanner
+            {
+                bannerId = "premium_gacha",
+                bannerName = "프리미엄 모집",
+                type = GachaType.Premium,
+                isActive = true,
+                cost = 150,
+                multiCost = 1500,
+                currencyType = "gem",
+                rarityRates = new RarityRate[]
+                {
+                    new RarityRate { rarity = Rarity.Common, rate = 0.00f },
+                    new RarityRate { rarity = Rarity.Uncommon, rate = 0.00f },
+                    new RarityRate { rarity = Rarity.Rare, rate = 0.80f },
+                    new RarityRate { rarity = Rarity.Epic, rate = 0.17f },
+                    new RarityRate { rarity = Rarity.Legendary, rate = 0.03f }
+                },
+                guaranteedCount = 10 // 10회마다 Epic 이상 확정
+            };
+            activeBanners["premium_gacha"] = premiumBanner;
+            
+            // 무료 가챠 배너
+            var freeBanner = new GachaBanner
+            {
+                bannerId = "free_gacha",
+                bannerName = "일일 무료 모집",
+                type = GachaType.Free,
+                isActive = true,
+                cost = 0,
+                multiCost = 0,
+                currencyType = "free",
+                rarityRates = new RarityRate[]
+                {
+                    new RarityRate { rarity = Rarity.Common, rate = 0.70f },
+                    new RarityRate { rarity = Rarity.Uncommon, rate = 0.25f },
+                    new RarityRate { rarity = Rarity.Rare, rate = 0.04f },
+                    new RarityRate { rarity = Rarity.Epic, rate = 0.009f },
+                    new RarityRate { rarity = Rarity.Legendary, rate = 0.001f }
+                },
+                guaranteedCount = 0
+            };
+            activeBanners["free_gacha"] = freeBanner;
+        }
+        
+        // 단일 가챠
+        public GachaResult PerformSingleGacha(string bannerId)
+        {
+            if (!activeBanners.ContainsKey(bannerId))
+                return null;
+                
+            var banner = activeBanners[bannerId];
+            
+            // 무료 가챠 쿨타임 체크
+            if (banner.type == GachaType.Free)
+            {
+                if (!CanUseFreeGacha(bannerId))
+                    return null;
             }
+            
+            // 비용 차감
+            if (!PayGachaCost(banner, 1))
+                return null;
+            
+            // 천장 시스템 업데이트
+            UpdatePity(bannerId);
+            
+            // 가챠 수행
+            var result = PerformGacha(banner);
+            
+            // 무료 가챠 사용 기록
+            if (banner.type == GachaType.Free)
+            {
+                lastFreeGacha[bannerId] = DateTime.Now;
+            }
+            
+            OnSingleGachaComplete?.Invoke(result);
             
             return result;
         }
         
-        public List<CharacterData> DrawTen(string poolId = "default")
+        // 10연차
+        public List<GachaResult> PerformMultiGacha(string bannerId)
         {
-            var pool = GetGachaPool(poolId);
-            if (pool == null) return new List<CharacterData>();
+            if (!activeBanners.ContainsKey(bannerId))
+                return null;
+                
+            var banner = activeBanners[bannerId];
             
-            var results = new List<CharacterData>();
-            bool hasRareOrAbove = false;
+            // 비용 차감
+            if (!PayGachaCost(banner, 10))
+                return null;
             
-            // 9번 일반 뽑기
+            List<GachaResult> results = new List<GachaResult>();
+            bool hasHighRarity = false;
+            
+            // 9회 일반 가챠
             for (int i = 0; i < 9; i++)
             {
-                var character = DrawCharacter(pool);
-                if (character != null)
-                {
-                    results.Add(character);
-                    if (character.rarity >= CharacterRarity.Rare)
-                        hasRareOrAbove = true;
-                }
+                UpdatePity(bannerId);
+                var result = PerformGacha(banner);
+                results.Add(result);
+                
+                if (result.unit.rarity >= Rarity.Rare)
+                    hasHighRarity = true;
             }
             
-            // 10번째는 레어 이상 보장 (설정에 따라)
-            if (guaranteedRareIn10Draws && !hasRareOrAbove)
-            {
-                var character = DrawCharacter(pool, CharacterRarity.Rare);
-                if (character != null)
-                    results.Add(character);
-            }
-            else
-            {
-                var character = DrawCharacter(pool);
-                if (character != null)
-                    results.Add(character);
-            }
+            // 마지막 1회는 최소 Rare 이상 보장
+            UpdatePity(bannerId);
+            var lastResult = PerformGacha(banner, hasHighRarity ? Rarity.Common : Rarity.Rare);
+            results.Add(lastResult);
+            
+            OnMultiGachaComplete?.Invoke(results);
             
             return results;
         }
         
-        private CharacterData DrawCharacter(GachaPool pool, CharacterRarity minRarity = CharacterRarity.Common)
+        // 가챠 수행
+        GachaResult PerformGacha(GachaBanner banner, Rarity minimumRarity = Rarity.Common)
         {
-            // 천장 카운터 증가
-            if (!pityCounters.ContainsKey(pool.poolId))
-                pityCounters[pool.poolId] = 0;
-            pityCounters[pool.poolId]++;
+            // 천장 확인
+            var pity = GetOrCreatePity(banner.bannerId);
+            bool isPityPull = pity.currentCount >= pity.pityCount;
             
-            // 천장 시스템 적용
-            var rarityWeights = GetRarityWeightsWithPity(pool.poolId, minRarity);
-            var selectedRarity = SelectRarity(rarityWeights);
+            // 등급 결정
+            Rarity rarity = isPityPull ? Rarity.Legendary : DetermineRarity(banner, pity);
             
-            CharacterData selectedCharacter = null;
+            if (rarity < minimumRarity)
+                rarity = minimumRarity;
             
-            // 최고 등급인 경우 픽업 확률 적용
-            if (selectedRarity == CharacterRarity.Legendary && pool.pickupCharacters.Count > 0)
+            // 픽업 여부 결정
+            bool isFeatured = false;
+            if (banner.featuredUnits != null && banner.featuredUnits.Count > 0)
             {
-                if (Random.Range(0f, 1f) < pickupRate)
-                {
-                    // 픽업 캐릭터 중에서 선택
-                    int randomIndex = Random.Range(0, pool.pickupCharacters.Count);
-                    selectedCharacter = pool.pickupCharacters[randomIndex];
-                }
+                isFeatured = UnityEngine.Random.value < banner.featuredRate;
             }
             
-            // 일반 캐릭터 선택
-            if (selectedCharacter == null)
+            // 유닛 선택
+            Unit unit = null;
+            if (isFeatured && banner.featuredUnits.Count > 0)
             {
-                var availableCharacters = pool.characters
-                    .Where(c => c.rarity == selectedRarity)
-                    .ToList();
-                    
-                if (availableCharacters.Count == 0)
-                    return null;
-                    
-                int randomIndex = Random.Range(0, availableCharacters.Count);
-                selectedCharacter = availableCharacters[randomIndex];
+                int featuredId = banner.featuredUnits[UnityEngine.Random.Range(0, banner.featuredUnits.Count)];
+                unit = CharacterManager.Instance.CreateUnit(featuredId.ToString());
+            }
+            else
+            {
+                unit = CharacterManager.Instance.CreateRandomUnitByRarity(rarity);
             }
             
-            // 최고 등급 획득 시 천장 카운터 리셋
-            if (selectedRarity == CharacterRarity.Legendary)
+            // 중복 처리
+            bool isNew = !IsUnitOwned(unit);
+            int duplicateTokens = isNew ? 0 : CalculateDuplicateTokens(unit);
+            
+            // 천장 리셋
+            if (rarity >= Rarity.Legendary || isPityPull)
             {
-                pityCounters[pool.poolId] = 0;
+                pity.currentCount = 0;
             }
             
-            // 히스토리 기록
-            AddToHistory(pool.poolId, selectedCharacter);
-            
-            return selectedCharacter;
+            return new GachaResult
+            {
+                unit = unit,
+                isNew = isNew,
+                isFeatured = isFeatured,
+                duplicateTokens = duplicateTokens
+            };
         }
         
-        private Dictionary<CharacterRarity, float> GetRarityWeights(CharacterRarity minRarity = CharacterRarity.Common)
+        // 등급 결정
+        Rarity DetermineRarity(GachaBanner banner, PitySystem pity)
         {
-            var weights = new Dictionary<CharacterRarity, float>();
+            float totalRate = 0f;
+            float roll = UnityEngine.Random.value;
             
-            if (minRarity <= CharacterRarity.Common)
-                weights[CharacterRarity.Common] = commonRate;
-            if (minRarity <= CharacterRarity.Uncommon)
-                weights[CharacterRarity.Uncommon] = uncommonRate;
-            if (minRarity <= CharacterRarity.Rare)
-                weights[CharacterRarity.Rare] = rareRate;
-            if (minRarity <= CharacterRarity.Epic)
-                weights[CharacterRarity.Epic] = epicRate;
-            if (minRarity <= CharacterRarity.Legendary)
-                weights[CharacterRarity.Legendary] = legendaryRate;
-                
-            return weights;
-        }
-        
-        private Dictionary<CharacterRarity, float> GetRarityWeightsWithPity(string poolId, CharacterRarity minRarity = CharacterRarity.Common)
-        {
-            var weights = GetRarityWeights(minRarity);
-            
-            if (!pityCounters.ContainsKey(poolId))
-                pityCounters[poolId] = 0;
-            
-            int currentPity = pityCounters[poolId];
-            
-            // 하드 천장: 90회째는 무조건 최고 등급
-            if (currentPity >= hardPityCount)
+            // 소프트 천장 적용
+            if (pity.currentCount >= pity.softPityStart)
             {
-                weights.Clear();
-                weights[CharacterRarity.Legendary] = 1f;
-                return weights;
-            }
-            
-            // 소프트 천장: 75회부터 확률 증가
-            if (currentPity >= softPityStart)
-            {
-                int pityBonus = currentPity - softPityStart + 1;
-                float bonusRate = pityBonus * softPityRateIncrease;
+                int softPityCount = pity.currentCount - pity.softPityStart;
+                float legendaryBonus = softPityCount * pity.rateIncreasePerPull;
                 
-                // 레전더리 확률 증가
-                if (weights.ContainsKey(CharacterRarity.Legendary))
+                // 전설 확률 증가
+                foreach (var rate in banner.rarityRates)
                 {
-                    weights[CharacterRarity.Legendary] += bonusRate;
-                    
-                    // 다른 등급 확률 감소
-                    float reduction = bonusRate / (weights.Count - 1);
-                    foreach (var rarity in weights.Keys.ToList())
+                    if (rate.rarity == Rarity.Legendary)
                     {
-                        if (rarity != CharacterRarity.Legendary)
-                        {
-                            weights[rarity] = Mathf.Max(0, weights[rarity] - reduction);
-                        }
+                        rate.rate += legendaryBonus;
+                        break;
                     }
                 }
             }
             
-            return weights;
-        }
-        
-        private CharacterRarity SelectRarity(Dictionary<CharacterRarity, float> weights)
-        {
-            float totalWeight = weights.Values.Sum();
-            float randomValue = Random.Range(0f, totalWeight);
-            float currentWeight = 0f;
-            
-            foreach (var kvp in weights.OrderByDescending(x => x.Key))
+            // 확률에 따른 등급 결정
+            foreach (var rarityRate in banner.rarityRates)
             {
-                currentWeight += kvp.Value;
-                if (randomValue <= currentWeight)
-                    return kvp.Key;
+                totalRate += rarityRate.rate;
+                if (roll <= totalRate)
+                {
+                    return rarityRate.rarity;
+                }
             }
             
-            return CharacterRarity.Common;
+            return Rarity.Common;
         }
         
-        private GachaPool GetGachaPool(string poolId)
+        // 비용 지불
+        bool PayGachaCost(GachaBanner banner, int count)
         {
-            return gachaPools.Find(p => p.poolId == poolId);
-        }
-        
-        public bool CanDraw(int cost)
-        {
-            // 실제 게임에서는 플레이어의 재화를 확인
-            return true;
-        }
-        
-        public void AddGachaPool(GachaPool pool)
-        {
-            if (!gachaPools.Any(p => p.poolId == pool.poolId))
-            {
-                gachaPools.Add(pool);
-            }
-        }
-        
-        public void RemoveGachaPool(string poolId)
-        {
-            gachaPools.RemoveAll(p => p.poolId == poolId);
-        }
-        
-        // 천장 카운터 조회
-        public int GetPityCounter(string poolId)
-        {
-            return pityCounters.ContainsKey(poolId) ? pityCounters[poolId] : 0;
-        }
-        
-        // 천장 카운터 리셋
-        public void ResetPityCounter(string poolId)
-        {
-            if (pityCounters.ContainsKey(poolId))
-                pityCounters[poolId] = 0;
-        }
-        
-        // 가챠 히스토리 추가
-        private void AddToHistory(string poolId, CharacterData character)
-        {
-            if (!gachaHistories.ContainsKey(poolId))
-                gachaHistories[poolId] = new List<GachaHistory>();
-            
-            gachaHistories[poolId].Add(new GachaHistory
-            {
-                character = character,
-                drawTime = System.DateTime.Now,
-                pityCount = GetPityCounter(poolId)
-            });
-            
-            // 최대 100개까지만 유지
-            if (gachaHistories[poolId].Count > 100)
-                gachaHistories[poolId].RemoveAt(0);
-        }
-        
-        // 가챠 히스토리 조회
-        public List<GachaHistory> GetHistory(string poolId)
-        {
-            return gachaHistories.ContainsKey(poolId) ? new List<GachaHistory>(gachaHistories[poolId]) : new List<GachaHistory>();
-        }
-        
-        // 무료 뽑기 관리
-        private Dictionary<string, System.DateTime> lastFreeDrawTimes = new Dictionary<string, System.DateTime>();
-        
-        public bool CanDrawFree(string poolId)
-        {
-            var pool = GetGachaPool(poolId);
-            if (pool == null || !pool.hasDailyFree) return false;
-            
-            if (!lastFreeDrawTimes.ContainsKey(poolId))
+            if (banner.type == GachaType.Free)
                 return true;
+                
+            var gameManager = Core.GameManager.Instance;
+            if (gameManager?.ResourceManager == null)
+                return false;
             
-            var lastTime = lastFreeDrawTimes[poolId];
-            var now = System.DateTime.Now;
+            int totalCost = count == 1 ? banner.cost : banner.multiCost;
             
-            // 매일 오전 5시 리셋
-            var resetTime = now.Date.AddHours(5);
-            if (now.Hour < 5)
-                resetTime = resetTime.AddDays(-1);
+            switch (banner.currencyType)
+            {
+                case "gold":
+                    if (gameManager.ResourceManager.GetGold() >= totalCost)
+                    {
+                        gameManager.ResourceManager.AddGold(-totalCost);
+                        return true;
+                    }
+                    break;
+                    
+                case "gem":
+                    // TODO: 젬 시스템 구현
+                    return true;
+            }
             
-            return lastTime < resetTime;
+            return false;
         }
         
-        public CharacterData DrawFree(string poolId)
+        // 천장 시스템
+        PitySystem GetOrCreatePity(string bannerId)
         {
-            if (!CanDrawFree(poolId))
-                return null;
-            
-            lastFreeDrawTimes[poolId] = System.DateTime.Now;
-            var results = DrawSingle(poolId);
-            return results.Count > 0 ? results[0] : null;
+            if (!playerPity.ContainsKey(bannerId))
+            {
+                playerPity[bannerId] = new PitySystem { bannerId = bannerId };
+            }
+            return playerPity[bannerId];
         }
-    }
-    
-    // 가챠 히스토리 클래스
-    [System.Serializable]
-    public class GachaHistory
-    {
-        public CharacterData character;
-        public System.DateTime drawTime;
-        public int pityCount;
-    }
-    
-    [System.Serializable]
-    public class GachaPool
-    {
-        public string poolId;
-        public string poolName;
-        public GachaPoolType poolType = GachaPoolType.Normal;
-        public List<CharacterData> characters = new List<CharacterData>();
-        public List<CharacterData> pickupCharacters = new List<CharacterData>(); // 픽업 캐릭터
-        public bool isActive = true;
-        public System.DateTime startTime;
-        public System.DateTime endTime;
-        public bool hasDailyFree = false; // 일일 무료 뽑기 여부
         
-        public bool IsAvailable()
+        void UpdatePity(string bannerId)
         {
-            if (!isActive) return false;
+            var pity = GetOrCreatePity(bannerId);
+            pity.currentCount++;
+            OnPityUpdated?.Invoke(bannerId, pity.currentCount);
+        }
+        
+        // 무료 가챠 사용 가능 확인
+        public bool CanUseFreeGacha(string bannerId)
+        {
+            if (!lastFreeGacha.ContainsKey(bannerId))
+                return true;
+                
+            var lastUse = lastFreeGacha[bannerId];
+            var nextReset = lastUse.Date.AddDays(1).AddHours(5); // 다음날 오전 5시
             
-            var now = System.DateTime.Now;
-            return now >= startTime && now <= endTime;
+            return DateTime.Now >= nextReset;
+        }
+        
+        // 유닛 소유 확인
+        bool IsUnitOwned(Unit unit)
+        {
+            var gameManager = Core.GameManager.Instance;
+            if (gameManager?.GuildManager == null) return false;
+            
+            return gameManager.GuildManager.GetAdventurers()
+                .Any(u => u.unitName == unit.unitName);
+        }
+        
+        // 중복 토큰 계산
+        int CalculateDuplicateTokens(Unit unit)
+        {
+            switch (unit.rarity)
+            {
+                case Rarity.Common: return 10;
+                case Rarity.Uncommon: return 20;
+                case Rarity.Rare: return 50;
+                case Rarity.Epic: return 100;
+                case Rarity.Legendary: return 200;
+                default: return 10;
+            }
+        }
+        
+        // 배너 업데이트 체크
+        IEnumerator BannerUpdateChecker()
+        {
+            while (true)
+            {
+                yield return new WaitForSeconds(3600f); // 1시간마다 체크
+                
+                // 종료된 배너 비활성화
+                var now = DateTime.Now;
+                foreach (var banner in activeBanners.Values)
+                {
+                    if (banner.endDate != default && now > banner.endDate)
+                    {
+                        banner.isActive = false;
+                    }
+                }
+            }
+        }
+        
+        // 한정 배너 추가
+        public void AddLimitedBanner(GachaBanner banner)
+        {
+            banner.type = GachaType.Limited;
+            activeBanners[banner.bannerId] = banner;
+        }
+        
+        // 배너 조회
+        public List<GachaBanner> GetActiveBanners()
+        {
+            return activeBanners.Values.Where(b => b.isActive).ToList();
+        }
+        
+        public GachaBanner GetBanner(string bannerId)
+        {
+            return activeBanners.ContainsKey(bannerId) ? activeBanners[bannerId] : null;
+        }
+        
+        // 천장 정보 조회
+        public int GetPityCount(string bannerId)
+        {
+            var pity = GetOrCreatePity(bannerId);
+            return pity.currentCount;
+        }
+        
+        public int GetPityRemaining(string bannerId)
+        {
+            var pity = GetOrCreatePity(bannerId);
+            return pity.pityCount - pity.currentCount;
+        }
+
+        Unit CreateUnitFromCharacterData(CharacterData characterData)
+        {
+            if (characterData == null) return null;
+            
+            // string ID를 사용하여 유닛 생성
+            return CharacterManager.Instance.CreateUnit(characterData.id);
         }
     }
-    
-    public enum GachaPoolType
-    {
-        Normal,     // 일반 배너
-        Premium,    // 프리미엄 배너
-        Limited,    // 한정 배너
-        Free        // 무료 배너
-    }
-} 
+}

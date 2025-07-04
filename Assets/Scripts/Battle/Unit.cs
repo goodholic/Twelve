@@ -47,11 +47,10 @@ namespace GuildMaster.Battle
     }
 
     [System.Serializable]
-    public class Unit : MonoBehaviour
+    public class Unit
     {
         // Basic Info
         public string unitId;
-        public string characterId; // 캐릭터 ID 추가
         public string unitName;
         public int level;
         public JobClass jobClass;  // unitClass를 jobClass로 변경
@@ -94,15 +93,9 @@ namespace GuildMaster.Battle
         public float Attack => attackPower;
         public float MagicPower => magicPower;
         public float Defense => defense;
-        public int Level { 
-            get => level; 
-            set => level = value; 
-        }
+        public int Level { get; set; }
         public string UnitId => unitId;
-        public string Name {
-            get => unitName;
-            set => unitName = value;
-        }
+        public string Name => unitName;
         public bool IsPlayerUnit => isPlayerUnit;
         public bool IsAlive => isAlive;
         public float Speed => speed;
@@ -112,16 +105,6 @@ namespace GuildMaster.Battle
         public int SquadIndex => currentSquad;
         public int Row => gridPosition.x;
         public int Col => gridPosition.y;
-        
-        // UI에서 필요한 추가 속성들
-        public Sprite Icon { get; set; } // 유닛 아이콘
-        
-        // 상태 효과 관련 메서드
-        public List<object> GetStatusEffects()
-        {
-            // 현재는 빈 리스트 반환 (나중에 실제 상태 효과 시스템과 연동)
-            return new List<object>();
-        }
         
         // Shield system
         public float currentShield;
@@ -133,12 +116,6 @@ namespace GuildMaster.Battle
 
         // State
         public bool isAlive => currentHP > 0;
-        public bool isElite = false;
-        public bool isBoss = false;
-        
-        // Alternative property names for compatibility
-        public float maxHealth => maxHP;
-        public float currentHealth => currentHP;
         
         // Combat Stats (Calculated)
         public float effectiveAttackPower => CalculateAttackPower();
@@ -713,36 +690,6 @@ namespace GuildMaster.Battle
                 return;
                 
             activeStatusEffects.Add(effect);
-        }
-        
-        public void ApplyStatusEffect(StatusEffect effect)
-        {
-            AddStatusEffect(effect);
-        }
-        
-        public void ApplyStatusEffect(string effectName, float duration = 10f, float value = 1f)
-        {
-            StatusEffectType effectType = StatusEffectType.Poison; // 기본값
-            
-            // effectName을 기반으로 적절한 StatusEffectType 결정
-            switch (effectName.ToLower())
-            {
-                case "poison": effectType = StatusEffectType.Poison; break;
-                case "burn": effectType = StatusEffectType.Burn; break;
-                case "freeze": effectType = StatusEffectType.Freeze; break;
-                case "stun": effectType = StatusEffectType.Stun; break;
-                case "slow": effectType = StatusEffectType.Slow; break;
-                case "haste": effectType = StatusEffectType.Haste; break;
-                case "shield": effectType = StatusEffectType.Shield; break;
-                case "regen": effectType = StatusEffectType.Regeneration; break;
-                case "berserk": effectType = StatusEffectType.Berserk; break;
-                default: effectType = StatusEffectType.Poison; break;
-            }
-            
-            // StatusEffect 생성자 사용
-            var effect = new StatusEffect(effectType, duration, value);
-            
-            AddStatusEffect(effect);
         }
 
         public void RemoveAllDebuffs()

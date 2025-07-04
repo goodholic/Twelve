@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using UnityEngine;
 using GuildMaster.Core;
 using GuildMaster.UI;
-using NotificationType = GuildMaster.Data.NotificationType;
 
 namespace GuildMaster.Systems
 {
@@ -222,12 +221,7 @@ namespace GuildMaster.Systems
                 
                 if (notificationUI != null)
                 {
-                    // Setup method doesn't exist, so we'll set the properties directly
-                    var titleText = notificationUI.GetComponentInChildren<TMPro.TextMeshProUGUI>();
-                    if (titleText != null)
-                    {
-                        titleText.text = data.message;
-                    }
+                    notificationUI.Setup(data.message, data.type, data.duration);
                 }
                 
                 // 스케일 적용

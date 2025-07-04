@@ -32,7 +32,7 @@ namespace GuildMaster.Core
         [SerializeField] private bool loadFromResources = true;
         
         // 캐릭터 데이터
-        private Dictionary<string, GuildMaster.Data.CharacterData> characterDatabase;
+        private Dictionary<string, CharacterData> characterDatabase;
         private Dictionary<string, SkillData> skillDatabase;
         private Dictionary<string, ItemData> itemDatabase;
         private Dictionary<string, BuildingData> buildingDatabase;
@@ -41,9 +41,10 @@ namespace GuildMaster.Core
         
         // ScriptableObject 데이터
         [Header("ScriptableObject Data")]
+        [SerializeField] private List<CharacterDataSO> characterDataSOs;
         [SerializeField] private List<SkillDataSO> skillDataSOs;
         [SerializeField] private List<ItemDataSO> itemDataSOs;
-        // [SerializeField] private List<BuildingDataSO> buildingDataSOs; // 길드 빌딩 시스템 제거
+        [SerializeField] private List<BuildingDataSO> buildingDataSOs;
         
         void Awake()
         {
@@ -59,7 +60,7 @@ namespace GuildMaster.Core
         
         void InitializeDatabases()
         {
-            characterDatabase = new Dictionary<string, GuildMaster.Data.CharacterData>();
+            characterDatabase = new Dictionary<string, CharacterData>();
             skillDatabase = new Dictionary<string, SkillData>();
             itemDatabase = new Dictionary<string, ItemData>();
             buildingDatabase = new Dictionary<string, BuildingData>();
@@ -81,7 +82,20 @@ namespace GuildMaster.Core
         
         void LoadCharacterData()
         {
-            // CSV에서 로드
+            // ScriptableObject에서 로드
+            if (characterDataSOs != null && characterDataSOs.Count > 0)
+            {
+                foreach (var characterSO in characterDataSOs)
+                {
+                    if (characterSO != null)
+                    {
+                        CharacterData data = ConvertFromScriptableObject(characterSO);
+                        characterDatabase[data.id] = data;
+                    }
+                }
+            }
+            
+            // CSV에서 추가 로드
             if (loadFromResources)
             {
                 TextAsset csvFile = Resources.Load<TextAsset>(dataPath + "character_data");
@@ -109,13 +123,13 @@ namespace GuildMaster.Core
                 
                 try
                 {
-                    GuildMaster.Data.CharacterData character = new GuildMaster.Data.CharacterData
+                    CharacterData character = new CharacterData
                     {
                         id = values[0],
                         name = values[1],
                         jobClass = ParseJobClass(values[2]),
                         level = int.Parse(values[3]),
-                        rarity = (GuildMaster.Data.CharacterRarity)Enum.Parse(typeof(GuildMaster.Data.CharacterRarity), values[4], true),
+                        rarity = ParseRarity(values[4]),
                         baseHP = int.Parse(values[5]),
                         baseMP = int.Parse(values[6]),
                         baseAttack = int.Parse(values[7]),
@@ -170,29 +184,13 @@ namespace GuildMaster.Core
             return result.ToArray();
         }
         
-        GuildMaster.Data.JobClass ParseJobClass(string jobClassStr)
+        JobClass ParseJobClass(string jobClassStr)
         {
-            if (Enum.TryParse<GuildMaster.Data.JobClass>(jobClassStr, out GuildMaster.Data.JobClass jobClass))
+            if (Enum.TryParse<JobClass>(jobClassStr, out JobClass jobClass))
             {
                 return jobClass;
             }
-            return GuildMaster.Data.JobClass.Warrior;
-        }
-        
-        GuildMaster.Battle.JobClass ConvertJobClass(GuildMaster.Data.JobClass dataJobClass)
-        {
-            return dataJobClass switch
-            {
-                GuildMaster.Data.JobClass.Warrior => GuildMaster.Battle.JobClass.Warrior,
-                GuildMaster.Data.JobClass.Mage => GuildMaster.Battle.JobClass.Mage,
-                GuildMaster.Data.JobClass.Archer => GuildMaster.Battle.JobClass.Ranger,
-                GuildMaster.Data.JobClass.Priest => GuildMaster.Battle.JobClass.Priest,
-                GuildMaster.Data.JobClass.Rogue => GuildMaster.Battle.JobClass.Assassin,
-                GuildMaster.Data.JobClass.Paladin => GuildMaster.Battle.JobClass.Knight,
-                GuildMaster.Data.JobClass.Berserker => GuildMaster.Battle.JobClass.Warrior,
-                GuildMaster.Data.JobClass.Necromancer => GuildMaster.Battle.JobClass.Sage,
-                _ => GuildMaster.Battle.JobClass.Warrior
-            };
+            return JobClass.None;
         }
         
         GuildMaster.Battle.Rarity ParseRarity(string rarityStr)
@@ -204,16 +202,31 @@ namespace GuildMaster.Core
             return GuildMaster.Battle.Rarity.Common;
         }
         
-        GuildMaster.Battle.Rarity ConvertRarity(GuildMaster.Data.CharacterRarity dataRarity)
+        CharacterData ConvertFromScriptableObject(CharacterDataSO so)
         {
-            return dataRarity switch
+            return new CharacterData
             {
-                GuildMaster.Data.CharacterRarity.Common => GuildMaster.Battle.Rarity.Common,
-                GuildMaster.Data.CharacterRarity.Uncommon => GuildMaster.Battle.Rarity.Uncommon,
-                GuildMaster.Data.CharacterRarity.Rare => GuildMaster.Battle.Rarity.Rare,
-                GuildMaster.Data.CharacterRarity.Epic => GuildMaster.Battle.Rarity.Epic,
-                GuildMaster.Data.CharacterRarity.Legendary => GuildMaster.Battle.Rarity.Legendary,
-                _ => GuildMaster.Battle.Rarity.Common
+                id = so.id,
+                name = so.characterName,
+                jobClass = so.jobClass,
+                level = so.baseLevel,
+                rarity = so.rarity,
+                baseHP = so.baseHP,
+                baseMP = so.baseMP,
+                baseAttack = so.baseAttack,
+                baseDefense = so.baseDefense,
+                baseMagicPower = so.baseMagicPower,
+                baseSpeed = so.baseSpeed,
+                critRate = so.critRate,
+                critDamage = so.critDamage,
+                accuracy = so.accuracy,
+                evasion = so.evasion,
+                skill1Id = so.skillIds != null && so.skillIds.Count > 0 ? so.skillIds[0] : "",
+                skill2Id = so.skillIds != null && so.skillIds.Count > 1 ? so.skillIds[1] : "",
+                skill3Id = so.skillIds != null && so.skillIds.Count > 2 ? so.skillIds[2] : "",
+                description = so.description,
+                iconSprite = so.portrait,
+                modelPrefab = so.modelPrefab
             };
         }
         
@@ -297,6 +310,7 @@ namespace GuildMaster.Core
                 manaCost = so.manaCost,
                 cooldown = so.cooldown,
                 range = so.range,
+                areaOfEffect = so.areaOfEffect,
                 effectPrefab = so.effectPrefab,
                 iconSprite = so.skillIcon
             };
@@ -332,7 +346,7 @@ namespace GuildMaster.Core
                 name = "소형 체력 포션",
                 description = "HP를 50 회복합니다.",
                 itemType = ItemType.Consumable,
-                rarity = (GuildMaster.Data.Rarity)GuildMaster.Battle.Rarity.Common,
+                rarity = Rarity.Common,
                 value = 50,
                 stackable = true,
                 maxStack = 99
@@ -345,7 +359,7 @@ namespace GuildMaster.Core
                 name = "경험치 포션",
                 description = "사용 시 경험치를 100 획득합니다.",
                 itemType = ItemType.Consumable,
-                rarity = (GuildMaster.Data.Rarity)GuildMaster.Battle.Rarity.Uncommon,
+                rarity = Rarity.Uncommon,
                 value = 100,
                 stackable = true,
                 maxStack = 99
@@ -370,7 +384,30 @@ namespace GuildMaster.Core
         
         void LoadBuildingData()
         {
-            // 길드 빌딩 시스템이 제거되어 기본 건물 데이터만 로드
+            // ScriptableObject에서 로드
+            if (buildingDataSOs != null && buildingDataSOs.Count > 0)
+            {
+                foreach (var buildingSO in buildingDataSOs)
+                {
+                    if (buildingSO != null)
+                    {
+                        BuildingData data = ConvertFromScriptableObject(buildingSO);
+                        buildingDatabase[data.id] = data;
+                    }
+                }
+            }
+            
+            // CSV에서 추가 로드
+            if (loadFromResources)
+            {
+                TextAsset csvFile = Resources.Load<TextAsset>(dataPath + "building_data");
+                if (csvFile != null)
+                {
+                    ParseBuildingCSV(csvFile.text);
+                }
+            }
+            
+            // 기본 건물 데이터
             AddDefaultBuildings();
             
             Debug.Log($"Loaded {buildingDatabase.Count} buildings");
@@ -384,7 +421,7 @@ namespace GuildMaster.Core
                 id = "guild_hall",
                 name = "길드 홀",
                 description = "길드의 중심 건물입니다.",
-                buildingType = GuildMaster.Data.BuildingType.GuildHall,
+                buildingType = (GuildMaster.Core.GuildManager.BuildingType)GuildMaster.Data.BuildingType.GuildHall,
                 maxLevel = 10,
                 baseGoldCost = 0,
                 baseWoodCost = 0,
@@ -400,7 +437,7 @@ namespace GuildMaster.Core
                 id = "barracks",
                 name = "병영",
                 description = "전사와 기사를 훈련시킬 수 있습니다.",
-                buildingType = GuildMaster.Data.BuildingType.Barracks,
+                buildingType = (GuildMaster.Core.GuildManager.BuildingType)GuildMaster.Data.BuildingType.Barracks,
                 maxLevel = 5,
                 baseGoldCost = 500,
                 baseWoodCost = 200,
@@ -428,15 +465,13 @@ namespace GuildMaster.Core
                 name = "첫 걸음",
                 description = "길드 홀을 건설하세요.",
                 questType = QuestType.Main,
-                objectives = new List<GuildMaster.Data.QuestObjective>
+                objectives = new List<QuestObjective>
                 {
-                    new GuildMaster.Data.QuestObjective
+                    new QuestObjective
                     {
-                        type = GuildMaster.Data.QuestObjectiveType.Build,
-                        targetId = "guild_hall",
-                        targetAmount = 1,
-                        objectiveId = "build_guild_hall",
-                        description = "길드 홀을 건설하세요"
+                        type = ObjectiveType.Build,
+                        target = "guild_hall",
+                        requiredAmount = 1
                     }
                 },
                 goldReward = 100,
@@ -478,7 +513,7 @@ namespace GuildMaster.Core
                     {
                         id = values[0],
                         name = values[1],
-                        buildingType = ParseBuildingType(values[2]),
+                        buildingType = (GuildMaster.Core.GuildManager.BuildingType)ParseBuildingType(values[2]),
                         category = ParseBuildingCategory(values[3]),
                         sizeX = int.Parse(values[4]),
                         sizeY = int.Parse(values[5]),
@@ -486,7 +521,8 @@ namespace GuildMaster.Core
                         baseWoodCost = int.Parse(values[7]),
                         baseStoneCost = int.Parse(values[8]),
                         baseManaCost = int.Parse(values[9]),
-                        baseConstructionTime = (int)float.Parse(values[10]),
+                        baseConstructionTime = float.Parse(values[10]),
+                        requiredGuildLevel = int.Parse(values[11]),
                         maxLevel = int.Parse(values[12]),
                         description = values[13]
                     };
@@ -500,22 +536,45 @@ namespace GuildMaster.Core
             }
         }
         
-        BuildingType ParseBuildingType(string typeStr)
+        GuildMaster.Data.BuildingType ParseBuildingType(string typeStr)
         {
-            if (Enum.TryParse<BuildingType>(typeStr, out BuildingType type))
+            if (Enum.TryParse<GuildMaster.Data.BuildingType>(typeStr, out GuildMaster.Data.BuildingType type))
             {
                 return type;
             }
-            return BuildingType.GuildHall;
+            return GuildMaster.Data.BuildingType.GuildHall;
         }
         
-        BuildingCategory ParseBuildingCategory(string categoryStr)
+        GuildMaster.Data.BuildingCategory ParseBuildingCategory(string categoryStr)
         {
-            if (Enum.TryParse<BuildingCategory>(categoryStr, out BuildingCategory category))
+            if (Enum.TryParse<GuildMaster.Data.BuildingCategory>(categoryStr, out GuildMaster.Data.BuildingCategory category))
             {
                 return category;
             }
-            return BuildingCategory.Core;
+            return GuildMaster.Data.BuildingCategory.Core;
+        }
+        
+        BuildingData ConvertFromScriptableObject(BuildingDataSO so)
+        {
+            return new BuildingData
+            {
+                id = so.buildingId,
+                name = so.buildingName,
+                description = so.description,
+                buildingType = (GuildMaster.Core.GuildManager.BuildingType)so.buildingType,
+                category = (GuildMaster.Data.BuildingCategory)so.category,
+                sizeX = so.sizeX,
+                sizeY = so.sizeY,
+                baseGoldCost = so.buildCost.gold,
+                baseWoodCost = so.buildCost.wood,
+                baseStoneCost = so.buildCost.stone,
+                baseManaCost = so.buildCost.mana,
+                baseConstructionTime = so.buildTime,
+                requiredGuildLevel = so.requiredGuildLevel,
+                maxLevel = so.maxLevel,
+                iconSprite = so.buildingIcon,
+                modelPrefab = so.buildingPrefab
+            };
         }
         
         void ParseDialogueCSV(string csvText)
@@ -524,7 +583,7 @@ namespace GuildMaster.Core
         }
         
         // 데이터 접근 메서드
-        public GuildMaster.Data.CharacterData GetCharacterData(string id)
+        public CharacterData GetCharacterData(string id)
         {
             return characterDatabase.ContainsKey(id) ? characterDatabase[id] : null;
         }
@@ -554,18 +613,33 @@ namespace GuildMaster.Core
             return dialogueDatabase.ContainsKey(id) ? dialogueDatabase[id] : null;
         }
         
+        // BuildingDataSO 접근 메서드 추가
+        public BuildingDataSO GetBuildingDataSO(string id)
+        {
+            if (buildingDataSOs != null)
+            {
+                return buildingDataSOs.FirstOrDefault(b => b.buildingId == id);
+            }
+            return null;
+        }
+        
+        public List<BuildingDataSO> GetAllBuildingData()
+        {
+            return buildingDataSOs ?? new List<BuildingDataSO>();
+        }
+        
         // 리스트 반환 메서드
-        public List<GuildMaster.Data.CharacterData> GetAllCharacters()
+        public List<CharacterData> GetAllCharacters()
         {
             return characterDatabase.Values.ToList();
         }
         
-        public List<GuildMaster.Data.CharacterData> GetCharactersByJobClass(GuildMaster.Data.JobClass jobClass)
+        public List<CharacterData> GetCharactersByJobClass(JobClass jobClass)
         {
             return characterDatabase.Values.Where(c => c.jobClass == jobClass).ToList();
         }
         
-        public List<GuildMaster.Data.CharacterData> GetCharactersByRarity(GuildMaster.Data.CharacterRarity rarity)
+        public List<CharacterData> GetCharactersByRarity(GuildMaster.Battle.Rarity rarity)
         {
             return characterDatabase.Values.Where(c => c.rarity == rarity).ToList();
         }
@@ -581,20 +655,15 @@ namespace GuildMaster.Core
         }
         
         // 유닛 생성 헬퍼
-        public GuildMaster.Battle.Unit CreateUnitFromData(string characterId, int level = 1)
+        public Unit CreateUnitFromData(string characterId, int level = 1)
         {
             var data = GetCharacterData(characterId);
             if (data == null) return null;
             
-            // Data.JobClass를 Battle.JobClass로 변환
-            GuildMaster.Battle.JobClass battleJobClass = ConvertJobClass(data.jobClass);
-            
-            GuildMaster.Battle.Unit unit = new GuildMaster.Battle.Unit(
-                data.name, 
-                level, 
-                battleJobClass, 
-                ConvertRarity(data.rarity)
-            );
+            Unit unit = new Unit(data.name, level, data.jobClass)
+            {
+                rarity = data.rarity
+            };
             
             // 기본 스탯 설정 (Unit 클래스의 실제 필드에 직접 할당)
             unit.maxHP = data.baseHP;
@@ -624,6 +693,4 @@ namespace GuildMaster.Core
             return unit;
         }
     }
-
-
 }
