@@ -43,7 +43,7 @@ namespace GuildMaster.Core
         [Header("ScriptableObject Data")]
         [SerializeField] private List<SkillDataSO> skillDataSOs;
         [SerializeField] private List<ItemDataSO> itemDataSOs;
-        [SerializeField] private List<BuildingDataSO> buildingDataSOs;
+        // [SerializeField] private List<BuildingDataSO> buildingDataSOs; // 길드 빌딩 시스템 제거
         
         void Awake()
         {
@@ -332,7 +332,7 @@ namespace GuildMaster.Core
                 name = "소형 체력 포션",
                 description = "HP를 50 회복합니다.",
                 itemType = ItemType.Consumable,
-                rarity = GuildMaster.Battle.Rarity.Common,
+                rarity = (GuildMaster.Data.Rarity)GuildMaster.Battle.Rarity.Common,
                 value = 50,
                 stackable = true,
                 maxStack = 99
@@ -345,7 +345,7 @@ namespace GuildMaster.Core
                 name = "경험치 포션",
                 description = "사용 시 경험치를 100 획득합니다.",
                 itemType = ItemType.Consumable,
-                rarity = GuildMaster.Battle.Rarity.Uncommon,
+                rarity = (GuildMaster.Data.Rarity)GuildMaster.Battle.Rarity.Uncommon,
                 value = 100,
                 stackable = true,
                 maxStack = 99
@@ -370,30 +370,7 @@ namespace GuildMaster.Core
         
         void LoadBuildingData()
         {
-            // ScriptableObject에서 로드
-            if (buildingDataSOs != null && buildingDataSOs.Count > 0)
-            {
-                foreach (var buildingSO in buildingDataSOs)
-                {
-                    if (buildingSO != null)
-                    {
-                        BuildingData data = ConvertFromScriptableObject(buildingSO);
-                        buildingDatabase[data.id] = data;
-                    }
-                }
-            }
-            
-            // CSV에서 추가 로드
-            if (loadFromResources)
-            {
-                TextAsset csvFile = Resources.Load<TextAsset>(dataPath + "building_data");
-                if (csvFile != null)
-                {
-                    ParseBuildingCSV(csvFile.text);
-                }
-            }
-            
-            // 기본 건물 데이터
+            // 길드 빌딩 시스템이 제거되어 기본 건물 데이터만 로드
             AddDefaultBuildings();
             
             Debug.Log($"Loaded {buildingDatabase.Count} buildings");
@@ -407,7 +384,7 @@ namespace GuildMaster.Core
                 id = "guild_hall",
                 name = "길드 홀",
                 description = "길드의 중심 건물입니다.",
-                buildingType = (GuildMaster.Core.GuildManager.BuildingType)GuildMaster.Data.BuildingType.GuildHall,
+                buildingType = GuildMaster.Data.BuildingType.GuildHall,
                 maxLevel = 10,
                 baseGoldCost = 0,
                 baseWoodCost = 0,
@@ -423,7 +400,7 @@ namespace GuildMaster.Core
                 id = "barracks",
                 name = "병영",
                 description = "전사와 기사를 훈련시킬 수 있습니다.",
-                buildingType = (GuildMaster.Core.GuildManager.BuildingType)GuildMaster.Data.BuildingType.Barracks,
+                buildingType = GuildMaster.Data.BuildingType.Barracks,
                 maxLevel = 5,
                 baseGoldCost = 500,
                 baseWoodCost = 200,
@@ -451,13 +428,15 @@ namespace GuildMaster.Core
                 name = "첫 걸음",
                 description = "길드 홀을 건설하세요.",
                 questType = QuestType.Main,
-                objectives = new List<QuestObjective>
+                objectives = new List<GuildMaster.Data.QuestObjective>
                 {
-                    new QuestObjective
+                    new GuildMaster.Data.QuestObjective
                     {
-                        type = ObjectiveType.Build,
-                        target = "guild_hall",
-                        requiredAmount = 1
+                        type = GuildMaster.Data.QuestObjectiveType.Build,
+                        targetId = "guild_hall",
+                        targetAmount = 1,
+                        objectiveId = "build_guild_hall",
+                        description = "길드 홀을 건설하세요"
                     }
                 },
                 goldReward = 100,
@@ -499,7 +478,7 @@ namespace GuildMaster.Core
                     {
                         id = values[0],
                         name = values[1],
-                        buildingType = (GuildMaster.Core.GuildManager.BuildingType)ParseBuildingType(values[2]),
+                        buildingType = ParseBuildingType(values[2]),
                         category = ParseBuildingCategory(values[3]),
                         sizeX = int.Parse(values[4]),
                         sizeY = int.Parse(values[5]),
@@ -507,8 +486,7 @@ namespace GuildMaster.Core
                         baseWoodCost = int.Parse(values[7]),
                         baseStoneCost = int.Parse(values[8]),
                         baseManaCost = int.Parse(values[9]),
-                        baseConstructionTime = float.Parse(values[10]),
-                        requiredGuildLevel = int.Parse(values[11]),
+                        baseConstructionTime = (int)float.Parse(values[10]),
                         maxLevel = int.Parse(values[12]),
                         description = values[13]
                     };
@@ -522,45 +500,22 @@ namespace GuildMaster.Core
             }
         }
         
-        GuildMaster.Data.BuildingType ParseBuildingType(string typeStr)
+        BuildingType ParseBuildingType(string typeStr)
         {
-            if (Enum.TryParse<GuildMaster.Data.BuildingType>(typeStr, out GuildMaster.Data.BuildingType type))
+            if (Enum.TryParse<BuildingType>(typeStr, out BuildingType type))
             {
                 return type;
             }
-            return GuildMaster.Data.BuildingType.GuildHall;
+            return BuildingType.GuildHall;
         }
         
-        GuildMaster.Data.BuildingCategory ParseBuildingCategory(string categoryStr)
+        BuildingCategory ParseBuildingCategory(string categoryStr)
         {
-            if (Enum.TryParse<GuildMaster.Data.BuildingCategory>(categoryStr, out GuildMaster.Data.BuildingCategory category))
+            if (Enum.TryParse<BuildingCategory>(categoryStr, out BuildingCategory category))
             {
                 return category;
             }
-            return GuildMaster.Data.BuildingCategory.Core;
-        }
-        
-        BuildingData ConvertFromScriptableObject(BuildingDataSO so)
-        {
-            return new BuildingData
-            {
-                id = so.buildingId,
-                name = so.buildingName,
-                description = so.description,
-                buildingType = (GuildMaster.Core.GuildManager.BuildingType)so.buildingType,
-                category = (GuildMaster.Data.BuildingCategory)so.category,
-                sizeX = so.sizeX,
-                sizeY = so.sizeY,
-                baseGoldCost = so.buildCost.gold,
-                baseWoodCost = so.buildCost.wood,
-                baseStoneCost = so.buildCost.stone,
-                baseManaCost = so.buildCost.mana,
-                baseConstructionTime = so.buildTime,
-                requiredGuildLevel = so.requiredGuildLevel,
-                maxLevel = so.maxLevel,
-                iconSprite = so.buildingIcon,
-                modelPrefab = so.buildingPrefab
-            };
+            return BuildingCategory.Core;
         }
         
         void ParseDialogueCSV(string csvText)
@@ -597,21 +552,6 @@ namespace GuildMaster.Core
         public DialogueData GetDialogueData(string id)
         {
             return dialogueDatabase.ContainsKey(id) ? dialogueDatabase[id] : null;
-        }
-        
-        // BuildingDataSO 접근 메서드 추가
-        public BuildingDataSO GetBuildingDataSO(string id)
-        {
-            if (buildingDataSOs != null)
-            {
-                return buildingDataSOs.FirstOrDefault(b => b.buildingId == id);
-            }
-            return null;
-        }
-        
-        public List<BuildingDataSO> GetAllBuildingData()
-        {
-            return buildingDataSOs ?? new List<BuildingDataSO>();
         }
         
         // 리스트 반환 메서드
@@ -684,4 +624,6 @@ namespace GuildMaster.Core
             return unit;
         }
     }
+
+
 }

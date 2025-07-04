@@ -5,6 +5,7 @@ using System.Linq;
 using UnityEngine;
 using GuildMaster.Core;
 using GuildMaster.Battle;
+using GuildMaster.Battle.AI;
 using GuildMaster.Data;
 using GuildMaster.UI;
 
@@ -222,7 +223,7 @@ namespace GuildMaster.Systems
             // Check AI generation
             try
             {
-                var aiSquads = AIGuildGenerator.GenerateAIGuild(AIGuildGenerator.Difficulty.Novice, 1);
+                var aiSquads = GuildMaster.Battle.AI.AIGuildGenerator.GenerateAIGuild(GuildMaster.Battle.AI.AIGuildGenerator.Difficulty.Novice, 1);
                 if (aiSquads != null && aiSquads.Count > 0)
                 {
                     AddResult("AI Guild Generator", ValidationStatus.Passed, $"Generated {aiSquads.Count} AI squads");

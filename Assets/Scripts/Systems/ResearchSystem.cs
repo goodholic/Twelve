@@ -4,6 +4,9 @@ using System.Collections; // IEnumerator를 위해 추가
 using System.Collections.Generic;
 using System.Linq;
 using GuildMaster.Core; // ResourceType을 위해 추가
+using GuildMaster.Data;
+using CoreResourceType = GuildMaster.Core.ResourceType;
+
 
 namespace GuildMaster.Systems
 {
@@ -121,12 +124,12 @@ namespace GuildMaster.Systems
         {
             public int goldCost;
             public int manaStoneCost;
-            public Dictionary<ResourceType, int> resourceCosts;
+            public Dictionary<CoreResourceType, int> resourceCosts;
             public float researchTime; // 시간 (분)
             
             public ResearchCost()
             {
-                resourceCosts = new Dictionary<ResourceType, int>();
+                resourceCosts = new Dictionary<CoreResourceType, int>();
             }
         }
         
@@ -454,10 +457,10 @@ namespace GuildMaster.Systems
                 constructionResearch.levelCosts[i] = new ResearchCost
                 {
                     goldCost = 600 * (i + 1),
-                    resourceCosts = new Dictionary<ResourceType, int>
+                    resourceCosts = new Dictionary<CoreResourceType, int>
                     {
-                        { ResourceType.Wood, 100 * (i + 1) },
-                        { ResourceType.Stone, 100 * (i + 1) }
+                        { CoreResourceType.Wood, 100 * (i + 1) },
+                        { CoreResourceType.Stone, 100 * (i + 1) }
                     },
                     researchTime = 15 * (i + 1)
                 };
@@ -827,8 +830,8 @@ namespace GuildMaster.Systems
             var gameManager = Core.GameManager.Instance;
             if (gameManager?.GuildManager == null) return 0;
             
-            var researchLabs = gameManager.GuildManager.GetBuildingsByType(GuildManager.BuildingType.ResearchLab);
-            return researchLabs.Count > 0 ? researchLabs[0].Level : 0;
+            var researchLabs = gameManager.GuildManager.GetBuildingsByType(BuildingType.ResearchLab);
+            return researchLabs.Count > 0 ? researchLabs[0].level : 0;
         }
         
         bool PayResearchCost(ResearchCost cost)
@@ -848,10 +851,10 @@ namespace GuildMaster.Systems
                 int currentAmount = 0;
                 switch (resource.Key)
                 {
-                    case ResourceType.Wood:
+                    case CoreResourceType.Wood:
                         currentAmount = resourceManager.GetWood();
                         break;
-                    case ResourceType.Stone:
+                    case CoreResourceType.Stone:
                         currentAmount = resourceManager.GetStone();
                         break;
                 }
@@ -868,10 +871,10 @@ namespace GuildMaster.Systems
             {
                 switch (resource.Key)
                 {
-                    case ResourceType.Wood:
+                    case CoreResourceType.Wood:
                         resourceManager.AddWood(-resource.Value);
                         break;
-                    case ResourceType.Stone:
+                    case CoreResourceType.Stone:
                         resourceManager.AddStone(-resource.Value);
                         break;
                 }

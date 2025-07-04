@@ -4,10 +4,13 @@ using System.Collections.Generic;
 using UnityEngine;
 using GuildMaster.Battle;
 using GuildMaster.Systems;
-// using DG.Tweening; // DOTween 패키지가 없으므로 주석 처리
 
 namespace GuildMaster.Battle
 {
+    /// <summary>
+    /// 전투 애니메이션 시스템
+    /// Unity Coroutine 기반 애니메이션
+    /// </summary>
     public class BattleAnimationSystem : MonoBehaviour
     {
         private static BattleAnimationSystem _instance;
@@ -111,10 +114,6 @@ namespace GuildMaster.Battle
             
             // 카메라 찾기
             battleCamera = Camera.main;
-            
-            // DOTween 초기화 (패키지가 없으므로 주석 처리)
-            // DOTween.Init();
-            // DOTween.defaultAutoPlay = AutoPlay.None;
         }
         
         void SetupDefaultAnimations()

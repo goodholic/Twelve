@@ -8,6 +8,8 @@ using GuildMaster.Battle;
 using GuildMaster.UI;
 using GuildMaster.Data;
 using GuildMaster.Exploration;
+using GuildMaster.Guild;
+
 
 namespace GuildMaster.Systems
 {
@@ -315,7 +317,7 @@ namespace GuildMaster.Systems
                     if (resourceManager != null)
                     {
                         resourceManager.AddGold(100);
-                        ShowNotification("아침 생산 보너스를 받았습니다!", NotificationType.Reward);
+                        ShowNotification("아침 생산 보너스를 받았습니다!", GuildMaster.Data.NotificationType.Success);
                     }
                 }
             }
@@ -327,7 +329,12 @@ namespace GuildMaster.Systems
             }
             
             // Morning notification
-            ShowNotification("새로운 날이 시작되었습니다!", NotificationType.Info);
+            if (currentDay > 1)
+            {
+                ShowNotification("새로운 날이 시작되었습니다!", GuildMaster.Data.NotificationType.Info);
+            }
+            
+            currentDayTime = 0.25f; // Morning ends
         }
         
         void ProcessAfternoonEvents()
@@ -372,7 +379,7 @@ namespace GuildMaster.Systems
                 if (resourceManager != null)
                 {
                     resourceManager.AddGold(50);
-                    ShowNotification("야간 생산 보너스를 받았습니다!", NotificationType.Info);
+                    ShowNotification("야간 생산 보너스를 받았습니다!", GuildMaster.Data.NotificationType.Info);
                 }
             }
             
@@ -433,7 +440,7 @@ namespace GuildMaster.Systems
                 {
                     // Penalty for not paying maintenance
                     guildManager.AddReputation(-10);
-                    ShowNotification("유지비를 지불할 수 없습니다! 명성이 감소합니다.", NotificationType.Warning);
+                    ShowNotification("유지비를 지불할 수 없습니다! 명성이 감소합니다.", GuildMaster.Data.NotificationType.Warning);
                 }
             }
             
@@ -441,7 +448,7 @@ namespace GuildMaster.Systems
             if (guildManager != null)
             {
                 // 길드 관계 업데이트 로직
-                ShowNotification("길드 관계가 업데이트되었습니다.", NotificationType.Info);
+                ShowNotification("길드 관계가 업데이트되었습니다.", GuildMaster.Data.NotificationType.Info);
             }
             
             // Check achievements
@@ -460,7 +467,7 @@ namespace GuildMaster.Systems
                 var guildData = guildManager.GetGuildData();
                 baseCost += guildData.GuildLevel * 50;
                 baseCost += guildData.Adventurers.Count * 10;
-                baseCost += guildData.Buildings.Count * 20;
+                baseCost += guildManager.GetBuildingsByType(BuildingType.GuildHall).Count * 20;
             }
             
             // Season modifier
@@ -478,7 +485,7 @@ namespace GuildMaster.Systems
             OnSeasonChanged?.Invoke(currentSeason);
             
             var season = GetCurrentSeason();
-            ShowNotification($"{GetSeasonName(season)} 시즌이 시작되었습니다!", NotificationType.Important);
+            ShowNotification($"{GetSeasonName(season)} 시즌이 시작되었습니다!", GuildMaster.Data.NotificationType.System);
             
             // Apply seasonal effects
             ApplySeasonalEffects(season);
@@ -495,30 +502,27 @@ namespace GuildMaster.Systems
             switch (season)
             {
                 case Season.Spring:
-                    // Growth bonus
                     if (productionSystem != null)
                     {
                         // productionSystem.SetSeasonalModifier(1.2f);
-                        ShowNotification("봄 시즌 생산 보너스가 적용되었습니다!", NotificationType.Info);
+                        ShowNotification("봄 시즌 생산 보너스가 적용되었습니다!", GuildMaster.Data.NotificationType.Info);
                     }
                     break;
                     
                 case Season.Summer:
-                    // Battle bonus
                     if (battleManager != null)
                     {
                         // Apply summer combat bonuses
-                        ShowNotification("여름 시즌 전투 보너스가 적용되었습니다!", NotificationType.Info);
+                        ShowNotification("여름 시즌 전투 보너스가 적용되었습니다!", GuildMaster.Data.NotificationType.Info);
                     }
                     break;
                     
                 case Season.Autumn:
-                    // Harvest bonus
                     if (resourceManager != null)
                     {
                         resourceManager.AddGold(1000);
                         resourceManager.AddWood(500);
-                        ShowNotification("가을 수확 보너스를 받았습니다!", NotificationType.Reward);
+                        ShowNotification("가을 수확 보너스를 받았습니다!", GuildMaster.Data.NotificationType.Success);
                     }
                     break;
                     
@@ -527,7 +531,7 @@ namespace GuildMaster.Systems
                     if (productionSystem != null)
                     {
                         // productionSystem.SetSeasonalModifier(0.8f);
-                        ShowNotification("겨울 시즌 효과가 적용되었습니다!", NotificationType.Warning);
+                        ShowNotification("겨울 시즌 효과가 적용되었습니다!", GuildMaster.Data.NotificationType.Warning);
                     }
                     break;
             }
@@ -695,7 +699,7 @@ namespace GuildMaster.Systems
             if (currentDay % 7 == 0 || currentDay % 7 == 6)
             {
                 // productionSystem.ApplyWeekendBonus();
-                ShowNotification("주말 생산 보너스가 적용되었습니다!", NotificationType.Info);
+                ShowNotification("주말 생산 보너스가 적용되었습니다!", GuildMaster.Data.NotificationType.Info);
             }
         }
         
@@ -723,7 +727,7 @@ namespace GuildMaster.Systems
             if (currentDay % 3 == 0)
             {
                 // guildBattleSystem.UpdateGuildRelations();
-                ShowNotification("길드 관계가 업데이트되었습니다.", NotificationType.Info);
+                ShowNotification("길드 관계가 업데이트되었습니다.", GuildMaster.Data.NotificationType.Info);
             }
         }
         
@@ -793,27 +797,21 @@ namespace GuildMaster.Systems
             {
                 case DailyEvent.EventType.MerchantVisit:
                     // Merchant system handles this
-                    ShowNotification(dailyEvent.description, NotificationType.Info);
+                    ShowNotification(dailyEvent.description, GuildMaster.Data.NotificationType.Info);
                     break;
                     
                 case DailyEvent.EventType.GuildChallenge:
                     if (guildBattleSystem != null)
                     {
                         // guildBattleSystem.TriggerRandomChallenge();
-                        ShowNotification("길드 도전이 시작되었습니다!", NotificationType.Important);
+                        ShowNotification("길드 도전이 시작되었습니다!", GuildMaster.Data.NotificationType.System);
                     }
                     break;
                     
                 case DailyEvent.EventType.StoryEvent:
                     if (storyManager != null)
                     {
-                        // Trigger random story event
-                        var availableChapters = storyManager.GetAvailableChapters();
-                        if (availableChapters.Count > 0)
-                        {
-                            var randomChapter = availableChapters[UnityEngine.Random.Range(0, availableChapters.Count)];
-                            storyManager.StartChapter(randomChapter.ChapterId);
-                        }
+                        // storyManager.TriggerRandomEvent();
                     }
                     break;
                     
@@ -821,14 +819,14 @@ namespace GuildMaster.Systems
                     if (dungeonSystem != null)
                     {
                         // Unlock special dungeon temporarily
-                        ShowNotification(dailyEvent.description, NotificationType.Important);
+                        ShowNotification(dailyEvent.description, GuildMaster.Data.NotificationType.System);
                     }
                     break;
                     
                 case DailyEvent.EventType.ResourceBonus:
                     int bonusAmount = UnityEngine.Random.Range(100, 500);
                     resourceManager.AddGold(bonusAmount);
-                    ShowNotification($"보너스 골드 +{bonusAmount}!", NotificationType.Reward);
+                    ShowNotification($"보너스 골드 +{bonusAmount}!", GuildMaster.Data.NotificationType.Success);
                     break;
                     
                 case DailyEvent.EventType.SeasonalEvent:
@@ -851,9 +849,9 @@ namespace GuildMaster.Systems
                     {
                         foreach (var adventurer in guildManager.GetGuildData().Adventurers)
                         {
-                            adventurer.AddExperience(100);
+                            ((GuildMaster.Battle.Unit)adventurer).AddExperience(100);
                         }
-                        ShowNotification("봄 축제! 모든 모험가가 경험치를 획득했습니다!", NotificationType.Reward);
+                        ShowNotification("봄 축제! 모든 모험가가 경험치를 획득했습니다!", GuildMaster.Data.NotificationType.Reward);
                     }
                     break;
                     
@@ -862,7 +860,7 @@ namespace GuildMaster.Systems
                     if (guildBattleSystem != null)
                     {
                         // guildBattleSystem.StartTournament();
-                        ShowNotification("여름 토너먼트가 시작되었습니다!", NotificationType.Important);
+                        ShowNotification("여름 토너먼트가 시작되었습니다!", GuildMaster.Data.NotificationType.Important);
                     }
                     break;
                     
@@ -871,12 +869,12 @@ namespace GuildMaster.Systems
                     resourceManager.AddGold(2000);
                     resourceManager.AddWood(1000);
                     resourceManager.AddStone(1000);
-                    ShowNotification("가을 수확제! 대량의 자원을 획득했습니다!", NotificationType.Reward);
+                    ShowNotification("가을 수확제! 대량의 자원을 획득했습니다!", GuildMaster.Data.NotificationType.Reward);
                     break;
                     
                 case Season.Winter:
                     // Winter challenge - survival mode
-                    ShowNotification("겨울 도전! 유지비가 증가합니다!", NotificationType.Warning);
+                    ShowNotification("겨울 도전! 유지비가 증가합니다!", GuildMaster.Data.NotificationType.Warning);
                     break;
             }
         }
@@ -1017,7 +1015,7 @@ namespace GuildMaster.Systems
             if (saveManager != null && currentState == GameState.Playing)
             {
                 saveManager.SaveGame(0); // Auto save to slot 0
-                ShowNotification("자동 저장 완료", NotificationType.Info);
+                ShowNotification("자동 저장 완료", GuildMaster.Data.NotificationType.Info);
             }
         }
         
@@ -1079,19 +1077,10 @@ namespace GuildMaster.Systems
             // TODO: Implement game over UI
         }
         
-        void ShowNotification(string message, NotificationType type)
+        void ShowNotification(string message, GuildMaster.Data.NotificationType type)
         {
             Debug.Log($"[{type}] {message}");
             // TODO: Implement notification UI
-        }
-        
-        public enum NotificationType
-        {
-            Info,
-            Warning,
-            Important,
-            Reward,
-            Battle
         }
         
         // Public getters

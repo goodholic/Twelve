@@ -1,111 +1,78 @@
-skillId,skillName,jobClass,skillType,targetType,damage,healing,manaCost,cooldown,range,areaEffect,buffType,debuffType,duration,description,animation,soundEffect,particleEffect,requirements
-skill_001,기본 공격,All,Physical,Single,100,0,0,1,1,false,None,None,0,"모든 직업이 사용할 수 있는 기본 공격",BasicAttack,sword_hit,none,Level 1
-skill_002,방어 자세,Knight,Defensive,Self,0,0,10,3,0,false,Defense,None,3,"방어력을 50% 증가시킵니다",DefenseStance,shield_up,shield_glow,Level 1
-skill_003,도발,Knight,Utility,Enemy,0,0,15,4,2,false,None,Taunt,2,"적을 도발하여 자신을 공격하게 만듭니다",Taunt,taunt_shout,anger_mark,Level 2
-skill_004,방패 강타,Knight,Physical,Single,150,0,20,5,1,false,None,Stun,1,"방패로 강타하여 적을 기절시킵니다",ShieldBash,shield_slam,impact_flash,Level 3
-skill_005,광역 방어,Knight,Defensive,AllAllies,0,0,25,8,0,true,Defense,None,4,"아군 전체의 방어력을 증가시킵니다",AreaDefense,group_buff,protective_aura,Level 5
-skill_006,성스러운 가호,Knight,Defensive,Self,0,100,30,10,0,false,HolyShield,None,5,"성스러운 보호막을 생성합니다",HolyProtection,divine_blessing,holy_light,Level 7
-skill_007,용맹한 돌진,Knight,Physical,Single,200,0,25,6,3,false,None,Knockdown,2,"적에게 돌진하여 큰 피해를 입힙니다",Charge,battle_cry,charge_trail,Level 10
-skill_008,요새 형성,Knight,Defensive,AllAllies,0,0,40,15,0,true,Fortress,None,6,"아군 전체를 요새로 보호합니다",Fortress,war_horn,fortress_wall,Level 15
-skill_009,강력한 일격,Warrior,Physical,Single,180,0,20,4,1,false,None,None,0,"강력한 일격으로 큰 피해를 입힙니다",PowerStrike,heavy_hit,blood_splash,Level 1
-skill_010,분노,Warrior,Buff,Self,0,0,25,8,0,false,Rage,None,5,"분노하여 공격력을 크게 증가시킵니다",Rage,roar,red_aura,Level 2
-skill_011,회전 베기,Warrior,Physical,AOE,120,0,30,6,2,true,None,None,0,"주변 적들에게 회전 공격을 합니다",SpinAttack,blade_spin,wind_slash,Level 3
-skill_012,무자비한 연타,Warrior,Physical,Single,80,0,25,5,1,false,None,None,0,"연속으로 3번 공격합니다",ComboAttack,rapid_strikes,combo_flash,Level 5
-skill_013,전투 광분,Warrior,Buff,Self,0,0,35,12,0,false,Berserk,None,8,"광분하여 공격속도와 피해량이 증가합니다",Berserk,war_cry,berserker_aura,Level 7
-skill_014,지면 강타,Warrior,Physical,AOE,150,0,30,7,1,true,None,Slow,3,"지면을 강타하여 주변 적들을 느리게 만듭니다",GroundSlam,earth_shake,ground_crack,Level 10
-skill_015,불굴의 의지,Warrior,Buff,Self,0,0,20,10,0,false,Immunity,None,3,"모든 디버프에 면역이 됩니다",IronWill,determination,golden_glow,Level 12
-skill_016,최후의 일격,Warrior,Physical,Single,300,0,50,20,1,false,None,None,0,"체력이 낮을수록 더 큰 피해를 입힙니다",FinalStrike,final_blow,critical_flash,Level 15
-skill_017,정확한 사격,Archer,Physical,Single,140,0,15,3,5,false,None,None,0,"정확한 화살로 원거리에서 공격합니다",PrecisionShot,bow_string,arrow_trail,Level 1
-skill_018,독 화살,Archer,Physical,Single,100,0,20,4,5,false,None,Poison,5,"독이 발린 화살로 지속 피해를 입힙니다",PoisonArrow,poison_shot,poison_cloud,Level 2
-skill_019,연발 사격,Archer,Physical,Single,70,0,25,5,5,false,None,None,0,"빠르게 3발의 화살을 발사합니다",RapidFire,multiple_shots,arrow_storm,Level 3
-skill_020,폭발 화살,Archer,Physical,AOE,120,0,30,6,5,true,None,None,0,"폭발하는 화살로 광역 피해를 입힙니다",ExplosiveArrow,explosion,fire_blast,Level 5
-skill_021,얼음 화살,Archer,Physical,Single,110,0,25,5,5,false,None,Freeze,2,"얼음 화살로 적을 얼립니다",IceArrow,ice_shot,frost_effect,Level 7
-skill_022,관통 사격,Archer,Physical,Line,130,0,35,7,5,true,None,None,0,"일직선상의 모든 적을 관통합니다",PiercingShot,pierce_arrow,penetration_line,Level 10
-skill_023,비 사격,Archer,Physical,AOE,90,0,40,10,5,true,None,None,0,"하늘에서 화살비가 내립니다",ArrowRain,arrow_volley,rain_arrows,Level 12
-skill_024,완벽한 조준,Archer,Buff,Self,0,0,20,8,0,false,Accuracy,None,4,"다음 공격이 반드시 크리티컬 히트가 됩니다",PerfectAim,focus,crosshair_mark,Level 15
-skill_025,화염구,Mage,Magical,Single,160,0,25,4,4,false,None,Burn,3,"화염구로 적을 태웁니다",Fireball,fire_whoosh,flame_explosion,Level 1
-skill_026,얼음 창,Mage,Magical,Single,140,0,20,3,4,false,None,Freeze,2,"얼음 창으로 적을 얼립니다",IceSpear,ice_crystal,frost_shatter,Level 2
-skill_027,번개 화살,Mage,Magical,Single,180,0,30,5,4,false,None,Paralyze,1,"번개로 적을 마비시킵니다",Lightning,thunder_crack,electric_spark,Level 3
-skill_028,마법 미사일,Mage,Magical,Single,100,0,15,2,4,false,None,None,0,"추적하는 마법 미사일을 발사합니다",MagicMissile,magic_whoosh,magic_trail,Level 1
-skill_029,화염 폭풍,Mage,Magical,AOE,140,0,40,8,4,true,None,Burn,4,"광역에 화염 폭풍을 일으킵니다",Firestorm,inferno,fire_tornado,Level 5
-skill_030,얼음 벽,Mage,Defensive,Area,0,0,35,10,3,true,None,Slow,5,"얼음 벽을 생성하여 적의 이동을 방해합니다",IceWall,ice_formation,ice_barrier,Level 7
-skill_031,순간이동,Mage,Utility,Self,0,0,30,8,0,false,None,None,0,"즉시 안전한 위치로 이동합니다",Teleport,warp_sound,teleport_flash,Level 10
-skill_032,메테오,Mage,Magical,AOE,250,0,60,15,4,true,None,None,0,"거대한 운석을 떨어뜨립니다",Meteor,meteor_fall,meteor_impact,Level 15
-skill_033,치유술,Priest,Healing,Single,0,150,20,3,3,false,None,None,0,"아군의 체력을 회복시킵니다",Heal,holy_chime,healing_light,Level 1
-skill_034,축복,Priest,Buff,Single,0,0,25,5,3,false,Blessing,None,5,"아군에게 축복을 내려 능력치를 증가시킵니다",Bless,blessing_chant,divine_aura,Level 2
-skill_035,광역 치유,Priest,Healing,AllAllies,0,100,40,8,0,true,None,None,0,"아군 전체의 체력을 회복시킵니다",GroupHeal,group_prayer,healing_wave,Level 3
-skill_036,성스러운 빛,Priest,Magical,Single,120,0,30,6,3,false,None,Blind,2,"성스러운 빛으로 언데드를 정화합니다",HolyLight,divine_beam,purifying_light,Level 5
-skill_037,부활,Priest,Healing,Single,0,50,50,20,2,false,None,None,0,"쓰러진 아군을 부활시킵니다",Resurrect,revival_hymn,resurrection_glow,Level 7
-skill_038,신의 가호,Priest,Buff,AllAllies,0,0,35,12,0,true,DivineProtection,None,6,"아군 전체에게 신의 보호를 내립니다",DivineProtection,heavenly_chorus,sanctuary_aura,Level 10
-skill_039,성역,Priest,Defensive,Area,0,50,40,15,2,true,Sanctuary,None,10,"성역을 생성하여 지속적으로 치유합니다",Sanctuary,sanctuary_bell,holy_ground,Level 12
-skill_040,최후의 심판,Priest,Magical,AOE,200,0,60,20,4,true,None,Fear,3,"신의 심판으로 적들을 공포에 빠뜨립니다",FinalJudgment,judgment_thunder,divine_wrath,Level 15
-skill_041,자연의 치유,Ranger,Healing,Single,0,120,25,4,3,false,None,None,0,"자연의 힘으로 아군을 치유합니다",NatureHeal,forest_whisper,nature_glow,Level 1
-skill_042,덫 설치,Ranger,Utility,Area,80,0,20,6,2,false,None,Root,3,"덫을 설치하여 적의 발을 묶습니다",SetTrap,trap_click,thorn_bind,Level 2
-skill_043,동물 소환,Ranger,Summon,Area,0,0,35,10,2,false,None,None,0,"야생동물을 소환하여 도움을 받습니다",SummonAnimal,animal_call,spirit_animal,Level 3
-skill_044,바람의 화살,Ranger,Physical,Single,130,0,20,4,5,false,None,None,0,"바람의 힘이 담긴 화살을 발사합니다",WindArrow,wind_whistle,wind_trail,Level 5
-skill_045,가시 덩굴,Ranger,Physical,AOE,100,0,30,7,3,true,None,Entangle,4,"가시 덩굴로 적들을 얽매고 피해를 입힙니다",ThornVines,vine_grow,thorn_wrap,Level 7
-skill_046,은신,Ranger,Buff,Self,0,0,25,8,0,false,Stealth,None,5,"자신을 은신시켜 적의 공격을 회피합니다",Stealth,shadow_step,vanish_smoke,Level 10
-skill_047,폭풍 소환,Ranger,Magical,AOE,150,0,45,12,4,true,None,Blind,3,"폭풍을 소환하여 시야를 차단합니다",Storm,thunder_roar,lightning_storm,Level 12
-skill_048,대자연의 분노,Ranger,Magical,AOE,180,0,50,15,4,true,None,Multiple,5,"대자연이 분노하여 다양한 디버프를 가합니다",NatureWrath,earth_rumble,nature_rage,Level 15
-skill_049,그림자 일격,Rogue,Physical,Single,160,0,20,3,1,false,None,None,0,"그림자에서 나타나 치명적인 일격을 가합니다",ShadowStrike,shadow_slash,dark_flash,Level 1
-skill_050,독 칼날,Rogue,Physical,Single,120,0,25,4,1,false,None,Poison,5,"독이 발린 칼날로 지속 피해를 입힙니다",PoisonBlade,poison_drip,toxic_cloud,Level 2
-skill_051,연막탄,Rogue,Utility,AOE,0,0,30,8,2,true,None,Blind,4,"연막탄으로 적들의 시야를 차단합니다",SmokeBomb,smoke_pop,thick_smoke,Level 3
-skill_052,뒤치기,Rogue,Physical,Single,200,0,30,6,1,false,None,None,0,"적의 뒤에서 공격하여 크리티컬 확률이 증가합니다",Backstab,critical_hit,sneak_attack,Level 5
-skill_053,그림자 분신,Rogue,Utility,Self,0,0,40,12,0,false,Clone,None,6,"그림자 분신을 만들어 적을 혼란시킵니다",ShadowClone,mirror_sound,shadow_copies,Level 7
-skill_054,치명적 독,Rogue,Physical,Single,80,0,35,8,1,false,None,DeadlyPoison,8,"치명적인 독으로 강력한 지속 피해를 입힙니다",DeadlyPoison,toxic_stab,deadly_venom,Level 10
-skill_055,암살,Rogue,Physical,Single,300,0,50,20,1,false,None,None,0,"즉시 적을 처치할 확률이 있는 암살 기술입니다",Assassination,silent_kill,death_mark,Level 12
-skill_056,그림자 지배,Rogue,Utility,AOE,0,0,60,15,3,true,None,Confusion,6,"주변 적들을 그림자로 조종합니다",ShadowDomination,dark_whisper,shadow_control,Level 15
-skill_057,격려,Bard,Buff,AllAllies,0,0,20,5,0,true,Morale,None,4,"아군들의 사기를 높여 능력치를 증가시킵니다",Inspire,uplifting_song,musical_notes,Level 1
-skill_058,치유의 선율,Bard,Healing,AllAllies,0,80,25,6,0,true,None,None,0,"치유의 음악으로 아군들을 회복시킵니다",HealingSong,gentle_melody,healing_notes,Level 2
-skill_059,혼란의 노래,Bard,Utility,AllEnemies,0,0,30,7,0,true,None,Confusion,4,"적들을 혼란시키는 노래를 부릅니다",ConfusionSong,discordant_tune,chaos_waves,Level 3
-skill_060,용기의 행진곡,Bard,Buff,AllAllies,0,0,35,8,0,true,Courage,None,5,"용기를 북돋는 행진곡으로 공격력을 증가시킵니다",CourageMarch,heroic_anthem,courage_aura,Level 5
-skill_061,잠들게 하는 자장가,Bard,Utility,AllEnemies,0,0,40,10,0,true,None,Sleep,3,"적들을 잠들게 하는 자장가를 부릅니다",Lullaby,sleepy_melody,sleep_dust,Level 7
-skill_062,불협화음,Bard,Magical,AOE,140,0,35,8,4,true,None,Debuff,5,"불협화음으로 적들에게 피해와 디버프를 가합니다",Dissonance,harsh_notes,sound_wave,Level 10
-skill_063,영웅의 발라드,Bard,Buff,AllAllies,0,0,50,15,0,true,Heroic,None,8,"영웅의 발라드로 아군들을 영웅으로 만듭니다",HeroicBallad,epic_song,heroic_glow,Level 12
-skill_064,침묵의 선율,Bard,Utility,AllEnemies,0,0,45,12,0,true,None,Silence,6,"적들을 침묵시켜 스킬 사용을 막습니다",SilenceMelody,silent_song,mute_aura,Level 15
-skill_065,신속,All,Buff,Self,0,0,15,6,0,false,Speed,None,3,"이동속도와 공격속도를 증가시킵니다",Haste,speed_up,wind_effect,Level 3
-skill_066,재생,All,Healing,Self,0,30,10,8,0,false,Regeneration,None,5,"체력을 지속적으로 회복합니다",Regeneration,life_force,green_glow,Level 5
-skill_067,마나 회복,All,Utility,Self,0,0,0,10,0,false,ManaRestore,None,0,"마나를 즉시 50 회복합니다",ManaRestore,mana_flow,blue_sparkle,Level 4
-skill_068,집중,All,Buff,Self,0,0,20,8,0,false,Focus,None,4,"집중력을 높여 크리티컬 확률을 증가시킵니다",Concentration,mental_focus,focus_aura,Level 6
-skill_069,저항,All,Buff,Self,0,0,25,10,0,false,Resistance,None,5,"모든 상태이상에 대한 저항력을 증가시킵니다",Resistance,barrier_up,protective_shield,Level 8
-skill_070,탈출,All,Utility,Self,0,0,20,12,0,false,None,None,0,"전투에서 즉시 탈출합니다",Escape,flee_fast,vanish_puff,Level 2
-skill_071,응급처치,All,Healing,Single,0,80,15,5,1,false,None,None,0,"간단한 응급처치로 아군을 치유합니다",FirstAid,bandage_wrap,healing_herbs,Level 1
-skill_072,경계,All,Buff,Self,0,0,10,8,0,false,Alert,None,4,"주변을 경계하여 회피율을 증가시킵니다",Alertness,keen_sense,alert_eyes,Level 3
-skill_073,반격,All,Defensive,Self,0,0,20,10,0,false,Counter,None,3,"다음 공격을 받으면 자동으로 반격합니다",CounterStance,ready_stance,counter_glow,Level 7
-skill_074,생존 본능,All,Buff,Self,0,0,30,15,0,false,Survival,None,5,"위기 상황에서 모든 능력치가 증가합니다",SurvivalInstinct,primal_roar,survival_aura,Level 10
-skill_075,원소 방어,Mage,Defensive,Self,0,0,25,8,0,false,ElementalShield,None,4,"원소 공격에 대한 저항력을 크게 증가시킵니다",ElementalWard,elemental_shield,rainbow_barrier,Level 6
-skill_076,마법 흡수,Mage,Utility,Self,0,0,20,10,0,false,ManaAbsorb,None,6,"적의 마법 공격을 흡수하여 마나로 변환합니다",ManaAbsorb,energy_drain,mana_steal,Level 8
-skill_077,정신 지배,Mage,Utility,Single,0,0,40,12,3,false,None,Charm,4,"적 하나를 정신 지배하여 아군으로 만듭니다",MindControl,hypnotic_swirl,mind_link,Level 12
-skill_078,시간 정지,Mage,Utility,AOE,0,0,60,20,0,true,None,TimeStop,2,"짧은 시간 동안 모든 것을 정지시킵니다",TimeStop,clock_stop,time_freeze,Level 15
-skill_079,방패 던지기,Knight,Physical,Single,130,0,20,5,3,false,None,Knockback,1,"방패를 던져 적을 밀어냅니다",ShieldThrow,shield_spin,shield_impact,Level 4
-skill_080,성스러운 공격,Knight,Physical,Single,150,0,25,6,1,false,None,None,0,"성스러운 힘이 깃든 공격입니다",HolyStrike,divine_sword,holy_burst,Level 6
-skill_081,기사도 정신,Knight,Buff,AllAllies,0,0,30,10,0,true,Chivalry,None,5,"기사도 정신으로 아군들을 고무시킵니다",Chivalry,noble_horn,honor_aura,Level 8
-skill_082,최후의 방어,Knight,Defensive,Self,0,0,40,15,0,false,LastStand,None,8,"죽음을 각오한 최후의 방어자세입니다",LastStand,determination_cry,final_shield,Level 12
-skill_083,검기,Warrior,Physical,Line,140,0,25,6,3,true,None,None,0,"검에서 나오는 기운으로 일직선을 베어냅니다",SwordWave,blade_energy,energy_slash,Level 6
-skill_084,광전사의 외침,Warrior,Buff,Self,0,0,35,12,0,false,Berserker,None,6,"광전사의 본능을 각성시킵니다",BerserkerCry,wild_roar,berserker_mark,Level 8
-skill_085,피바람,Warrior,Physical,AOE,160,0,40,10,2,true,None,Fear,3,"피비린내 나는 공격으로 적들을 공포에 빠뜨립니다",Bloodstorm,blood_spray,crimson_whirlwind,Level 10
-skill_086,불굴의 전사,Warrior,Buff,Self,0,0,30,15,0,false,Unbreakable,None,10,"어떤 공격도 막아내는 불굴의 의지입니다",UnbreakableWarrior,steel_resolve,iron_body,Level 14
-skill_087,유도 화살,Archer,Physical,Single,120,0,20,4,5,false,None,None,0,"목표를 추적하는 화살입니다",GuidedArrow,arrow_whistle,tracking_trail,Level 4
-skill_088,화염 화살,Archer,Physical,Single,130,0,25,5,5,false,None,Burn,3,"불타는 화살로 화상을 입힙니다",FireArrow,fire_shot,flame_arrow,Level 6
-skill_089,그물 화살,Archer,Utility,AOE,60,0,30,7,5,true,None,Net,4,"그물 화살로 적들의 움직임을 제한합니다",NetArrow,net_throw,entangle_web,Level 8
-skill_090,궁극의 사격,Archer,Physical,Single,250,0,50,15,5,false,None,None,0,"궁수의 궁극적인 사격 기술입니다",UltimateShot,perfect_shot,ultimate_arrow,Level 12
-skill_091,마법 보호막,Priest,Defensive,AllAllies,0,0,35,10,0,true,MagicShield,None,5,"마법 공격을 무효화하는 보호막입니다",MagicShield,ward_chant,magic_barrier,Level 6
-skill_092,신의 진노,Priest,Magical,AOE,180,0,45,12,4,true,None,None,0,"신의 진노로 적들을 심판합니다",DivineWrath,holy_thunder,divine_lightning,Level 8
-skill_093,영혼 치유,Priest,Healing,Single,0,200,40,8,3,false,None,None,0,"영혼까지 치유하는 강력한 치유술입니다",SoulHeal,soul_mend,spirit_light,Level 10
-skill_094,천사 소환,Priest,Summon,Area,0,0,60,20,2,false,None,None,0,"천사를 소환하여 도움을 받습니다",SummonAngel,angel_song,angelic_descent,Level 14
-skill_095,독 구름,Ranger,Utility,AOE,80,0,30,8,3,true,None,Poison,6,"독 구름으로 지역을 오염시킵니다",PoisonCloud,toxic_mist,poison_fog,Level 6
-skill_096,야수 변신,Ranger,Buff,Self,0,0,40,15,0,false,BeastForm,None,8,"야수로 변신하여 능력치가 크게 증가합니다",BeastTransform,howl,beast_aura,Level 10
-skill_097,자연과의 조화,Ranger,Healing,AllAllies,0,100,35,10,0,true,None,None,0,"자연과 조화를 이루어 아군들을 치유합니다",NatureHarmony,nature_song,natural_harmony,Level 8
-skill_098,대지의 축복,Ranger,Buff,AllAllies,0,0,40,12,0,true,EarthBlessing,None,6,"대지의 축복으로 아군들을 강화합니다",EarthBlessing,earth_rumble,earth_power,Level 12
-skill_099,암살자의 표식,Rogue,Utility,Single,0,0,25,8,2,false,None,Mark,0,"다음 공격이 치명타가 되도록 표식을 남깁니다",AssassinMark,mark_target,death_mark,Level 6
-skill_100,그림자 걸음,Rogue,Utility,Self,0,0,20,6,0,false,ShadowWalk,None,4,"그림자를 통해 이동하여 공격을 회피합니다",ShadowStep,shadow_move,shadow_trail,Level 4
-skill_101,치명적 연타,Rogue,Physical,Single,90,0,35,8,1,false,None,None,0,"치명적인 연속 공격을 가합니다",DeadlyCombo,rapid_stab,blood_spatter,Level 8
-skill_102,암흑의 숨결,Rogue,Magical,AOE,120,0,40,10,3,true,None,Weakness,5,"암흑의 힘으로 적들을 약화시킵니다",DarkBreath,dark_whisper,shadow_mist,Level 10
-skill_103,전투의 노래,Bard,Buff,AllAllies,0,0,25,6,0,true,BattleSong,None,5,"전투의 노래로 아군들의 전투력을 높입니다",BattleSong,war_chant,battle_rhythm,Level 4
-skill_104,평화의 선율,Bard,Utility,AllEnemies,0,0,35,10,0,true,None,Pacify,4,"평화로운 선율로 적들의 공격성을 낮춥니다",PeaceMelody,calming_tune,peaceful_waves,Level 6
-skill_105,마법사의 발라드,Bard,Buff,AllAllies,0,0,30,8,0,true,MagicBoost,None,5,"마법사들의 마나 회복력을 증가시킵니다",MageBallad,mystic_melody,magic_resonance,Level 8
-skill_106,승리의 찬가,Bard,Buff,AllAllies,0,0,40,12,0,true,Victory,None,6,"승리를 확신하는 찬가로 모든 능력치를 증가시킵니다",VictoryHymn,triumph_song,victory_light,Level 10
-skill_107,절망의 레퀴엠,Bard,Utility,AllEnemies,0,0,50,15,0,true,None,Despair,8,"절망의 레퀴엠으로 적들을 절망에 빠뜨립니다",DesperationRequiem,mournful_dirge,despair_aura,Level 12
-skill_108,운명의 교향곡,Bard,Buff,AllAllies,0,0,60,20,0,true,Destiny,None,10,"운명의 교향곡으로 모든 것을 바꿉니다",DestinySymphony,epic_orchestra,fate_weaving,Level 15
-skill_109,원소 폭발,Mage,Magical,AOE,200,0,50,12,4,true,None,ElementalDamage,0,"모든 원소의 힘을 한번에 폭발시킵니다",ElementalBurst,elemental_chaos,prism_explosion,Level 14
-skill_110,시공간 균열,Mage,Magical,Line,180,0,45,10,5,true,None,Void,3,"시공간을 찢어 적들을 무(無)로 보냅니다",SpaceRift,reality_tear,dimensional_crack,Level 16
+skillId,skillName,description,skillType,targetType,damageMultiplier,healAmount,buffType,buffAmount,buffDuration,manaCost,cooldown,range,areaOfEffect
+101,기본 공격,"대상에게 물리 피해를 입힙니다.",Attack,Enemy,1.0,0,None,0,0,0,0,1,0
+102,강타,"강력한 일격으로 150% 피해를 입힙니다.",Attack,Enemy,1.5,0,None,0,0,20,3,1,0
+103,전투 함성,"아군 전체의 공격력을 증가시킵니다.",Buff,AllAllies,0,0,AttackUp,0.2,5,30,10,0,0
+104,방어 태세,"자신의 방어력을 크게 증가시킵니다.",Buff,Self,0,0,DefenseUp,0.5,3,15,5,0,0
+105,회전 베기,"주변 적들에게 광역 피해를 입힙니다.",Attack,Area,1.2,0,None,0,0,35,8,1,1
+106,광폭화,"공격력과 속도가 증가하지만 방어력이 감소합니다.",Buff,Self,0,0,AttackUp,0.5,10,40,15,0,0
+107,파괴의 일격,"적에게 막대한 피해를 입히고 방어력을 감소시킵니다.",Attack,Enemy,2.0,0,None,0,0,50,12,1,0
+108,검술의 극의,"연속 공격으로 다수의 적을 공격합니다.",Attack,AllEnemies,0.8,0,None,0,0,60,15,0,0
+109,불굴의 의지,"일정 시간 동안 죽지 않습니다.",Buff,Self,0,0,Immunity,1.0,3,80,30,0,0
+110,전설의 검기,"전방의 모든 적에게 순수 피해를 입힙니다.",Attack,AllEnemies,3.0,0,None,0,0,100,25,0,0
+111,영웅의 오라,"모든 아군의 능력치를 대폭 상승시킵니다.",Buff,AllAllies,0,0,AttackUp,0.3,10,120,40,0,0
+201,방패 타격,"방패로 적을 공격하고 기절시킵니다.",Attack,Enemy,0.8,0,None,0,0,15,4,1,0
+202,철벽 방어,"받는 피해를 크게 감소시킵니다.",Buff,Self,0,0,DefenseUp,0.7,5,20,8,0,0
+203,도발,"주변 적들이 자신을 공격하도록 유도합니다.",Debuff,Area,0,0,None,0,3,10,6,2,2
+204,신성한 방패,"아군 한 명에게 보호막을 부여합니다.",Buff,Ally,0,0,Shield,100,0,25,10,3,0
+205,심판의 망치,"신성 피해를 입히고 언데드에게 추가 피해를 줍니다.",Attack,Enemy,1.3,0,None,0,0,30,8,1,0
+206,수호자의 맹세,"아군이 받는 피해를 대신 받습니다.",Buff,Ally,0,0,None,0,10,35,15,3,0
+207,정의의 진군,"전진하며 경로상의 모든 적을 밀어냅니다.",Attack,Area,1.0,0,None,0,0,40,12,3,1
+208,왕의 격려,"모든 아군의 방어력과 체력 재생을 증가시킵니다.",Buff,AllAllies,0,0,DefenseUp,0.3,8,50,20,0,0
+209,최후의 보루,"치명적인 피해를 1회 무시하고 체력을 회복합니다.",Buff,Self,0,200,Immunity,1.0,2,60,30,0,0
+210,성스러운 진,"범위 내 아군을 지속적으로 치유하고 보호합니다.",Buff,Area,0,50,DefenseUp,0.2,20,80,35,3,3
+211,천상의 수호,"모든 아군에게 무적 효과를 부여합니다.",Buff,AllAllies,0,0,Immunity,1.0,3,150,60,0,0
+301,파이어볼,"화염구를 발사해 적에게 마법 피해를 입힙니다.",Attack,Enemy,1.2,0,None,0,0,20,2,3,0
+302,프로스트 볼트,"얼음 화살로 적을 공격하고 둔화시킵니다.",Attack,Enemy,1.0,0,SpeedDown,0.3,3,25,3,3,0
+303,아케인 미사일,"유도 마법탄을 발사합니다.",Attack,Enemy,0.8,0,None,0,0,15,1,4,0
+304,번개 사슬,"적들 사이를 튀어다니는 번개를 발사합니다.",Attack,Enemy,1.5,0,None,0,0,40,6,3,0
+305,마나 실드,"받는 피해를 마나로 흡수합니다.",Buff,Self,0,0,Shield,0.5,10,30,10,0,0
+306,눈보라,"광역에 지속적인 냉기 피해를 입힙니다.",Attack,Area,0.5,0,SpeedDown,0.5,10,50,15,4,3
+307,순간이동,"짧은 거리를 순간이동하고 마법 강화를 받습니다.",Buff,Self,0,0,MagicPowerUp,0.3,5,20,8,0,0
+308,시간 정지,"적들의 시간을 멈춥니다.",Debuff,AllEnemies,0,0,SpeedDown,1.0,3,80,25,0,0
+309,원소 폭발,"모든 원소의 힘을 모아 거대한 폭발을 일으킵니다.",Attack,Area,3.0,0,None,0,0,100,30,5,5
+310,아케인 파워,"마법 공격력이 대폭 상승하고 마나가 재생됩니다.",Buff,Self,0,0,MagicPowerUp,1.0,10,60,20,0,0
+311,메테오,"하늘에서 거대한 운석을 떨어뜨립니다.",Attack,Area,5.0,0,None,0,0,150,45,6,4
+401,치유,"아군의 체력을 회복시킵니다.",Heal,Ally,0,100,None,0,0,20,2,3,0
+402,축복,"아군의 모든 능력치를 소폭 상승시킵니다.",Buff,Ally,0,0,AttackUp,0.15,10,25,8,3,0
+403,신성한 빛,"언데드에게 피해를 입히고 아군을 치유합니다.",Heal,Area,0.8,50,None,0,0,30,5,2,2
+404,정화,"아군의 디버프를 제거합니다.",Heal,Ally,0,30,None,0,0,15,3,3,0
+405,수호의 기도,"아군 전체에게 보호막을 부여합니다.",Buff,AllAllies,0,0,Shield,80,0,40,12,0,0
+406,부활,"죽은 아군을 되살립니다.",Heal,Ally,0,0.5,None,0,0,100,60,3,0
+407,성역,"지정 지역에 지속적인 치유 효과를 생성합니다.",Heal,Area,0,30,DefenseUp,0.2,15,50,20,4,3
+408,신의 분노,"모든 적에게 신성 피해를 입힙니다.",Attack,AllEnemies,1.5,0,None,0,0,60,15,0,0
+409,천사의 가호,"아군 한 명을 완전히 회복시키고 강화합니다.",Heal,Ally,0,999,AttackUp,0.5,10,80,30,3,0
+410,기적,"모든 아군을 부활시키고 완전히 회복시킵니다.",Heal,AllAllies,0,0.8,None,0,0,200,120,0,0
+411,신성한 진노,"거대한 신성 폭발로 모든 악을 정화합니다.",Attack,AllEnemies,3.0,0,None,0,0,150,40,0,0
+501,기습,"적의 뒤에서 공격해 치명타를 입힙니다.",Attack,Enemy,1.5,0,None,0,0,15,3,1,0
+502,독칼,"적을 중독시켜 지속 피해를 입힙니다.",Attack,Enemy,0.8,0,None,0,10,20,5,1,0
+503,은신,"일정 시간 동안 모습을 감춥니다.",Buff,Self,0,0,SpeedUp,0.5,5,25,10,0,0
+504,연막탄,"연막을 생성해 적의 명중률을 감소시킵니다.",Debuff,Area,0,0,AccuracyDown,0.3,8,30,8,2,2
+505,그림자 분신,"분신을 생성해 함께 공격합니다.",Buff,Self,0,0,AttackUp,0.5,10,40,15,0,0
+506,암살,"적의 급소를 노려 즉사시킬 확률이 있습니다.",Attack,Enemy,2.5,0,None,0,0,50,12,1,0
+507,그림자 질주,"빠르게 이동하며 경로상의 적을 공격합니다.",Attack,Area,1.2,0,None,0,0,35,10,3,1
+508,칼날 폭풍,"주변에 칼날을 흩뿌려 광역 피해를 입힙니다.",Attack,Area,1.0,0,None,0,0,45,15,2,2
+509,죽음의 표식,"적에게 표식을 남겨 받는 피해를 증가시킵니다.",Debuff,Enemy,0,0,DefenseDown,0.5,10,30,20,3,0
+510,그림자 처형,"체력이 낮은 적을 즉시 처형합니다.",Attack,Enemy,5.0,0,None,0,0,80,30,1,0
+511,어둠의 지배자,"그림자 속에서 무적이 되고 모든 공격이 치명타가 됩니다.",Buff,Self,0,0,CritRateUp,1.0,8,100,45,0,0
+601,정밀 사격,"높은 명중률로 적을 공격합니다.",Attack,Enemy,1.2,0,None,0,0,10,2,4,0
+602,폭발 화살,"폭발하는 화살로 범위 피해를 입힙니다.",Attack,Area,1.0,0,None,0,0,25,5,3,1
+603,추적 화살,"적을 자동으로 추적하는 화살을 발사합니다.",Attack,Enemy,1.3,0,None,0,0,20,4,5,0
+604,독 화살,"적을 중독시키는 화살을 발사합니다.",Attack,Enemy,0.9,0,None,0,8,22,6,4,0
+605,매의 눈,"명중률과 크리티컬 확률이 증가합니다.",Buff,Self,0,0,AccuracyUp,0.3,10,30,12,0,0
+606,다중 사격,"여러 발의 화살을 동시에 발사합니다.",Attack,AllEnemies,0.7,0,None,0,0,35,8,0,0
+607,바람의 가호,"이동 속도와 공격 속도가 증가합니다.",Buff,Self,0,0,SpeedUp,0.5,8,40,15,0,0
+608,관통 사격,"적을 관통하는 강력한 화살을 발사합니다.",Attack,Area,1.8,0,None,0,0,50,12,5,1
+609,화살비,"하늘에서 화살이 쏟아집니다.",Attack,Area,0.5,0,None,0,10,60,20,4,3
+610,달의 화살,"달빛이 깃든 화살로 모든 적을 공격합니다.",Attack,AllEnemies,2.0,0,None,0,0,80,25,0,0
+611,신궁의 일격,"시공간을 초월하는 절대 명중의 화살을 발사합니다.",Attack,Enemy,5.0,0,None,0,0,100,40,10,0
+701,지혜의 일격,"물리와 마법이 조화된 공격을 가합니다.",Attack,Enemy,1.1,0,None,0,0,15,3,2,0
+702,명상,"마나를 회복하고 정신력을 강화합니다.",Buff,Self,0,0,ManaRegen,50,5,20,8,0,0
+703,균형의 오라,"주변 아군의 능력치를 균등하게 상승시킵니다.",Buff,Area,0,0,AttackUp,0.2,10,30,12,3,3
+704,원소 조화,"모든 원소 저항력이 증가합니다.",Buff,AllAllies,0,0,DefenseUp,0.25,8,35,15,0,0
+705,지식의 폭발,"정신력으로 적에게 순수 피해를 입힙니다.",Attack,Enemy,1.5,0,None,0,0,40,10,3,0
+706,시공 왜곡,"시간과 공간을 조작해 적을 혼란시킵니다.",Debuff,Area,0,0,SpeedDown,0.7,5,50,18,4,2
+707,별의 인도,"모든 아군의 명중률과 회피율을 상승시킵니다.",Buff,AllAllies,0,0,AccuracyUp,0.2,15,45,20,0,0
+708,고대의 지혜,"잊혀진 마법을 시전합니다.",Attack,AllEnemies,2.0,0,None,0,0,70,25,0,0
+709,진리의 빛,"모든 환상을 깨뜨리고 진실을 드러냅니다.",Debuff,AllEnemies,0,0,DefenseDown,0.3,10,60,30,0,0
+710,우주의 조화,"모든 아군을 완벽한 상태로 만듭니다.",Buff,AllAllies,0,200,AttackUp,0.5,15,100,45,0,0
+711,창조와 파괴,"생명과 죽음의 경계를 조작하는 궁극의 힘을 발휘합니다.",Attack,AllEnemies,4.0,0,None,0,0,150,60,0,0

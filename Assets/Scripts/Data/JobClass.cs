@@ -9,6 +9,7 @@ namespace GuildMaster.Data
         Rogue = 4,      // 도적
         Paladin = 5,    // 성기사
         Berserker = 6,  // 광전사
-        Necromancer = 7 // 네크로맨서
+        Necromancer = 7, // 네크로맨서
+        Sage = 8        // 현자
     }
 } 

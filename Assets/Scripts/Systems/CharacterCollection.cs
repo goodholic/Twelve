@@ -349,7 +349,7 @@ namespace GuildMaster.Systems
             // 저장된 캐릭터들 복원 (int ID를 string으로 변환하여 검색)
             foreach (int characterId in saveData.CollectedCharacterIds)
             {
-                var unit = CharacterManager.Instance?.CreateUnit(characterId.ToString());
+                var unit = CharacterManager.Instance.CreateCharacter(characterId.ToString(), 1);
                 if (unit != null)
                 {
                     collectedCharacters.Add(unit);

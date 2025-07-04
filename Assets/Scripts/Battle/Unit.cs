@@ -47,7 +47,7 @@ namespace GuildMaster.Battle
     }
 
     [System.Serializable]
-    public class Unit
+    public class Unit : MonoBehaviour
     {
         // Basic Info
         public string unitId;
@@ -133,6 +133,12 @@ namespace GuildMaster.Battle
 
         // State
         public bool isAlive => currentHP > 0;
+        public bool isElite = false;
+        public bool isBoss = false;
+        
+        // Alternative property names for compatibility
+        public float maxHealth => maxHP;
+        public float currentHealth => currentHP;
         
         // Combat Stats (Calculated)
         public float effectiveAttackPower => CalculateAttackPower();
@@ -707,6 +713,36 @@ namespace GuildMaster.Battle
                 return;
                 
             activeStatusEffects.Add(effect);
+        }
+        
+        public void ApplyStatusEffect(StatusEffect effect)
+        {
+            AddStatusEffect(effect);
+        }
+        
+        public void ApplyStatusEffect(string effectName, float duration = 10f, float value = 1f)
+        {
+            StatusEffectType effectType = StatusEffectType.Poison; // 기본값
+            
+            // effectName을 기반으로 적절한 StatusEffectType 결정
+            switch (effectName.ToLower())
+            {
+                case "poison": effectType = StatusEffectType.Poison; break;
+                case "burn": effectType = StatusEffectType.Burn; break;
+                case "freeze": effectType = StatusEffectType.Freeze; break;
+                case "stun": effectType = StatusEffectType.Stun; break;
+                case "slow": effectType = StatusEffectType.Slow; break;
+                case "haste": effectType = StatusEffectType.Haste; break;
+                case "shield": effectType = StatusEffectType.Shield; break;
+                case "regen": effectType = StatusEffectType.Regeneration; break;
+                case "berserk": effectType = StatusEffectType.Berserk; break;
+                default: effectType = StatusEffectType.Poison; break;
+            }
+            
+            // StatusEffect 생성자 사용
+            var effect = new StatusEffect(effectType, duration, value);
+            
+            AddStatusEffect(effect);
         }
 
         public void RemoveAllDebuffs()

@@ -290,11 +290,14 @@ public static class EditorCleanupUtility
             if (character != null)
             {
                 GuildMaster.Game.PlacementManager manager = Object.FindAnyObjectByType<GuildMaster.Game.PlacementManager>();
-                if (manager != null && manager.bulletPanel != null && character != null)
+                if (manager != null && character != null)
                 {
-                    // 이미 연결되어 있지 않으면 할당
-                    // (필요 시, 무조건 덮어쓰기를 원하면 if(... == null) 체크 제거)
-                    character.SetBulletPanel(manager.bulletPanel);
+                    // PlacementManager doesn't have bulletPanel, so we'll try to find it elsewhere
+                    Transform bulletPanel = GameObject.Find("BulletPanel")?.transform;
+                    if (bulletPanel != null)
+                    {
+                        character.SetBulletPanel(bulletPanel);
+                    }
                 }
             }
         }

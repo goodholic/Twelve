@@ -42,9 +42,9 @@ public class CharacterCSVDatabase : MonoBehaviour
             if (int.TryParse(values[1], out int index)) character.characterIndex = index;
             if (int.TryParse(values[2], out int race)) character.race = (CharacterRace)race;
             if (int.TryParse(values[3], out int star)) character.star = star;
-            if (float.TryParse(values[4], out float attackPower)) character.attackPower = attackPower;
-            if (float.TryParse(values[5], out float attackSpeed)) character.attackSpeed = attackSpeed;
-            if (float.TryParse(values[6], out float health)) character.health = health;
+            if (float.TryParse(values[4], out float attackPower)) character.attackPower = (int)attackPower;
+            if (float.TryParse(values[5], out float attackSpeed)) character.attackSpeed = (int)attackSpeed;
+            if (float.TryParse(values[6], out float health)) character.health = (int)health;
             if (int.TryParse(values[7], out int cost)) character.cost = cost;
             
             characters.Add(character);

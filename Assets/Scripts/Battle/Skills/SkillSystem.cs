@@ -59,7 +59,10 @@ namespace GuildMaster.Battle
         Slow,           // 둔화
         Bleed,          // 출혈
         Regeneration,   // 재생
-        Invulnerable    // 무적
+        Invulnerable,   // 무적
+        Haste,          // 가속
+        Shield,         // 보호막
+        Berserk         // 광폭화
     }
     
     public class Skill

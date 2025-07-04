@@ -385,7 +385,7 @@ namespace GuildMaster.Systems
                 for (int j = 0; j < 9; j++)
                 {
                     JobClass randomClass = (JobClass)UnityEngine.Random.Range(0, 7);
-                    var unit = new Unit($"Unit {j}", UnityEngine.Random.Range(10, 20), randomClass);
+                    var unit = new GuildMaster.Battle.Unit($"Unit {j}", UnityEngine.Random.Range(10, 20), randomClass);
                     squad.AddUnit(unit);
                 }
                 
@@ -422,13 +422,13 @@ namespace GuildMaster.Systems
             return squad;
         }
         
-        Unit GenerateEnemyUnit(int difficulty)
+        GuildMaster.Battle.Unit GenerateEnemyUnit(int difficulty)
         {
             JobClass[] availableClasses = { JobClass.Warrior, JobClass.Knight, JobClass.Mage, JobClass.Priest, JobClass.Assassin, JobClass.Ranger };
             JobClass randomClass = availableClasses[UnityEngine.Random.Range(0, availableClasses.Length)];
             int level = UnityEngine.Random.Range(8, 15 + difficulty * 3);
             
-            var unit = new Unit($"Enemy {randomClass}", level, randomClass);
+            var unit = new GuildMaster.Battle.Unit($"Enemy {randomClass}", level, randomClass);
             
             // Scale stats based on difficulty
             unit.maxHP *= (1f + difficulty * 0.2f);

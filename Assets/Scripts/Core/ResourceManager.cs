@@ -7,10 +7,15 @@ namespace GuildMaster.Core
 {
     public enum ResourceType
     {
+        None,
         Gold,
         Wood,
         Stone,
-        ManaStone
+        ManaStone,
+        Food,
+        Energy,
+        Experience,
+        Mana
     }
     
     public class ResourceManager : MonoBehaviour
@@ -42,6 +47,10 @@ namespace GuildMaster.Core
             public int Wood { get; set; }
             public int Stone { get; set; }
             public int ManaStone { get; set; }
+            public int Food { get; set; }
+            public int Energy { get; set; }
+            public int Experience { get; set; }
+            public int Mana { get; set; }
             public int Reputation { get; set; }
             
             public int GetResource(ResourceType type)
@@ -52,6 +61,11 @@ namespace GuildMaster.Core
                     case ResourceType.Wood: return Wood;
                     case ResourceType.Stone: return Stone;
                     case ResourceType.ManaStone: return ManaStone;
+                    case ResourceType.Food: return Food;
+                    case ResourceType.Energy: return Energy;
+                    case ResourceType.Experience: return Experience;
+                    case ResourceType.Mana: return Mana;
+                    case ResourceType.None:
                     default: return 0;
                 }
             }
@@ -64,6 +78,10 @@ namespace GuildMaster.Core
                     case ResourceType.Wood: Wood = value; break;
                     case ResourceType.Stone: Stone = value; break;
                     case ResourceType.ManaStone: ManaStone = value; break;
+                    case ResourceType.Food: Food = value; break;
+                    case ResourceType.Energy: Energy = value; break;
+                    case ResourceType.Experience: Experience = value; break;
+                    case ResourceType.Mana: Mana = value; break;
                 }
             }
         }
@@ -321,7 +339,27 @@ namespace GuildMaster.Core
 
         public void AddManaStone(int amount)
         {
-            AddResource(ResourceType.ManaStone, amount, "Direct");
+            AddResource(ResourceType.ManaStone, amount, "Manual");
+        }
+        
+        public void AddFood(int amount)
+        {
+            AddResource(ResourceType.Food, amount, "Manual");
+        }
+        
+        public void AddEnergy(int amount)
+        {
+            AddResource(ResourceType.Energy, amount, "Manual");
+        }
+        
+        public void AddExperience(int amount)
+        {
+            AddResource(ResourceType.Experience, amount, "Manual");
+        }
+        
+        public void AddMana(int amount)
+        {
+            AddResource(ResourceType.Mana, amount, "Manual");
         }
 
         public void AddReputation(int amount)
@@ -411,7 +449,27 @@ namespace GuildMaster.Core
         public int GetWood() => currentResources.Wood;
         public int GetStone() => currentResources.Stone;
         public int GetManaStone() => currentResources.ManaStone;
+        public int GetFood() => currentResources.Food;
+        public int GetEnergy() => currentResources.Energy;
+        public int GetExperience() => currentResources.Experience;
+        public int GetMana() => currentResources.Mana;
         public int GetReputation() => currentResources.Reputation;
+        
+        // Generic resource methods
+        public int GetResource(ResourceType type) => currentResources.GetResource(type);
+        
+        public bool SpendResource(ResourceType type, int amount)
+        {
+            int current = GetResource(type);
+            if (current >= amount)
+            {
+                currentResources.SetResource(type, current - amount);
+                RecordTransaction(type, -amount, "Spent");
+                OnResourcesChanged?.Invoke(currentResources);
+                return true;
+            }
+            return false;
+        }
 
         // Production Rates
         public float GetGoldProductionRate() => goldProductionRate;
@@ -449,6 +507,118 @@ namespace GuildMaster.Core
                 stoneProductionRate = production.ContainsKey(ResourceType.Stone) ? production[ResourceType.Stone] : 0f;
                 manaStoneProductionRate = production.ContainsKey(ResourceType.ManaStone) ? production[ResourceType.ManaStone] : 0f;
             }
+        }
+        
+        // 프리미엄 자원 관리 (IdleProgressionSystem 호환성)
+        private int gems = 50;
+        private int tickets = 10;
+        private int tokens = 0;
+        
+        public int GetGems() => gems;
+        public int GetTickets() => tickets;
+        public int GetTokens() => tokens;
+        
+        public bool SpendGems(int amount)
+        {
+            if (gems >= amount)
+            {
+                gems -= amount;
+                return true;
+            }
+            return false;
+        }
+        
+        public bool SpendTickets(int amount)
+        {
+            if (tickets >= amount)
+            {
+                tickets -= amount;
+                return true;
+            }
+            return false;
+        }
+        
+        public bool SpendTokens(int amount)
+        {
+            if (tokens >= amount)
+            {
+                tokens -= amount;
+                return true;
+            }
+            return false;
+        }
+        
+        public void AddGems(int amount)
+        {
+            gems += amount;
+        }
+        
+        public void AddTickets(int amount)
+        {
+            tickets += amount;
+        }
+        
+        public void AddTokens(int amount)
+        {
+            tokens += amount;
+        }
+        
+        // 용량 업그레이드 (IdleProgressionSystem 호환성)
+        public void UpgradeCapacity(ResourceType type, int increaseAmount)
+        {
+            switch (type)
+            {
+                case ResourceType.Gold:
+                    resourceLimits.MaxGold += increaseAmount;
+                    break;
+                case ResourceType.Wood:
+                    resourceLimits.MaxWood += increaseAmount;
+                    break;
+                case ResourceType.Stone:
+                    resourceLimits.MaxStone += increaseAmount;
+                    break;
+                case ResourceType.ManaStone:
+                    resourceLimits.MaxManaStone += increaseAmount;
+                    break;
+            }
+        }
+        
+        // 자원 이름 및 아이콘 (IdleProgressionSystem 호환성)
+        public string GetResourceDisplayName(ResourceType type)
+        {
+            return type switch
+            {
+                ResourceType.Gold => "골드",
+                ResourceType.Wood => "목재",
+                ResourceType.Stone => "돌",
+                ResourceType.Food => "식량",
+                ResourceType.ManaStone => "마나스톤",
+                _ => "알 수 없음"
+            };
+        }
+        
+        public string GetResourceIcon(ResourceType type)
+        {
+            return type switch
+            {
+                ResourceType.Gold => "icon_gold",
+                ResourceType.Wood => "icon_wood",
+                ResourceType.Stone => "icon_stone",
+                ResourceType.Food => "icon_food",
+                ResourceType.ManaStone => "icon_manastone",
+                _ => "icon_unknown"
+            };
+        }
+        
+        // 자원 포맷팅 (IdleProgressionSystem 호환성)
+        public string FormatResourceAmount(int amount)
+        {
+            if (amount >= 1000000)
+                return $"{amount / 1000000f:F1}M";
+            else if (amount >= 1000)
+                return $"{amount / 1000f:F1}K";
+            else
+                return amount.ToString();
         }
         
         // Transaction History

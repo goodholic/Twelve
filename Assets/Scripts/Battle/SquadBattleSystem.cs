@@ -32,11 +32,12 @@ namespace GuildMaster.Battle
             }
         }
         
-        // 상수 정의
+        // 상수 정의 (README 기준: 각 부대당 9명씩, 총 18명 vs 18명)
         public const int SQUADS_PER_GUILD = 2;
-        public const int UNITS_PER_SQUAD = 18;
+        public const int UNITS_PER_SQUAD = 9;    // README: 각 부대당 9명
         public const int SQUAD_WIDTH = 6;
         public const int SQUAD_HEIGHT = 3;
+        public const int TOTAL_UNITS_PER_SIDE = 18;  // 2부대 x 9명 = 18명
         
         // 이벤트
         public event Action<SquadFormation, SquadFormation> OnBattleStart;

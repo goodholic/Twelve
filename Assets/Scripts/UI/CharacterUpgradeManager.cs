@@ -284,10 +284,9 @@ namespace pjy.Managers
             // 레벨당 스탯 증가율
             float statIncreaseRate = 0.05f; // 5%
             
-            character.attackPower *= (1f + statIncreaseRate);
-            character.maxHP *= (1f + statIncreaseRate);
+            character.attackPower = (int)(character.attackPower * (1f + statIncreaseRate));
+            character.maxHP = (int)(character.maxHP * (1f + statIncreaseRate));
             character.health = character.maxHP;
-            character.maxHealth = character.maxHP;
             
             Debug.Log($"[CharacterUpgradeManager] {character.characterName} 레벨업! Lv.{character.level} (공격력: {character.attackPower}, 체력: {character.maxHP})");
         }

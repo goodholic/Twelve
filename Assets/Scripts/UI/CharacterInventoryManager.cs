@@ -332,31 +332,31 @@ public class CharacterInventoryManager : MonoBehaviour
 
     private CharacterData CreateNewCharacter(CharacterData template)
     {
-        CharacterData copy = new CharacterData
-        {
-            characterName = template.characterName,
-            attackPower = template.attackPower,
-            attackSpeed = template.attackSpeed,
-            attackRange = template.attackRange,
-            maxHP = template.maxHP,
-            moveSpeed = template.moveSpeed,
-            rangeType = template.rangeType,
-            isAreaAttack = template.isAreaAttack,
-            isBuffSupport = template.isBuffSupport,
-            spawnPrefab = template.spawnPrefab,
-            buttonIcon = template.buttonIcon,
-            cost = template.cost,
-            level = template.level,
-            currentExp = 0,
-            expToNextLevel = template.expToNextLevel,
-            initialStar = template.initialStar,
-            race = template.race,
-            isFreeSlotOnly = template.isFreeSlotOnly,
-            frontSprite = template.frontSprite,
-            backSprite = template.backSprite,
-            areaAttackRadius = template.areaAttackRadius,
-            motionPrefab = template.motionPrefab
-        };
+        CharacterData copy = new CharacterData();
+        copy.characterName = template.characterName;
+        copy.moveSpeed = template.moveSpeed;
+        copy.rangeType = template.rangeType;
+        copy.isAreaAttack = template.isAreaAttack;
+        copy.isBuffSupport = template.isBuffSupport;
+        copy.spawnPrefab = template.spawnPrefab;
+        copy.buttonIcon = template.buttonIcon;
+        copy.cost = template.cost;
+        copy.level = template.level;
+        copy.currentExp = 0;
+        copy.initialStar = template.initialStar;
+        copy.race = template.race;
+        copy.isFreeSlotOnly = template.isFreeSlotOnly;
+        copy.frontSprite = template.frontSprite;
+        copy.backSprite = template.backSprite;
+        copy.areaAttackRadius = template.areaAttackRadius;
+        copy.motionPrefab = template.motionPrefab;
+        
+        // Setter가 있는 속성들을 나중에 설정
+        copy.attackPower = template.attackPower;
+        copy.attackSpeed = template.attackSpeed;
+        copy.attackRange = template.attackRange;
+        copy.maxHP = template.maxHP;
+        copy.expToNextLevel = template.expToNextLevel;
         return copy;
     }
 
@@ -795,31 +795,31 @@ public class CharacterInventoryManager : MonoBehaviour
         // 기본 캐릭터 8개 생성 (RandomChar_0 ~ RandomChar_7)
         for (int i = 0; i < 8; i++)
         {
-            CharacterData defaultChar = new CharacterData
-            {
-                characterName = $"RandomChar_{i}",
-                attackPower = 10 + (i * 2), // 10, 12, 14, 16, 18, 20, 22, 24
-                attackSpeed = 1f,
-                attackRange = 1.5f,
-                maxHP = 100,
-                moveSpeed = 1f,
-                rangeType = (int)((RangeType)(i % 3)), // 0=Melee, 1=Ranged, 2=Magic 순환
-                isAreaAttack = (i % 4 == 0), // 4번째마다 범위 공격
-                isBuffSupport = (i % 5 == 0), // 5번째마다 버프 지원
-                level = 1,
-                currentExp = 0,
-                expToNextLevel = 100,
-                initialStar = (int)CharacterStar.OneStar,
-                race = (CharacterRace)(i % 3), // 0=Human, 1=Orc, 2=Elf 순환
-                isFreeSlotOnly = false,
-                cost = 1 + (i % 3), // 1, 2, 3 순환
-                spawnPrefab = null, // 기본 생성 시에는 null
-                buttonIcon = null, // 기본 생성 시에는 null
-                frontSprite = null,
-                backSprite = null,
-                areaAttackRadius = 0f,
-                motionPrefab = null
-            };
+            CharacterData defaultChar = new CharacterData();
+            defaultChar.characterName = $"RandomChar_{i}";
+            defaultChar.moveSpeed = 1f;
+            defaultChar.rangeType = i % 3 == 0 ? "Melee" : (i % 3 == 1 ? "Ranged" : "Magic");
+            defaultChar.isAreaAttack = (i % 4 == 0);
+            defaultChar.isBuffSupport = (i % 5 == 0);
+            defaultChar.level = 1;
+            defaultChar.currentExp = 0;
+            defaultChar.initialStar = 1;
+            defaultChar.race = (CharacterRace)(i % 3);
+            defaultChar.isFreeSlotOnly = false;
+            defaultChar.cost = 1 + (i % 3);
+            defaultChar.spawnPrefab = null;
+            defaultChar.buttonIcon = null;
+            defaultChar.frontSprite = null;
+            defaultChar.backSprite = null;
+            defaultChar.areaAttackRadius = 0f;
+            defaultChar.motionPrefab = null;
+            
+            // Setter가 있는 속성들을 별도로 설정
+            defaultChar.attackPower = 10 + (i * 2);
+            defaultChar.attackSpeed = 1;
+            defaultChar.attackRange = 1.5f;
+            defaultChar.maxHP = 100;
+            defaultChar.expToNextLevel = 100;
             
             gachaPool.Add(defaultChar);
             Debug.LogError($"[CharacterInventoryManager] 기본 캐릭터 생성됨: {defaultChar.characterName} (공격력: {defaultChar.attackPower}, 종족: {defaultChar.race})");

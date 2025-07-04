@@ -1406,9 +1406,9 @@ namespace GuildMaster.Systems
         #region Game-Specific Helper Methods
 
         // Resource Gathering Helpers
-        ResourceType GetRandomResourceType()
+        GuildMaster.Core.ResourceType GetRandomResourceType()
         {
-            return (ResourceType)Random.Range(0, Enum.GetValues(typeof(ResourceType)).Length);
+            return (GuildMaster.Core.ResourceType)Random.Range(0, Enum.GetValues(typeof(GuildMaster.Core.ResourceType)).Length);
         }
 
         int GetTargetAmount(EventDifficulty difficulty, int min, int max)

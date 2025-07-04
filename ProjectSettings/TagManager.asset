@@ -4,20 +4,16 @@
 TagManager:
   serializedVersion: 3
   tags:
-  - Monster
-  - Bullet
-  - ImpactVFX
-  - EnemyMonster
-  - Opponent Player
-  - Character
+  - Enemy
+  - Building
   layers:
   - Default
   - TransparentFX
   - Ignore Raycast
-  - 
+  - Units
   - Water
   - UI
-  - Game World
+  - Buildings
   - 
   - 
   - 

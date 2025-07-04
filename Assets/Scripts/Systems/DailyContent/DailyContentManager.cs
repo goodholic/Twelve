@@ -4,6 +4,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using GuildMaster.Battle; // Unit을 위해 추가
+using GuildMaster.Guild; // GuildManager를 위해 추가
 
 namespace GuildMaster.Systems
 {
@@ -560,7 +561,7 @@ namespace GuildMaster.Systems
             UpdateQuestProgress(QuestObjective.RecruitAdventurers, 1);
         }
         
-        void OnBuildingUpgraded(Core.GuildManager.Building building)
+        void OnBuildingUpgraded(GuildManager.Building building)
         {
             UpdateQuestProgress(QuestObjective.UpgradeBuildings, 1);
         }

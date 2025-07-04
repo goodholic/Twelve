@@ -74,3 +74,38 @@ crashlytics-build.properties
 /[Aa]ssets/[Ss]treamingAssets/aa/*
 
 .fake
+
+# Unity auto-generated files
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Bb]uild/
+/[Bb]uilds/
+/[Ll]ogs/
+/[Mm]emoryCaptures/
+/[Aa]ssets/AssetStoreTools*
+
+# Unity package manager files
+/[Aa]ssets/Packages/manifest.json
+/[Aa]ssets/Packages/packages-lock.json
+
+# Visual Studio / Rider / VS Code generated files
+.vs/
+.vscode/
+*.csproj
+*.unityproj
+*.sln
+*.suo
+*.user
+*.userprefs
+
+# Python Virtual Environment
+gemini_env/
+
+# OS-generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
