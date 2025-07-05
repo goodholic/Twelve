@@ -189,6 +189,31 @@ namespace GuildMaster.Data
             return info;
         }
         
+        public void Initialize()
+        {
+            // Initialize method for compatibility
+            if (string.IsNullOrEmpty(dialogueId))
+            {
+                dialogueId = System.Guid.NewGuid().ToString();
+            }
+            if (string.IsNullOrEmpty(dialogueName))
+            {
+                dialogueName = "New Dialogue";
+            }
+            if (choices == null)
+            {
+                choices = new List<DialogueChoice>();
+            }
+            if (conditions == null)
+            {
+                conditions = new List<DialogueCondition>();
+            }
+            if (effects == null)
+            {
+                effects = new List<DialogueEffect>();
+            }
+        }
+        
         private string GetDialogueTypeName()
         {
             return dialogueType switch

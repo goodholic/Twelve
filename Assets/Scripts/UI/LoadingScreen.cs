@@ -90,7 +90,18 @@ namespace GuildMaster.UI
             StartCoroutine(FadeOutCoroutine());
         }
         
+        public void FadeOut(System.Action onComplete)
+        {
+            // 페이드 아웃 애니메이션 후 콜백 실행
+            StartCoroutine(FadeOutCoroutine(onComplete));
+        }
+        
         private IEnumerator FadeOutCoroutine()
+        {
+            yield return FadeOutCoroutine(null);
+        }
+        
+        private IEnumerator FadeOutCoroutine(System.Action onComplete)
         {
             CanvasGroup canvasGroup = GetComponent<CanvasGroup>();
             if (canvasGroup == null)
@@ -112,6 +123,8 @@ namespace GuildMaster.UI
             
             canvasGroup.alpha = 0f;
             gameObject.SetActive(false);
+            
+            onComplete?.Invoke();
         }
     }
 } 

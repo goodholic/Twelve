@@ -51,12 +51,12 @@ public class CharacterDatabase : ScriptableObject
         return characters.Find(c => c.id == characterId || c.characterID == characterId);
     }
     
-    public List<CharacterData> GetCharactersByClass(GuildMaster.Data.JobClass jobClass)
+    public List<CharacterData> GetCharactersByClass(GuildMaster.Battle.JobClass jobClass)
     {
         return characters.FindAll(c => c.jobClass == jobClass);
     }
     
-    public List<CharacterData> GetCharactersByJobClass(GuildMaster.Data.JobClass jobClass)
+    public List<CharacterData> GetCharactersByJobClass(GuildMaster.Battle.JobClass jobClass)
     {
         return characters.Where(c => c.jobClass == jobClass).ToList();
     }

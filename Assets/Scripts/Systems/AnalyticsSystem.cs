@@ -8,6 +8,11 @@ using System.Text;
 using GuildMaster.Core;
 using GuildMaster.Data;
 using GuildMaster.Battle;
+using GuildMaster.Guild;
+using JobClass = GuildMaster.Battle.JobClass;
+using Unit = GuildMaster.Battle.Unit;
+using Rarity = GuildMaster.Data.Rarity;
+using ResourceType = GuildMaster.Core.ResourceType;
 
 namespace GuildMaster.Systems
 {
@@ -98,11 +103,11 @@ namespace GuildMaster.Systems
         [System.Serializable]
         public class BuildingAnalytics
         {
-            public Dictionary<GuildManager.BuildingType, int> buildingCounts = new Dictionary<GuildManager.BuildingType, int>();
-            public Dictionary<GuildManager.BuildingType, float> averageLevels = new Dictionary<GuildManager.BuildingType, float>();
-            public List<GuildManager.BuildingType> constructionOrder = new List<GuildManager.BuildingType>();
-            public Dictionary<GuildManager.BuildingType, float> timeToConstruct = new Dictionary<GuildManager.BuildingType, float>();
-            public Dictionary<GuildManager.BuildingType, int> upgradeFrequency = new Dictionary<GuildManager.BuildingType, int>();
+            public Dictionary<BuildingType, int> buildingCounts = new Dictionary<BuildingType, int>();
+            public Dictionary<BuildingType, float> averageLevels = new Dictionary<BuildingType, float>();
+            public List<BuildingType> constructionOrder = new List<BuildingType>();
+            public Dictionary<BuildingType, float> timeToConstruct = new Dictionary<BuildingType, float>();
+            public Dictionary<BuildingType, int> upgradeFrequency = new Dictionary<BuildingType, int>();
             public float averageConstructionTime;
             public int totalBuildings;
             public int totalUpgrades;
@@ -762,7 +767,7 @@ namespace GuildMaster.Systems
 
         void OnBuildingConstructed(GameEvent gameEvent)
         {
-            var buildingType = gameEvent.GetParameter<GuildManager.BuildingType>("buildingType");
+            var buildingType = gameEvent.GetParameter<BuildingType>("buildingType");
             
             if (!buildingAnalytics.buildingCounts.ContainsKey(buildingType))
                 buildingAnalytics.buildingCounts[buildingType] = 0;
@@ -780,7 +785,7 @@ namespace GuildMaster.Systems
 
         void OnBuildingUpgraded(GameEvent gameEvent)
         {
-            var buildingType = gameEvent.GetParameter<GuildManager.BuildingType>("buildingType");
+            var buildingType = gameEvent.GetParameter<BuildingType>("buildingType");
             var newLevel = gameEvent.GetParameter<int>("newLevel");
             
             if (!buildingAnalytics.upgradeFrequency.ContainsKey(buildingType))
@@ -798,7 +803,7 @@ namespace GuildMaster.Systems
 
         void OnBuildingProductionComplete(GameEvent gameEvent)
         {
-            var buildingType = gameEvent.GetParameter<GuildManager.BuildingType>("buildingType");
+            var buildingType = gameEvent.GetParameter<BuildingType>("buildingType");
             var productionAmount = gameEvent.GetParameter<float>("amount");
             
             TrackAction("BuildingProduction", new Dictionary<string, object>

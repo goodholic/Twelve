@@ -1,5 +1,6 @@
 using UnityEngine;
 using System;
+using GuildMaster.Battle;
 
 namespace GuildMaster.Data
 {
@@ -16,6 +17,36 @@ namespace GuildMaster.Data
         public JobClass jobClass;
         public int level = 1;
         public CharacterRarity rarity = CharacterRarity.Common;
+        
+        // Rarity 호환성 속성
+        public Rarity Rarity 
+        { 
+            get 
+            {
+                switch (rarity)
+                {
+                    case CharacterRarity.Common: return Rarity.Common;
+                    case CharacterRarity.Uncommon: return Rarity.Uncommon;
+                    case CharacterRarity.Rare: return Rarity.Rare;
+                    case CharacterRarity.Epic: return Rarity.Epic;
+                    case CharacterRarity.Legendary: return Rarity.Legendary;
+                    default: return Rarity.Common;
+                }
+            }
+            set 
+            {
+                switch (value)
+                {
+                    case Rarity.Common: rarity = CharacterRarity.Common; break;
+                    case Rarity.Uncommon: rarity = CharacterRarity.Uncommon; break;
+                    case Rarity.Rare: rarity = CharacterRarity.Rare; break;
+                    case Rarity.Epic: rarity = CharacterRarity.Epic; break;
+                    case Rarity.Legendary: rarity = CharacterRarity.Legendary; break;
+                    case Rarity.Mythic: rarity = CharacterRarity.Legendary; break;
+                    default: rarity = CharacterRarity.Common; break;
+                }
+            }
+        }
         public CharacterRace race = CharacterRace.Human;
         public int star = 1;
         public int initialStar = 1;
@@ -123,6 +154,12 @@ namespace GuildMaster.Data
         public int maxHP { get => currentHP; set => baseHP = value - (level * 10); }
         public int maxMP { get => currentMP; set => baseMP = value - (level * 5); }
         
+        // 호환성을 위한 간단한 속성들
+        public int hp { get => baseHP; set => baseHP = value; }
+        public int attack { get => baseAttack; set => baseAttack = value; }
+        public int defense { get => baseDefense; set => baseDefense = value; }
+        public int speed { get => baseSpeed; set => baseSpeed = value; }
+        
         public CharacterData()
         {
             // 기본값 설정
@@ -207,7 +244,7 @@ namespace GuildMaster.Data
                     rangeType = "Melee";
                     cost = 130;
                     break;
-                case JobClass.Paladin:
+                case JobClass.Knight:
                     baseHP = 140;
                     baseHp = 140;
                     baseAttack = 12;

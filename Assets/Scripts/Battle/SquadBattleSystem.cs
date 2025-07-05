@@ -372,7 +372,7 @@ namespace GuildMaster.Battle
                     if (centerTarget != null)
                     {
                         targets.Add(centerTarget);
-                        targets.AddRange(GetNearbyUnits(centerTarget, skillData.areaOfEffect));
+                        targets.AddRange(GetNearbyUnits(centerTarget, Mathf.RoundToInt(skillData.areaOfEffect)));
                     }
                     break;
             }
@@ -429,12 +429,12 @@ namespace GuildMaster.Battle
                     
                 case GuildMaster.Data.SkillType.Buff:
                     // 버프 적용
-                    ApplyBuff(target, skillData.buffType, skillData.buffAmount, skillData.buffDuration);
+                    ApplyBuff(target, skillData.buffType, skillData.buffAmount, Mathf.RoundToInt(skillData.buffDuration));
                     break;
                     
                 case GuildMaster.Data.SkillType.Debuff:
                     // 디버프 적용
-                    ApplyDebuff(target, skillData.buffType, skillData.buffAmount, skillData.buffDuration);
+                    ApplyDebuff(target, skillData.buffType, skillData.buffAmount, Mathf.RoundToInt(skillData.buffDuration));
                     break;
             }
             
@@ -958,6 +958,9 @@ namespace GuildMaster.Battle
         public int SkillsUsed;
         public int CriticalHits;
         
+        // 호환성을 위한 속성
+        public int UnitsLost => PlayerUnitsLost + EnemyUnitsLost;
+        
         public float GetBattleDuration() => EndTime - StartTime;
     }
     
@@ -971,6 +974,11 @@ namespace GuildMaster.Battle
         public BattleStatistics statistics;
         public BattleRewards rewards;
         public Unit mvpUnit;
+        
+        // 호환성을 위한 속성들
+        public bool isVictory => resultType == BattleResultType.Victory;
+        public int unitsLost => statistics?.UnitsLost ?? 0;
+        public int totalTurns => statistics?.TotalTurns ?? 0;
     }
     
     /// <summary>

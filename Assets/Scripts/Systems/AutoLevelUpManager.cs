@@ -1,5 +1,6 @@
 using UnityEngine;
 using GuildMaster.Data;
+using GuildMaster.Battle;
 using Twelve.Data;
 using System.Collections;
 using System.Collections.Generic;
@@ -20,9 +21,9 @@ namespace GuildMaster.Systems
         [SerializeField] private JobLevelData jobLevelData;
         
         // Events
-        public static event Action<GuildMaster.Data.JobClass, int> OnJobLevelUp;
-        public static event Action<GuildMaster.Data.JobClass, float> OnGoldAccumulated;
-        public static event Action<GuildMaster.Data.JobClass, bool> OnAutoLevelUpToggled;
+        public static event Action<JobClass, int> OnJobLevelUp;
+        public static event Action<JobClass, float> OnGoldAccumulated;
+        public static event Action<JobClass, bool> OnAutoLevelUpToggled;
         
         private Coroutine autoLevelUpCoroutine;
         private float totalGold = 0f;
@@ -140,7 +141,7 @@ namespace GuildMaster.Systems
         /// <summary>
         /// 특정 직업의 자동 레벨업 토글
         /// </summary>
-        public void ToggleAutoLevelUp(GuildMaster.Data.JobClass jobClass)
+        public void ToggleAutoLevelUp(JobClass jobClass)
         {
             var jobLevel = jobLevelData.GetJobLevel(jobClass);
             if (jobLevel != null)
@@ -155,7 +156,7 @@ namespace GuildMaster.Systems
         /// <summary>
         /// 특정 직업의 자동 레벨업 설정
         /// </summary>
-        public void SetAutoLevelUp(GuildMaster.Data.JobClass jobClass, bool enabled)
+        public void SetAutoLevelUp(JobClass jobClass, bool enabled)
         {
             var jobLevel = jobLevelData.GetJobLevel(jobClass);
             if (jobLevel != null)
@@ -183,7 +184,7 @@ namespace GuildMaster.Systems
         /// <summary>
         /// 특정 직업의 현재 레벨 가져오기
         /// </summary>
-        public int GetJobLevel(GuildMaster.Data.JobClass jobClass)
+        public int GetJobLevel(JobClass jobClass)
         {
             var jobLevel = jobLevelData.GetJobLevel(jobClass);
             return jobLevel != null ? jobLevel.currentLevel : 0;
@@ -192,7 +193,7 @@ namespace GuildMaster.Systems
         /// <summary>
         /// 특정 직업의 누적 골드 가져오기
         /// </summary>
-        public float GetAccumulatedGold(GuildMaster.Data.JobClass jobClass)
+        public float GetAccumulatedGold(JobClass jobClass)
         {
             var jobLevel = jobLevelData.GetJobLevel(jobClass);
             return jobLevel != null ? jobLevel.accumulatedGold : 0f;
@@ -201,7 +202,7 @@ namespace GuildMaster.Systems
         /// <summary>
         /// 특정 직업의 다음 레벨업 비용 가져오기
         /// </summary>
-        public float GetNextLevelUpCost(GuildMaster.Data.JobClass jobClass)
+        public float GetNextLevelUpCost(JobClass jobClass)
         {
             var jobLevel = jobLevelData.GetJobLevel(jobClass);
             return jobLevel != null ? jobLevel.GetLevelUpCost() : 0f;

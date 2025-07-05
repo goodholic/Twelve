@@ -12,12 +12,14 @@ namespace GuildMaster.Data
         public bool isAutoSave;
         public long saveTime; // DateTime.Ticks
         public string gameVersion;
+        public string saveVersion;
         
         // 플레이어 정보
         public string playerName;
         public string guildName;
         public int guildLevel;
         public float totalPlayTime;
+        public float lastSessionTime;
         
         // 자원
         public int gold;
@@ -32,20 +34,17 @@ namespace GuildMaster.Data
         public int currentSeason; // 현재 시즌 (0=봄, 1=여름, 2=가을, 3=겨울)
         public float dayProgress; // 하루 진행도 (0.0 ~ 1.0)
         public List<string> completedQuests = new List<string>();
-        public List<string> unlockedBuildings = new List<string>();
+        public List<string> unlockedCharacters = new List<string>();
         public Dictionary<string, int> statistics = new Dictionary<string, int>();
         
         // 모험가 데이터
         public List<AdventurerSaveData> adventurers = new List<AdventurerSaveData>();
         
-        // 건물 데이터
-        public List<BuildingSaveData> buildings = new List<BuildingSaveData>();
+        // 부대 편성 데이터
+        public List<SquadSaveData> squads = new List<SquadSaveData>();
         
-        // 연구 데이터
-        public List<ResearchSaveData> researches = new List<ResearchSaveData>();
-        
-        // 영토 데이터
-        public List<TerritorySaveData> territories = new List<TerritorySaveData>();
+        // 스토리 진행 데이터
+        public StoryProgressData storyProgress = new StoryProgressData();
         
         // UI/설정
         public string screenshotPath;
@@ -68,34 +67,22 @@ namespace GuildMaster.Data
     }
     
     [System.Serializable]
-    public class BuildingSaveData
+    public class SquadSaveData
     {
-        public string buildingType;
-        public int level;
-        public int x;
-        public int y;
-        public bool isConstructing;
-        public float constructionTime;
-        public List<string> assignedAdventurers = new List<string>();
+        public int squadIndex; // 0 or 1 for Squad 1/2
+        public string squadName;
+        public List<string> memberIds = new List<string>(); // 최대 9명
+        public List<Vector2Int> positions = new List<Vector2Int>(); // 6x3 그리드 위치
     }
     
     [System.Serializable]
-    public class ResearchSaveData
+    public class StoryProgressData
     {
-        public string researchId;
-        public int level;
-        public bool isResearching;
-        public float researchTime;
-    }
-    
-    [System.Serializable]
-    public class TerritorySaveData
-    {
-        public string territoryId;
-        public string ownerGuild;
-        public int defenseLevel;
-        public List<string> defenders = new List<string>();
-        public float lastAttackTime;
+        public int currentStage;
+        public List<string> completedStages = new List<string>();
+        public List<string> viewedDialogues = new List<string>();
+        public Dictionary<string, int> storyChoices = new Dictionary<string, int>();
+        public int currentEnding = -1; // -1 = not reached yet, 0-5 = ending index
     }
     
     [System.Serializable]

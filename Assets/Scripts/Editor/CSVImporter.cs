@@ -199,6 +199,11 @@ namespace GuildMaster.Editor
         
         void ImportBuildings()
         {
+            // TODO: BuildingDataSO doesn't exist - need to implement ScriptableObject version
+            Debug.LogWarning("Building import is temporarily disabled - BuildingDataSO not implemented");
+            return;
+            
+            /*
             string csvPath = Path.Combine(csvFolderPath, "building_data.csv");
             
             if (!File.Exists(csvPath))
@@ -227,6 +232,7 @@ namespace GuildMaster.Editor
             }
             
             Debug.Log($"Imported {lines.Length - 1} buildings from {csvPath}");
+            */
         }
         
         void ImportSkills()

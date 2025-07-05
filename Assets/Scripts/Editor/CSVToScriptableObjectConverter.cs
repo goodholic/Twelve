@@ -95,7 +95,7 @@ namespace GuildMaster.Editor
                 return;
             }
             
-            List<CharacterDataSO> allCharacters = new List<CharacterDataSO>();
+            List<CharacterData> allCharacters = new List<CharacterData>();
             
             // Skip header
             for (int i = 1; i < lines.Length; i++)
@@ -103,25 +103,15 @@ namespace GuildMaster.Editor
                 string[] values = ParseCSVLine(lines[i]);
                 if (values.Length < 19) continue;
                 
-                CharacterDataSO character = null;
+                CharacterData character = new CharacterData();
                 
-                if (createIndividualCharacters)
-                {
-                    // Create individual ScriptableObject
-                    string assetPath = Path.Combine(scriptableObjectPath, "Characters", $"Character_{values[1].Replace(" ", "_")}.asset");
-                    character = CreateOrLoadAsset<CharacterDataSO>(assetPath);
-                }
-                else
-                {
-                    character = ScriptableObject.CreateInstance<CharacterDataSO>();
-                }
-                
-                // Parse data - 올바른 CharacterDataSO 필드명 사용
-                character.id = values[0]; // string id
+                // Parse data
+                character.id = values[0];
+                character.name = values[1];
                 character.characterName = values[1];
                 character.jobClass = ParseJobClass(values[2]);
-                character.baseLevel = int.Parse(values[3]);
-                character.rarity = ParseRarity(values[4]);
+                character.level = int.Parse(values[3]);
+                character.rarity = ParseCharacterRarity(values[4]);
                 character.baseHP = int.Parse(values[5]);
                 character.baseMP = int.Parse(values[6]);
                 character.baseAttack = int.Parse(values[7]);
@@ -133,21 +123,15 @@ namespace GuildMaster.Editor
                 character.accuracy = float.Parse(values[13]);
                 character.evasion = float.Parse(values[14]);
                 
-                // 스킬 ID들을 리스트로 변환
-                character.skillIds = new List<string>();
-                if (!string.IsNullOrEmpty(values[15]))
-                    character.skillIds.Add(values[15]);
-                if (!string.IsNullOrEmpty(values[16]))
-                    character.skillIds.Add(values[16]);
-                if (!string.IsNullOrEmpty(values[17]))
-                    character.skillIds.Add(values[17]);
+                // Set skill IDs
+                character.skill1Id = values[15];
+                character.skill2Id = values[16];
+                character.skill3Id = values[17];
                     
                 character.description = values[18];
                 
-                if (createIndividualCharacters)
-                {
-                    EditorUtility.SetDirty(character);
-                }
+                // Note: Individual CharacterData ScriptableObjects are not supported
+                // since CharacterData is not a ScriptableObject
                 
                 allCharacters.Add(character);
             }
@@ -246,6 +230,19 @@ namespace GuildMaster.Editor
                 case "Epic": return Rarity.Epic;
                 case "Legendary": return Rarity.Legendary;
                 default: return Rarity.Common;
+            }
+        }
+        
+        CharacterRarity ParseCharacterRarity(string rarity)
+        {
+            switch (rarity)
+            {
+                case "Common": return CharacterRarity.Common;
+                case "Uncommon": return CharacterRarity.Uncommon;
+                case "Rare": return CharacterRarity.Rare;
+                case "Epic": return CharacterRarity.Epic;
+                case "Legendary": return CharacterRarity.Legendary;
+                default: return CharacterRarity.Common;
             }
         }
     }

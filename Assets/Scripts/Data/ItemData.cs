@@ -1,5 +1,6 @@
 using UnityEngine;
 using System;
+using GuildMaster.Battle;
 
 namespace GuildMaster.Data
 {
@@ -215,15 +216,6 @@ namespace GuildMaster.Data
         Material,
         Quest,
         Misc
-    }
-    
-    public enum Rarity
-    {
-        Common,
-        Uncommon,
-        Rare,
-        Epic,
-        Legendary
     }
     
     public enum EquipmentType

@@ -5,6 +5,9 @@ using UnityEngine;
 using GuildMaster.Battle;
 using GuildMaster.Core;
 using GuildMaster.Data;
+using JobClass = GuildMaster.Battle.JobClass;
+using Unit = GuildMaster.Battle.Unit;
+using Rarity = GuildMaster.Data.Rarity;
 
 namespace GuildMaster.Systems
 {
@@ -243,7 +246,7 @@ namespace GuildMaster.Systems
 
             if (collectedCharacters.Count > 0)
             {
-                stats.AverageLevel = collectedCharacters.Average(c => c.level);
+                stats.AverageLevel = (float)collectedCharacters.Average(c => c.level);
                 stats.TotalCombatPower = collectedCharacters.Sum(c => c.GetCombatPower());
 
                 // 직업별 통계
@@ -261,9 +264,9 @@ namespace GuildMaster.Systems
                         var data = characterManager.GetCharacterData(character.characterId);
                         if (data != null)
                         {
-                            if (!stats.CharactersByRarity.ContainsKey(data.Rarity))
-                                stats.CharactersByRarity[data.Rarity] = 0;
-                            stats.CharactersByRarity[data.Rarity]++;
+                            if (!stats.CharactersByRarity.ContainsKey(data.rarity))
+                                stats.CharactersByRarity[data.rarity] = 0;
+                            stats.CharactersByRarity[data.rarity]++;
                         }
                     }
                 }
@@ -312,7 +315,7 @@ namespace GuildMaster.Systems
         {
             var saveData = new CollectionSaveData
             {
-                CollectedCharacterIds = collectedCharacters.Select(c => c.characterId).ToList(),
+                CollectedCharacterIds = collectedCharacters.Select(c => int.TryParse(c.characterId, out int id) ? id : 0).ToList(),
                 SquadData = new List<SquadSaveData>()
             };
 
@@ -321,7 +324,7 @@ namespace GuildMaster.Systems
                 var squadData = new SquadSaveData
                 {
                     SquadIndex = i,
-                    CharacterIds = battleSquads[i].Units.Select(u => u.characterId).ToList()
+                    CharacterIds = battleSquads[i].Units.Select(u => int.TryParse(u.characterId, out int id) ? id : 0).ToList()
                 };
                 saveData.SquadData.Add(squadData);
             }
@@ -365,7 +368,7 @@ namespace GuildMaster.Systems
 
                 foreach (var characterId in squadData.CharacterIds)
                 {
-                    var character = collectedCharacters.FirstOrDefault(c => c.characterId == characterId);
+                    var character = collectedCharacters.FirstOrDefault(c => c.characterId == characterId.ToString());
                     if (character != null)
                     {
                         battleSquads[squadData.SquadIndex].AddUnit(character);

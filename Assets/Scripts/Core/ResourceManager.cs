@@ -10,7 +10,11 @@ namespace GuildMaster.Core
         Gold,
         Wood,
         Stone,
-        ManaStone
+        ManaStone,
+        Food,
+        Energy,
+        Experience,
+        Mana
     }
     
     public class ResourceManager : MonoBehaviour
@@ -52,6 +56,10 @@ namespace GuildMaster.Core
                     case ResourceType.Wood: return Wood;
                     case ResourceType.Stone: return Stone;
                     case ResourceType.ManaStone: return ManaStone;
+                    case ResourceType.Food: return 0; // Not tracked in this system
+                    case ResourceType.Energy: return 0; // Not tracked in this system
+                    case ResourceType.Experience: return 0; // Not tracked in this system
+                    case ResourceType.Mana: return ManaStone; // Mana is same as ManaStone
                     default: return 0;
                 }
             }
@@ -251,6 +259,32 @@ namespace GuildMaster.Core
         {
             AddResource(ResourceType.Gold, amount, "Manual Addition");
         }
+        
+        public void AddGems(int amount)
+        {
+            AddResource(ResourceType.ManaStone, amount, "Gems Addition");
+        }
+        
+        public void AddFood(int amount)
+        {
+            // Food is not tracked in current system, but method exists for compatibility
+            Debug.Log($"AddFood called with amount: {amount} (not tracked in current system)");
+        }
+        
+        public void AddWood(int amount)
+        {
+            AddResource(ResourceType.Wood, amount, "Manual Addition");
+        }
+        
+        public void AddStone(int amount)
+        {
+            AddResource(ResourceType.Stone, amount, "Manual Addition");
+        }
+        
+        public void AddManaStone(int amount)
+        {
+            AddResource(ResourceType.ManaStone, amount, "Manual Addition");
+        }
 
         public void AddResources(Dictionary<string, int> resources)
         {
@@ -309,20 +343,6 @@ namespace GuildMaster.Core
             }
         }
 
-        public void AddWood(int amount)
-        {
-            AddResource(ResourceType.Wood, amount, "Direct");
-        }
-
-        public void AddStone(int amount)
-        {
-            AddResource(ResourceType.Stone, amount, "Direct");
-        }
-
-        public void AddManaStone(int amount)
-        {
-            AddResource(ResourceType.ManaStone, amount, "Direct");
-        }
 
         public void AddReputation(int amount)
         {
@@ -412,6 +432,12 @@ namespace GuildMaster.Core
         public int GetStone() => currentResources.Stone;
         public int GetManaStone() => currentResources.ManaStone;
         public int GetReputation() => currentResources.Reputation;
+        
+        // Get resource by type
+        public int GetResource(ResourceType type)
+        {
+            return currentResources.GetResource(type);
+        }
 
         // Production Rates
         public float GetGoldProductionRate() => goldProductionRate;

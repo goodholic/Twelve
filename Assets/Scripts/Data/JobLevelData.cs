@@ -1,6 +1,7 @@
 using UnityEngine;
 using System;
 using GuildMaster.Data;
+using GuildMaster.Battle;
 
 namespace Twelve.Data
 {
@@ -13,7 +14,7 @@ namespace Twelve.Data
         [Serializable]
         public class JobLevel
         {
-            public GuildMaster.Data.JobClass jobClass;
+            public GuildMaster.Battle.JobClass jobClass;
             public int currentLevel = 1;
             public int maxLevel = 100;
             public float levelUpCost = 50f; // 레벨업 비용
@@ -49,7 +50,7 @@ namespace Twelve.Data
             }
             
             // 각 직업별로 초기화
-            GuildMaster.Data.JobClass[] allJobs = (GuildMaster.Data.JobClass[])Enum.GetValues(typeof(GuildMaster.Data.JobClass));
+            GuildMaster.Battle.JobClass[] allJobs = (GuildMaster.Battle.JobClass[])Enum.GetValues(typeof(GuildMaster.Battle.JobClass));
             for (int i = 0; i < allJobs.Length && i < 7; i++)
             {
                 if (jobLevels[i] == null)
@@ -67,7 +68,7 @@ namespace Twelve.Data
         }
         
         // 특정 직업의 레벨 데이터 가져오기
-        public JobLevel GetJobLevel(GuildMaster.Data.JobClass jobClass)
+        public JobLevel GetJobLevel(GuildMaster.Battle.JobClass jobClass)
         {
             foreach (var jobLevel in jobLevels)
             {

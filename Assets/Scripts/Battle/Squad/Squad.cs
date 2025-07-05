@@ -30,6 +30,9 @@ namespace GuildMaster.Battle
         public float totalPower => GetTotalCombatPower();
         public List<Unit> aliveUnits => GetAliveUnits();
         
+        // 추가 속성 (AIGuildGenerator 호환성)
+        public string squadName => Name; // squadName 속성 추가
+        
         // Units Grid (6x3)
         private Unit[,] unitsGrid = new Unit[ROWS, COLS];
         private List<Unit> unitsList = new List<Unit>();

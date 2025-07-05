@@ -5,6 +5,9 @@ using UnityEngine;
 using GuildMaster.Data;
 using GuildMaster.Battle;
 using GuildMaster.Core;
+using JobClass = GuildMaster.Battle.JobClass;
+using Unit = GuildMaster.Battle.Unit;
+using Rarity = GuildMaster.Data.Rarity;
 
 namespace GuildMaster.Systems
 {
@@ -113,9 +116,9 @@ namespace GuildMaster.Systems
             return characters[randomIndex];
         }
         
-        public CharacterData GetRandomCharacterByRarity(GuildMaster.Battle.Rarity rarity)
+        public CharacterData GetRandomCharacterByRarity(GuildMaster.Data.Rarity rarity)
         {
-            var characters = DataManager.Instance.GetCharactersByRarity(rarity);
+            var characters = DataManager.Instance.GetCharactersByRarity(ConvertRarityToCharacterRarity(rarity));
             if (characters.Count == 0) return null;
             
             int randomIndex = UnityEngine.Random.Range(0, characters.Count);
@@ -151,7 +154,7 @@ namespace GuildMaster.Systems
             return CreateUnitFromCharacterData(data);
         }
         
-        public Unit CreateRandomUnitByRarity(GuildMaster.Battle.Rarity rarity)
+        public Unit CreateRandomUnitByRarity(GuildMaster.Data.Rarity rarity)
         {
             CharacterData data = GetRandomCharacterByRarity(rarity);
             if (data == null) return null;
@@ -320,15 +323,15 @@ namespace GuildMaster.Systems
             return characters ?? new List<CharacterData>();
         }
         
-        public List<CharacterData> GetCharactersByRarity(GuildMaster.Battle.Rarity rarity)
+        public List<CharacterData> GetCharactersByRarity(GuildMaster.Data.Rarity rarity)
         {
-            var characters = DataManager.Instance.GetCharactersByRarity(rarity);
+            var characters = DataManager.Instance.GetCharactersByRarity(ConvertRarityToCharacterRarity(rarity));
             return characters ?? new List<CharacterData>();
         }
         
         public List<CharacterData> GetCommonCharacters()
         {
-            var characters = DataManager.Instance.GetCharactersByRarity(GuildMaster.Battle.Rarity.Common);
+            var characters = DataManager.Instance.GetCharactersByRarity(CharacterRarity.Common);
             return characters ?? new List<CharacterData>();
         }
         
@@ -355,10 +358,10 @@ namespace GuildMaster.Systems
         // 새로운 모험가 생성 메서드들
         public Unit CreateAdventurer(string characterId, int level = 1)
         {
-            CharacterDataSO charData = characterDatabase.GetCharacter(characterId);
+            var charData = DataManager.Instance.GetCharacterData(characterId);
             if (charData == null) return null;
 
-            Unit newUnit = charData.CreateUnit();
+            Unit newUnit = DataManager.Instance.CreateUnit(charData);
             
             // 레벨 적용
             for (int i = 1; i < level; i++)
@@ -376,12 +379,12 @@ namespace GuildMaster.Systems
         }
 
         // Method group 오류를 해결하기 위해 기존 메서드들을 수정
-        public List<CharacterDataSO> GetRecommendedCharacters(JobClass preferredClass, int maxResults = 3)
+        public List<CharacterData> GetRecommendedCharacters(JobClass preferredClass, int maxResults = 3)
         {
-            var charactersOfClass = characterDatabase.GetCharactersByClass(preferredClass);
-            if (charactersOfClass.Count == 0)
+            var charactersOfClass = DataManager.Instance.GetCharactersByJobClass(preferredClass);
+            if (charactersOfClass == null || charactersOfClass.Count == 0)
             {
-                return new List<CharacterDataSO>();
+                return new List<CharacterData>();
             }
 
             return charactersOfClass.Take(maxResults).ToList();
@@ -389,10 +392,10 @@ namespace GuildMaster.Systems
 
         public Unit RecruitRandomAdventurer(JobClass jobClass, Rarity rarity)
         {
-            var availableCharacters = characterDatabase.GetCharactersByClass(jobClass);
-            var filteredByRarity = availableCharacters.Where(c => c.rarity == rarity).ToList();
+            var availableCharacters = DataManager.Instance.GetCharactersByJobClass(jobClass);
+            var filteredByRarity = availableCharacters.Where(c => c.rarity == ConvertRarityToCharacterRarity(rarity)).ToList();
             
-            if (filteredByRarity.Count == 0)
+            if (filteredByRarity == null || filteredByRarity.Count == 0)
                 return null;
 
             var randomChar = filteredByRarity[UnityEngine.Random.Range(0, filteredByRarity.Count)];
@@ -401,9 +404,10 @@ namespace GuildMaster.Systems
 
         public Unit CreateRandomAdventurer()
         {
-            if (characterDatabase.characters.Count == 0) return null;
+            var allCharacters = DataManager.Instance.GetAllCharacters();
+            if (allCharacters.Count == 0) return null;
             
-            var randomChar = characterDatabase.characters[UnityEngine.Random.Range(0, characterDatabase.characters.Count)];
+            var randomChar = allCharacters[UnityEngine.Random.Range(0, allCharacters.Count)];
             int randomLevel = UnityEngine.Random.Range(1, 10);
             
             return CreateAdventurer(randomChar.id, randomLevel);
@@ -417,7 +421,79 @@ namespace GuildMaster.Systems
                 return new List<Unit>();
             }
 
-            return charactersOfClass.Select(c => c.CreateUnit()).ToList();
+            return charactersOfClass.Select(c => DataManager.Instance.CreateUnit(c)).ToList();
+        }
+        
+        private CharacterRarity ConvertRarityToCharacterRarity(Rarity rarity)
+        {
+            switch (rarity)
+            {
+                case Rarity.Common:
+                    return CharacterRarity.Common;
+                case Rarity.Uncommon:
+                    return CharacterRarity.Uncommon;
+                case Rarity.Rare:
+                    return CharacterRarity.Rare;
+                case Rarity.Epic:
+                    return CharacterRarity.Epic;
+                case Rarity.Legendary:
+                    return CharacterRarity.Legendary;
+                case Rarity.Mythic:
+                    // CharacterRarity에는 Mythic이 없으므로 Legendary로 매핑
+                    return CharacterRarity.Legendary;
+                default:
+                    return CharacterRarity.Common;
+            }
+        }
+        
+        // GetCharacterStats method for compatibility
+        public CharacterStats GetCharacterStats(string characterId)
+        {
+            var characterData = DataManager.Instance.GetCharacterData(characterId);
+            if (characterData == null)
+            {
+                return new CharacterStats
+                {
+                    hp = 100,
+                    attack = 10,
+                    defense = 5,
+                    speed = 10
+                };
+            }
+            
+            return new CharacterStats
+            {
+                hp = characterData.baseHP,
+                attack = characterData.baseAttack,
+                defense = characterData.baseDefense,
+                speed = characterData.baseSpeed,
+                critRate = characterData.critRate,
+                critDamage = characterData.critDamage
+            };
+        }
+        
+        // CreateCharacterByIndex method for compatibility
+        public Unit CreateCharacterByIndex(int characterIndex)
+        {
+            var allCharacters = DataManager.Instance.GetAllCharacters();
+            if (allCharacters == null || characterIndex < 0 || characterIndex >= allCharacters.Count)
+            {
+                Debug.LogError($"Character index {characterIndex} is out of range!");
+                return null;
+            }
+            
+            var characterData = allCharacters[characterIndex];
+            return CreateUnitFromCharacterData(characterData);
+        }
+        
+        public class CharacterStats
+        {
+            public float hp;
+            public float attack;
+            public float defense;
+            public float speed;
+            public float critRate;
+            public float critDamage;
         }
     }
 }

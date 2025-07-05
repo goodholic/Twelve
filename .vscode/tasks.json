@@ -1,6 +1,37 @@
 ﻿{
     "version": "2.0.0",
+    "problemMatcher": [
+        {
+            "name": "unity-log",
+            "owner": "unity",
+            "fileLocation": ["absolute"],
+            "pattern": {
+                "regexp": "^(.+?):(\\d+):(\\d+): (error|warning|info): (.*)$",
+                "file": 1,
+                "line": 2,
+                "column": 3,
+                "severity": 4,
+                "message": 5
+            }
+        }
+    ],
     "tasks": [
+        {
+            "label": "Monitor Unity Logs (Problems Panel)",
+            "type": "shell",
+            "command": "node",
+            "args": ["${workspaceFolder}/Scripts/unity-log-to-problem-matcher.js"],
+            "problemMatcher": "unity-log",
+            "isBackground": true,
+            "presentation": {
+                "reveal": "never",
+                "panel": "dedicated"
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            }
+        },
         {
             "label": "Monitor Unity Logs (PowerShell)",
             "type": "shell",

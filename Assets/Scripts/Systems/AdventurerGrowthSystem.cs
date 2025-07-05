@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using GuildMaster.Battle;
+using GuildMaster.Data;
 
 namespace GuildMaster.Systems
 {

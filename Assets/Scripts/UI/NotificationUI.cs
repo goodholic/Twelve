@@ -74,6 +74,12 @@ namespace GuildMaster.UI
             ProcessNextNotification();
         }
         
+        // Overload for simple text notification
+        public void ShowNotification(string message)
+        {
+            ShowNotification(message, NotificationType.Info);
+        }
+        
         void ProcessNextNotification()
         {
             if (notificationQueue.Count == 0)
@@ -197,6 +203,15 @@ namespace GuildMaster.UI
                 NotificationType.Emergency => new Color(1f, 0.2f, 0.2f, 0.8f),
                 _ => new Color(0.5f, 0.5f, 0.5f, 0.8f)
             };
+        }
+        
+        /// <summary>
+        /// NotificationManager에서 호출하는 간단한 Setup 메서드
+        /// </summary>
+        public void Setup(string message, NotificationType type, float duration)
+        {
+            // 최신 알림 표시
+            ShowNotification(message, type);
         }
     }
     

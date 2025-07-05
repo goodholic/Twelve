@@ -352,7 +352,29 @@ public class LobbySceneManager : MonoBehaviour
             {
                 for (int i = 0; i < deckSet.Length && i < 10; i++)
                 {
-                    GuildMaster.Core.GameManager.Instance.currentRegisteredCharacters[i] = deckSet[i];
+                    if (deckSet[i] != null)
+                    {
+                        // CharacterData를 Unit으로 변환
+                        var unit = new GuildMaster.Battle.Unit(
+                            deckSet[i].name,
+                            deckSet[i].level,
+                            deckSet[i].jobClass,
+                            ConvertCharacterRarityToRarity(deckSet[i].rarity)
+                        );
+                        unit.unitId = deckSet[i].id;
+                        unit.maxHP = deckSet[i].baseHP;
+                        unit.maxMP = deckSet[i].baseMP;
+                        unit.attackPower = deckSet[i].baseAttack;
+                        unit.defense = deckSet[i].baseDefense;
+                        unit.magicPower = deckSet[i].baseMagicPower;
+                        unit.speed = deckSet[i].baseSpeed;
+                        unit.criticalRate = deckSet[i].critRate;
+                        unit.accuracy = deckSet[i].accuracy;
+                        unit.currentHP = unit.maxHP;
+                        unit.currentMP = unit.maxMP;
+                        
+                        GuildMaster.Core.GameManager.Instance.currentRegisteredCharacters[i] = unit;
+                    }
                 }
                 Debug.Log("[LobbySceneManager] 덱(10칸)을 GameManager.currentRegisteredCharacters에 반영");
             }
@@ -642,5 +664,24 @@ public class LobbySceneManager : MonoBehaviour
         
         // UI 업데이트
         UpdateGoldAndDiamondUI();
+    }
+    
+    private GuildMaster.Data.Rarity ConvertCharacterRarityToRarity(CharacterRarity characterRarity)
+    {
+        switch (characterRarity)
+        {
+            case CharacterRarity.Common:
+                return GuildMaster.Data.Rarity.Common;
+            case CharacterRarity.Uncommon:
+                return GuildMaster.Data.Rarity.Uncommon;
+            case CharacterRarity.Rare:
+                return GuildMaster.Data.Rarity.Rare;
+            case CharacterRarity.Epic:
+                return GuildMaster.Data.Rarity.Epic;
+            case CharacterRarity.Legendary:
+                return GuildMaster.Data.Rarity.Legendary;
+            default:
+                return GuildMaster.Data.Rarity.Common;
+        }
     }
 }

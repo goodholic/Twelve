@@ -92,7 +92,7 @@ namespace GuildMaster.Dialogue
                 {
                     guildManager.OnBuildingConstructed += (building) => CheckTutorial("FirstBuilding");
                     guildManager.OnAdventurerRecruited += (unit) => CheckTutorial("FirstRecruit");
-                    guildManager.OnGuildLevelUp += (level) => CheckTutorial($"GuildLevel{level}");
+                    guildManager.OnGuildLevelUp += () => CheckTutorial($"GuildLevel{guildManager.guildLevel}");
                 }
                 
                 var battleManager = gameManager.BattleManager;

@@ -6,6 +6,9 @@ using UnityEngine;
 using GuildMaster.Battle;
 using GuildMaster.Core;
 using GuildMaster.Data;
+using JobClass = GuildMaster.Battle.JobClass;
+using Unit = GuildMaster.Battle.Unit;
+using Rarity = GuildMaster.Data.Rarity;
 
 namespace GuildMaster.Systems
 {
@@ -114,12 +117,15 @@ namespace GuildMaster.Systems
         {
             BattleVictory,      // 전투 승리
             RecruitAdventurer,  // 모험가 영입
-            BuildConstruction,  // 건물 건설
-            ResourceCollection, // 자원 수집
+            StoryProgress,      // 스토리 진행
+            CharacterLevel,     // 캐릭터 레벨업
             SkillUpgrade,       // 스킬 강화
             EquipmentEnhance,   // 장비 강화
-            DungeonClear,       // 던전 클리어
-            GachaUse           // 가챠 사용
+            SquadFormation,     // 부대 편성
+            GachaUse,          // 가챠 사용
+            ResourceCollection, // 자원 수집
+            DungeonClear,      // 던전 클리어
+            BuildConstruction  // 건물 건설
         }
         
         private Dictionary<string, Achievement> achievements;

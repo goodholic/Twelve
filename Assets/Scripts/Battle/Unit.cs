@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using GuildMaster.Battle; // StatusEffect를 위해 추가
+using GuildMaster.Data; // Rarity enum 사용을 위해 추가
 
 namespace GuildMaster.Battle
 {
@@ -19,6 +20,7 @@ namespace GuildMaster.Battle
         Archer,     // 호환성을 위한 별칭 (Ranger와 동일)
         All,        // 모든 직업 (스킬 호환성용)
         Rogue,      // Assassin의 별칭
+        Wizard,     // Mage의 별칭 (호환성)
         Bard,       // 음유시인 (새로운 직업)
         Blacksmith, // 대장장이 (시설 관련 직업)
         Merchant    // 상인 (시설 관련 직업)
@@ -36,21 +38,13 @@ namespace GuildMaster.Battle
         Archer = JobClass.Ranger,
         Sage = JobClass.Sage
     }
-    
-    public enum Rarity
-    {
-        Common,     // 일반
-        Uncommon,   // 고급
-        Rare,       // 희귀
-        Epic,       // 영웅
-        Legendary   // 전설
-    }
 
     [System.Serializable]
     public class Unit
     {
         // Basic Info
         public string unitId;
+        public string characterId;
         public string unitName;
         public int level;
         public JobClass jobClass;  // unitClass를 jobClass로 변경
@@ -64,6 +58,7 @@ namespace GuildMaster.Battle
         // Job Mastery
         public float jobMastery; // 0-100
         public int awakeningLevel; // 0-5 각성 레벨
+        public int awakenLevel { get => awakeningLevel; set => awakeningLevel = value; } // 호환성
 
         // Position in Battle
         public int currentSquad;
@@ -141,10 +136,13 @@ namespace GuildMaster.Battle
         public event Action<Unit> OnDeath;
 
         // Battle-related properties
-        public int awakenLevel => awakeningLevel;
         public Vector2Int squadPosition;
         public Transform transform; // GameObject의 transform 참조
         public GameObject gameObject; // GameObject 참조 추가
+        
+        // AI 관련 속성
+        public bool isAI = false; // AI 유닛 여부
+        public int teamId = 0; // 팀 ID (0: 플레이어, 1+: AI 팀)
         
         // 호환성을 위한 별칭들 (읽기 전용)
         public float attack => attackPower; // 호환성을 위한 별칭
@@ -646,18 +644,6 @@ namespace GuildMaster.Battle
             }
         }
 
-        void LevelUp()
-        {
-            experience -= experienceToNextLevel;
-            level++;
-            experienceToNextLevel = CalculateExpToNextLevel();
-            
-            // Reinitialize stats with new level
-            InitializeStats();
-            
-            Debug.Log($"{unitName} leveled up to {level}!");
-        }
-
         public void IncreaseJobMastery(float amount)
         {
             jobMastery = Mathf.Min(jobMastery + amount, 100f);
@@ -791,5 +777,110 @@ namespace GuildMaster.Battle
         {
             return effectiveHealingPower;
         }
+        
+        // Missing methods for compatibility
+        public void GainExperience(int exp)
+        {
+            experience += exp;
+            // Check for level up
+            while (experience >= GetExperienceRequiredForLevel(level + 1))
+            {
+                LevelUp();
+            }
+        }
+        
+        private int GetExperienceRequiredForLevel(int targetLevel)
+        {
+            return targetLevel * targetLevel * 100;
+        }
+        
+        private void LevelUp()
+        {
+            level++;
+            // Increase stats based on job class growth rates
+            maxHP += GetHPGrowth();
+            maxMP += GetMPGrowth();
+            attackPower += GetAttackGrowth();
+            defense += GetDefenseGrowth();
+            magicPower += GetMagicGrowth();
+            speed += GetSpeedGrowth();
+            
+            // Restore HP/MP on level up
+            currentHP = maxHP;
+            currentMP = maxMP;
+        }
+        
+        private float GetHPGrowth()
+        {
+            return jobClass switch
+            {
+                JobClass.Knight => 15f,
+                JobClass.Warrior => 12f,
+                JobClass.Priest => 8f,
+                JobClass.Mage => 6f,
+                JobClass.Assassin => 8f,
+                JobClass.Ranger => 10f,
+                JobClass.Sage => 10f,
+                _ => 10f
+            };
+        }
+        
+        private float GetMPGrowth()
+        {
+            return jobClass switch
+            {
+                JobClass.Mage => 10f,
+                JobClass.Priest => 8f,
+                JobClass.Sage => 12f,
+                _ => 5f
+            };
+        }
+        
+        private float GetAttackGrowth()
+        {
+            return jobClass switch
+            {
+                JobClass.Warrior => 3f,
+                JobClass.Assassin => 4f,
+                JobClass.Ranger => 3f,
+                _ => 2f
+            };
+        }
+        
+        private float GetDefenseGrowth()
+        {
+            return jobClass switch
+            {
+                JobClass.Knight => 4f,
+                JobClass.Warrior => 3f,
+                _ => 2f
+            };
+        }
+        
+        private float GetMagicGrowth()
+        {
+            return jobClass switch
+            {
+                JobClass.Mage => 4f,
+                JobClass.Priest => 3f,
+                JobClass.Sage => 3f,
+                _ => 1f
+            };
+        }
+        
+        private float GetSpeedGrowth()
+        {
+            return jobClass switch
+            {
+                JobClass.Assassin => 3f,
+                JobClass.Ranger => 2f,
+                _ => 1f
+            };
+        }
+        
+        // Stat multipliers
+        public float attackMultiplier = 1f;
+        public float defenseMultiplier = 1f;
+        public float speedMultiplier = 1f;
     }
 }

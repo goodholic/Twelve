@@ -7,7 +7,10 @@
       "Bash(grep:*)",
       "Bash(rm:*)",
       "Bash(mkdir:*)",
-      "Bash(touch:*)"
+      "Bash(touch:*)",
+      "Bash(dotnet build:*)",
+      "Bash(sed:*)",
+      "Bash(true)"
     ],
     "deny": []
   }

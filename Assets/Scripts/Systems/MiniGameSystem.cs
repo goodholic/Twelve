@@ -7,6 +7,7 @@ using GuildMaster.Core;
 using GuildMaster.Data;
 using GuildMaster.Battle;
 using Random = UnityEngine.Random;
+using ResourceType = GuildMaster.Data.ResourceType;
 
 namespace GuildMaster.Systems
 {
@@ -1370,11 +1371,11 @@ namespace GuildMaster.Systems
             // Base difficulty on character rarity
             return character.rarity switch
             {
-                Rarity.Common => EventDifficulty.Easy,
-                Rarity.Uncommon => EventDifficulty.Normal,
-                Rarity.Rare => EventDifficulty.Hard,
-                Rarity.Epic => EventDifficulty.Expert,
-                Rarity.Legendary => EventDifficulty.Legendary,
+                CharacterRarity.Common => EventDifficulty.Easy,
+                CharacterRarity.Uncommon => EventDifficulty.Normal,
+                CharacterRarity.Rare => EventDifficulty.Hard,
+                CharacterRarity.Epic => EventDifficulty.Expert,
+                CharacterRarity.Legendary => EventDifficulty.Legendary,
                 _ => EventDifficulty.Normal
             };
         }

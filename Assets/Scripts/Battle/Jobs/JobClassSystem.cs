@@ -1,6 +1,7 @@
 using UnityEngine;
 using System;
 using System.Collections.Generic;
+using GuildMaster.Data;
 
 namespace GuildMaster.Battle
 {

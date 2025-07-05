@@ -1,11 +1,14 @@
 namespace GuildMaster.Data
 {
+    // Rarity는 Battle.Rarity를 사용합니다.
+    // 이 파일은 향후 제거될 예정입니다.
+
     public enum CharacterRarity
     {
-        Common = 1,     // 일반 (1성)
-        Uncommon = 2,   // 고급 (2성)
-        Rare = 3,       // 희귀 (3성)
-        Epic = 4,       // 영웅 (4성)
-        Legendary = 5   // 전설 (5성)
+        Common = 0,     // 일반
+        Uncommon = 1,   // 고급
+        Rare = 2,       // 희귀
+        Epic = 3,       // 영웅
+        Legendary = 4   // 전설
     }
-} 
+}

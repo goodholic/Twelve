@@ -301,7 +301,7 @@ namespace GuildMaster.UI
             }
 
             // 희귀도에 따른 보너스
-            if (character.rarity >= GuildMaster.Battle.Rarity.Epic)
+            if (character.rarity >= GuildMaster.Data.Rarity.Epic)
             {
                 bonusItems.Add("전설의 유산");
             }
@@ -313,11 +313,11 @@ namespace GuildMaster.UI
         {
             return character.rarity switch
             {
-                GuildMaster.Battle.Rarity.Common => 1f,
-                GuildMaster.Battle.Rarity.Uncommon => 1.5f,
-                GuildMaster.Battle.Rarity.Rare => 2f,
-                GuildMaster.Battle.Rarity.Epic => 3f,
-                GuildMaster.Battle.Rarity.Legendary => 5f,
+                GuildMaster.Data.Rarity.Common => 1f,
+                GuildMaster.Data.Rarity.Uncommon => 1.5f,
+                GuildMaster.Data.Rarity.Rare => 2f,
+                GuildMaster.Data.Rarity.Epic => 3f,
+                GuildMaster.Data.Rarity.Legendary => 5f,
                 _ => 1f
             };
         }
@@ -388,8 +388,10 @@ namespace GuildMaster.UI
 
         public List<GuildMaster.Battle.Unit> GetRecyclableCharacters()
         {
-            var allUnits = FindObjectsOfType<GuildMaster.Battle.Unit>();
-            return allUnits.Where(unit => CanRecycleCharacter(unit)).ToList();
+            var guildManager = GuildMaster.Guild.GuildManager.Instance;
+            if (guildManager == null) return new List<GuildMaster.Battle.Unit>();
+            
+            return guildManager.guildMembers.Where(unit => CanRecycleCharacter(unit)).ToList();
         }
     }
 } 

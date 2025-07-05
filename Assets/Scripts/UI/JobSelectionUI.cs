@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using GuildMaster.Systems;
 using GuildMaster.Data;
+using GuildMaster.Battle;
 using System.Collections.Generic;
 using TMPro;
 using System;
@@ -347,7 +348,7 @@ namespace GuildMaster.UI
             switch (job)
             {
                 case JobClass.Warrior: return "전사";
-                case JobClass.Paladin: return "성기사";
+                case JobClass.Knight: return "성기사";
                 case JobClass.Mage: return "마법사";
                 case JobClass.Priest: return "사제";
                 case JobClass.Rogue: return "도적";

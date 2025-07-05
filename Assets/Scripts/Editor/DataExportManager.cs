@@ -4,6 +4,7 @@ using System.IO;
 using System.Collections.Generic;
 using System.Linq;
 using GuildMaster.Data;
+using GuildMaster.Battle;
 using System;
 using System.Text;
 
@@ -431,7 +432,7 @@ namespace GuildMaster.Editor
                     newCharMagicPower = 8;
                     newCharSpeed = 18;
                     break;
-                case JobClass.Paladin:
+                case JobClass.Knight:
                     newCharHP = 180;
                     newCharAttack = 12;
                     newCharDefense = 18;

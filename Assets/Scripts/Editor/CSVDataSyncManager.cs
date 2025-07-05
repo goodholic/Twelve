@@ -4,6 +4,7 @@ using System.IO;
 using System.Collections.Generic;
 using System.Linq;
 using GuildMaster.Data;
+using GuildMaster.Battle;
 using System;
 using System.Text;
 using System.Threading.Tasks;
@@ -501,7 +502,7 @@ namespace GuildMaster.Editor
             return className switch
             {
                 "Warrior" => JobClass.Warrior,
-                "Knight" or "Paladin" => JobClass.Paladin,
+                "Knight" or "Paladin" => JobClass.Knight,
                 "Wizard" or "Mage" => JobClass.Mage,
                 "Priest" => JobClass.Priest,
                 "Assassin" or "Rogue" => JobClass.Rogue,

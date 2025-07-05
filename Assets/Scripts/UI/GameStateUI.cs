@@ -277,7 +277,7 @@ namespace GuildMaster.UI
             UpdateDisplay();
             
             // Show season change notification
-            ShowNotification($"{GetSeasonName((GameLoopManager.Season)newSeason)} has arrived!", NotificationType.System);
+            ShowNotification($"{GetSeasonName((GameLoopManager.Season)newSeason)} has arrived!", GuildMaster.Data.NotificationType.System);
             
             // Play season change effect
             StartCoroutine(PlaySeasonChangeEffect());
@@ -418,7 +418,7 @@ namespace GuildMaster.UI
             Destroy(notification, 5f);
         }
         
-        private void ShowNotification(string message, NotificationType type)
+        private void ShowNotification(string message, GuildMaster.Data.NotificationType type)
         {
             // This would integrate with a notification system
             Debug.Log($"[{type}] {message}");

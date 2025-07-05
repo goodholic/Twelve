@@ -4,9 +4,11 @@ using System.Collections.Generic;
 using UnityEngine;
 using GuildMaster.Core;
 using GuildMaster.UI;
+using GuildMaster.Data;
 
 namespace GuildMaster.Systems
 {
+
     /// <summary>
     /// 알림 관리 시스템
     /// 인게임 알림, 팝업, 토스트 메시지 등을 관리
@@ -67,7 +69,7 @@ namespace GuildMaster.Systems
             public string id;
             public string title;
             public string message;
-            public NotificationType type;
+            public GuildMaster.Data.NotificationType type;
             public float duration;
             public Sprite icon;
             public Action onClick;
@@ -165,7 +167,7 @@ namespace GuildMaster.Systems
         /// <summary>
         /// 일반 알림 표시
         /// </summary>
-        public void ShowNotification(string title, string message, NotificationType type = NotificationType.Info, float duration = 0f)
+        public void ShowNotification(string title, string message, GuildMaster.Data.NotificationType type = GuildMaster.Data.NotificationType.Info, float duration = 0f)
         {
             if (!settings.enableNotifications) return;
             
@@ -342,19 +344,19 @@ namespace GuildMaster.Systems
             }
         }
         
-        void PlayNotificationSound(NotificationType type)
+        void PlayNotificationSound(GuildMaster.Data.NotificationType type)
         {
             string soundName = defaultNotificationSound;
             
             switch (type)
             {
-                case NotificationType.Success:
+                case GuildMaster.Data.NotificationType.Success:
                     soundName = questCompleteSound;
                     break;
-                case NotificationType.Warning:
+                case GuildMaster.Data.NotificationType.Warning:
                     soundName = defaultNotificationSound;
                     break;
-                case NotificationType.Error:
+                case GuildMaster.Data.NotificationType.Error:
                     soundName = errorSound;
                     break;
             }
@@ -374,7 +376,7 @@ namespace GuildMaster.Systems
             ShowNotification(
                 "퀘스트 완료!",
                 $"{questName}\n보상: {goldReward} 골드, {expReward} 경험치",
-                NotificationType.Success
+                GuildMaster.Data.NotificationType.Success
             );
         }
         
@@ -394,7 +396,7 @@ namespace GuildMaster.Systems
             ShowNotification(
                 "퀘스트 실패",
                 questName,
-                NotificationType.Error
+                GuildMaster.Data.NotificationType.Error
             );
         }
         
@@ -407,7 +409,7 @@ namespace GuildMaster.Systems
             ShowNotification(
                 "업적 달성!",
                 achievementName,
-                NotificationType.Success,
+                GuildMaster.Data.NotificationType.Success,
                 5f
             );
             
@@ -425,7 +427,7 @@ namespace GuildMaster.Systems
             ShowNotification(
                 "길드 레벨업!",
                 $"길드가 레벨 {newLevel}이 되었습니다!",
-                NotificationType.Success,
+                GuildMaster.Data.NotificationType.Success,
                 5f
             );
         }
@@ -444,11 +446,11 @@ namespace GuildMaster.Systems
         {
             if (!settings.enableResourceNotifications) return;
             
-            var resourceType = gameEvent.GetParameter<ResourceType>("resourceType");
+            var resourceType = gameEvent.GetParameter<Data.ResourceType>("resourceType");
             ShowNotification(
                 "창고 가득!",
                 $"{resourceType} 창고가 가득 찼습니다!",
-                NotificationType.Warning
+                GuildMaster.Data.NotificationType.Warning
             );
         }
         
@@ -469,7 +471,7 @@ namespace GuildMaster.Systems
             ShowNotification(
                 "전투 패배",
                 "부대가 패배했습니다...",
-                NotificationType.Error
+                GuildMaster.Data.NotificationType.Error
             );
         }
         
@@ -492,7 +494,7 @@ namespace GuildMaster.Systems
             ShowNotification(
                 "특별 이벤트!",
                 eventName,
-                NotificationType.Info,
+                GuildMaster.Data.NotificationType.Info,
                 5f
             );
         }

@@ -192,11 +192,15 @@ namespace GuildMaster.NPC
         {
             if (isVendor)
             {
+                // TODO: MerchantManager 구현 필요
+                /*
                 var merchantManager = FindObjectOfType<MerchantManager>();
                 if (merchantManager != null)
                 {
                     merchantManager.OpenShop(npcId);
                 }
+                */
+                Debug.LogWarning("MerchantManager가 아직 구현되지 않았습니다.");
             }
         }
 

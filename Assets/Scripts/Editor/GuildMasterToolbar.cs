@@ -66,7 +66,8 @@ namespace GuildMaster.Editor
             
             EditorGUILayout.Space();
             
-            // Sample Data Section
+            // Sample Data Section - SampleDataGenerator가 삭제됨
+            /*
             EditorGUILayout.LabelField("Sample Data Generation", EditorStyles.boldLabel);
             EditorGUILayout.BeginVertical(GUI.skin.box);
             
@@ -81,6 +82,7 @@ namespace GuildMaster.Editor
             }
             
             EditorGUILayout.EndVertical();
+            */
             
             EditorGUILayout.Space();
             

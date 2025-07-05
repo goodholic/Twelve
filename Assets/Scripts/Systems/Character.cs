@@ -1,5 +1,6 @@
 using UnityEngine;
 using GuildMaster.Battle;
+using GuildMaster.Data;
 
 namespace GuildMaster.Systems
 {

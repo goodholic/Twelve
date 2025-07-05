@@ -700,17 +700,17 @@ namespace GuildMaster.Data
         public List<FormationData> GetAllFormationData() => formationDataDict.Values.ToList();
         
         // 필터링 메서드들
-        public List<CharacterData> GetCharactersByJob(JobClass jobClass)
+        public List<CharacterData> GetCharactersByJob(GuildMaster.Battle.JobClass jobClass)
         {
             return characterDataDict.Values.Where(c => c.jobClass == jobClass).ToList();
         }
         
-        public List<CharacterData> GetCharactersByRarity(CharacterRarity rarity)
+        public List<CharacterData> GetCharactersByRarity(GuildMaster.Data.CharacterRarity rarity)
         {
             return characterDataDict.Values.Where(c => (CharacterRarity)c.rarity == rarity).ToList();
         }
         
-        public List<SkillData> GetSkillsByJob(JobClass jobClass)
+        public List<SkillData> GetSkillsByJob(GuildMaster.Battle.JobClass jobClass)
         {
             return skillDataDict.Values.Where(s => s.requiredJobClass == jobClass).ToList();
         }

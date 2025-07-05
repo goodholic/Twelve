@@ -5,6 +5,9 @@ using System.Linq;
 using UnityEngine;
 using GuildMaster.Battle;
 using GuildMaster.Data;
+using JobClass = GuildMaster.Battle.JobClass;
+using Unit = GuildMaster.Battle.Unit;
+using Rarity = GuildMaster.Data.Rarity;
 
 namespace GuildMaster.Systems
 {

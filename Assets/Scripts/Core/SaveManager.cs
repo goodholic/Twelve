@@ -249,7 +249,7 @@ namespace GuildMaster.Core
             {
                 slotIndex = slotIndex,
                 isAutoSave = isAutoSave,
-                saveTime = DateTime.Now.Ticks,
+                saveTime = DateTime.Now,
                 gameVersion = Application.version,
                 
                 // 플레이어 데이터
@@ -268,13 +268,16 @@ namespace GuildMaster.Core
                 // 게임 진행 상태
                 currentChapter = 1, // 기본값으로 설정
                 completedQuests = new List<string>(), // TODO: 퀘스트 시스템에서 가져오기
-                unlockedBuildings = new List<string>(), // TODO: 건물 시스템에서 가져오기
+                unlockedCharacters = new List<string>(), // TODO: 캐릭터 시스템에서 가져오기
                 
                 // 모험가 데이터
                 adventurers = SaveAdventurerData(),
                 
-                // 건물 데이터
-                buildings = SaveBuildingData(),
+                // 부대 편성 데이터
+                squads = SaveSquadData(),
+                
+                // 스토리 진행 데이터
+                storyProgress = SaveStoryProgress(),
                 
                 // 스크린샷 경로
                 screenshotPath = GetScreenshotPath(slotIndex)
@@ -295,11 +298,13 @@ namespace GuildMaster.Core
                     adventurers.Add(new AdventurerSaveData
                     {
                         id = unit.unitId,
+                        unitId = unit.unitId,
+                        characterId = unit.characterId,
                         name = unit.unitName,
                         level = unit.level,
                         experience = unit.experience,
-                        jobClass = unit.jobClass.ToString(),
-                        rarity = unit.rarity.ToString(),
+                        jobClass = unit.jobClass,
+                        rarity = unit.rarity,
                         awakenLevel = unit.awakenLevel,
                         equipmentIds = new List<string>() // TODO: 장비 시스템에서 가져오기
                     });
@@ -309,11 +314,30 @@ namespace GuildMaster.Core
             return adventurers;
         }
         
-        List<BuildingSaveData> SaveBuildingData()
+        List<SquadSaveData> SaveSquadData()
         {
-            var buildings = new List<BuildingSaveData>();
-            // TODO: 건물 시스템에서 데이터 가져오기
-            return buildings;
+            var squads = new List<SquadSaveData>();
+            var battleManager = GameManager.Instance?.BattleManager;
+            
+            if (battleManager != null)
+            {
+                // TODO: BattleManager에서 부대 데이터 가져오기
+            }
+            
+            return squads;
+        }
+        
+        StoryProgressData SaveStoryProgress()
+        {
+            var storyProgress = new StoryProgressData();
+            var storyManager = GameManager.Instance?.StoryManager;
+            
+            if (storyManager != null)
+            {
+                // TODO: StoryManager에서 스토리 진행 데이터 가져오기
+            }
+            
+            return storyProgress;
         }
         
         string GetSaveFileName(int slotIndex, bool isAutoSave)

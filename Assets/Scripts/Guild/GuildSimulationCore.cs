@@ -138,16 +138,16 @@ namespace GuildMaster.Guild
                         
                         switch (buildingData.productionType)
                         {
-                            case GuildMaster.Data.ResourceType.Gold:
+                            case Data.ResourceType.Gold:
                                 totalProduction.gold += productionAmount;
                                 break;
-                            case GuildMaster.Data.ResourceType.Wood:
+                            case Data.ResourceType.Wood:
                                 totalProduction.wood += productionAmount;
                                 break;
-                            case GuildMaster.Data.ResourceType.Stone:
+                            case Data.ResourceType.Stone:
                                 totalProduction.stone += productionAmount;
                                 break;
-                            case GuildMaster.Data.ResourceType.Magic:
+                            case Data.ResourceType.ManaStone:
                                 totalProduction.manaStone += productionAmount;
                                 break;
                         }
@@ -161,7 +161,7 @@ namespace GuildMaster.Guild
         /// <summary>
         /// 건물 건설
         /// </summary>
-        public bool ConstructBuilding(BuildingType buildingType, Vector2Int position, bool isInstant = false)
+        public bool ConstructBuilding(GuildMaster.Data.BuildingType buildingType, Vector2Int position, bool isInstant = false)
         {
             var buildingData = BuildingDatabase.GetBuildingData(buildingType);
             if (buildingData == null)
@@ -202,7 +202,7 @@ namespace GuildMaster.Guild
                 level = 1,
                 constructionProgress = 0f,
                 upgradeProgress = 0f,
-                                 lastProductionTime = System.DateTime.Now
+                                 lastProductionTime = Time.time
             };
             
             buildings.Add(newBuilding);
@@ -235,25 +235,20 @@ namespace GuildMaster.Guild
                 return false;
             }
             
-            // GuildMaster.Data.BuildingData의 업그레이드 시스템 사용
-            var upgradeData = buildingData.GetUpgradeData(building.level + 1);
-            if (upgradeData == null)
+            // 업그레이드 가능 여부 확인
+            if (!buildingData.CanUpgrade())
             {
-                Debug.LogWarning("업그레이드 데이터를 찾을 수 없습니다!");
+                Debug.LogWarning("더 이상 업그레이드할 수 없습니다!");
                 return false;
             }
             
-            // 업그레이드 비용을 GuildResources로 변환
+            // 업그레이드 비용 계산
             var upgradeCost = new GuildResources
             {
-                gold = upgradeData.resources.ContainsKey(GuildMaster.Data.ResourceType.Gold) ? 
-                       upgradeData.resources[GuildMaster.Data.ResourceType.Gold] : 0,
-                wood = upgradeData.resources.ContainsKey(GuildMaster.Data.ResourceType.Wood) ? 
-                       upgradeData.resources[GuildMaster.Data.ResourceType.Wood] : 0,
-                stone = upgradeData.resources.ContainsKey(GuildMaster.Data.ResourceType.Stone) ? 
-                        upgradeData.resources[GuildMaster.Data.ResourceType.Stone] : 0,
-                manaStone = upgradeData.resources.ContainsKey(GuildMaster.Data.ResourceType.Magic) ? 
-                           upgradeData.resources[GuildMaster.Data.ResourceType.Magic] : 0
+                gold = buildingData.buildCost * (building.level + 1),
+                wood = buildingData.baseWoodCost * (building.level + 1),
+                stone = buildingData.baseStoneCost * (building.level + 1),
+                manaStone = buildingData.baseManaCost * (building.level + 1)
             };
             
             if (!CanAfford(upgradeCost))
@@ -343,7 +338,7 @@ namespace GuildMaster.Guild
             foreach (var building in buildings)
             {
                 // 건설 완료 체크
-                if (!building.isConstructed && building.IsConstructionComplete())
+                if (!building.isConstructed && building.GetConstructionProgress() >= 1f)
                 {
                     building.isConstructed = true;
                     OnBuildingConstructed?.Invoke(building);
@@ -351,7 +346,7 @@ namespace GuildMaster.Guild
                 }
                 
                 // 업그레이드 완료 체크
-                if (!building.IsUpgradeComplete())
+                if (building.isUpgrading && building.GetUpgradeProgress() < 1f)
                 {
                     building.upgradeProgress += Time.deltaTime;
                     if (building.upgradeProgress >= 1f)

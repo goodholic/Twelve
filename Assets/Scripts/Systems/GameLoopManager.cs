@@ -7,7 +7,7 @@ using GuildMaster.Core;
 using GuildMaster.Battle;
 using GuildMaster.UI;
 using GuildMaster.Data;
-using GuildMaster.Exploration;
+using GuildMaster.Guild;
 
 namespace GuildMaster.Systems
 {
@@ -41,13 +41,16 @@ namespace GuildMaster.Systems
         private GuildManager guildManager;
         private ResourceManager resourceManager;
         private BattleManager battleManager;
-        private DungeonSystem dungeonSystem;
         private StoryManager storyManager;
         private AchievementSystem achievementSystem;
         private TutorialSystem tutorialSystem;
-        private MonoBehaviour productionSystem; // ResourceProductionSystem 대신 MonoBehaviour로 변경
-        private MonoBehaviour guildBattleSystem; // AIGuildBattleSystem 대신 MonoBehaviour로 변경
+        private CharacterManager characterManager;
+        private GachaSystem gachaSystem;
+        private AutoBattleSystem autoBattleSystem;
         private BattleSimulationSystem simulationSystem;
+        private MonoBehaviour dungeonSystem;
+        private MonoBehaviour productionSystem;
+        private MonoBehaviour guildBattleSystem;
         
         // Game state
         private GameState currentState = GameState.MainMenu;
@@ -178,11 +181,12 @@ namespace GuildMaster.Systems
                 battleManager = gameManager.BattleManager;
             }
             
-            dungeonSystem = DungeonSystem.Instance;
+            // TODO: DungeonSystem 구현 필요
+            // dungeonSystem = DungeonSystem.Instance;
             storyManager = FindObjectOfType<StoryManager>();
             achievementSystem = FindObjectOfType<AchievementSystem>();
             tutorialSystem = FindObjectOfType<TutorialSystem>();
-            productionSystem = GameObject.FindObjectOfType(System.Type.GetType("GuildMaster.Systems.ResourceProductionSystem")) as MonoBehaviour;
+            // productionSystem = GameObject.FindObjectOfType(System.Type.GetType("GuildMaster.Systems.ResourceProductionSystem")) as MonoBehaviour;
             guildBattleSystem = GameObject.FindObjectOfType(System.Type.GetType("GuildMaster.Systems.AIGuildBattleSystem")) as MonoBehaviour;
             simulationSystem = BattleSimulationSystem.Instance;
         }
@@ -308,16 +312,17 @@ namespace GuildMaster.Systems
             // Morning production bonus
             if (productionSystem != null)
             {
-                var productionComponent = productionSystem.GetComponent<ResourceProductionSystem>();
-                if (productionComponent != null)
-                {
+                // TODO: ResourceProductionSystem 구현 필요
+                // var productionComponent = productionSystem.GetComponent<ResourceProductionSystem>();
+                // if (productionComponent != null)
+                // {
                     // 아침 보너스 효과 (임시 구현)
-                    if (resourceManager != null)
-                    {
-                        resourceManager.AddGold(100);
-                        ShowNotification("아침 생산 보너스를 받았습니다!", NotificationType.Reward);
-                    }
-                }
+                    // if (resourceManager != null)
+                    // {
+                    //     resourceManager.AddGold(100);
+                    //     ShowNotification("아침 생산 보너스를 받았습니다!", NotificationType.Reward);
+                    // }
+                // }
             }
             
             // Daily quest refresh
@@ -457,10 +462,14 @@ namespace GuildMaster.Systems
             
             if (guildManager != null)
             {
-                var guildData = guildManager.GetGuildData();
-                baseCost += guildData.GuildLevel * 50;
-                baseCost += guildData.Adventurers.Count * 10;
-                baseCost += guildData.Buildings.Count * 20;
+                baseCost += guildManager.guildLevel * 50;
+                baseCost += guildManager.guildMembers.Count * 10;
+                // Buildings는 GuildSimulationCore에서 가져와야 함
+                var guildSimCore = GuildSimulationCore.Instance;
+                if (guildSimCore != null)
+                {
+                    baseCost += guildSimCore.GetBuildings().Count * 20;
+                }
             }
             
             // Season modifier
@@ -582,10 +591,8 @@ namespace GuildMaster.Systems
         {
             if (guildManager == null) return false;
             
-            var guildData = guildManager.GetGuildData();
-            
             // Victory condition 1: Reach maximum guild level
-            if (guildData.GuildLevel >= 50)
+            if (guildManager.guildLevel >= 50)
             {
                 return true;
             }
@@ -611,8 +618,6 @@ namespace GuildMaster.Systems
         {
             if (guildManager == null || resourceManager == null) return false;
             
-            var guildData = guildManager.GetGuildData();
-            
             // Defeat condition 1: Bankruptcy
             if (resourceManager.GetGold() < -1000)
             {
@@ -620,13 +625,14 @@ namespace GuildMaster.Systems
             }
             
             // Defeat condition 2: No adventurers
-            if (guildData.Adventurers.Count == 0 && currentDay > 7)
+            if (guildManager.guildMembers.Count == 0 && currentDay > 7)
             {
                 return true;
             }
             
             // Defeat condition 3: Zero reputation
-            if (guildData.GuildReputation <= 0)
+            var guildSimCore = GuildSimulationCore.Instance;
+            if (guildSimCore != null && guildSimCore.GetGuildReputation() <= 0)
             {
                 return true;
             }
@@ -665,10 +671,14 @@ namespace GuildMaster.Systems
             
             if (guildManager != null)
             {
-                var guildData = guildManager.GetGuildData();
-                score += guildData.GuildLevel * 1000;
-                score += guildData.GuildReputation * 10;
-                score += guildData.Adventurers.Count * 100;
+                score += guildManager.guildLevel * 1000;
+                score += guildManager.guildMembers.Count * 100;
+                
+                var guildSimCore = GuildSimulationCore.Instance;
+                if (guildSimCore != null)
+                {
+                    score += guildSimCore.GetGuildReputation() * 10;
+                }
             }
             
             if (resourceManager != null)
@@ -849,7 +859,7 @@ namespace GuildMaster.Systems
                     // Spring festival - growth bonus
                     if (guildManager != null)
                     {
-                        foreach (var adventurer in guildManager.GetGuildData().Adventurers)
+                        foreach (var adventurer in guildManager.guildMembers)
                         {
                             adventurer.AddExperience(100);
                         }
@@ -1002,7 +1012,7 @@ namespace GuildMaster.Systems
             }
         }
         
-        void ApplySaveData(SaveData saveData)
+        void ApplySaveData(Core.SaveData saveData)
         {
             currentDay = saveData.currentDay;
             currentSeason = saveData.currentSeason;
@@ -1017,7 +1027,7 @@ namespace GuildMaster.Systems
             if (saveManager != null && currentState == GameState.Playing)
             {
                 saveManager.SaveGame(0); // Auto save to slot 0
-                ShowNotification("자동 저장 완료", NotificationType.Info);
+                ShowNotification("자동 저장 완료", GuildMaster.Data.NotificationType.Info);
             }
         }
         
@@ -1085,14 +1095,7 @@ namespace GuildMaster.Systems
             // TODO: Implement notification UI
         }
         
-        public enum NotificationType
-        {
-            Info,
-            Warning,
-            Important,
-            Reward,
-            Battle
-        }
+
         
         // Public getters
         public GameState CurrentState => currentState;

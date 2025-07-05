@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using GuildMaster.Core;
+using GuildMaster.Data;
 
 namespace GuildMaster.Equipment
 {
@@ -78,16 +79,6 @@ namespace GuildMaster.Equipment
             Earring,
             Belt,
             Cape
-        }
-
-        public enum Rarity
-        {
-            Common,
-            Uncommon,
-            Rare,
-            Epic,
-            Legendary,
-            Mythic
         }
 
         public enum StatType

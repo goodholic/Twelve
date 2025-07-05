@@ -121,7 +121,7 @@ namespace GuildMaster.Systems
 
                 DialogueData dialogue = new DialogueData
                 {
-                    id = values[0].Trim(),
+                    dialogueId = values[0].Trim(),
                     speaker = values[1].Trim(),
                     content = values[2].Trim(),
                     nextDialogueId = values[3].Trim(),
@@ -134,7 +134,7 @@ namespace GuildMaster.Systems
                     duration = 3.0f
                 };
 
-                dialogueDatabase[dialogue.id] = dialogue;
+                dialogueDatabase[dialogue.dialogueId] = dialogue;
             }
         }
         

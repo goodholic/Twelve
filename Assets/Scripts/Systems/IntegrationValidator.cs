@@ -336,16 +336,14 @@ namespace GuildMaster.Systems
             try
             {
                 // Create test save data
-                var testData = new SaveData
-                {
-                    gameVersion = "1.0.0",
-                    slotIndex = -1, // Test slot
-                    guildName = "Integration Test Guild",
-                    guildLevel = 1,
-                    totalPlayTime = 100f,
-                    saveTime = DateTime.Now.Ticks,
-                    isAutoSave = false
-                };
+                var testData = new GuildMaster.Core.SaveData();
+                testData.gameVersion = "1.0.0";
+                testData.slotIndex = -1; // Test slot
+                testData.guildName = "Integration Test Guild";
+                testData.guildLevel = 1;
+                testData.totalPlayTime = 100f;
+                testData.saveTime = DateTime.Now;
+                testData.isAutoSave = false;
                 
                 // Initialize basic resources
                 testData.gold = 1000;

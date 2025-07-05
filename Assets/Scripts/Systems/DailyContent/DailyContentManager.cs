@@ -280,7 +280,7 @@ namespace GuildMaster.Systems
             if (gameManager.GuildManager != null)
             {
                 gameManager.GuildManager.OnAdventurerRecruited += OnAdventurerRecruited;
-                gameManager.GuildManager.OnBuildingUpgraded += OnBuildingUpgraded;
+                gameManager.GuildManager.OnBuildingUpgraded2 += OnBuildingUpgraded;
             }
         }
         
@@ -560,10 +560,13 @@ namespace GuildMaster.Systems
             UpdateQuestProgress(QuestObjective.RecruitAdventurers, 1);
         }
         
-        void OnBuildingUpgraded(Core.GuildManager.Building building)
+        void OnBuildingUpgraded(GuildMaster.Data.GuildBuilding building)
         {
+            // TODO: 건물 업그레이드 관련 퀘스트 진행
             UpdateQuestProgress(QuestObjective.UpgradeBuildings, 1);
         }
+        
+        // Building 관련 기능 제거됨 (README에 없는 기능)
         
         // Season Pass
         [System.Serializable]

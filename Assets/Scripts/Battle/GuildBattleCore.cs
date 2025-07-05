@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using GuildMaster.Core;
+using GuildMaster.Data;
 
 namespace GuildMaster.Battle
 {
@@ -102,11 +103,9 @@ namespace GuildMaster.Battle
             GameObject characterGO = new GameObject(name);
             characterGO.transform.SetParent(transform);
             
-            Unit character = characterGO.AddComponent<Unit>();
-            character.unitName = name;
-            character.level = level;
-            character.jobClass = jobClass;
-            character.rarity = rarity;
+            UnitBehaviour unitBehaviour = characterGO.AddComponent<UnitBehaviour>();
+            unitBehaviour.Initialize(name, level, jobClass, rarity);
+            Unit character = unitBehaviour.unit;
             character.isPlayerUnit = true;
             character.unitId = System.Guid.NewGuid().ToString();
             

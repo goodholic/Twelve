@@ -288,7 +288,7 @@ namespace GuildMaster.Core
             yield return null;
             
             // 길드 시스템
-            CreateSystemManager<GuildManager>("GuildManager");
+            CreateSystemManager<Guild.GuildManager>("GuildManager");
             yield return null;
             
             // 튜토리얼 시스템

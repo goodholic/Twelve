@@ -29,22 +29,21 @@ namespace GuildMaster.Core
 
         // Core Systems
         public BattleManager BattleManager { get; private set; }
-        public GuildManager GuildManager { get; private set; }
+        public Guild.GuildManager GuildManager { get; private set; }
         public ResourceManager ResourceManager { get; private set; }
         public SaveManager SaveManager { get; private set; }
         public EventManager EventManager { get; private set; }
         
-        // Additional Systems (기존 시스템들 사용)
-        public NPC.MerchantManager MerchantManager { get; private set; }
-        public NPC.NPCGuildManager NPCGuildManager { get; private set; }
-        public Exploration.DungeonManager DungeonManager { get; private set; }
+        // Game Systems
         public Systems.StoryManager StoryManager { get; private set; }
         public Systems.DailyContentManager DailyContentManager { get; private set; }
-        public Systems.TerritoryManager TerritoryManager { get; private set; }
         public Equipment.EquipmentManager EquipmentManager { get; private set; }
-        public Systems.ResearchManager ResearchManager { get; private set; }
         public Battle.SkillManager SkillManager { get; private set; }
-        // public GuildMaster.Systems.AnalyticsSystem AnalyticsSystem { get; private set; }
+        public Systems.CharacterManager CharacterManager { get; private set; }
+        public Systems.GachaSystem GachaSystem { get; private set; }
+        public Systems.AchievementSystem AchievementSystem { get; private set; }
+        public Systems.GameLoopManager GameLoopManager { get; private set; }
+        public Systems.AutoBattleSystem AutoBattleSystem { get; private set; }
 
         // Game States
         public enum GameState
@@ -52,7 +51,6 @@ namespace GuildMaster.Core
             MainMenu,
             Guild,
             Battle,
-            Exploration,
             Story,
             Loading
         }
@@ -71,6 +69,9 @@ namespace GuildMaster.Core
                 }
             }
         }
+
+        // Character Management
+        public Battle.Unit[] currentRegisteredCharacters = new Battle.Unit[10];
 
         // Events
         public event Action<GameState, GameState> OnGameStateChanged;
@@ -107,22 +108,21 @@ namespace GuildMaster.Core
         {
             // Initialize core systems
             BattleManager = GetOrAddComponent<BattleManager>();
-            GuildManager = GetOrAddComponent<GuildManager>();
+            GuildManager = GetOrAddComponent<Guild.GuildManager>();
             ResourceManager = GetOrAddComponent<ResourceManager>();
             SaveManager = GetOrAddComponent<SaveManager>();
             EventManager = GetOrAddComponent<EventManager>();
             
-            // Initialize additional systems
-            MerchantManager = GetOrAddComponent<NPC.MerchantManager>();
-            NPCGuildManager = GetOrAddComponent<NPC.NPCGuildManager>();
-            DungeonManager = GetOrAddComponent<Exploration.DungeonManager>();
+            // Initialize game systems
             StoryManager = GetOrAddComponent<Systems.StoryManager>();
             DailyContentManager = GetOrAddComponent<Systems.DailyContentManager>();
-            TerritoryManager = GetOrAddComponent<Systems.TerritoryManager>();
             EquipmentManager = GetOrAddComponent<Equipment.EquipmentManager>();
-            ResearchManager = GetOrAddComponent<Systems.ResearchManager>();
             SkillManager = GetOrAddComponent<Battle.SkillManager>();
-            // AnalyticsSystem = GetOrAddComponent<GuildMaster.Systems.AnalyticsSystem>();
+            CharacterManager = GetOrAddComponent<Systems.CharacterManager>();
+            GachaSystem = GetOrAddComponent<Systems.GachaSystem>();
+            AchievementSystem = GetOrAddComponent<Systems.AchievementSystem>();
+            GameLoopManager = GetOrAddComponent<Systems.GameLoopManager>();
+            AutoBattleSystem = GetOrAddComponent<Systems.AutoBattleSystem>();
 
             StartCoroutine(InitializeGameCoroutine());
         }
@@ -131,10 +131,11 @@ namespace GuildMaster.Core
         {
             // 편의 기능 시스템들 초기화
             GetOrAddComponent<Systems.GameSpeedSystem>();
-            GetOrAddComponent<Systems.AutoBattleSystem>();
             GetOrAddComponent<Systems.ConvenienceSystem>();
-            GetOrAddComponent<Systems.GachaSystem>();
-            GetOrAddComponent<Systems.AdventurerGrowthSystem>();
+            GetOrAddComponent<Systems.SoundSystem>();
+            GetOrAddComponent<Systems.ParticleEffectsSystem>();
+            GetOrAddComponent<Systems.TutorialSystem>();
+            GetOrAddComponent<Systems.SettingsSystem>();
         }
 
         IEnumerator InitializeGameCoroutine()

@@ -6,8 +6,8 @@ using GuildMaster.Battle;
 
 namespace GuildMaster.Data
 {
-    [CreateAssetMenu(fileName = "CharacterDatabase", menuName = "GuildMaster/Data/Character Database")]
-    public class CharacterDatabase : ScriptableObject
+    [CreateAssetMenu(fileName = "CharacterDatabaseSO", menuName = "GuildMaster/Data/Character Database SO")]
+    public class CharacterDatabaseSO : ScriptableObject
     {
         [SerializeField] public List<CharacterDataSO> characters = new List<CharacterDataSO>();
         
@@ -43,7 +43,7 @@ namespace GuildMaster.Data
             return characters[randomIndex];
         }
         
-        public CharacterDataSO GetRandomCharacterByRarity(GuildMaster.Battle.Rarity rarity)
+        public CharacterDataSO GetRandomCharacterByRarity(GuildMaster.Data.Rarity rarity)
         {
             var filtered = characters.Where(c => c.rarity == rarity).ToList();
             if (filtered.Count == 0) return null;
@@ -56,7 +56,7 @@ namespace GuildMaster.Data
             return characters.Where(c => c.jobClass == jobClass).ToList();
         }
         
-        public List<CharacterDataSO> GetCharactersByRarity(GuildMaster.Battle.Rarity rarity)
+        public List<CharacterDataSO> GetCharactersByRarity(GuildMaster.Data.Rarity rarity)
         {
             return characters.Where(c => c.rarity == rarity).ToList();
         }

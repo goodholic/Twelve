@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using GuildMaster.Core;
+using GuildMaster.Data;
 
 namespace GuildMaster.Equipment
 {
@@ -43,7 +44,7 @@ namespace GuildMaster.Equipment
             public string equipmentName;
             public Equipment.EquipmentSlot slot;
             public Equipment.EquipmentType type;
-            public Equipment.Rarity rarity;
+            public Rarity rarity;
             public Sprite icon;
             public Sprite fullArt;
             public string description;
@@ -636,12 +637,12 @@ namespace GuildMaster.Equipment
             // 레어도에 따른 배율
             switch (equipment.rarity)
             {
-                case Equipment.Rarity.Common: baseValue *= 1; break;
-                case Equipment.Rarity.Uncommon: baseValue *= 2; break;
-                case Equipment.Rarity.Rare: baseValue *= 5; break;
-                case Equipment.Rarity.Epic: baseValue *= 10; break;
-                case Equipment.Rarity.Legendary: baseValue *= 25; break;
-                case Equipment.Rarity.Mythic: baseValue *= 50; break;
+                case Rarity.Common: baseValue *= 1; break;
+                case Rarity.Uncommon: baseValue *= 2; break;
+                case Rarity.Rare: baseValue *= 5; break;
+                case Rarity.Epic: baseValue *= 10; break;
+                case Rarity.Legendary: baseValue *= 25; break;
+                case Rarity.Mythic: baseValue *= 50; break;
             }
 
             // 강화 레벨에 따른 배율
@@ -658,7 +659,7 @@ namespace GuildMaster.Equipment
                               .ToList();
         }
 
-        public List<Equipment> GetEquipmentByRarity(Equipment.Rarity rarity)
+        public List<Equipment> GetEquipmentByRarity(Rarity rarity)
         {
             return allEquipment.Where(e => e.rarity == rarity)
                               .Select(data => CreateEquipment(data.equipmentId))

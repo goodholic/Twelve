@@ -6,6 +6,7 @@ using System.Linq;
 using GuildMaster.Core;
 using GuildMaster.Data;
 using GuildMaster.Battle;
+using ResourceType = GuildMaster.Core.ResourceType;
 
 namespace GuildMaster.Systems
 {
@@ -214,7 +215,8 @@ namespace GuildMaster.Systems
             // 효율 계산
             float efficiency = CalculateIdleEfficiency();
 
-            // 자원 계산
+            // 자원 계산 (ResourceProductionSystem 미구현으로 임시 주석)
+            /*
             var resourceProduction = ResourceProductionSystem.Instance?.GetProductionStatistics();
             if (resourceProduction != null)
             {
@@ -229,6 +231,10 @@ namespace GuildMaster.Systems
                 // 기본 자원 생산
                 rewards.resources[ResourceType.Gold] = Mathf.FloorToInt(goldPerMinute * (seconds / 60f) * efficiency);
             }
+            */
+            
+            // 임시 기본 자원 생산
+            rewards.resources[ResourceType.Gold] = Mathf.FloorToInt(goldPerMinute * (seconds / 60f) * efficiency);
 
             // 경험치 계산
             rewards.totalExperience = Mathf.FloorToInt(expPerMinute * (seconds / 60f) * efficiency);
@@ -277,7 +283,7 @@ namespace GuildMaster.Systems
             if (guildManager != null)
             {
                 // 특정 건물이 있으면 효율 증가
-                if (System.Enum.TryParse<GuildMaster.Core.GuildManager.BuildingType>("Shop", out var buildingType))
+                if (System.Enum.TryParse<GuildMaster.Guild.GuildManager.BuildingType>("Shop", out var buildingType))
                 {
                     efficiency *= 1f + (guildManager.GetBuildingLevel(buildingType) * 0.1f);
                 }

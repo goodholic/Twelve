@@ -34,6 +34,9 @@ namespace GuildMaster.Core
         public float dayProgress;
         public List<string> completedQuests;
         public List<string> unlockedBuildings;
+        public List<string> unlockedCharacters;
+        public List<SquadSaveData> squads;
+        public StoryProgressData storyProgress;
         
         [Header("캐릭터")]
         public List<AdventurerSaveData> adventurers;
@@ -45,8 +48,11 @@ namespace GuildMaster.Core
         {
             completedQuests = new List<string>();
             unlockedBuildings = new List<string>();
+            unlockedCharacters = new List<string>();
             adventurers = new List<AdventurerSaveData>();
             buildings = new List<BuildingSaveData>();
+            squads = new List<SquadSaveData>();
+            storyProgress = new StoryProgressData();
             saveTime = DateTime.Now;
             gameVersion = Application.version;
         }
@@ -55,6 +61,7 @@ namespace GuildMaster.Core
     [System.Serializable]
     public class AdventurerSaveData
     {
+        public string id;
         public string unitId;
         public string characterId;
         public string name;
@@ -62,12 +69,17 @@ namespace GuildMaster.Core
         public int experience;
         public float currentHP;
         public float currentMP;
+        public Battle.JobClass jobClass;
+        public Data.Rarity rarity;
+        public int awakenLevel;
         public List<string> skillIds;
+        public List<string> equipmentIds;
         public Dictionary<string, object> customData;
         
         public AdventurerSaveData()
         {
             skillIds = new List<string>();
+            equipmentIds = new List<string>();
             customData = new Dictionary<string, object>();
         }
     }
@@ -85,6 +97,32 @@ namespace GuildMaster.Core
         public BuildingSaveData()
         {
             customData = new Dictionary<string, object>();
+        }
+    }
+    
+    [System.Serializable]
+    public class SquadSaveData
+    {
+        public string squadId;
+        public string squadName;
+        public List<string> memberIds;
+        
+        public SquadSaveData()
+        {
+            memberIds = new List<string>();
+        }
+    }
+    
+    [System.Serializable]
+    public class StoryProgressData
+    {
+        public int currentChapter;
+        public int currentStage;
+        public List<string> completedStages;
+        
+        public StoryProgressData()
+        {
+            completedStages = new List<string>();
         }
     }
 } 
