@@ -973,6 +973,7 @@ namespace GuildMaster.Battle
         public BattleResultType resultType;
         public BattleStatistics statistics;
         public BattleRewards rewards;
+        [System.NonSerialized]
         public Unit mvpUnit;
         
         // 호환성을 위한 속성들

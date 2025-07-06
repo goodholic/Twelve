@@ -5,6 +5,7 @@ namespace GuildMaster.Battle
 {
     public class UnitBehaviour : MonoBehaviour
     {
+        [System.NonSerialized]
         public Unit unit;
         
         public void Initialize(Unit unitData)

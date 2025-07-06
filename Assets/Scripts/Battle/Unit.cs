@@ -7,6 +7,7 @@ using GuildMaster.Data; // Rarity enum 사용을 위해 추가
 
 namespace GuildMaster.Battle
 {
+    [System.Serializable]
     public enum JobClass
     {
         None,
@@ -39,7 +40,8 @@ namespace GuildMaster.Battle
         Sage = JobClass.Sage
     }
 
-    [System.Serializable]
+    // Unit 클래스는 런타임 전용이며 직렬화되지 않습니다
+    // 직렬화가 필요한 경우 UnitData 클래스를 사용하세요
     public class Unit
     {
         // Basic Info
@@ -137,7 +139,9 @@ namespace GuildMaster.Battle
 
         // Battle-related properties
         public Vector2Int squadPosition;
+        [System.NonSerialized]
         public Transform transform; // GameObject의 transform 참조
+        [System.NonSerialized]
         public GameObject gameObject; // GameObject 참조 추가
         
         // AI 관련 속성
@@ -882,5 +886,52 @@ namespace GuildMaster.Battle
         public float attackMultiplier = 1f;
         public float defenseMultiplier = 1f;
         public float speedMultiplier = 1f;
+        
+        /// <summary>
+        /// UnitData로 변환
+        /// </summary>
+        public UnitData ToUnitData()
+        {
+            var data = new UnitData();
+            data.CopyFromUnit(this);
+            return data;
+        }
+        
+        /// <summary>
+        /// UnitData로부터 Unit 생성
+        /// </summary>
+        public static Unit FromUnitData(UnitData data)
+        {
+            if (data == null) return null;
+            
+            var unit = new Unit(data.unitName, data.level, data.jobClass, data.rarity);
+            
+            // 데이터 복사
+            unit.unitId = data.unitId;
+            unit.characterId = data.characterId;
+            unit.experience = data.experience;
+            unit.experienceToNextLevel = data.experienceToNextLevel;
+            unit.jobMastery = data.jobMastery;
+            unit.awakeningLevel = data.awakeningLevel;
+            unit.currentSquad = data.currentSquad;
+            unit.gridPosition = data.gridPosition;
+            unit.formationBuff = data.formationBuff;
+            unit.currentHP = data.currentHP;
+            unit.currentMP = data.currentMP;
+            unit.currentShield = data.currentShield;
+            unit.isAI = data.isAI;
+            unit.teamId = data.teamId;
+            unit.attackMultiplier = data.attackMultiplier;
+            unit.defenseMultiplier = data.defenseMultiplier;
+            unit.speedMultiplier = data.speedMultiplier;
+            
+            if (data.skillIds != null)
+            {
+                unit.skillIds.Clear();
+                unit.skillIds.AddRange(data.skillIds);
+            }
+            
+            return unit;
+        }
     }
 }

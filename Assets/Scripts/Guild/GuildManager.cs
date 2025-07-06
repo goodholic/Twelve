@@ -36,6 +36,7 @@ namespace GuildMaster.Guild
         public int guildExperience = 0;
         
         [Header("Guild Members")]
+        [System.NonSerialized]
         public List<Unit> guildMembers = new List<Unit>();
         public int maxMembers = 30;
 

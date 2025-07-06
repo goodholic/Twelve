@@ -241,7 +241,8 @@ namespace GuildMaster.Systems
             var textComponents = FindObjectsOfType<TextMeshProUGUI>();
             foreach (var text in textComponents)
             {
-                if (text.CompareTag("ScalableText"))
+                // Unity의 tag 시스템을 사용하지 않고 컴포넌트 이름으로 확인
+                if (text != null && text.gameObject.name.Contains("Scalable"))
                 {
                     text.fontSize = text.fontSize * currentSettings.textSize;
                 }

@@ -187,7 +187,15 @@ namespace GuildMaster.Systems
             achievementSystem = FindObjectOfType<AchievementSystem>();
             tutorialSystem = FindObjectOfType<TutorialSystem>();
             // productionSystem = GameObject.FindObjectOfType(System.Type.GetType("GuildMaster.Systems.ResourceProductionSystem")) as MonoBehaviour;
-            guildBattleSystem = GameObject.FindObjectOfType(System.Type.GetType("GuildMaster.Systems.AIGuildBattleSystem")) as MonoBehaviour;
+            var battleSystemType = System.Type.GetType("GuildMaster.Systems.AIGuildBattleSystem");
+            if (battleSystemType != null)
+            {
+                guildBattleSystem = GameObject.FindObjectOfType(battleSystemType) as MonoBehaviour;
+            }
+            else
+            {
+                Debug.LogWarning("AIGuildBattleSystem type not found");
+            }
             simulationSystem = BattleSimulationSystem.Instance;
         }
         

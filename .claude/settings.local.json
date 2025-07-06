@@ -10,7 +10,8 @@
       "Bash(touch:*)",
       "Bash(dotnet build:*)",
       "Bash(sed:*)",
-      "Bash(true)"
+      "Bash(true)",
+      "Bash(cp:*)"
     ],
     "deny": []
   }

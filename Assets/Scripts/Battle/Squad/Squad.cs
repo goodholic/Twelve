@@ -34,7 +34,9 @@ namespace GuildMaster.Battle
         public string squadName => Name; // squadName 속성 추가
         
         // Units Grid (6x3)
+        [System.NonSerialized]
         private Unit[,] unitsGrid = new Unit[ROWS, COLS];
+        [System.NonSerialized]
         private List<Unit> unitsList = new List<Unit>();
         
         // Squad Stats

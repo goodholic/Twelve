@@ -14,10 +14,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   Frames:
   - DelayInMs: 200
-    Sprite: {fileID: 21300000, guid: bd23a478cb7d88642b32568246913b31, type: 3}
+    Sprite: {fileID: 21300000, guid: 774e090d31c3d6d46a59fa0a754af5de, type: 3}
   - DelayInMs: 200
-    Sprite: {fileID: 21300000, guid: f940bf909c1b78a459127828b05b7665, type: 3}
+    Sprite: {fileID: 21300000, guid: 9f17a466f66859c43819e6d434195b37, type: 3}
   - DelayInMs: 200
-    Sprite: {fileID: 21300000, guid: e6b1cd2be17b4ac4ca391745ad6a22cb, type: 3}
+    Sprite: {fileID: 21300000, guid: a9b01c6702e68914c91ec8fcef5441f1, type: 3}
   - DelayInMs: 200
-    Sprite: {fileID: 21300000, guid: bdd05f2e94b73404fbf487c1bfdc0ea2, type: 3}
+    Sprite: {fileID: 21300000, guid: eebabe9e9839b5a4b883c4ef8d80d8ee, type: 3}

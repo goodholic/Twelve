@@ -31,9 +31,9 @@ namespace GuildMaster.Battle
         
         // 길드 데이터
         [Header("길드 구성")]
-        [SerializeField] private List<GuildMaster.Battle.Unit> collectedCharacters = new List<GuildMaster.Battle.Unit>(); // 수집한 18명의 캐릭터
-        [SerializeField] private GuildSquad squad1 = new GuildSquad();             // 1부대 (9명)
-        [SerializeField] private GuildSquad squad2 = new GuildSquad();             // 2부대 (9명)
+        [System.NonSerialized] private List<GuildMaster.Battle.Unit> collectedCharacters = new List<GuildMaster.Battle.Unit>(); // 수집한 18명의 캐릭터
+        [System.NonSerialized] private GuildSquad squad1 = new GuildSquad();             // 1부대 (9명)
+        [System.NonSerialized] private GuildSquad squad2 = new GuildSquad();             // 2부대 (9명)
         
         // 전투 상태
         private bool isInBattle = false;
@@ -67,6 +67,14 @@ namespace GuildMaster.Battle
         /// </summary>
         private void InitializeGuildSystem()
         {
+            // 필드 초기화
+            if (collectedCharacters == null)
+                collectedCharacters = new List<GuildMaster.Battle.Unit>();
+            if (squad1 == null)
+                squad1 = new GuildSquad();
+            if (squad2 == null)
+                squad2 = new GuildSquad();
+            
             // 기본 캐릭터 생성 (시작 시 몇 명)
             GenerateStartingCharacters();
             

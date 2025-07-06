@@ -67,12 +67,27 @@ namespace GuildMaster.Systems
             if (characterDatabase == null)
             {
                 characterDatabase = Resources.Load<CharacterDatabase>("Data/CharacterDatabase");
+                
+                // Resources 폴더에 없으면 다른 경로에서 시도
+                if (characterDatabase == null)
+                {
+                    // Unity 에디터에서는 AssetDatabase를 사용할 수 있지만, 
+                    // 런타임에서는 Resources 폴더에 있어야 함
+                    Debug.LogWarning("CharacterDatabase not found in Resources/Data/. Please move CharacterDatabase.asset to Assets/Resources/Data/ folder.");
+                }
             }
             
             if (characterDatabase != null)
             {
                 characterDatabase.Initialize();
                 Debug.Log($"Loaded {characterDatabase.characters.Count} characters from database.");
+                
+                // If database is empty, create default characters
+                if (characterDatabase.characters.Count == 0)
+                {
+                    Debug.LogWarning("Character database is empty. Creating default characters...");
+                    CreateDefaultCharacters();
+                }
             }
             else
             {
@@ -338,6 +353,105 @@ namespace GuildMaster.Systems
         public List<Unit> GetActiveUnits()
         {
             return new List<Unit>(activeUnits);
+        }
+        
+        private void CreateDefaultCharacters()
+        {
+            // Create default characters if database is empty
+            if (characterDatabase == null || characterDatabase.characters == null)
+            {
+                Debug.LogError("Cannot create default characters - database is null!");
+                return;
+            }
+            
+            // Clear existing characters
+            characterDatabase.characters.Clear();
+            
+            // Create default warrior
+            CharacterData warrior = new CharacterData
+            {
+                id = "char_warrior_001",
+                name = "Basic Warrior",
+                jobClass = JobClass.Warrior,
+                rarity = CharacterRarity.Common,
+                level = 1,
+                baseHP = 100,
+                baseMP = 50,
+                baseAttack = 15,
+                baseDefense = 10,
+                baseMagicPower = 5,
+                baseSpeed = 8,
+                critRate = 0.15f,
+                critDamage = 1.5f,
+                accuracy = 0.9f,
+                evasion = 0.05f
+            };
+            characterDatabase.characters.Add(warrior);
+            
+            // Create default mage
+            CharacterData mage = new CharacterData
+            {
+                id = "char_mage_001",
+                name = "Basic Mage",
+                jobClass = JobClass.Mage,
+                rarity = CharacterRarity.Common,
+                level = 1,
+                baseHP = 60,
+                baseMP = 100,
+                baseAttack = 5,
+                baseDefense = 5,
+                baseMagicPower = 20,
+                baseSpeed = 10,
+                critRate = 0.2f,
+                critDamage = 1.8f,
+                accuracy = 0.95f,
+                evasion = 0.08f
+            };
+            characterDatabase.characters.Add(mage);
+            
+            // Create default priest
+            CharacterData priest = new CharacterData
+            {
+                id = "char_priest_001",
+                name = "Basic Priest",
+                jobClass = JobClass.Priest,
+                rarity = CharacterRarity.Common,
+                level = 1,
+                baseHP = 70,
+                baseMP = 80,
+                baseAttack = 8,
+                baseDefense = 8,
+                baseMagicPower = 15,
+                baseSpeed = 9,
+                critRate = 0.05f,
+                critDamage = 1.3f,
+                accuracy = 0.9f,
+                evasion = 0.06f
+            };
+            characterDatabase.characters.Add(priest);
+            
+            // Create default ranger
+            CharacterData ranger = new CharacterData
+            {
+                id = "char_ranger_001",
+                name = "Basic Ranger",
+                jobClass = JobClass.Ranger,
+                rarity = CharacterRarity.Common,
+                level = 1,
+                baseHP = 85,
+                baseMP = 70,
+                baseAttack = 16,
+                baseDefense = 8,
+                baseMagicPower = 5,
+                baseSpeed = 12,
+                critRate = 0.25f,
+                critDamage = 1.7f,
+                accuracy = 0.98f,
+                evasion = 0.1f
+            };
+            characterDatabase.characters.Add(ranger);
+            
+            Debug.Log($"Created {characterDatabase.characters.Count} default characters.");
         }
         
         public int GetPooledUnitCount(int characterId)
