@@ -143,12 +143,13 @@ public static class EditorCleanupUtility
                     CheckMissingReferences(obj, comp);
                 }
 
-                // (D) 추가적으로, Character의 bulletPanel이 null이면 연결 시도(예: PlacementManager)
-                GuildMaster.Data.Character character = obj.GetComponent<GuildMaster.Data.Character>();
-                if (character != null)
-                {
-                    FixCharacterBulletPanel(character);
-                }
+                // Character 관련 기능 제거됨
+                // // (D) 추가적으로, Character의 bulletPanel이 null이면 연결 시도(예: PlacementManager)
+                // GuildMaster.Data.Character character = obj.GetComponent<GuildMaster.Data.Character>();
+                // if (character != null)
+                // {
+                //     FixCharacterBulletPanel(character);
+                // }
             }
             catch (System.Exception e)
             {
@@ -277,35 +278,36 @@ public static class EditorCleanupUtility
         }
     }
 
-    /// <summary>
-    /// Character 컴포넌트의 bulletPanel이 null이면, PlacementManager에서 가져와 연결 시도
-    /// </summary>
-    private static void FixCharacterBulletPanel(GuildMaster.Data.Character character)
-    {
-        try
-        {
-            if (character == null) return;
-            if (character.GetComponent<GuildMaster.Data.Character>() == null) return;
-
-            if (character != null)
-            {
-                GuildMaster.Game.PlacementManager manager = Object.FindAnyObjectByType<GuildMaster.Game.PlacementManager>();
-                if (manager != null && character != null)
-                {
-                    // PlacementManager doesn't have bulletPanel, so we'll try to find it elsewhere
-                    Transform bulletPanel = GameObject.Find("BulletPanel")?.transform;
-                    if (bulletPanel != null)
-                    {
-                        character.SetBulletPanel(bulletPanel);
-                    }
-                }
-            }
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"Failed to fix bulletPanel for character: {e.Message}", character);
-        }
-    }
+    // Character 관련 메서드 제거됨
+    // /// <summary>
+    // /// Character 컴포넌트의 bulletPanel이 null이면, PlacementManager에서 가져와 연결 시도
+    // /// </summary>
+    // private static void FixCharacterBulletPanel(GuildMaster.Systems.Character character)
+    // {
+    //     try
+    //     {
+    //         if (character == null) return;
+    //         if (character.GetComponent<GuildMaster.Systems.Character>() == null) return;
+    //
+    //         if (character != null)
+    //         {
+    //             GuildMaster.Game.PlacementManager manager = Object.FindAnyObjectByType<GuildMaster.Game.PlacementManager>();
+    //             if (manager != null && character != null)
+    //             {
+    //                 // PlacementManager doesn't have bulletPanel, so we'll try to find it elsewhere
+    //                 Transform bulletPanel = GameObject.Find("BulletPanel")?.transform;
+    //                 if (bulletPanel != null)
+    //                 {
+    //                     character.SetBulletPanel(bulletPanel);
+    //                 }
+    //             }
+    //         }
+    //     }
+    //     catch (System.Exception e)
+    //     {
+    //         Debug.LogError($"Failed to fix bulletPanel for character: {e.Message}", character);
+    //     }
+    // }
 
 #if UNITY_2018_3_OR_NEWER
     /// <summary>

@@ -1,4 +1,5 @@
-﻿// Copyright (c) Pixel Crushers. All rights reserved.
+// Recompile at 2025-07-07 오전 8:05:41
+// Copyright (c) Pixel Crushers. All rights reserved.
 
 using UnityEngine;
 using System;

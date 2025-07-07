@@ -11,7 +11,8 @@
       "Bash(dotnet build:*)",
       "Bash(sed:*)",
       "Bash(true)",
-      "Bash(cp:*)"
+      "Bash(cp:*)",
+      "Bash(mv:*)"
     ],
     "deny": []
   }

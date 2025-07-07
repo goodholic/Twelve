@@ -44,6 +44,50 @@ namespace GuildMaster.Battle
                 speedMultiplier = 1.1f,     // 빠른 속도
                 criticalRateBonus = 0.08f,  // 높은 마법 크리티컬
                 description = "강력한 마법으로 적을 소멸시키는 마법사"
+            },
+            
+            [JobClass.Archer] = new JobStatMultipliers
+            {
+                hpMultiplier = 0.9f,        // 보통 체력
+                attackMultiplier = 1.0f,    // 보통 공격력 (범위 공격 특화)
+                defenseMultiplier = 0.8f,   // 낮은 방어력
+                magicPowerMultiplier = 0.8f, // 낮은 마법력
+                speedMultiplier = 1.3f,     // 빠른 속도
+                criticalRateBonus = 0.06f,  // 보통 크리티컬
+                description = "원거리 범위 공격의 달인"
+            },
+            
+            [JobClass.Gunner] = new JobStatMultipliers
+            {
+                hpMultiplier = 0.75f,       // 낮은 체력
+                attackMultiplier = 1.5f,    // 매우 높은 단일 공격력
+                defenseMultiplier = 0.6f,   // 매우 낮은 방어력
+                magicPowerMultiplier = 0.5f, // 낮은 마법력
+                speedMultiplier = 1.0f,     // 보통 속도
+                criticalRateBonus = 0.12f,  // 매우 높은 크리티컬
+                description = "장거리 단일 공격의 달인"
+            },
+            
+            [JobClass.Priest] = new JobStatMultipliers
+            {
+                hpMultiplier = 0.85f,       // 보통 체력
+                attackMultiplier = 0.5f,    // 낮은 공격력
+                defenseMultiplier = 0.8f,   // 보통 방어력
+                magicPowerMultiplier = 1.5f, // 높은 마법력 (힐링 특화)
+                speedMultiplier = 1.0f,     // 보통 속도
+                criticalRateBonus = 0.03f,  // 낮은 크리티컬
+                description = "아군을 치유하는 성직자"
+            },
+            
+            [JobClass.Rogue] = new JobStatMultipliers
+            {
+                hpMultiplier = 0.85f,       // 낮은 체력
+                attackMultiplier = 1.4f,    // 높은 공격력
+                defenseMultiplier = 0.6f,   // 낮은 방어력
+                magicPowerMultiplier = 0.8f, // 낮은 마법력
+                speedMultiplier = 1.5f,     // 매우 빠른 속도
+                criticalRateBonus = 0.15f,  // 최고 크리티컬
+                description = "빠른 속도와 치명타의 달인"
             }
         };
         
