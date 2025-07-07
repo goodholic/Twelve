@@ -31,10 +31,10 @@ namespace GuildMaster.Test
             // Try to add 18 units
             for (int i = 0; i < 20; i++) // Try to add more than max
             {
-                Unit testUnit = new GameObject($"TestUnit_{i}").AddComponent<Unit>();
-                testUnit.characterId = i;
-                testUnit.Name = $"Unit {i}";
-                testUnit.jobClass = (JobClass)(i % 7);
+                // Unit은 MonoBehaviour가 아니므로 직접 생성
+                Unit testUnit = new Unit($"Unit {i}", 1, (JobClass)(i % 7));
+                testUnit.characterId = $"test_unit_{i}";
+                testUnit.unitId = $"unit_{i}";
                 
                 bool added = testSquad.AddUnit(testUnit);
                 if (i < 18)
