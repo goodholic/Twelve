@@ -28,16 +28,16 @@ namespace GuildMaster.Battle
         public bool IsPlayerSquad { get; set; }
         public bool isDefeated => GetAliveUnits().Count == 0;
         public float totalPower => GetTotalCombatPower();
-        public List<Unit> aliveUnits => GetAliveUnits();
+        public List<UnitStatus> aliveUnits => GetAliveUnits();
         
         // 추가 속성 (AIGuildGenerator 호환성)
         public string squadName => Name; // squadName 속성 추가
         
         // Units Grid (6x3)
         [System.NonSerialized]
-        private Unit[,] unitsGrid = new Unit[ROWS, COLS];
+        private UnitStatus[,] unitsGrid = new UnitStatus[ROWS, COLS];
         [System.NonSerialized]
-        private List<Unit> unitsList = new List<Unit>();
+        private List<UnitStatus> unitsList = new List<UnitStatus>();
         
         // Squad Stats
         public float TotalHealth => CalculateTotalHealth();
@@ -48,9 +48,9 @@ namespace GuildMaster.Battle
         
         // 추가 속성들
         public bool IsAlive => !IsDefeated;
-        public List<Unit> Units => GetAllUnits();
-        public List<Unit> AliveUnits => GetAliveUnits();
-        public List<Unit> units => GetAllUnits(); // 호환성을 위한 소문자 속성
+        public List<UnitStatus> Units => GetAllUnits();
+        public List<UnitStatus> AliveUnits => GetAliveUnits();
+        public List<UnitStatus> units => GetAllUnits(); // 호환성을 위한 소문자 속성
         
         // Squad Formation
         public enum Formation
@@ -65,9 +65,9 @@ namespace GuildMaster.Battle
         public Formation CurrentFormation { get; set; } = Formation.Standard;
         
         // Events
-        public event Action<Squad, Unit> OnUnitAdded;
-        public event Action<Squad, Unit> OnUnitRemoved;
-        public event Action<Squad, Unit> OnUnitDied;
+        public event Action<Squad, UnitStatus> OnUnitAdded;
+        public event Action<Squad, UnitStatus> OnUnitRemoved;
+        public event Action<Squad, UnitStatus> OnUnitDied;
         public event Action<Squad> OnSquadDefeated;
         
         public Squad(string name, int index, bool isPlayerSquad)
@@ -79,7 +79,7 @@ namespace GuildMaster.Battle
         }
         
         // Unit Management
-        public bool AddUnit(Unit unit, int row = -1, int col = -1)
+        public bool AddUnit(UnitStatus unit, int row = -1, int col = -1)
         {
             if (unitsList.Count >= MAX_UNITS)
             {
@@ -123,7 +123,7 @@ namespace GuildMaster.Battle
             return true;
         }
         
-        public bool RemoveUnit(Unit unit)
+        public bool RemoveUnit(UnitStatus unit)
         {
             for (int row = 0; row < ROWS; row++)
             {
@@ -145,7 +145,7 @@ namespace GuildMaster.Battle
             return false;
         }
         
-        public Unit GetUnit(int row, int col)
+        public UnitStatus GetUnit(int row, int col)
         {
             if (IsValidPosition(row, col))
             {
@@ -154,14 +154,14 @@ namespace GuildMaster.Battle
             return null;
         }
         
-        public List<Unit> GetAllUnits()
+        public List<UnitStatus> GetAllUnits()
         {
-            return new List<Unit>(unitsList);
+            return new List<UnitStatus>(unitsList);
         }
         
-        public List<Unit> GetAliveUnits()
+        public List<UnitStatus> GetAliveUnits()
         {
-            var aliveUnits = new List<Unit>();
+            var aliveUnits = new List<UnitStatus>();
             foreach (var unit in GetAllUnits())
             {
                 if (unit != null && unit.IsAlive)
@@ -173,7 +173,7 @@ namespace GuildMaster.Battle
         }
         
         // Position Management
-        Vector2Int? FindBestPosition(Unit unit)
+        Vector2Int? FindBestPosition(UnitStatus unit)
         {
             // Determine preferred positions based on job class
             List<Vector2Int> preferredPositions = GetPreferredPositions(unit.jobClass);
@@ -263,7 +263,7 @@ namespace GuildMaster.Battle
         void ReorganizeUnits()
         {
             // Store current units
-            List<Unit> units = new List<Unit>(unitsList);
+            List<UnitStatus> units = new List<UnitStatus>(unitsList);
             
             // Clear grid
             for (int row = 0; row < ROWS; row++)
@@ -304,7 +304,7 @@ namespace GuildMaster.Battle
         }
         
         // Combat Methods
-        public Unit GetNextTarget(bool prioritizeFront = true)
+        public UnitStatus GetNextTarget(bool prioritizeFront = true)
         {
             if (prioritizeFront)
             {
@@ -313,7 +313,7 @@ namespace GuildMaster.Battle
                 {
                     for (int col = 0; col < COLS; col++)
                     {
-                        Unit unit = unitsGrid[row, col];
+                        UnitStatus unit = unitsGrid[row, col];
                         if (unit != null && unit.IsAlive)
                         {
                             return unit;
@@ -328,7 +328,7 @@ namespace GuildMaster.Battle
                 {
                     for (int col = 0; col < COLS; col++)
                     {
-                        Unit unit = unitsGrid[row, col];
+                        UnitStatus unit = unitsGrid[row, col];
                         if (unit != null && unit.IsAlive)
                         {
                             return unit;
@@ -340,9 +340,9 @@ namespace GuildMaster.Battle
             return null;
         }
         
-        public List<Unit> GetUnitsInArea(int centerRow, int centerCol, int radius)
+        public List<UnitStatus> GetUnitsInArea(int centerRow, int centerCol, int radius)
         {
-            List<Unit> unitsInArea = new List<Unit>();
+            List<UnitStatus> unitsInArea = new List<UnitStatus>();
             
             for (int row = centerRow - radius; row <= centerRow + radius; row++)
             {
@@ -350,7 +350,7 @@ namespace GuildMaster.Battle
                 {
                     if (IsValidPosition(row, col))
                     {
-                        Unit unit = unitsGrid[row, col];
+                        UnitStatus unit = unitsGrid[row, col];
                         if (unit != null && unit.IsAlive)
                         {
                             unitsInArea.Add(unit);
@@ -386,7 +386,7 @@ namespace GuildMaster.Battle
         }
         
         // Event Handlers
-        void HandleUnitDeath(Unit unit)
+        void HandleUnitDeath(UnitStatus unit)
         {
             OnUnitDied?.Invoke(this, unit);
             

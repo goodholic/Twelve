@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using GuildMaster.Core;
 using GuildMaster.Data;
+using Unit = GuildMaster.Battle.UnitStatus;
 
 namespace GuildMaster.Equipment
 {
@@ -237,9 +238,9 @@ namespace GuildMaster.Equipment
         // Events
         public static event Action<Equipment, int> OnEquipmentEnhanced;
         public static event Action<Equipment> OnEquipmentBroken;
-        public static event Action<GuildMaster.Battle.Unit, Equipment> OnEquipmentEquipped;
-        public static event Action<GuildMaster.Battle.Unit, Equipment> OnEquipmentUnequipped;
-        public static event Action<GuildMaster.Battle.Unit, List<EquipmentSet.SetBonus>> OnSetBonusActivated;
+        public static event Action<Unit, Equipment> OnEquipmentEquipped;
+        public static event Action<Unit, Equipment> OnEquipmentUnequipped;
+        public static event Action<Unit, List<EquipmentSet.SetBonus>> OnSetBonusActivated;
 
         void Awake()
         {
@@ -480,7 +481,7 @@ namespace GuildMaster.Equipment
             Debug.Log($"Consumed gold: {amount}");
         }
 
-        public bool EquipItem(GuildMaster.Battle.Unit unit, Equipment equipment)
+        public bool EquipItem(Unit unit, Equipment equipment)
         {
             if (!equipment.CanEquip(unit))
             {
@@ -504,7 +505,7 @@ namespace GuildMaster.Equipment
             return true;
         }
 
-        public bool UnequipItem(GuildMaster.Battle.Unit unit, Equipment equipment)
+        public bool UnequipItem(Unit unit, Equipment equipment)
         {
             // 장비 해제 로직 (Battle.Unit에 적합하게 수정)
             // if (!unit.UnequipItem(equipment.equipmentSlot)) // Battle.Unit에 이 메서드가 없으면 다른 방식으로 구현
@@ -520,14 +521,14 @@ namespace GuildMaster.Equipment
             return true;
         }
 
-        Equipment GetEquippedItem(GuildMaster.Battle.Unit unit, Equipment.EquipmentSlot slot)
+        Equipment GetEquippedItem(Unit unit, Equipment.EquipmentSlot slot)
         {
             // Battle.Unit의 장비 시스템에 맞게 수정 필요
             // return unit.equipmentSlots.ContainsKey(slot) ? unit.equipmentSlots[slot] : null;
             return null; // 임시로 null 반환
         }
 
-        void CheckSetBonuses(GuildMaster.Battle.Unit unit)
+        void CheckSetBonuses(Unit unit)
         {
             if (!equipmentSettings.enableSetBonuses) return;
 
@@ -572,7 +573,7 @@ namespace GuildMaster.Equipment
             }
         }
 
-        void ApplySetBonuses(GuildMaster.Battle.Unit unit, List<EquipmentSet.SetBonus> bonuses)
+        void ApplySetBonuses(Unit unit, List<EquipmentSet.SetBonus> bonuses)
         {
             foreach (var bonus in bonuses)
             {

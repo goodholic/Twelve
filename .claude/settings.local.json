@@ -12,7 +12,8 @@
       "Bash(sed:*)",
       "Bash(true)",
       "Bash(cp:*)",
-      "Bash(mv:*)"
+      "Bash(mv:*)",
+      "Bash(echo:*)"
     ],
     "deny": []
   }

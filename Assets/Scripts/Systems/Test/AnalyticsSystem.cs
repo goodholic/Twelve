@@ -10,7 +10,7 @@ using GuildMaster.Data;
 using GuildMaster.Battle;
 using GuildMaster.Guild;
 using JobClass = GuildMaster.Battle.JobClass;
-using Unit = GuildMaster.Battle.Unit;
+using Unit = GuildMaster.Battle.UnitStatus;
 using Rarity = GuildMaster.Data.Rarity;
 // using ResourceType = GuildMaster.Core.ResourceType; // ResourceType removed
 
@@ -755,7 +755,7 @@ namespace GuildMaster.Systems
 
         void OnNewAdventurer(GameEvent gameEvent)
         {
-            var adventurer = gameEvent.GetParameter<Unit>("adventurer");
+            var adventurer = gameEvent.GetParameter<UnitStatus>("adventurer");
             if (adventurer != null)
             {
                 UpdateCharacterAnalytics(adventurer);
@@ -770,7 +770,7 @@ namespace GuildMaster.Systems
 
         void OnAdventurerLevelUp(GameEvent gameEvent)
         {
-            var adventurer = gameEvent.GetParameter<Unit>("adventurer");
+            var adventurer = gameEvent.GetParameter<UnitStatus>("adventurer");
             var newLevel = gameEvent.GetParameter<int>("newLevel");
             
             if (adventurer != null)
@@ -875,7 +875,7 @@ namespace GuildMaster.Systems
 
         void OnUnitKilled(GameEvent gameEvent)
         {
-            var unit = gameEvent.GetParameter<Unit>("unit");
+            var unit = gameEvent.GetParameter<UnitStatus>("unit");
             var isPlayerUnit = gameEvent.GetParameter<bool>("isPlayerUnit");
             
             if (!isPlayerUnit)
@@ -887,7 +887,7 @@ namespace GuildMaster.Systems
             }
         }
 
-        void OnUnitAttack(Unit attacker, Unit target, float damage)
+        void OnUnitAttack(UnitStatus attacker, UnitStatus target, float damage)
         {
             battleAnalytics.totalDamageDealt += (long)damage;
             
@@ -900,12 +900,12 @@ namespace GuildMaster.Systems
             }
         }
 
-        void OnUnitHeal(Unit healer, float healAmount)
+        void OnUnitHeal(UnitStatus healer, float healAmount)
         {
             battleAnalytics.totalHealingDone += (long)healAmount;
         }
 
-        void OnUnitDeath(Unit unit)
+        void OnUnitDeath(UnitStatus unit)
         {
             // Track unit deaths
         }
@@ -1069,7 +1069,7 @@ namespace GuildMaster.Systems
             }
         }
 
-        public void TrackBattleParticipation(Unit unit, bool isVictory)
+        public void TrackBattleParticipation(UnitStatus unit, bool isVictory)
         {
             if (!enableAnalytics || unit == null) return;
             
@@ -1109,7 +1109,7 @@ namespace GuildMaster.Systems
                 battleAnalytics.skillUsageCounts[skillId];
         }
 
-        void UpdateCharacterAnalytics(Unit unit)
+        void UpdateCharacterAnalytics(UnitStatus unit)
         {
             if (unit == null) return;
             

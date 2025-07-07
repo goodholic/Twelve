@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using GuildMaster.Data;
 using GuildMaster.Systems;
+using Unit = GuildMaster.Battle.UnitStatus;
 
 namespace GuildMaster.Battle
 {
@@ -75,7 +76,7 @@ namespace GuildMaster.Battle
             return squad;
         }
         
-        static Unit CreateAIUnit(JobClass jobClass, Rarity rarity, int baseLevel, Difficulty difficulty)
+        static UnitStatus CreateAIUnit(JobClass jobClass, Rarity rarity, int baseLevel, Difficulty difficulty)
         {
             try
             {
@@ -92,7 +93,7 @@ namespace GuildMaster.Battle
                 if (unit == null)
                 {
                     // 폴백: 기본 유닛 생성
-                    unit = new Unit($"AI_{jobClass}", baseLevel, jobClass);
+                    unit = new UnitStatus($"AI_{jobClass}", baseLevel, jobClass);
                 }
                 
                 // 레벨 조정
@@ -120,7 +121,7 @@ namespace GuildMaster.Battle
             }
         }
         
-        static void ApplyDifficultyModifiers(Unit unit, Difficulty difficulty)
+        static void ApplyDifficultyModifiers(UnitStatus unit, Difficulty difficulty)
         {
             float statMultiplier = difficulty switch
             {

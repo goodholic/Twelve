@@ -5,7 +5,7 @@ using GuildMaster.Data;
 namespace GuildMaster.Battle
 {
     /// <summary>
-    /// Unit의 순수 데이터만을 포함하는 직렬화 가능한 클래스
+    /// UnitStatus의 순수 데이터만을 포함하는 직렬화 가능한 클래스
     /// </summary>
     [System.Serializable]
     public class UnitData
@@ -68,9 +68,9 @@ namespace GuildMaster.Battle
         }
         
         /// <summary>
-        /// Unit 객체로부터 데이터 복사
+        /// UnitStatus 객체로부터 데이터 복사
         /// </summary>
-        public void CopyFromUnit(Unit unit)
+        public void CopyFromUnit(UnitStatus unit)
         {
             if (unit == null) return;
             

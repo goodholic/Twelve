@@ -41,9 +41,11 @@ namespace GuildMaster.Battle
         Sage = JobClass.Sage
     }
 
-    // Unit 클래스는 런타임 전용이며 직렬화되지 않습니다
+    // UnitStatus 클래스는 런타임 전용이며 직렬화되지 않습니다
     // 직렬화가 필요한 경우 UnitData 클래스를 사용하세요
-    public class Unit
+    // Unity.VisualScripting.Unit과의 충돌 방지를 위해 UnitStatus로 이름 변경
+    [System.Serializable]
+    public class UnitStatus
     {
         // Basic Info
         public string unitId;
@@ -134,9 +136,9 @@ namespace GuildMaster.Battle
         private List<JobAbility> jobAbilities = new List<JobAbility>();
 
         // Events
-        public event Action<Unit, float> OnDamageTaken;
-        public event Action<Unit, float> OnHealed;
-        public event Action<Unit> OnDeath;
+        public event Action<UnitStatus, float> OnDamageTaken;
+        public event Action<UnitStatus, float> OnHealed;
+        public event Action<UnitStatus> OnDeath;
 
         // Battle-related properties
         public Vector2Int squadPosition;
@@ -197,7 +199,7 @@ namespace GuildMaster.Battle
             }
         }
 
-        public Unit(string name, int level, JobClass jobClass, Rarity rank = Rarity.Common)
+        public UnitStatus(string name, int level, JobClass jobClass, Rarity rank = Rarity.Common)
         {
             unitId = Guid.NewGuid().ToString();
             unitName = name;
@@ -899,13 +901,13 @@ namespace GuildMaster.Battle
         }
         
         /// <summary>
-        /// UnitData로부터 Unit 생성
+        /// UnitData로부터 UnitStatus 생성
         /// </summary>
-        public static Unit FromUnitData(UnitData data)
+        public static UnitStatus FromUnitData(UnitData data)
         {
             if (data == null) return null;
             
-            var unit = new Unit(data.unitName, data.level, data.jobClass, data.rarity);
+            var unit = new UnitStatus(data.unitName, data.level, data.jobClass, data.rarity);
             
             // 데이터 복사
             unit.unitId = data.unitId;

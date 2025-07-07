@@ -5,7 +5,7 @@ using UnityEngine;
 using GuildMaster.Data;
 using GuildMaster.Battle;
 using JobClass = GuildMaster.Battle.JobClass;
-using Unit = GuildMaster.Battle.Unit;
+using Unit = GuildMaster.Battle.UnitStatus;
 using Rarity = GuildMaster.Data.Rarity;
 
 namespace GuildMaster.Core

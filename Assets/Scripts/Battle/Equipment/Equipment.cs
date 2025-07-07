@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using GuildMaster.Core;
 using GuildMaster.Data;
+using Unit = GuildMaster.Battle.UnitStatus;
 
 namespace GuildMaster.Equipment
 {
@@ -190,7 +191,7 @@ namespace GuildMaster.Equipment
             return totalStats;
         }
 
-        public bool CanEquip(GuildMaster.Battle.Unit unit)
+        public bool CanEquip(Unit unit)
         {
             // 레벨 요구사항 확인
             if (unit.level < requiredLevel)
@@ -211,7 +212,7 @@ namespace GuildMaster.Equipment
             return true;
         }
 
-        private float GetUnitStat(GuildMaster.Battle.Unit unit, StatType statType)
+        private float GetUnitStat(Unit unit, StatType statType)
         {
             return statType switch
             {

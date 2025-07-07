@@ -111,7 +111,7 @@ namespace GuildMaster.Battle
             UsesPerBattle = -1;
         }
         
-        public bool CanUse(Unit caster)
+        public bool CanUse(UnitStatus caster)
         {
             if (caster.JobClass != RequiredClass && RequiredClass != JobClass.None)
                 return false;
@@ -134,7 +134,7 @@ namespace GuildMaster.Battle
             return true;
         }
         
-        public float CalculateEffectValue(Unit caster, SkillEffect effect)
+        public float CalculateEffectValue(UnitStatus caster, SkillEffect effect)
         {
             float baseValue = effect.BaseValue;
             float scaling = 0f;
@@ -212,7 +212,7 @@ namespace GuildMaster.Battle
         public float RemainingDuration { get; set; }
         public float TickInterval { get; set; } // For DoT effects
         public float Value { get; set; } // Damage/heal per tick or stat modifier
-        public Unit Source { get; set; }
+        public UnitStatus Source { get; set; }
         public Skill SourceSkill { get; set; }
         
         public StatusEffect(StatusEffectType type, float duration, float value)
@@ -247,11 +247,11 @@ namespace GuildMaster.Battle
         private Dictionary<string, SkillTemplate> skillTemplates;
         
         // Events
-        public event Action<Unit, Skill, List<Unit>> OnSkillUsed;
-        public event Action<Unit, StatusEffect> OnStatusEffectApplied;
-        public event Action<Unit, StatusEffect> OnStatusEffectRemoved;
-        public event Action<Unit, Skill> OnSkillLearned;
-        public event Action<Unit, Skill> OnSkillUpgraded;
+        public event Action<UnitStatus, Skill, List<UnitStatus>> OnSkillUsed;
+        public event Action<UnitStatus, StatusEffect> OnStatusEffectApplied;
+        public event Action<UnitStatus, StatusEffect> OnStatusEffectRemoved;
+        public event Action<UnitStatus, Skill> OnSkillLearned;
+        public event Action<UnitStatus, Skill> OnSkillUpgraded;
         
         void Awake()
         {
@@ -548,7 +548,7 @@ namespace GuildMaster.Battle
             classSkills[classKey].Add(id);
         }
         
-        public bool LearnSkill(Unit unit, string skillId)
+        public bool LearnSkill(UnitStatus unit, string skillId)
         {
             if (!allSkills.ContainsKey(skillId)) return false;
             
@@ -577,7 +577,7 @@ namespace GuildMaster.Battle
             return false;
         }
         
-        public bool UseSkill(Unit caster, string skillId, List<Unit> targets)
+        public bool UseSkill(UnitStatus caster, string skillId, List<UnitStatus> targets)
         {
             if (!allSkills.ContainsKey(skillId)) return false;
             
@@ -612,7 +612,7 @@ namespace GuildMaster.Battle
             return true;
         }
         
-        void ApplySkillEffect(Unit caster, Skill skill, SkillEffect effect, List<Unit> targets)
+        void ApplySkillEffect(UnitStatus caster, Skill skill, SkillEffect effect, List<UnitStatus> targets)
         {
             foreach (var target in targets)
             {
@@ -654,7 +654,7 @@ namespace GuildMaster.Battle
             }
         }
         
-        void ApplyBuff(Unit target, SkillEffect effect, float value)
+        void ApplyBuff(UnitStatus target, SkillEffect effect, float value)
         {
             // TODO: Implement buff system
             // For now, directly modify stats
@@ -662,7 +662,7 @@ namespace GuildMaster.Battle
             target.defense *= (1f + value);
         }
         
-        void ApplyDebuff(Unit target, SkillEffect effect, float value)
+        void ApplyDebuff(UnitStatus target, SkillEffect effect, float value)
         {
             // TODO: Implement debuff system
             // For now, directly modify stats
@@ -670,7 +670,7 @@ namespace GuildMaster.Battle
             target.defense *= (1f - value);
         }
         
-        void ApplyStatusEffect(Unit target, StatusEffectType type, float duration, float value, Unit source, Skill sourceSkill)
+        void ApplyStatusEffect(UnitStatus target, StatusEffectType type, float duration, float value, UnitStatus source, Skill sourceSkill)
         {
             var statusEffect = new StatusEffect(type, duration, value)
             {
@@ -688,7 +688,7 @@ namespace GuildMaster.Battle
             OnStatusEffectApplied?.Invoke(target, statusEffect);
         }
         
-        void HandleSpecialEffect(Unit caster, Unit target, Skill skill, float value)
+        void HandleSpecialEffect(UnitStatus caster, UnitStatus target, Skill skill, float value)
         {
             // Handle special effects like cooldown reduction
             if (skill.SkillId == "skill_time_warp")
@@ -749,7 +749,7 @@ namespace GuildMaster.Battle
             }
         }
         
-        void ApplyTickEffect(Unit unit, StatusEffect effect)
+        void ApplyTickEffect(UnitStatus unit, StatusEffect effect)
         {
             switch (effect.Type)
             {
@@ -778,7 +778,7 @@ namespace GuildMaster.Battle
             activeStatusEffects.Clear();
         }
         
-        public bool UpgradeSkill(Unit unit, string skillId)
+        public bool UpgradeSkill(UnitStatus unit, string skillId)
         {
             if (!allSkills.ContainsKey(skillId)) return false;
             if (!HasSkill(unit, skillId)) return false;
@@ -792,7 +792,7 @@ namespace GuildMaster.Battle
         }
         
         // Helper methods
-        public List<Skill> GetUnitSkills(Unit unit)
+        public List<Skill> GetUnitSkills(UnitStatus unit)
         {
             string unitId = unit.UnitId;
             if (!unitSkills.ContainsKey(unitId))
@@ -814,13 +814,13 @@ namespace GuildMaster.Battle
                 .ToList();
         }
         
-        public bool HasSkill(Unit unit, string skillId)
+        public bool HasSkill(UnitStatus unit, string skillId)
         {
             string unitId = unit.UnitId;
             return unitSkills.ContainsKey(unitId) && unitSkills[unitId].Contains(skillId);
         }
         
-        public List<StatusEffect> GetUnitStatusEffects(Unit unit)
+        public List<StatusEffect> GetUnitStatusEffects(UnitStatus unit)
         {
             string unitId = unit.UnitId;
             if (!activeStatusEffects.ContainsKey(unitId))
@@ -829,12 +829,12 @@ namespace GuildMaster.Battle
             return new List<StatusEffect>(activeStatusEffects[unitId]);
         }
         
-        public bool HasStatusEffect(Unit unit, StatusEffectType type)
+        public bool HasStatusEffect(UnitStatus unit, StatusEffectType type)
         {
             return GetUnitStatusEffects(unit).Any(e => e.Type == type);
         }
         
-        Unit GetUnitById(string unitId)
+        UnitStatus GetUnitById(string unitId)
         {
             // TODO: Implement unit lookup
             var guildManager = Core.GameManager.Instance?.GuildManager;
@@ -845,10 +845,10 @@ namespace GuildMaster.Battle
             return null;
         }
         
-        List<Unit> GetAlliedUnits(Unit unit)
+        List<UnitStatus> GetAlliedUnits(UnitStatus unit)
         {
             // TODO: Get all allied units in battle
-            return new List<Unit>();
+            return new List<UnitStatus>();
         }
         
         public Skill GetSkill(string skillId)

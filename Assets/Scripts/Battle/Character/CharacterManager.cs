@@ -6,7 +6,7 @@ using GuildMaster.Data;
 using GuildMaster.Battle;
 using GuildMaster.Core;
 using JobClass = GuildMaster.Battle.JobClass;
-using Unit = GuildMaster.Battle.Unit;
+using Unit = GuildMaster.Battle.UnitStatus;
 using Rarity = GuildMaster.Data.Rarity;
 
 namespace GuildMaster.Systems
@@ -35,15 +35,15 @@ namespace GuildMaster.Systems
         [SerializeField] private CharacterDatabase characterDatabase;
         
         // 캐릭터 풀
-        private Dictionary<int, Queue<Unit>> characterPool;
+        private Dictionary<int, Queue<UnitStatus>> characterPool;
         private int poolSize = 10;
         
         // 생성된 유닛 추적
-        private List<Unit> activeUnits;
+        private List<UnitStatus> activeUnits;
         
         // 이벤트
-        public event Action<Unit> OnUnitCreated;
-        public event Action<Unit> OnUnitReturned;
+        public event Action<UnitStatus> OnUnitCreated;
+        public event Action<UnitStatus> OnUnitReturned;
         public event Action<CharacterData> OnCharacterUnlocked;
         
         void Awake()
@@ -60,8 +60,8 @@ namespace GuildMaster.Systems
         
         void Initialize()
         {
-            characterPool = new Dictionary<int, Queue<Unit>>();
-            activeUnits = new List<Unit>();
+            characterPool = new Dictionary<int, Queue<UnitStatus>>();
+            activeUnits = new List<UnitStatus>();
             
             // 데이터베이스 로드
             if (characterDatabase == null)
@@ -96,7 +96,7 @@ namespace GuildMaster.Systems
         }
         
         // 캐릭터 데이터로부터 유닛 생성
-        public Unit CreateUnit(string characterId, int level = 1)
+        public UnitStatus CreateUnit(string characterId, int level = 1)
         {
             // DataManager 타입이 제거되어 주석 처리
             // CharacterData characterData = DataManager.Instance.GetCharacterData(characterId);
@@ -113,7 +113,7 @@ namespace GuildMaster.Systems
             return null;
         }
         
-        public Unit CreateUnitFromCharacterData(CharacterData characterData, int level = 1)
+        public UnitStatus CreateUnitFromCharacterData(CharacterData characterData, int level = 1)
         {
             if (characterData == null) return null;
 
@@ -122,7 +122,7 @@ namespace GuildMaster.Systems
             // return unit;
             
             // 직접 Unit 생성
-            var unit = new Unit(characterData.name, level, characterData.jobClass);
+            var unit = new UnitStatus(characterData.name, level, characterData.jobClass);
             unit.unitId = characterData.id;
             unit.characterId = characterData.id;
             unit.rarity = ConvertCharacterRarityToRarity(characterData.rarity);
@@ -183,7 +183,7 @@ namespace GuildMaster.Systems
             return characters[randomIndex];
         }
         
-        public Unit RecruitRandomCharacter()
+        public UnitStatus RecruitRandomCharacter()
         {
             CharacterData characterData = GetRandomCharacter();
             if (characterData == null) return null;
@@ -192,7 +192,7 @@ namespace GuildMaster.Systems
         }
         
         // 이름으로 유닛 생성
-        public Unit CreateUnitByName(string characterName)
+        public UnitStatus CreateUnitByName(string characterName)
         {
             CharacterData data = GetCharacterByName(characterName);
             if (data == null)
@@ -205,21 +205,21 @@ namespace GuildMaster.Systems
         }
         
         // 랜덤 유닛 생성
-        public Unit CreateRandomUnit()
+        public UnitStatus CreateRandomUnit()
         {
             CharacterData data = GetRandomCharacter();
             if (data == null) return null;
             return CreateUnitFromCharacterData(data);
         }
         
-        public Unit CreateRandomUnitByRarity(GuildMaster.Data.Rarity rarity)
+        public UnitStatus CreateRandomUnitByRarity(GuildMaster.Data.Rarity rarity)
         {
             CharacterData data = GetRandomCharacterByRarity(rarity);
             if (data == null) return null;
             return CreateUnitFromCharacterData(data);
         }
         
-        public Unit CreateRandomUnitByClass(JobClass jobClass)
+        public UnitStatus CreateRandomUnitByClass(JobClass jobClass)
         {
             var candidates = GetCharactersByClass(jobClass);
             if (candidates.Count == 0) return null;
@@ -229,7 +229,7 @@ namespace GuildMaster.Systems
         }
         
         // 유닛을 풀로 반환
-        public void ReturnUnit(Unit unit)
+        public void ReturnUnit(UnitStatus unit)
         {
             if (unit == null || !activeUnits.Contains(unit)) return;
             
@@ -242,7 +242,7 @@ namespace GuildMaster.Systems
             // 풀에 추가
             if (!characterPool.ContainsKey(int.Parse(characterId)))
             {
-                characterPool[int.Parse(characterId)] = new Queue<Unit>();
+                characterPool[int.Parse(characterId)] = new Queue<UnitStatus>();
             }
             
             if (characterPool[int.Parse(characterId)].Count < poolSize)
@@ -253,16 +253,16 @@ namespace GuildMaster.Systems
         }
         
         // 유닛에서 캐릭터 ID 찾기 (string 타입으로 수정)
-        string GetCharacterIdFromUnit(Unit unit)
+        string GetCharacterIdFromUnit(UnitStatus unit)
         {
             // Unit의 unitId는 string 타입이므로 그대로 반환
             return unit.unitId;
         }
         
         // 가챠 시뮬레이션에서 string ID 사용
-        public List<Unit> PerformGacha(int count, float[] rarityWeights = null)
+        public List<UnitStatus> PerformGacha(int count, float[] rarityWeights = null)
         {
-            var results = new List<Unit>();
+            var results = new List<UnitStatus>();
             
             for (int i = 0; i < count; i++)
             {
@@ -299,9 +299,9 @@ namespace GuildMaster.Systems
         }
         
         // 팀 빌딩 헬퍼
-        public List<Unit> CreateBalancedTeam(int teamSize, int averageLevel = 1)
+        public List<UnitStatus> CreateBalancedTeam(int teamSize, int averageLevel = 1)
         {
-            List<Unit> team = new List<Unit>();
+            List<UnitStatus> team = new List<UnitStatus>();
             
             // 균형잡힌 팀 구성: 탱커 1-2, 딜러 2-3, 힐러 1, 서포트 0-1
             JobClass[] teamComposition = new JobClass[]
@@ -317,7 +317,7 @@ namespace GuildMaster.Systems
             // 팀 사이즈에 맞게 조정
             for (int i = 0; i < teamSize && i < teamComposition.Length; i++)
             {
-                Unit unit = CreateRandomUnitByClass(teamComposition[i]);
+                UnitStatus unit = CreateRandomUnitByClass(teamComposition[i]);
                 if (unit != null)
                 {
                     // 레벨 조정
@@ -333,9 +333,9 @@ namespace GuildMaster.Systems
         }
         
         // 스토리 캐릭터 생성
-        public Unit CreateStoryCharacter(string characterName, int overrideLevel = -1)
+        public UnitStatus CreateStoryCharacter(string characterName, int overrideLevel = -1)
         {
-            Unit unit = CreateUnitByName(characterName);
+            UnitStatus unit = CreateUnitByName(characterName);
             if (unit != null && overrideLevel > 0)
             {
                 // 스토리용 레벨 조정
@@ -348,9 +348,9 @@ namespace GuildMaster.Systems
         }
         
         // 보스 유닛 생성 (강화된 버전)
-        public Unit CreateBossUnit(string characterId, float statMultiplier = 2f)
+        public UnitStatus CreateBossUnit(string characterId, float statMultiplier = 2f)
         {
-            Unit unit = CreateUnit(characterId);
+            UnitStatus unit = CreateUnit(characterId);
             if (unit == null) return null;
             
             // 스탯 강화
@@ -419,9 +419,9 @@ namespace GuildMaster.Systems
             return characterDatabase.characters.Where(c => c.rarity == CharacterRarity.Common).ToList();
         }
         
-        public List<Unit> GetActiveUnits()
+        public List<UnitStatus> GetActiveUnits()
         {
-            return new List<Unit>(activeUnits);
+            return new List<UnitStatus>(activeUnits);
         }
         
         private void CreateDefaultCharacters()
@@ -539,7 +539,7 @@ namespace GuildMaster.Systems
         }
 
         // 새로운 모험가 생성 메서드들
-        public Unit CreateAdventurer(string characterId, int level = 1)
+        public UnitStatus CreateAdventurer(string characterId, int level = 1)
         {
             // DataManager 타입이 제거되어 주석 처리
             // var charData = DataManager.Instance.GetCharacterData(characterId);
@@ -550,7 +550,7 @@ namespace GuildMaster.Systems
             var charData = GetCharacterData(characterId);
             if (charData == null) return null;
             
-            Unit newUnit = CreateUnitFromCharacterData(charData, level);
+            UnitStatus newUnit = CreateUnitFromCharacterData(charData, level);
             
             // 레벨 적용
             for (int i = 1; i < level; i++)
@@ -561,7 +561,7 @@ namespace GuildMaster.Systems
             return newUnit;
         }
 
-        private void LevelUpUnit(Unit unit)
+        private void LevelUpUnit(UnitStatus unit)
         {
             unit.Level++;
             // 스탯 증가 로직
@@ -588,7 +588,7 @@ namespace GuildMaster.Systems
             return charactersOfClass.Take(maxResults).ToList();
         }
 
-        public Unit RecruitRandomAdventurer(JobClass jobClass, Rarity rarity)
+        public UnitStatus RecruitRandomAdventurer(JobClass jobClass, Rarity rarity)
         {
             // DataManager 타입이 제거되어 주석 처리
             // var availableCharacters = DataManager.Instance.GetCharactersByJobClass(jobClass);
@@ -604,7 +604,7 @@ namespace GuildMaster.Systems
             return CreateAdventurer(randomChar.id, UnityEngine.Random.Range(1, 10));
         }
 
-        public Unit CreateRandomAdventurer()
+        public UnitStatus CreateRandomAdventurer()
         {
             // DataManager 타입이 제거되어 주석 처리
             // var allCharacters = DataManager.Instance.GetAllCharacters();
@@ -624,12 +624,12 @@ namespace GuildMaster.Systems
             return CreateAdventurer(randomChar.id, randomLevel);
         }
 
-        public List<Unit> GetAdventurersByClass(JobClass jobClass)
+        public List<UnitStatus> GetAdventurersByClass(JobClass jobClass)
         {
             var charactersOfClass = characterDatabase.GetCharactersByClass(jobClass);
             if (charactersOfClass.Count == 0)
             {
-                return new List<Unit>();
+                return new List<UnitStatus>();
             }
 
             // DataManager 타입이 제거되어 주석 처리
@@ -719,7 +719,7 @@ namespace GuildMaster.Systems
         }
         
         // CreateCharacterByIndex method for compatibility
-        public Unit CreateCharacterByIndex(int characterIndex)
+        public UnitStatus CreateCharacterByIndex(int characterIndex)
         {
             // DataManager 타입이 제거되어 주석 처리
             // var allCharacters = DataManager.Instance.GetAllCharacters();

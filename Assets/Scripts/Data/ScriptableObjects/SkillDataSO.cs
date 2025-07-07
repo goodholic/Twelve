@@ -2,6 +2,7 @@ using UnityEngine;
 using System;
 using System.Collections.Generic;
 using GuildMaster.Battle; // Unit, JobClass를 위해 추가
+using Unit = GuildMaster.Battle.UnitStatus;
 
 namespace GuildMaster.Data
 {

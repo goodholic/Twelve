@@ -63,9 +63,9 @@ namespace GuildMaster.Battle
         public event Action<BattleResult> OnBattleEnd;
         public event Action<int, bool> OnSquadTurnStart; // squadIndex, isPlayer
         public event Action<int, bool> OnSquadTurnEnd;
-        public event Action<Unit, Unit, float> OnUnitAttack;
-        public event Action<Unit, float> OnUnitDamaged;
-        public event Action<Unit> OnUnitDefeated;
+        public event Action<UnitStatus, UnitStatus, float> OnUnitAttack;
+        public event Action<UnitStatus, float> OnUnitDamaged;
+        public event Action<UnitStatus> OnUnitDefeated;
         
         void Awake()
         {
@@ -113,7 +113,7 @@ namespace GuildMaster.Battle
                     squadId = i,
                     squadName = squads[i].Name,
                     isPlayerSquad = isPlayer,
-                    units = new Unit[SQUAD_WIDTH, SQUAD_HEIGHT],
+                    units = new UnitStatus[SQUAD_WIDTH, SQUAD_HEIGHT],
                     squadRole = (SquadRole)i // 0: 선봉, 1: 주력, 2: 지원, 3: 후방
                 };
                 
@@ -251,7 +251,7 @@ namespace GuildMaster.Battle
         /// <summary>
         /// 유닛 개별 행동 처리
         /// </summary>
-        IEnumerator ProcessUnitAction(Unit unit, SquadFormation squad)
+        IEnumerator ProcessUnitAction(UnitStatus unit, SquadFormation squad)
         {
             // 스킬 사용 가능 체크
             var availableSkills = unit.GetAvailableSkills();
@@ -288,7 +288,7 @@ namespace GuildMaster.Battle
         /// <summary>
         /// 최적의 스킬 선택
         /// </summary>
-        Skill SelectBestSkill(Unit caster, List<Skill> skills, SquadFormation squad)
+        Skill SelectBestSkill(UnitStatus caster, List<Skill> skills, SquadFormation squad)
         {
             // 간단한 AI: MP가 충분하면 가장 강력한 스킬 사용
             foreach (var skill in skills.OrderByDescending(s => s.GetManaCost()))
@@ -328,9 +328,9 @@ namespace GuildMaster.Battle
         /// <summary>
         /// 스킬 타겟 선택
         /// </summary>
-        List<Unit> GetTargets(Unit caster, Skill skill, SquadFormation casterSquad)
+        List<UnitStatus> GetTargets(UnitStatus caster, Skill skill, SquadFormation casterSquad)
         {
-            var targets = new List<Unit>();
+            var targets = new List<UnitStatus>();
             var skillData = skill.GetSkillData();
             if (skillData == null) return targets;
             
@@ -383,7 +383,7 @@ namespace GuildMaster.Battle
         /// <summary>
         /// 스킬 사용
         /// </summary>
-        IEnumerator UseSkill(Unit caster, Skill skill, List<Unit> targets)
+        IEnumerator UseSkill(UnitStatus caster, Skill skill, List<UnitStatus> targets)
         {
             // 스킬 시작 효과
             var skillData = skill.GetSkillData();
@@ -409,7 +409,7 @@ namespace GuildMaster.Battle
         /// <summary>
         /// 스킬 효과 적용
         /// </summary>
-        IEnumerator ApplySkillEffect(Unit caster, Skill skill, Unit target)
+        IEnumerator ApplySkillEffect(UnitStatus caster, Skill skill, UnitStatus target)
         {
             var skillData = skill.GetSkillData();
             if (skillData == null) yield break;
@@ -444,7 +444,7 @@ namespace GuildMaster.Battle
         /// <summary>
         /// 기본 공격
         /// </summary>
-        IEnumerator PerformBasicAttack(Unit attacker, Unit target)
+        IEnumerator PerformBasicAttack(UnitStatus attacker, UnitStatus target)
         {
             // 공격 애니메이션 (추후 구현)
             float damage = CalculateDamage(attacker, target);
@@ -471,7 +471,7 @@ namespace GuildMaster.Battle
         /// <summary>
         /// 데미지 계산
         /// </summary>
-        float CalculateDamage(Unit attacker, Unit defender)
+        float CalculateDamage(UnitStatus attacker, UnitStatus defender)
         {
             float baseDamage = attacker.attack;
             
@@ -503,7 +503,7 @@ namespace GuildMaster.Battle
         /// <summary>
         /// 데미지 적용
         /// </summary>
-        void ApplyDamage(Unit target, float damage, Unit attacker)
+        void ApplyDamage(UnitStatus target, float damage, UnitStatus attacker)
         {
             target.TakeDamage(damage);
             
@@ -537,7 +537,7 @@ namespace GuildMaster.Battle
         /// <summary>
         /// 유닛 사망 처리
         /// </summary>
-        void HandleUnitDefeat(Unit defeatedUnit)
+        void HandleUnitDefeat(UnitStatus defeatedUnit)
         {
             var squad = GetUnitSquad(defeatedUnit);
             if (squad != null)
@@ -555,7 +555,7 @@ namespace GuildMaster.Battle
         /// <summary>
         /// 버프 적용
         /// </summary>
-        void ApplyBuff(Unit target, BuffType buffType, float amount, int duration)
+        void ApplyBuff(UnitStatus target, BuffType buffType, float amount, int duration)
         {
             // TODO: 버프 시스템 구현
             ParticleEffectsSystem.Instance?.PlayEffectOnTarget("skill_buff", target.transform);
@@ -564,7 +564,7 @@ namespace GuildMaster.Battle
         /// <summary>
         /// 디버프 적용
         /// </summary>
-        void ApplyDebuff(Unit target, BuffType buffType, float amount, int duration)
+        void ApplyDebuff(UnitStatus target, BuffType buffType, float amount, int duration)
         {
             // TODO: 디버프 시스템 구현
             ParticleEffectsSystem.Instance?.PlayEffectOnTarget("skill_debuff", target.transform);
@@ -573,9 +573,9 @@ namespace GuildMaster.Battle
         /// <summary>
         /// 가장 가까운 적 찾기
         /// </summary>
-        Unit GetNearestEnemy(Unit unit, SquadFormation unitSquad)
+        UnitStatus GetNearestEnemy(UnitStatus unit, SquadFormation unitSquad)
         {
-            Unit nearestEnemy = null;
+            UnitStatus nearestEnemy = null;
             float nearestDistance = float.MaxValue;
             
             var enemySquads = GetEnemySquads(unitSquad);
@@ -599,7 +599,7 @@ namespace GuildMaster.Battle
         /// <summary>
         /// 기본 공격 타겟 선택
         /// </summary>
-        Unit GetBasicAttackTarget(Unit attacker, SquadFormation attackerSquad)
+        UnitStatus GetBasicAttackTarget(UnitStatus attacker, SquadFormation attackerSquad)
         {
             // 우선순위: 전방 적 > 가장 가까운 적 > 체력이 낮은 적
             var enemySquads = GetEnemySquads(attackerSquad);
@@ -627,7 +627,7 @@ namespace GuildMaster.Battle
         /// <summary>
         /// 유닛 간 거리 계산
         /// </summary>
-        float GetUnitDistance(Unit unit1, Unit unit2, SquadFormation squad1, SquadFormation squad2)
+        float GetUnitDistance(UnitStatus unit1, UnitStatus unit2, SquadFormation squad1, SquadFormation squad2)
         {
             // 부대 간 거리 + 부대 내 위치 차이
             float squadDistance = Mathf.Abs(squad1.squadId - squad2.squadId) * 10f;
@@ -639,9 +639,9 @@ namespace GuildMaster.Battle
         /// <summary>
         /// 주변 유닛 찾기
         /// </summary>
-        List<Unit> GetNearbyUnits(Unit centerUnit, int range)
+        List<UnitStatus> GetNearbyUnits(UnitStatus centerUnit, int range)
         {
-            var nearbyUnits = new List<Unit>();
+            var nearbyUnits = new List<UnitStatus>();
             var centerSquad = GetUnitSquad(centerUnit);
             if (centerSquad == null) return nearbyUnits;
             
@@ -666,7 +666,7 @@ namespace GuildMaster.Battle
         /// <summary>
         /// 유닛이 속한 부대 찾기
         /// </summary>
-        SquadFormation GetUnitSquad(Unit unit)
+        SquadFormation GetUnitSquad(UnitStatus unit)
         {
             foreach (var squad in playerSquads)
             {
@@ -809,7 +809,7 @@ namespace GuildMaster.Battle
         /// <summary>
         /// MVP 유닛 선정
         /// </summary>
-        Unit GetMVPUnit()
+        UnitStatus GetMVPUnit()
         {
             // TODO: 데미지, 킬, 힐링 등을 종합하여 MVP 선정
             return playerSquads.SelectMany(s => s.GetAliveUnits()).FirstOrDefault();
@@ -880,7 +880,7 @@ namespace GuildMaster.Battle
         public int squadId;
         public string squadName;
         public bool isPlayerSquad;
-        public Unit[,] units; // 6x3 그리드
+        public UnitStatus[,] units; // 6x3 그리드
         public SquadRole squadRole;
         
         public void PrepareBattle()
@@ -894,9 +894,9 @@ namespace GuildMaster.Battle
             }
         }
         
-        public List<Unit> GetAliveUnits()
+        public List<UnitStatus> GetAliveUnits()
         {
-            var aliveUnits = new List<Unit>();
+            var aliveUnits = new List<UnitStatus>();
             foreach (var unit in units)
             {
                 if (unit != null && unit.IsAlive)
@@ -907,7 +907,7 @@ namespace GuildMaster.Battle
             return aliveUnits;
         }
         
-        public List<Unit> GetDamagedUnits()
+        public List<UnitStatus> GetDamagedUnits()
         {
             return GetAliveUnits().Where(u => u.currentHP < u.maxHP).ToList();
         }
@@ -917,7 +917,7 @@ namespace GuildMaster.Battle
             return GetAliveUnits().Count > 0;
         }
         
-        public bool ContainsUnit(Unit unit)
+        public bool ContainsUnit(UnitStatus unit)
         {
             foreach (var u in units)
             {
@@ -974,7 +974,7 @@ namespace GuildMaster.Battle
         public BattleStatistics statistics;
         public BattleRewards rewards;
         [System.NonSerialized]
-        public Unit mvpUnit;
+        public UnitStatus mvpUnit;
         
         // 호환성을 위한 속성들
         public bool isVictory => resultType == BattleResultType.Victory;

@@ -6,7 +6,8 @@ using GuildMaster.Battle;
 using GuildMaster.Core;
 using GuildMaster.Data;
 using JobClass = GuildMaster.Battle.JobClass;
-using Unit = GuildMaster.Battle.Unit;
+using Unit = GuildMaster.Battle.UnitStatus;
+using UnitStatus = GuildMaster.Battle.UnitStatus;
 using Rarity = GuildMaster.Data.Rarity;
 
 namespace GuildMaster.Systems
@@ -41,8 +42,8 @@ namespace GuildMaster.Systems
         public const int SQUAD_COUNT = 2;      // 2개 부대
         
         // 보유 캐릭터 관리
-        private Dictionary<string, Unit> ownedCharacters;
-        private List<Unit> characterRoster;
+        private Dictionary<string, UnitStatus> ownedCharacters;
+        private List<UnitStatus> characterRoster;
         
         // 부대 편성
         private Squad[] squads = new Squad[SQUAD_COUNT];
@@ -100,9 +101,9 @@ namespace GuildMaster.Systems
         }
         
         // 이벤트
-        public event Action<Unit> OnCharacterAdded;
-        public event Action<Unit> OnCharacterLevelUp;
-        public event Action<Unit> OnCharacterAwakened;
+        public event Action<UnitStatus> OnCharacterAdded;
+        public event Action<UnitStatus> OnCharacterLevelUp;
+        public event Action<UnitStatus> OnCharacterAwakened;
         public event Action<int, Squad> OnSquadUpdated;
         public event Action<SynergyBonus> OnSynergyActivated;
         
@@ -120,8 +121,8 @@ namespace GuildMaster.Systems
         
         void Initialize()
         {
-            ownedCharacters = new Dictionary<string, Unit>();
-            characterRoster = new List<Unit>();
+            ownedCharacters = new Dictionary<string, UnitStatus>();
+            characterRoster = new List<UnitStatus>();
             growthData = new Dictionary<string, CharacterGrowthData>();
             activeSynergies = new Dictionary<string, SynergyBonus>();
             
@@ -138,7 +139,7 @@ namespace GuildMaster.Systems
         /// <summary>
         /// 새로운 캐릭터 추가 (최대 18명)
         /// </summary>
-        public bool AddCharacter(Unit character)
+        public bool AddCharacter(UnitStatus character)
         {
             if (character == null || ownedCharacters.Count >= MAX_CHARACTERS)
             {
@@ -181,7 +182,7 @@ namespace GuildMaster.Systems
             if (squadIndex < 0 || squadIndex >= SQUAD_COUNT)
                 return false;
                 
-            if (!ownedCharacters.TryGetValue(characterId, out Unit character))
+            if (!ownedCharacters.TryGetValue(characterId, out UnitStatus character))
                 return false;
             
             // 다른 부대에서 제거
@@ -209,7 +210,7 @@ namespace GuildMaster.Systems
         /// </summary>
         public void LevelUpCharacter(string characterId, int expGained)
         {
-            if (!ownedCharacters.TryGetValue(characterId, out Unit character))
+            if (!ownedCharacters.TryGetValue(characterId, out UnitStatus character))
                 return;
             
             if (!growthData.TryGetValue(characterId, out CharacterGrowthData growth))
@@ -233,7 +234,7 @@ namespace GuildMaster.Systems
         /// </summary>
         public bool AwakenCharacter(string characterId, List<string> materialIds)
         {
-            if (!ownedCharacters.TryGetValue(characterId, out Unit character))
+            if (!ownedCharacters.TryGetValue(characterId, out UnitStatus character))
                 return false;
             
             if (!growthData.TryGetValue(characterId, out CharacterGrowthData growth))
@@ -281,7 +282,7 @@ namespace GuildMaster.Systems
             ApplySynergyBonuses(units);
         }
         
-        void CheckJobSynergies(List<Unit> units)
+        void CheckJobSynergies(List<UnitStatus> units)
         {
             var jobCounts = new Dictionary<JobClass, int>();
             
@@ -313,7 +314,7 @@ namespace GuildMaster.Systems
             }
         }
         
-        void CheckStorySynergies(List<Unit> units)
+        void CheckStorySynergies(List<UnitStatus> units)
         {
             // 특정 캐릭터 조합 시너지
             // 예: "전설의 삼총사" - 특정 3명이 함께 있을 때
@@ -336,7 +337,7 @@ namespace GuildMaster.Systems
             }
         }
         
-        void CheckTacticSynergies(List<Unit> units)
+        void CheckTacticSynergies(List<UnitStatus> units)
         {
             // 전술 조합 시너지
             int tanks = units.Count(u => u.jobClass == JobClass.Knight);
@@ -366,7 +367,7 @@ namespace GuildMaster.Systems
             // 이 부분은 데이터 파일에서 로드하도록 확장 가능
         }
         
-        void ApplyLevelUpBonuses(Unit character, int oldLevel, int newLevel)
+        void ApplyLevelUpBonuses(UnitStatus character, int oldLevel, int newLevel)
         {
             // 레벨업 보너스 적용
             int levelDiff = newLevel - oldLevel;
@@ -380,7 +381,7 @@ namespace GuildMaster.Systems
             character.currentMP = character.maxMP;
         }
         
-        void ApplyAwakenBonuses(Unit character, int awakenLevel)
+        void ApplyAwakenBonuses(UnitStatus character, int awakenLevel)
         {
             // 각성 보너스 적용
             float multiplier = 1f + (awakenLevel * 0.1f);
@@ -397,7 +398,7 @@ namespace GuildMaster.Systems
             }
         }
         
-        void ApplySynergyBonuses(List<Unit> units)
+        void ApplySynergyBonuses(List<UnitStatus> units)
         {
             foreach (var unit in units)
             {
@@ -419,13 +420,13 @@ namespace GuildMaster.Systems
             }
         }
         
-        bool ValidateAwakenMaterials(Unit character, List<string> materialIds)
+        bool ValidateAwakenMaterials(UnitStatus character, List<string> materialIds)
         {
             // 각성 재료 검증 로직
             return materialIds.Count >= 3; // 예시: 3개 이상의 재료 필요
         }
         
-        void ConvertToEnhancementMaterial(Unit duplicate)
+        void ConvertToEnhancementMaterial(UnitStatus duplicate)
         {
             // 중복 캐릭터를 강화 재료로 변환
             // TODO: 재료 시스템과 연동
@@ -451,8 +452,8 @@ namespace GuildMaster.Systems
         }
         
         // 공개 API
-        public List<Unit> GetAllCharacters() => new List<Unit>(characterRoster);
-        public Unit GetCharacter(string characterId) => ownedCharacters.GetValueOrDefault(characterId);
+        public List<UnitStatus> GetAllCharacters() => new List<UnitStatus>(characterRoster);
+        public UnitStatus GetCharacter(string characterId) => ownedCharacters.GetValueOrDefault(characterId);
         public Squad GetSquad(int index) => (index >= 0 && index < SQUAD_COUNT) ? squads[index] : null;
         public int GetOwnedCharacterCount() => ownedCharacters.Count;
         public bool IsCharacterOwned(string characterId) => ownedCharacters.ContainsKey(characterId);
@@ -461,7 +462,7 @@ namespace GuildMaster.Systems
         // 통계 API
         public CharacterStatistics GetCharacterStatistics(string characterId)
         {
-            if (!ownedCharacters.TryGetValue(characterId, out Unit character))
+            if (!ownedCharacters.TryGetValue(characterId, out UnitStatus character))
                 return null;
             
             return new CharacterStatistics
@@ -478,7 +479,7 @@ namespace GuildMaster.Systems
         }
         
         // GetCharacterList for compatibility
-        public List<Unit> GetCharacterList()
+        public List<UnitStatus> GetCharacterList()
         {
             return GetAllCharacters();
         }

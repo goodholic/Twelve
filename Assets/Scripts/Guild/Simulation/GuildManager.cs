@@ -2,6 +2,7 @@ using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 using GuildMaster.Battle;
+using Unit = GuildMaster.Battle.UnitStatus;
 // using GuildMaster.Data; // Commented out - building types removed
 
 namespace GuildMaster.Guild
@@ -37,7 +38,7 @@ namespace GuildMaster.Guild
         
         [Header("Guild Members")]
         [System.NonSerialized]
-        public List<Unit> guildMembers = new List<Unit>();
+        public List<UnitStatus> guildMembers = new List<UnitStatus>();
         public int maxMembers = 30;
 
         private void Awake()
@@ -51,7 +52,7 @@ namespace GuildMaster.Guild
             DontDestroyOnLoad(gameObject);
         }
 
-        public void AddMember(Unit unit)
+        public void AddMember(UnitStatus unit)
         {
             if (guildMembers.Count < maxMembers && !guildMembers.Contains(unit))
             {
@@ -59,7 +60,7 @@ namespace GuildMaster.Guild
             }
         }
 
-        public void RemoveMember(Unit unit)
+        public void RemoveMember(UnitStatus unit)
         {
             guildMembers.Remove(unit);
         }
@@ -91,9 +92,9 @@ namespace GuildMaster.Guild
         public int GetGuildLevel() => guildLevel;
         public string GetGuildId() => guildName; // Using name as ID for now
         
-        public List<Unit> GetAdventurers() => guildMembers;
+        public List<UnitStatus> GetAdventurers() => guildMembers;
         
-        public void RemoveAdventurer(Unit unit)
+        public void RemoveAdventurer(UnitStatus unit)
         {
             RemoveMember(unit);
         }
@@ -144,7 +145,7 @@ namespace GuildMaster.Guild
         
         // Events for compatibility
         public event System.Action<string> OnBuildingConstructed;
-        public event System.Action<Unit> OnAdventurerRecruited;
+        public event System.Action<UnitStatus> OnAdventurerRecruited;
         public event System.Action OnGuildLevelUp;
         public event System.Action<string> OnBuildingUpgraded;
     }

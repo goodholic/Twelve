@@ -7,7 +7,7 @@ using GuildMaster.Battle;
 using GuildMaster.Core;
 using GuildMaster.Data;
 using JobClass = GuildMaster.Battle.JobClass;
-using Unit = GuildMaster.Battle.Unit;
+using Unit = GuildMaster.Battle.UnitStatus;
 using Rarity = GuildMaster.Data.Rarity;
 
 namespace GuildMaster.Systems
@@ -598,9 +598,9 @@ namespace GuildMaster.Systems
             return squads;
         }
         
-        Unit CreateEnemyUnit(EnemyUnitData data)
+        UnitStatus CreateEnemyUnit(EnemyUnitData data)
         {
-            var unit = new Unit(data.unitName, data.level, data.jobClass);
+            var unit = new UnitStatus(data.unitName, data.level, data.jobClass);
             
             // 스탯 조정
             unit.maxHP = Mathf.RoundToInt(unit.maxHP * data.statMultiplier);

@@ -6,7 +6,8 @@ using GuildMaster.Battle;
 using GuildMaster.Core;
 using GuildMaster.Data;
 using JobClass = GuildMaster.Battle.JobClass;
-using Unit = GuildMaster.Battle.Unit;
+using Unit = GuildMaster.Battle.UnitStatus;
+using UnitStatus = GuildMaster.Battle.UnitStatus;
 using Rarity = GuildMaster.Data.Rarity;
 
 namespace GuildMaster.Systems
@@ -42,17 +43,17 @@ namespace GuildMaster.Systems
         public const int UNITS_PER_SQUAD = 18;  // 부대당 18명
 
         [Header("현재 컬렉션")]
-        [SerializeField] private List<Unit> collectedCharacters = new List<Unit>();
+        [SerializeField] private List<UnitStatus> collectedCharacters = new List<UnitStatus>();
         [SerializeField] private Squad[] battleSquads = new Squad[SQUADS_COUNT];
 
         // 이벤트
-        public event Action<Unit> OnCharacterAdded;
-        public event Action<Unit> OnCharacterRemoved;
+        public event Action<UnitStatus> OnCharacterAdded;
+        public event Action<UnitStatus> OnCharacterRemoved;
         public event Action<int> OnSquadUpdated;  // squadIndex
         public event Action OnCollectionFull;
 
         // 프로퍼티
-        public List<Unit> CollectedCharacters => new List<Unit>(collectedCharacters);
+        public List<UnitStatus> CollectedCharacters => new List<UnitStatus>(collectedCharacters);
         public int CurrentCharacterCount => collectedCharacters.Count;
         public bool IsCollectionFull => collectedCharacters.Count >= MAX_CHARACTERS;
         public float CollectionProgress => (float)collectedCharacters.Count / MAX_CHARACTERS;
@@ -81,7 +82,7 @@ namespace GuildMaster.Systems
         /// <summary>
         /// 새로운 캐릭터 추가
         /// </summary>
-        public bool AddCharacter(Unit newCharacter)
+        public bool AddCharacter(UnitStatus newCharacter)
         {
             if (newCharacter == null)
             {
@@ -120,7 +121,7 @@ namespace GuildMaster.Systems
         /// <summary>
         /// 캐릭터 제거
         /// </summary>
-        public bool RemoveCharacter(Unit character)
+        public bool RemoveCharacter(UnitStatus character)
         {
             if (character == null) return false;
 
@@ -147,7 +148,7 @@ namespace GuildMaster.Systems
         /// <summary>
         /// 캐릭터를 부대에 배치
         /// </summary>
-        public bool AssignCharacterToSquad(Unit character, int squadIndex, int row, int col)
+        public bool AssignCharacterToSquad(UnitStatus character, int squadIndex, int row, int col)
         {
             if (character == null || squadIndex < 0 || squadIndex >= SQUADS_COUNT)
                 return false;
@@ -182,7 +183,7 @@ namespace GuildMaster.Systems
         /// <summary>
         /// 부대에서 캐릭터 제거
         /// </summary>
-        public bool RemoveCharacterFromSquad(Unit character, int squadIndex)
+        public bool RemoveCharacterFromSquad(UnitStatus character, int squadIndex)
         {
             if (squadIndex < 0 || squadIndex >= SQUADS_COUNT)
                 return false;
@@ -218,7 +219,7 @@ namespace GuildMaster.Systems
         /// <summary>
         /// 캐릭터가 속한 부대 인덱스 찾기
         /// </summary>
-        public int GetCharacterSquadIndex(Unit character)
+        public int GetCharacterSquadIndex(UnitStatus character)
         {
             for (int i = 0; i < SQUADS_COUNT; i++)
             {

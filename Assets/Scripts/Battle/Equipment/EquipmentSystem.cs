@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using GuildMaster.Battle; // Unit, JobClass를 위해 추가
 using GuildMaster.Core;   // ResourceType을 위해 추가
+using Unit = GuildMaster.Battle.UnitStatus;
 
 namespace GuildMaster.Equipment
 {
@@ -140,7 +141,7 @@ namespace GuildMaster.Equipment
             return total;
         }
         
-        public bool CanEquip(Unit unit)
+        public bool CanEquip(UnitStatus unit)
         {
             if (RequiredLevel > unit.level) return false;
             if (RequiredClass.HasValue && RequiredClass.Value != unit.jobClass) return false;

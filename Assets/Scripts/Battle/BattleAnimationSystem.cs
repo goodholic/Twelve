@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using GuildMaster.Battle;
 using GuildMaster.Systems;
+using UnitStatus = GuildMaster.Battle.UnitStatus;
 // using DG.Tweening; // DOTween 패키지가 없으므로 주석 처리
 
 namespace GuildMaster.Battle
@@ -85,9 +86,9 @@ namespace GuildMaster.Battle
         private float speedMultiplier = 1f;
         
         // 이벤트
-        public event Action<Unit, AnimationType> OnAnimationStart;
-        public event Action<Unit, AnimationType> OnAnimationEnd;
-        public event Action<Unit, Unit, int> OnDamageDealt;
+        public event Action<UnitStatus, AnimationType> OnAnimationStart;
+        public event Action<UnitStatus, AnimationType> OnAnimationEnd;
+        public event Action<UnitStatus, UnitStatus, int> OnDamageDealt;
         
         void Awake()
         {
@@ -221,7 +222,7 @@ namespace GuildMaster.Battle
         
         // ===== 공격 애니메이션 =====
         
-        public void PlayAttackAnimation(Unit attacker, Unit target, bool isCritical = false)
+        public void PlayAttackAnimation(UnitStatus attacker, UnitStatus target, bool isCritical = false)
         {
             string animId = isCritical ? "critical_attack" : "basic_attack";
             var animation = new BattleAnimation
@@ -235,7 +236,7 @@ namespace GuildMaster.Battle
             EnqueueAnimation(animation);
         }
         
-        public void PlaySkillAnimation(Unit caster, List<Unit> targets, Skill skill)
+        public void PlaySkillAnimation(UnitStatus caster, List<UnitStatus> targets, Skill skill)
         {
             var animation = new BattleAnimation
             {
@@ -455,7 +456,7 @@ namespace GuildMaster.Battle
             yield return new WaitForSeconds(data.duration * speedMultiplier);
         }
         
-        IEnumerator PlayDamageAnimation(Unit unit, AnimationData data)
+        IEnumerator PlayDamageAnimation(UnitStatus unit, AnimationData data)
         {
             if (unit == null || unit.transform == null) yield break;
             
@@ -482,7 +483,7 @@ namespace GuildMaster.Battle
             yield return new WaitForSeconds(data.duration * speedMultiplier);
         }
         
-        IEnumerator PlayDeathAnimation(Unit unit, AnimationData data)
+        IEnumerator PlayDeathAnimation(UnitStatus unit, AnimationData data)
         {
             if (unit == null || unit.transform == null) yield break;
             
@@ -518,7 +519,7 @@ namespace GuildMaster.Battle
             // unit.gameObject.SetActive(false);
         }
         
-        IEnumerator PlayVictoryAnimation(Unit unit, AnimationData data)
+        IEnumerator PlayVictoryAnimation(UnitStatus unit, AnimationData data)
         {
             if (unit == null || unit.transform == null) yield break;
             
@@ -626,7 +627,7 @@ namespace GuildMaster.Battle
             }
         }
         
-        void PlayHitReaction(Unit target)
+        void PlayHitReaction(UnitStatus target)
         {
             if (target == null || target.transform == null) return;
             
@@ -716,9 +717,9 @@ namespace GuildMaster.Battle
         class BattleAnimation
         {
             public string animationId;
-            public Unit source;
-            public Unit target;
-            public List<Unit> targets;
+            public UnitStatus source;
+            public UnitStatus target;
+            public List<UnitStatus> targets;
             public Skill skill;
             public bool isCritical;
             public int damage;

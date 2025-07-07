@@ -6,14 +6,14 @@ using GuildMaster.Data;
 namespace GuildMaster.Battle
 {
     /// <summary>
-    /// Extension methods for Unit and UnitComponent to make them easier to work with
+    /// Extension methods for UnitStatus and UnitComponent to make them easier to work with
     /// </summary>
     public static class UnitExtensions
     {
         /// <summary>
-        /// Get the Unit data from a GameObject
+        /// Get the UnitStatus data from a GameObject
         /// </summary>
-        public static Unit GetUnit(this GameObject go)
+        public static UnitStatus GetUnit(this GameObject go)
         {
             if (go == null) return null;
             var component = go.GetComponent<UnitComponent>();
@@ -21,16 +21,16 @@ namespace GuildMaster.Battle
         }
         
         /// <summary>
-        /// Get the Unit data from a Transform
+        /// Get the UnitStatus data from a Transform
         /// </summary>
-        public static Unit GetUnit(this Transform transform)
+        public static UnitStatus GetUnit(this Transform transform)
         {
             if (transform == null) return null;
             return transform.gameObject.GetUnit();
         }
         
         /// <summary>
-        /// Check if a GameObject has a Unit
+        /// Check if a GameObject has a UnitStatus
         /// </summary>
         public static bool HasUnit(this GameObject go)
         {
@@ -40,9 +40,9 @@ namespace GuildMaster.Battle
         }
         
         /// <summary>
-        /// Try to get Unit data from a GameObject
+        /// Try to get UnitStatus data from a GameObject
         /// </summary>
-        public static bool TryGetUnit(this GameObject go, out Unit unit)
+        public static bool TryGetUnit(this GameObject go, out UnitStatus unit)
         {
             unit = null;
             if (go == null) return false;
@@ -72,9 +72,9 @@ namespace GuildMaster.Battle
         }
         
         /// <summary>
-        /// Set Unit data on a GameObject
+        /// Set UnitStatus data on a GameObject
         /// </summary>
-        public static void SetUnit(this GameObject go, Unit unit)
+        public static void SetUnit(this GameObject go, UnitStatus unit)
         {
             if (go == null || unit == null) return;
             
@@ -83,9 +83,9 @@ namespace GuildMaster.Battle
         }
         
         /// <summary>
-        /// Create and set a new Unit on a GameObject
+        /// Create and set a new UnitStatus on a GameObject
         /// </summary>
-        public static Unit CreateUnit(this GameObject go, string name, int level, JobClass jobClass, Rarity rarity = Rarity.Common)
+        public static UnitStatus CreateUnit(this GameObject go, string name, int level, JobClass jobClass, Rarity rarity = Rarity.Common)
         {
             if (go == null) return null;
             
@@ -95,13 +95,13 @@ namespace GuildMaster.Battle
         }
         
         /// <summary>
-        /// Find all Units in children
+        /// Find all UnitStatuss in children
         /// </summary>
-        public static List<Unit> GetUnitsInChildren(this GameObject go, bool includeInactive = false)
+        public static List<UnitStatus> GetUnitsInChildren(this GameObject go, bool includeInactive = false)
         {
-            if (go == null) return new List<Unit>();
+            if (go == null) return new List<UnitStatus>();
             
-            var units = new List<Unit>();
+            var units = new List<UnitStatus>();
             var components = go.GetComponentsInChildren<UnitComponent>(includeInactive);
             
             foreach (var comp in components)
@@ -118,9 +118,9 @@ namespace GuildMaster.Battle
         /// <summary>
         /// Find all enemy Units
         /// </summary>
-        public static List<Unit> GetEnemyUnits(this Unit unit)
+        public static List<UnitStatus> GetEnemyUnits(this UnitStatus unit)
         {
-            if (unit == null) return new List<Unit>();
+            if (unit == null) return new List<UnitStatus>();
             
             var allUnits = GameObject.FindObjectsOfType<UnitComponent>()
                 .Select(c => c.UnitData)
@@ -132,9 +132,9 @@ namespace GuildMaster.Battle
         /// <summary>
         /// Find all ally Units
         /// </summary>
-        public static List<Unit> GetAllyUnits(this Unit unit)
+        public static List<UnitStatus> GetAllyUnits(this UnitStatus unit)
         {
-            if (unit == null) return new List<Unit>();
+            if (unit == null) return new List<UnitStatus>();
             
             var allUnits = GameObject.FindObjectsOfType<UnitComponent>()
                 .Select(c => c.UnitData)
@@ -144,16 +144,16 @@ namespace GuildMaster.Battle
         }
         
         /// <summary>
-        /// Get the closest enemy Unit
+        /// Get the closest enemy UnitStatus
         /// </summary>
-        public static Unit GetClosestEnemy(this Unit unit)
+        public static UnitStatus GetClosestEnemy(this UnitStatus unit)
         {
             if (unit == null || unit.transform == null) return null;
             
             var enemies = unit.GetEnemyUnits();
             if (enemies.Count == 0) return null;
             
-            Unit closest = null;
+            UnitStatus closest = null;
             float closestDistance = float.MaxValue;
             
             foreach (var enemy in enemies)
@@ -172,13 +172,13 @@ namespace GuildMaster.Battle
         }
         
         /// <summary>
-        /// Get Units within range
+        /// Get UnitStatuss within range
         /// </summary>
-        public static List<Unit> GetUnitsInRange(this Unit unit, float range, bool includeEnemies = true, bool includeAllies = false)
+        public static List<UnitStatus> GetUnitsInRange(this UnitStatus unit, float range, bool includeEnemies = true, bool includeAllies = false)
         {
-            if (unit == null || unit.transform == null) return new List<Unit>();
+            if (unit == null || unit.transform == null) return new List<UnitStatus>();
             
-            var result = new List<Unit>();
+            var result = new List<UnitStatus>();
             var allUnits = GameObject.FindObjectsOfType<UnitComponent>()
                 .Select(c => c.UnitData)
                 .Where(u => u != null && u.isAlive && u != unit);
@@ -202,9 +202,9 @@ namespace GuildMaster.Battle
         }
         
         /// <summary>
-        /// Check if Unit can attack target
+        /// Check if UnitStatus can attack target
         /// </summary>
-        public static bool CanAttack(this Unit unit, Unit target)
+        public static bool CanAttack(this UnitStatus unit, UnitStatus target)
         {
             if (unit == null || target == null) return false;
             if (!unit.isAlive || !target.isAlive) return false;
@@ -217,7 +217,7 @@ namespace GuildMaster.Battle
         /// <summary>
         /// Apply damage with full calculation
         /// </summary>
-        public static float DealDamage(this Unit attacker, Unit target, float baseDamage, bool isMagical = false, bool canCrit = true)
+        public static float DealDamage(this UnitStatus attacker, UnitStatus target, float baseDamage, bool isMagical = false, bool canCrit = true)
         {
             if (attacker == null || target == null || !target.isAlive) return 0f;
             
@@ -248,7 +248,7 @@ namespace GuildMaster.Battle
         /// <summary>
         /// Quick unit info for debugging
         /// </summary>
-        public static string GetDebugInfo(this Unit unit)
+        public static string GetDebugInfo(this UnitStatus unit)
         {
             if (unit == null) return "null";
             
@@ -259,14 +259,14 @@ namespace GuildMaster.Battle
     }
     
     /// <summary>
-    /// Helper class for Unit-related utilities
+    /// Helper class for UnitStatus-related utilities
     /// </summary>
     public static class UnitUtility
     {
         /// <summary>
-        /// Find all Units in the scene
+        /// Find all UnitStatuss in the scene
         /// </summary>
-        public static List<Unit> FindAllUnits()
+        public static List<UnitStatus> FindAllUnits()
         {
             return GameObject.FindObjectsOfType<UnitComponent>()
                 .Select(c => c.UnitData)
@@ -277,7 +277,7 @@ namespace GuildMaster.Battle
         /// <summary>
         /// Find all alive Units
         /// </summary>
-        public static List<Unit> FindAllAliveUnits()
+        public static List<UnitStatus> FindAllAliveUnits()
         {
             return FindAllUnits().Where(u => u.isAlive).ToList();
         }
@@ -285,7 +285,7 @@ namespace GuildMaster.Battle
         /// <summary>
         /// Find Units by team
         /// </summary>
-        public static List<Unit> FindUnitsByTeam(bool isPlayerTeam)
+        public static List<UnitStatus> FindUnitsByTeam(bool isPlayerTeam)
         {
             return FindAllAliveUnits().Where(u => u.isPlayerUnit == isPlayerTeam).ToList();
         }
@@ -293,15 +293,15 @@ namespace GuildMaster.Battle
         /// <summary>
         /// Find Units by job class
         /// </summary>
-        public static List<Unit> FindUnitsByJobClass(JobClass jobClass)
+        public static List<UnitStatus> FindUnitsByJobClass(JobClass jobClass)
         {
             return FindAllAliveUnits().Where(u => u.jobClass == jobClass).ToList();
         }
         
         /// <summary>
-        /// Create a Unit GameObject from data
+        /// Create a UnitStatus GameObject from data
         /// </summary>
-        public static GameObject CreateUnitGameObject(Unit unitData, GameObject prefab = null)
+        public static GameObject CreateUnitGameObject(UnitStatus unitData, GameObject prefab = null)
         {
             GameObject go;
             
@@ -311,7 +311,7 @@ namespace GuildMaster.Battle
             }
             else
             {
-                go = new GameObject($"Unit_{unitData.unitName}");
+                go = new GameObject($"UnitStatus_{unitData.unitName}");
             }
             
             go.SetUnit(unitData);
@@ -319,9 +319,9 @@ namespace GuildMaster.Battle
         }
         
         /// <summary>
-        /// Sort Units by initiative (for turn order)
+        /// Sort UnitStatuss by initiative (for turn order)
         /// </summary>
-        public static List<Unit> SortByInitiative(List<Unit> units)
+        public static List<UnitStatus> SortByInitiative(List<UnitStatus> units)
         {
             return units.OrderByDescending(u => u.speed).ToList();
         }
@@ -329,7 +329,7 @@ namespace GuildMaster.Battle
         /// <summary>
         /// Calculate team power
         /// </summary>
-        public static int CalculateTeamPower(List<Unit> units)
+        public static int CalculateTeamPower(List<UnitStatus> units)
         {
             return units.Sum(u => u.GetCombatPower());
         }

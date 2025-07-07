@@ -5,6 +5,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using GuildMaster.Battle;
+using Unit = GuildMaster.Battle.UnitStatus;
 using GuildMaster.Guild;
 using GuildMaster.Systems;
 // using GuildMaster.Data; // Commented out - building types removed
@@ -45,7 +46,7 @@ namespace GuildMaster.UI
         [SerializeField] private TextMeshProUGUI manaStoneText;
         
         // 이벤트
-        public event Action<GuildMaster.Battle.Unit> OnCharacterSelected;
+        public event Action<Unit> OnCharacterSelected;
         // public event Action<BuildingType> OnBuildingSelected; // Commented out - BuildingType removed
         public event Action<string> OnBuildingSelected;
         public event Action<Vector2Int> OnFormationSlotClicked;
@@ -378,7 +379,7 @@ namespace GuildMaster.UI
             // 건물 배치 UI 로직
         }
         
-        private void OnCharacterCollected(GuildMaster.Battle.Unit character)
+        private void OnCharacterCollected(Unit character)
         {
             ShowNotification($"새로운 캐릭터 수집: {character.unitName}!", Color.green);
         }

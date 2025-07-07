@@ -6,7 +6,7 @@ using UnityEngine;
 using GuildMaster.Battle;
 using GuildMaster.Data;
 using JobClass = GuildMaster.Battle.JobClass;
-using Unit = GuildMaster.Battle.Unit;
+using Unit = GuildMaster.Battle.UnitStatus;
 using Rarity = GuildMaster.Data.Rarity;
 
 namespace GuildMaster.Systems
@@ -72,7 +72,7 @@ namespace GuildMaster.Systems
         [System.Serializable]
         public class GachaResult
         {
-            public Unit unit;
+            public UnitStatus unit;
             public bool isNew;
             public bool isFeatured;
             public int duplicateTokens; // 중복 시 받는 토큰
@@ -285,7 +285,7 @@ namespace GuildMaster.Systems
             }
             
             // 유닛 선택
-            Unit unit = null;
+            UnitStatus unit = null;
             if (isFeatured && banner.featuredUnits.Count > 0)
             {
                 int featuredId = banner.featuredUnits[UnityEngine.Random.Range(0, banner.featuredUnits.Count)];
@@ -415,7 +415,7 @@ namespace GuildMaster.Systems
         }
         
         // 유닛 소유 확인
-        bool IsUnitOwned(Unit unit)
+        bool IsUnitOwned(UnitStatus unit)
         {
             var gameManager = Core.GameManager.Instance;
             if (gameManager?.GuildManager == null) return false;
@@ -425,7 +425,7 @@ namespace GuildMaster.Systems
         }
         
         // 중복 토큰 계산
-        int CalculateDuplicateTokens(Unit unit)
+        int CalculateDuplicateTokens(UnitStatus unit)
         {
             switch (unit.rarity)
             {
@@ -488,7 +488,7 @@ namespace GuildMaster.Systems
             return pity.pityCount - pity.currentCount;
         }
 
-        Unit CreateUnitFromCharacterData(CharacterData characterData)
+        UnitStatus CreateUnitFromCharacterData(CharacterData characterData)
         {
             if (characterData == null) return null;
             

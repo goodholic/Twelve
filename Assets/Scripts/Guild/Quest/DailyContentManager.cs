@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using GuildMaster.Battle; // Unit을 위해 추가
 using GuildMaster.Guild; // GuildBuildingTemp을 위해 추가
+using Unit = GuildMaster.Battle.UnitStatus;
 
 namespace GuildMaster.Systems
 {
@@ -565,7 +566,7 @@ namespace GuildMaster.Systems
             }
         }
         
-        void OnAdventurerRecruited(Unit adventurer)
+        void OnAdventurerRecruited(UnitStatus adventurer)
         {
             UpdateQuestProgress(QuestObjective.RecruitAdventurers, 1);
         }

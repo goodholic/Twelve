@@ -7,6 +7,7 @@ using GuildMaster.Core;
 using GuildMaster.Battle;
 using GuildMaster.Data;
 using GuildMaster.UI;
+using Unit = GuildMaster.Battle.UnitStatus;
 
 namespace GuildMaster.Systems
 {
@@ -208,7 +209,7 @@ namespace GuildMaster.Systems
             try
             {
                 var testSquad = new Squad("Test Squad", 0, true);
-                var testUnit = new Unit("Test Warrior", 1, JobClass.Warrior);
+                var testUnit = new UnitStatus("Test Warrior", 1, JobClass.Warrior);
                 testSquad.AddUnit(testUnit);
                 
                 if (testSquad.AliveUnitsCount == 1)

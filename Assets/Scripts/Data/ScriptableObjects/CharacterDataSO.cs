@@ -3,6 +3,7 @@ using UnityEngine;
 using System.Collections.Generic;
 using System.Linq;
 using GuildMaster.Battle;
+using Unit = GuildMaster.Battle.UnitStatus;
 
 namespace GuildMaster.Data
 {

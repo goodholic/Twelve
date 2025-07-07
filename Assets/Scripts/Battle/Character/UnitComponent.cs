@@ -4,20 +4,20 @@ using GuildMaster.Data;
 
 namespace GuildMaster.Battle
 {
-    [AddComponentMenu("GuildMaster/Battle/Unit Component")]
+    [AddComponentMenu("GuildMaster/Battle/UnitStatus Component")]
     public class UnitComponent : MonoBehaviour
     {
         [System.NonSerialized]
-        private Unit _unitData;
+        private UnitStatus _unitData;
         
-        public Unit UnitData
+        public UnitStatus UnitData
         {
             get => _unitData;
             set => _unitData = value;
         }
         
-        // Unit 데이터를 설정하는 메서드
-        public void SetUnit(Unit unit)
+        // UnitStatus 데이터를 설정하는 메서드
+        public void SetUnit(UnitStatus unit)
         {
             _unitData = unit;
             if (_unitData != null)
@@ -27,15 +27,15 @@ namespace GuildMaster.Battle
             }
         }
         
-        // 새로운 Unit을 생성하고 설정하는 메서드
+        // 새로운 UnitStatus을 생성하고 설정하는 메서드
         public void CreateUnit(string name, int level, JobClass jobClass, Rarity rank = Rarity.Common)
         {
-            _unitData = new Unit(name, level, jobClass, rank);
+            _unitData = new UnitStatus(name, level, jobClass, rank);
             _unitData.transform = transform;
             _unitData.gameObject = gameObject;
         }
         
-        // Unit 데이터에 쉽게 접근할 수 있도록 하는 프로퍼티들
+        // UnitStatus 데이터에 쉽게 접근할 수 있도록 하는 프로퍼티들
         public string UnitName => _unitData?.unitName ?? "";
         public int Level => _unitData?.level ?? 0;
         public JobClass JobClass => _unitData?.jobClass ?? JobClass.None;
@@ -48,7 +48,7 @@ namespace GuildMaster.Battle
         {
             if (_unitData == null)
             {
-                _unitData = new Unit("Default", 1, JobClass.None);
+                _unitData = new UnitStatus("Default", 1, JobClass.None);
                 _unitData.transform = transform;
                 _unitData.gameObject = gameObject;
             }

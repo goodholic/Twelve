@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using Unit = GuildMaster.Battle.UnitStatus;
 
 namespace GuildMaster.Systems
 {
@@ -192,7 +193,7 @@ namespace GuildMaster.Systems
         }
         
         // 빠른 강화
-        public bool QuickEnhance(Battle.Unit unit, int targetLevel = -1)
+        public bool QuickEnhance(Unit unit, int targetLevel = -1)
         {
             if (unit == null) return false;
             
@@ -218,7 +219,7 @@ namespace GuildMaster.Systems
             return false;
         }
         
-        bool PerformEnhancement(Battle.Unit unit)
+        bool PerformEnhancement(Unit unit)
         {
             // 경험치 추가 (임시 구현)
             int expNeeded = unit.experienceToNextLevel - unit.experience;
@@ -227,7 +228,7 @@ namespace GuildMaster.Systems
         }
         
         // 일괄 판매
-        public int BulkSell(Func<Battle.Unit, bool> filter)
+        public int BulkSell(Func<Unit, bool> filter)
         {
             var gameManager = Core.GameManager.Instance;
             if (gameManager == null) return 0;
@@ -264,7 +265,7 @@ namespace GuildMaster.Systems
             return sellCount;
         }
         
-        int CalculateSellPrice(Battle.Unit unit)
+        int CalculateSellPrice(Unit unit)
         {
             int basePrice = 100;
             basePrice += unit.level * 50;
@@ -350,7 +351,7 @@ namespace GuildMaster.Systems
             return composition;
         }
         
-        Battle.Unit FindBestUnitForRole(List<Battle.Unit> availableUnits, Battle.JobClass jobClass, int count)
+        Unit FindBestUnitForRole(List<Unit> availableUnits, Battle.JobClass jobClass, int count)
         {
             return availableUnits.FirstOrDefault(u => u.jobClass == jobClass);
         }

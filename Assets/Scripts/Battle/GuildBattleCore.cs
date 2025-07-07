@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using GuildMaster.Core;
 using GuildMaster.Data;
+using UnitStatus = GuildMaster.Battle.UnitStatus;
 
 namespace GuildMaster.Battle
 {
@@ -31,7 +32,7 @@ namespace GuildMaster.Battle
         
         // 길드 데이터
         [Header("길드 구성")]
-        [System.NonSerialized] private List<GuildMaster.Battle.Unit> collectedCharacters = new List<GuildMaster.Battle.Unit>(); // 수집한 18명의 캐릭터
+        [System.NonSerialized] private List<UnitStatus> collectedCharacters = new List<UnitStatus>(); // 수집한 18명의 캐릭터
         [System.NonSerialized] private GuildSquad squad1 = new GuildSquad();             // 1부대 (9명)
         [System.NonSerialized] private GuildSquad squad2 = new GuildSquad();             // 2부대 (9명)
         
@@ -42,7 +43,7 @@ namespace GuildMaster.Battle
         
         // 이벤트
         public event Action<GuildBattleResult> OnBattleComplete;
-        public event Action<Unit> OnCharacterCollected;
+        public event Action<UnitStatus> OnCharacterCollected;
         public event Action<GuildSquad, GuildSquad> OnBattleStart;
         
         // 현재 편성된 부대들
@@ -69,7 +70,7 @@ namespace GuildMaster.Battle
         {
             // 필드 초기화
             if (collectedCharacters == null)
-                collectedCharacters = new List<GuildMaster.Battle.Unit>();
+                collectedCharacters = new List<UnitStatus>();
             if (squad1 == null)
                 squad1 = new GuildSquad();
             if (squad2 == null)
@@ -106,14 +107,14 @@ namespace GuildMaster.Battle
         /// <summary>
         /// 새 캐릭터 생성
         /// </summary>
-        public Unit CreateCharacter(string name, int level, JobClass jobClass, Rarity rarity)
+        public UnitStatus CreateCharacter(string name, int level, JobClass jobClass, Rarity rarity)
         {
             GameObject characterGO = new GameObject(name);
             characterGO.transform.SetParent(transform);
             
             UnitBehaviour unitBehaviour = characterGO.AddComponent<UnitBehaviour>();
             unitBehaviour.Initialize(name, level, jobClass, rarity);
-            Unit character = unitBehaviour.unit;
+            UnitStatus character = unitBehaviour.unit;
             character.isPlayerUnit = true;
             character.unitId = System.Guid.NewGuid().ToString();
             
@@ -123,7 +124,7 @@ namespace GuildMaster.Battle
         /// <summary>
         /// 캐릭터 수집 (최대 18명)
         /// </summary>
-        public bool CollectCharacter(Unit character)
+        public bool CollectCharacter(UnitStatus character)
         {
             if (collectedCharacters.Count >= TOTAL_COLLECTIBLE_CHARACTERS)
             {
@@ -141,7 +142,7 @@ namespace GuildMaster.Battle
         /// <summary>
         /// 부대에 캐릭터 배치
         /// </summary>
-        public bool AssignCharacterToSquad(Unit character, int squadIndex, Vector2Int gridPos)
+        public bool AssignCharacterToSquad(UnitStatus character, int squadIndex, Vector2Int gridPos)
         {
             if (squadIndex < 0 || squadIndex >= SQUADS_PER_GUILD) return false;
             if (!collectedCharacters.Contains(character)) return false;
@@ -243,9 +244,9 @@ namespace GuildMaster.Battle
         /// <summary>
         /// 최적 타겟 찾기
         /// </summary>
-        private Unit FindBestTarget(Unit attacker, GuildFormation defendingFormation)
+        private UnitStatus FindBestTarget(UnitStatus attacker, GuildFormation defendingFormation)
         {
-            var allTargets = new List<Unit>();
+            var allTargets = new List<UnitStatus>();
             
             for (int i = 0; i < SQUADS_PER_GUILD; i++)
             {
@@ -301,7 +302,7 @@ namespace GuildMaster.Battle
         }
         
         // 접근자 메서드들
-        public List<Unit> GetCollectedCharacters() => collectedCharacters;
+        public List<UnitStatus> GetCollectedCharacters() => collectedCharacters;
         public GuildSquad GetSquad(int index) => index == 0 ? squad1 : squad2;
         public bool IsInBattle() => isInBattle;
         public int GetCollectedCharacterCount() => collectedCharacters.Count;
@@ -373,18 +374,18 @@ namespace GuildMaster.Battle
     {
         public string squadName;
         public int squadIndex;
-        public Unit[,] formation = new Unit[GuildBattleCore.SQUAD_GRID_WIDTH, GuildBattleCore.SQUAD_GRID_HEIGHT];
-        public Dictionary<Vector2Int, Unit> assignedUnits = new Dictionary<Vector2Int, Unit>();
+        public UnitStatus[,] formation = new UnitStatus[GuildBattleCore.SQUAD_GRID_WIDTH, GuildBattleCore.SQUAD_GRID_HEIGHT];
+        public Dictionary<Vector2Int, UnitStatus> assignedUnits = new Dictionary<Vector2Int, UnitStatus>();
         
         public void Initialize(string name, int index)
         {
             squadName = name;
             squadIndex = index;
-            formation = new Unit[GuildBattleCore.SQUAD_GRID_WIDTH, GuildBattleCore.SQUAD_GRID_HEIGHT];
+            formation = new UnitStatus[GuildBattleCore.SQUAD_GRID_WIDTH, GuildBattleCore.SQUAD_GRID_HEIGHT];
             assignedUnits.Clear();
         }
         
-        public bool AssignUnit(Unit unit, Vector2Int gridPos)
+        public bool AssignUnit(UnitStatus unit, Vector2Int gridPos)
         {
             if (assignedUnits.Count >= GuildBattleCore.UNITS_PER_SQUAD)
             {
@@ -407,7 +408,7 @@ namespace GuildMaster.Battle
             return false;
         }
         
-        public List<Unit> GetAliveUnits()
+        public List<UnitStatus> GetAliveUnits()
         {
             return assignedUnits.Values.Where(u => u != null && u.IsAlive).ToList();
         }
@@ -466,6 +467,6 @@ namespace GuildMaster.Battle
         public int survivingUnits;
         public int totalTurns;
         public BattleRewards rewards;
-        public List<Unit> mvpUnits = new List<Unit>();
+        public List<UnitStatus> mvpUnits = new List<UnitStatus>();
     }
 } 

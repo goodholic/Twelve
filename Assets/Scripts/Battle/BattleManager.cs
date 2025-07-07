@@ -3,11 +3,11 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using GuildMaster.Battle; // Unit, JobClass를 위해 추가
+using GuildMaster.Battle; // UnitStatus, JobClass를 위해 추가
 
 namespace GuildMaster.Core
 {
-    using GuildMaster; // Unit 클래스를 위한 using 추가
+    using GuildMaster; // UnitStatus 클래스를 위한 using 추가
     
     public class BattleManager : MonoBehaviour
     {
@@ -46,7 +46,7 @@ namespace GuildMaster.Core
         public class BattleSquad
         {
             public int SquadIndex { get; set; }
-            public Unit[,] Units { get; set; } = new Unit[SQUAD_ROWS, SQUAD_COLS];
+            public UnitStatus[,] Units { get; set; } = new UnitStatus[SQUAD_ROWS, SQUAD_COLS];
             public bool IsPlayerSquad { get; set; }
             public float TotalHealth => GetTotalHealth();
             public bool IsDefeated => GetAliveUnitsCount() == 0;
@@ -138,9 +138,9 @@ namespace GuildMaster.Core
         // Events
         public event Action<BattleState> OnBattleStateChanged;
         public event Action<BattleSquad, BattleSquad> OnSquadTurnStart;
-        public event Action<Unit, Unit, float> OnUnitAttack;
-        public event Action<Unit, float> OnUnitHeal;
-        public event Action<Unit> OnUnitDeath;
+        public event Action<UnitStatus, UnitStatus, float> OnUnitAttack;
+        public event Action<UnitStatus, float> OnUnitHeal;
+        public event Action<UnitStatus> OnUnitDeath;
         public event Action<bool> OnBattleEnd;
 
         // Battle Statistics
@@ -167,8 +167,8 @@ namespace GuildMaster.Core
             public float Timestamp { get; set; }
             public string EventType { get; set; }
             public string Description { get; set; }
-            public Unit Actor { get; set; }
-            public Unit Target { get; set; }
+            public UnitStatus Actor { get; set; }
+            public UnitStatus Target { get; set; }
             public float Value { get; set; }
         }
 
@@ -186,7 +186,7 @@ namespace GuildMaster.Core
             }
         }
 
-        public void StartBattle(List<Unit> playerUnits, List<Unit> enemyUnits)
+        public void StartBattle(List<UnitStatus> playerUnits, List<UnitStatus> enemyUnits)
         {
             if (playerUnits.Count > TOTAL_UNITS_PER_SIDE || enemyUnits.Count > TOTAL_UNITS_PER_SIDE)
             {
@@ -221,7 +221,7 @@ namespace GuildMaster.Core
             StartCoroutine(BattleLoop());
         }
 
-        void AssignUnitsToSquads(List<Unit> units, BattleSquad[] squads)
+        void AssignUnitsToSquads(List<UnitStatus> units, BattleSquad[] squads)
         {
             int unitIndex = 0;
             
@@ -237,7 +237,7 @@ namespace GuildMaster.Core
             }
         }
         
-        void AssignUnitsToSquadOptimally(List<Unit> units, BattleSquad squad)
+        void AssignUnitsToSquadOptimally(List<UnitStatus> units, BattleSquad squad)
         {
             // Tanks and warriors in front
             var frontLine = units.Where(u => u.JobClass == JobClass.Warrior || u.JobClass == JobClass.Knight).ToList();
@@ -341,7 +341,7 @@ namespace GuildMaster.Core
             {
                 for (int col = 0; col < SQUAD_COLS; col++)
                 {
-                    Unit unit = squad.Units[row, col];
+                    UnitStatus unit = squad.Units[row, col];
                     if (unit != null && unit.IsAlive)
                     {
                         yield return StartCoroutine(ExecuteUnitAction(unit, enemySquads));
@@ -350,7 +350,7 @@ namespace GuildMaster.Core
             }
         }
 
-        IEnumerator ExecuteUnitAction(Unit unit, BattleSquad[] enemySquads)
+        IEnumerator ExecuteUnitAction(UnitStatus unit, BattleSquad[] enemySquads)
         {
             var skillManager = GameManager.Instance?.SkillManager;
             
@@ -383,7 +383,7 @@ namespace GuildMaster.Core
                     case JobClass.Priest:
                     case JobClass.Sage:
                         // Heal if allies need it
-                        Unit healTarget = FindHealTarget(unit);
+                        UnitStatus healTarget = FindHealTarget(unit);
                         if (healTarget != null)
                         {
                             float healAmount = unit.GetHealPower();
@@ -411,10 +411,10 @@ namespace GuildMaster.Core
             }
         }
 
-        Unit FindAttackTarget(Unit attacker, BattleSquad[] enemySquads)
+        UnitStatus FindAttackTarget(UnitStatus attacker, BattleSquad[] enemySquads)
         {
             var tactic = attacker.IsPlayerUnit ? playerTactic : enemyTactic;
-            List<Unit> potentialTargets = new List<Unit>();
+            List<UnitStatus> potentialTargets = new List<UnitStatus>();
             
             // Gather all alive enemy units
             foreach (var squad in enemySquads.Where(s => !s.IsDefeated))
@@ -423,7 +423,7 @@ namespace GuildMaster.Core
                 {
                     for (int col = 0; col < SQUAD_COLS; col++)
                     {
-                        Unit target = squad.Units[row, col];
+                        UnitStatus target = squad.Units[row, col];
                         if (target != null && target.IsAlive)
                         {
                             potentialTargets.Add(target);
@@ -464,10 +464,10 @@ namespace GuildMaster.Core
             }
         }
 
-        Unit FindHealTarget(Unit healer)
+        UnitStatus FindHealTarget(UnitStatus healer)
         {
             BattleSquad[] allySquads = healer.IsPlayerUnit ? playerSquads : enemySquads;
-            Unit lowestHealthUnit = null;
+            UnitStatus lowestHealthUnit = null;
             float lowestHealthPercentage = 1f;
 
             foreach (var squad in allySquads)
@@ -476,7 +476,7 @@ namespace GuildMaster.Core
                 {
                     for (int col = 0; col < SQUAD_COLS; col++)
                     {
-                        Unit unit = squad.Units[row, col];
+                        UnitStatus unit = squad.Units[row, col];
                         if (unit != null && unit.IsAlive && unit.CurrentHealth < unit.MaxHealth)
                         {
                             float healthPercentage = unit.CurrentHealth / unit.MaxHealth;
@@ -566,7 +566,7 @@ namespace GuildMaster.Core
                 {
                     for (int col = 0; col < SQUAD_COLS; col++)
                     {
-                        Unit unit = squad.Units[row, col];
+                        UnitStatus unit = squad.Units[row, col];
                         if (unit != null && unit.IsAlive)
                         {
                             unit.experience += baseExp;
@@ -587,9 +587,9 @@ namespace GuildMaster.Core
             return currentBattleStats;
         }
         
-        IEnumerator ExecuteBasicAttack(Unit unit, BattleSquad[] enemySquads)
+        IEnumerator ExecuteBasicAttack(UnitStatus unit, BattleSquad[] enemySquads)
         {
-            Unit target = FindAttackTarget(unit, enemySquads);
+            UnitStatus target = FindAttackTarget(unit, enemySquads);
             if (target != null)
             {
                 float damage = unit.GetAttackDamage();
@@ -617,7 +617,7 @@ namespace GuildMaster.Core
             }
         }
         
-        bool TryUseSkill(Unit unit, BattleSquad[] enemySquads)
+        bool TryUseSkill(UnitStatus unit, BattleSquad[] enemySquads)
         {
             var skillManager = GameManager.Instance?.SkillManager;
             if (skillManager == null) return false;
@@ -629,7 +629,7 @@ namespace GuildMaster.Core
             
             foreach (var skill in availableSkills)
             {
-                List<Unit> targets = GetSkillTargets(unit, skill, enemySquads);
+                List<UnitStatus> targets = GetSkillTargets(unit, skill, enemySquads);
                 if (targets.Count > 0)
                 {
                     skillManager.UseSkill(unit, skill.SkillId, targets);
@@ -640,9 +640,9 @@ namespace GuildMaster.Core
             return false;
         }
         
-        List<Unit> GetSkillTargets(Unit caster, Battle.Skill skill, BattleSquad[] enemySquads)
+        List<UnitStatus> GetSkillTargets(UnitStatus caster, Battle.Skill skill, BattleSquad[] enemySquads)
         {
-            List<Unit> targets = new List<Unit>();
+            List<UnitStatus> targets = new List<UnitStatus>();
             
             switch (skill.TargetType)
             {
@@ -736,7 +736,7 @@ namespace GuildMaster.Core
             {
                 for (int col = 0; col < SQUAD_COLS; col++)
                 {
-                    Unit unit = squad.Units[row, col];
+                    UnitStatus unit = squad.Units[row, col];
                     if (unit != null)
                     {
                         switch (unit.JobClass)
@@ -766,7 +766,7 @@ namespace GuildMaster.Core
             {
                 for (int col = 0; col < SQUAD_COLS; col++)
                 {
-                    Unit unit = squad.Units[row, col];
+                    UnitStatus unit = squad.Units[row, col];
                     if (unit != null)
                     {
                         unit.attackPower *= (1 + synergy.AttackBonus);
@@ -794,7 +794,7 @@ namespace GuildMaster.Core
                 {
                     for (int col = 0; col < SQUAD_COLS; col++)
                     {
-                        Unit unit = squad.Units[row, col];
+                        UnitStatus unit = squad.Units[row, col];
                         if (unit != null)
                         {
                             switch (tactic)
@@ -828,7 +828,7 @@ namespace GuildMaster.Core
             enemyTactic = tactic;
         }
         
-        void AddBattleEvent(string eventType, string description, Unit actor, Unit target, float value)
+        void AddBattleEvent(string eventType, string description, UnitStatus actor, UnitStatus target, float value)
         {
             battleLog.Add(new BattleEvent
             {

@@ -5,6 +5,7 @@ using System.Linq;
 using UnityEngine;
 using GuildMaster.Core;
 using GuildMaster.Battle;
+using Unit = GuildMaster.Battle.UnitStatus;
 
 namespace GuildMaster.Systems
 {
@@ -374,7 +375,7 @@ namespace GuildMaster.Systems
         /// <summary>
         /// 시너지 보너스 계산
         /// </summary>
-        public List<RelationshipBonus> GetRelationshipBonuses(List<Unit> squad)
+        public List<RelationshipBonus> GetRelationshipBonuses(List<UnitStatus> squad)
         {
             var bonuses = new List<RelationshipBonus>();
             
@@ -687,7 +688,7 @@ namespace GuildMaster.Systems
             return Mathf.RoundToInt(baseExpRequired * Mathf.Pow(expMultiplier, level - 1));
         }
         
-        List<Unit> GetSquadMembers(Unit unit)
+        List<UnitStatus> GetSquadMembers(UnitStatus unit)
         {
             // 같은 부대의 멤버들 찾기
             var battleManager = GameManager.Instance?.BattleManager;
@@ -696,7 +697,7 @@ namespace GuildMaster.Systems
                 // 구현 필요
             }
             
-            return new List<Unit>();
+            return new List<UnitStatus>();
         }
         
         // 이벤트 핸들러

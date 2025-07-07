@@ -1,5 +1,6 @@
 using UnityEngine;
 using GuildMaster.Battle;
+using Unit = GuildMaster.Battle.UnitStatus;
 
 namespace GuildMaster.Data
 {

@@ -2,6 +2,7 @@ using UnityEngine;
 using System;
 using System.Collections.Generic;
 using GuildMaster.Data;
+using Unit = GuildMaster.Battle.UnitStatus;
 
 namespace GuildMaster.Battle
 {
@@ -94,7 +95,7 @@ namespace GuildMaster.Battle
         /// <summary>
         /// 직업별 스탯 계산
         /// </summary>
-        public static void ApplyJobStats(Unit unit)
+        public static void ApplyJobStats(UnitStatus unit)
         {
             if (!BaseStatMultipliers.ContainsKey(unit.jobClass)) return;
             

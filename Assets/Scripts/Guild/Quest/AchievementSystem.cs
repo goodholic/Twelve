@@ -7,7 +7,7 @@ using GuildMaster.Battle;
 using GuildMaster.Core;
 using GuildMaster.Data;
 using JobClass = GuildMaster.Battle.JobClass;
-using Unit = GuildMaster.Battle.Unit;
+using Unit = GuildMaster.Battle.UnitStatus;
 using Rarity = GuildMaster.Data.Rarity;
 
 namespace GuildMaster.Systems
@@ -945,7 +945,7 @@ namespace GuildMaster.Systems
             UpdateDailyQuestProgress(QuestType.BuildConstruction, 1);
         }
         
-        public void CheckRecruitmentAchievements(Unit unit)
+        public void CheckRecruitmentAchievements(UnitStatus unit)
         {
             UpdateProgress("collect_adventurers_10", 1);
             

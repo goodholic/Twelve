@@ -4,6 +4,7 @@ using System.Collections;
 using System.Collections.Generic;
 using GuildMaster.Data;
 using GuildMaster.Systems;
+using Unit = GuildMaster.Battle.UnitStatus;
 
 namespace GuildMaster.Core
 {
@@ -71,7 +72,7 @@ namespace GuildMaster.Core
         }
 
         // Character Management
-        public Battle.Unit[] currentRegisteredCharacters = new Battle.Unit[10];
+        public Battle.UnitStatus[] currentRegisteredCharacters = new Battle.UnitStatus[10];
 
         // Events
         public event Action<GameState, GameState> OnGameStateChanged;

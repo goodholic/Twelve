@@ -4,6 +4,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using GuildMaster.Battle;
+using Unit = GuildMaster.Battle.UnitStatus;
 using GuildMaster.Core;
 
 namespace GuildMaster.Systems
@@ -422,7 +423,7 @@ namespace GuildMaster.Systems
             return squad;
         }
         
-        Unit GenerateEnemyUnit(int difficulty)
+        GuildMaster.Battle.UnitStatus GenerateEnemyUnit(int difficulty)
         {
             JobClass[] availableClasses = { JobClass.Warrior, JobClass.Knight, JobClass.Mage, JobClass.Priest, JobClass.Assassin, JobClass.Ranger };
             JobClass randomClass = availableClasses[UnityEngine.Random.Range(0, availableClasses.Length)];

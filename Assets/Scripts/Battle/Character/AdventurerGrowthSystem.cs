@@ -4,6 +4,7 @@ using System.Linq;
 using UnityEngine;
 using GuildMaster.Battle;
 using GuildMaster.Data;
+using UnitStatus = GuildMaster.Battle.UnitStatus;
 
 namespace GuildMaster.Systems
 {
@@ -83,10 +84,10 @@ namespace GuildMaster.Systems
         private Dictionary<string, GrowthType> unitGrowthTypes;
         
         // 이벤트
-        public event Action<Unit, int> OnUnitAwakened;
-        public event Action<Unit, JobClass> OnJobPromoted;
-        public event Action<Unit, TraitData> OnTraitSelected;
-        public event Action<Unit, int> OnLevelUp;
+        public event Action<UnitStatus, int> OnUnitAwakened;
+        public event Action<UnitStatus, JobClass> OnJobPromoted;
+        public event Action<UnitStatus, TraitData> OnTraitSelected;
+        public event Action<UnitStatus, int> OnLevelUp;
         
         void Awake()
         {
@@ -232,7 +233,7 @@ namespace GuildMaster.Systems
         }
         
         // 레벨업 처리
-        public void LevelUpUnit(Unit unit, int targetLevel)
+        public void LevelUpUnit(UnitStatus unit, int targetLevel)
         {
             if (unit == null || targetLevel <= unit.level) return;
             
@@ -254,7 +255,7 @@ namespace GuildMaster.Systems
             unit.currentMP = unit.maxMP;
         }
         
-        void ApplyLevelUpStats(Unit unit, GrowthType growthType)
+        void ApplyLevelUpStats(UnitStatus unit, GrowthType growthType)
         {
             // 기본 성장치
             float hpGrowth = 10f;
@@ -301,7 +302,7 @@ namespace GuildMaster.Systems
         }
         
         // 각성
-        public bool AwakeUnit(Unit unit)
+        public bool AwakeUnit(UnitStatus unit)
         {
             if (unit == null || unit.awakeningLevel >= 5) return false;
             
@@ -328,7 +329,7 @@ namespace GuildMaster.Systems
         }
         
         // 직업 승급
-        public bool PromoteJob(Unit unit)
+        public bool PromoteJob(UnitStatus unit)
         {
             if (unit == null) return false;
             
@@ -354,7 +355,7 @@ namespace GuildMaster.Systems
         }
         
         // 특성 선택
-        public bool SelectTrait(Unit unit, string traitId)
+        public bool SelectTrait(UnitStatus unit, string traitId)
         {
             if (unit == null || !availableTraits.ContainsKey(traitId))
                 return false;
@@ -403,7 +404,7 @@ namespace GuildMaster.Systems
         }
         
         // 합성 (같은 유닛 사용)
-        public Unit SynthesizeUnits(Unit baseUnit, List<Unit> materials)
+        public UnitStatus SynthesizeUnits(UnitStatus baseUnit, List<UnitStatus> materials)
         {
             if (baseUnit == null || materials == null || materials.Count == 0)
                 return null;
@@ -441,7 +442,7 @@ namespace GuildMaster.Systems
         }
         
         // 성장 타입 조회
-        public GrowthType GetUnitGrowthType(Unit unit)
+        public GrowthType GetUnitGrowthType(UnitStatus unit)
         {
             if (unitGrowthTypes.ContainsKey(unit.unitId))
                 return unitGrowthTypes[unit.unitId];
@@ -474,7 +475,7 @@ namespace GuildMaster.Systems
         }
         
         // 승급 가능 여부
-        public bool CanPromote(Unit unit)
+        public bool CanPromote(UnitStatus unit)
         {
             return jobPromotions.Any(p => 
                 p.baseJob == unit.jobClass && 
