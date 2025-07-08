@@ -2,32 +2,31 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
-using GuildMaster.Systems;
 
 namespace GuildMaster.Battle
 {
     /// <summary>
     /// 타일 시스템 - 전투 그리드의 개별 타일을 관리
-    /// A타일과 B타일로 구성되며, 각각 아군과 적군 영역을 가짐
+    /// A타일과 B타일로 구성되며, 각각 아군과 적군이 배치 가능
     /// </summary>
     public class Tile : MonoBehaviour
     {
         [Header("타일 정보")]
-        public int x;                    // 타일의 X 좌표
-        public int y;                    // 타일의 Y 좌표
+        public int x;                    // 타일의 X 좌표 (0~5)
+        public int y;                    // 타일의 Y 좌표 (0~2)
         public TileType tileType;        // A 타일 또는 B 타일
-        public SideType sideType;        // 아군 또는 적군 영역
         public bool isOccupied;          // 타일 점유 여부
-        public GameObject occupiedBy;     // 점유한 유닛
-        public bool isWalkable = true;   // 이동 가능 여부
+        public GameObject occupiedUnit;  // 점유한 유닛
+        public Team occupiedTeam;        // 점유한 팀 (아군/적군)
         
         [Header("비주얼")]
         public SpriteRenderer spriteRenderer;
         public Color normalColor = Color.white;
         public Color highlightColor = Color.yellow;
-        public Color occupiedColor = Color.red;
-        public Color playerSideColor = new Color(0.5f, 0.5f, 1f, 0.5f);  // 파란색 계열
-        public Color enemySideColor = new Color(1f, 0.5f, 0.5f, 0.5f);   // 빨간색 계열
+        public Color allyOccupiedColor = new Color(0.5f, 0.5f, 1f, 1f);    // 파란색
+        public Color enemyOccupiedColor = new Color(1f, 0.5f, 0.5f, 1f);   // 빨간색
+        public Color validPlacementColor = new Color(0.5f, 1f, 0.5f, 0.5f); // 연한 녹색
+        public Color invalidPlacementColor = new Color(1f, 0.5f, 0.5f, 0.5f); // 연한 빨간색
         
         [Header("타일 효과")]
         public GameObject selectionEffect;
@@ -36,16 +35,20 @@ namespace GuildMaster.Battle
         // 타일 타입 (A 또는 B)
         public enum TileType
         {
-            A,  // A 타일
-            B   // B 타일
+            A,  // 위쪽 타일 그룹
+            B   // 아래쪽 타일 그룹
         }
         
-        // 진영 타입
-        public enum SideType
+        // 팀 타입
+        public enum Team
         {
-            Player,  // 아군 영역 (왼쪽)
-            Enemy    // 적군 영역 (오른쪽)
+            None,   // 비어있음
+            Ally,   // 아군
+            Enemy   // 적군
         }
+        
+        private bool isHighlighted = false;
+        private bool isValidPlacement = false;
         
         private void Start()
         {
@@ -55,48 +58,53 @@ namespace GuildMaster.Battle
             }
             
             UpdateVisual();
-            SetSideColor();
-        }
-        
-        /// <summary>
-        /// 타일 위치 설정
-        /// </summary>
-        public void SetPosition(int x, int y)
-        {
-            this.x = x;
-            this.y = y;
-            gameObject.name = $"Tile_{tileType}_{sideType}_{x}_{y}";
         }
         
         /// <summary>
         /// 타일 초기화
         /// </summary>
-        public void Initialize(int x, int y, TileType type, SideType side)
+        public void Initialize(int x, int y, TileType type)
         {
-            SetPosition(x, y);
+            this.x = x;
+            this.y = y;
             this.tileType = type;
-            this.sideType = side;
+            gameObject.name = $"Tile_{type}_{x}_{y}";
             UpdateVisual();
-            SetSideColor();
         }
         
         /// <summary>
         /// 유닛 배치
         /// </summary>
-        public void SetOccupied(GameObject unit)
+        public void PlaceUnit(GameObject unit, Team team)
         {
+            if (isOccupied)
+            {
+                Debug.LogWarning($"타일 [{x},{y}]는 이미 점유되어 있습니다!");
+                return;
+            }
+            
             isOccupied = true;
-            occupiedBy = unit;
+            occupiedUnit = unit;
+            occupiedTeam = team;
+            
+            // 유닛 위치 설정
+            unit.transform.position = transform.position;
+            unit.transform.parent = transform;
+            
             UpdateVisual();
         }
         
         /// <summary>
         /// 유닛 제거
         /// </summary>
-        public void ClearOccupied()
+        public void RemoveUnit()
         {
+            if (!isOccupied)
+                return;
+                
             isOccupied = false;
-            occupiedBy = null;
+            occupiedUnit = null;
+            occupiedTeam = Team.None;
             UpdateVisual();
         }
         
@@ -105,31 +113,31 @@ namespace GuildMaster.Battle
         /// </summary>
         public void SetHighlight(bool highlight)
         {
-            if (spriteRenderer != null)
-            {
-                if (highlight)
-                {
-                    spriteRenderer.color = highlightColor;
-                    if (selectionEffect != null)
-                        selectionEffect.SetActive(true);
-                }
-                else
-                {
-                    UpdateVisual();
-                    if (selectionEffect != null)
-                        selectionEffect.SetActive(false);
-                }
-            }
+            isHighlighted = highlight;
+            
+            if (selectionEffect != null)
+                selectionEffect.SetActive(highlight);
+                
+            UpdateVisual();
         }
         
         /// <summary>
         /// 배치 가능 표시
         /// </summary>
-        public void ShowPlacementIndicator(bool show)
+        public void ShowPlacementIndicator(bool show, bool isValid = true)
         {
+            isValidPlacement = isValid;
+            
             if (placementIndicator != null)
             {
-                placementIndicator.SetActive(show && CanPlaceUnit());
+                placementIndicator.SetActive(show);
+                
+                // 유효성에 따라 색상 변경
+                SpriteRenderer indicatorRenderer = placementIndicator.GetComponent<SpriteRenderer>();
+                if (indicatorRenderer != null)
+                {
+                    indicatorRenderer.color = isValid ? validPlacementColor : invalidPlacementColor;
+                }
             }
         }
         
@@ -138,34 +146,21 @@ namespace GuildMaster.Battle
         /// </summary>
         private void UpdateVisual()
         {
-            if (spriteRenderer != null)
+            if (spriteRenderer == null)
+                return;
+                
+            // 우선순위: 하이라이트 > 점유 > 일반
+            if (isHighlighted)
             {
-                if (isOccupied)
-                {
-                    spriteRenderer.color = occupiedColor;
-                }
-                else
-                {
-                    SetSideColor();
-                }
+                spriteRenderer.color = highlightColor;
             }
-        }
-        
-        /// <summary>
-        /// 진영별 색상 설정
-        /// </summary>
-        private void SetSideColor()
-        {
-            if (spriteRenderer != null)
+            else if (isOccupied)
             {
-                if (sideType == SideType.Player)
-                {
-                    spriteRenderer.color = playerSideColor;
-                }
-                else
-                {
-                    spriteRenderer.color = enemySideColor;
-                }
+                spriteRenderer.color = occupiedTeam == Team.Ally ? allyOccupiedColor : enemyOccupiedColor;
+            }
+            else
+            {
+                spriteRenderer.color = normalColor;
             }
         }
         
@@ -190,7 +185,7 @@ namespace GuildMaster.Battle
         /// </summary>
         public bool CanPlaceUnit()
         {
-            return isWalkable && !isOccupied;
+            return !isOccupied;
         }
         
         /// <summary>
@@ -198,7 +193,8 @@ namespace GuildMaster.Battle
         /// </summary>
         public string GetTileInfo()
         {
-            return $"Tile {tileType}-{sideType} [{x},{y}] - {(isOccupied ? "Occupied" : "Empty")}";
+            string occupiedInfo = isOccupied ? $"Occupied by {occupiedTeam}" : "Empty";
+            return $"Tile {tileType} [{x},{y}] - {occupiedInfo}";
         }
         
         /// <summary>
@@ -206,7 +202,7 @@ namespace GuildMaster.Battle
         /// </summary>
         public void ResetTile()
         {
-            ClearOccupied();
+            RemoveUnit();
             SetHighlight(false);
             ShowPlacementIndicator(false);
         }
@@ -214,10 +210,13 @@ namespace GuildMaster.Battle
         // 마우스 이벤트 처리
         private void OnMouseEnter()
         {
-            if (PlacementManager.Instance != null && PlacementManager.Instance.IsInPlacementMode())
+            if (Placement.Instance != null && Placement.Instance.IsPlacementMode())
             {
                 SetHighlight(true);
-                ShowPlacementIndicator(true);
+                
+                // 배치 가능 여부에 따라 다른 표시
+                bool canPlace = CanPlaceUnit() && Placement.Instance.CanPlaceOnTile(this);
+                ShowPlacementIndicator(true, canPlace);
             }
         }
         
@@ -229,9 +228,9 @@ namespace GuildMaster.Battle
         
         private void OnMouseDown()
         {
-            if (PlacementManager.Instance != null && PlacementManager.Instance.IsInPlacementMode())
+            if (Placement.Instance != null && Placement.Instance.IsPlacementMode())
             {
-                PlacementManager.Instance.TryPlaceUnit(this);
+                Placement.Instance.TryPlaceUnit(this);
             }
         }
     }

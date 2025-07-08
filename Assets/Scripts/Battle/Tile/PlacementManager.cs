@@ -1,29 +1,29 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using System.Linq;
 using TMPro;
-using GuildMaster.Battle;
 
-namespace GuildMaster.Systems
+namespace GuildMaster.Battle
 {
     /// <summary>
-    /// 유닛 배치를 관리하는 매니저
-    /// A타일과 B타일에 각각 아군과 적군을 배치
+    /// 유닛 배치 관리 시스템
+    /// A타일과 B타일에 턴제로 유닛을 배치하고 승부를 판정
     /// </summary>
-    public class PlacementManager : MonoBehaviour
+    public class Placement : MonoBehaviour
     {
-        private static PlacementManager instance;
-        public static PlacementManager Instance
+        private static Placement instance;
+        public static Placement Instance
         {
             get
             {
                 if (instance == null)
                 {
-                    instance = FindFirstObjectByType<PlacementManager>();
+                    instance = FindFirstObjectByType<Placement>();
                     if (instance == null)
                     {
-                        GameObject go = new GameObject("PlacementManager");
-                        instance = go.AddComponent<PlacementManager>();
+                        GameObject go = new GameObject("Placement");
+                        instance = go.AddComponent<Placement>();
                     }
                 }
                 return instance;
@@ -33,41 +33,37 @@ namespace GuildMaster.Systems
         [Header("그리드 설정")]
         public const int GRID_WIDTH = 6;   // 가로 6칸
         public const int GRID_HEIGHT = 3;  // 세로 3칸
-        public const int MAX_UNITS_PER_SIDE = 9;  // 한 진영당 최대 9명
+        public float tileSize = 1.2f;
+        public float tileSpacing = 0.1f;
+        public float groupSpacing = 2.0f;  // A타일과 B타일 사이 간격
         
-        [Header("타일 관리")]
+        [Header("타일 프리팹")]
         public GameObject tilePrefab;
         public Transform tileContainer;
-        public float tileSize = 1f;
-        public float tileSpacing = 0.1f;
-        
-        // 타일 그리드 - [타일타입, 진영, x, y]
-        private Tile[,,,] tileGrid;
-        
-        // A타일과 B타일의 유닛 리스트
-        private List<GameObject> tileA_PlayerUnits = new List<GameObject>();
-        private List<GameObject> tileA_EnemyUnits = new List<GameObject>();
-        private List<GameObject> tileB_PlayerUnits = new List<GameObject>();
-        private List<GameObject> tileB_EnemyUnits = new List<GameObject>();
-        
-        // 적군 대기열 (다음에 나올 적들)
-        private Queue<GameObject> tileA_EnemyQueue = new Queue<GameObject>();
-        private Queue<GameObject> tileB_EnemyQueue = new Queue<GameObject>();
         
         [Header("배치 설정")]
-        public bool isPlacementMode = false;
-        public GameObject selectedUnit;
-        public Tile.TileType currentTileType = Tile.TileType.A;
-        public Tile.SideType currentSideType = Tile.SideType.Player;
+        private bool isPlacementMode = false;
+        private GameObject selectedUnit;
+        private Tile.Team currentTeam = Tile.Team.Ally;
+        private int currentTurn = 0;
         
-        [Header("비주얼")]
-        public Color validPlacementColor = new Color(0, 1, 0, 0.5f);
-        public Color invalidPlacementColor = new Color(1, 0, 0, 0.5f);
+        [Header("유닛 관리")]
+        private Dictionary<Tile.TileType, Dictionary<Tile.Team, List<GameObject>>> unitsOnTiles;
+        
+        // 타일 그리드
+        private Dictionary<Tile.TileType, List<Tile>> tileGroups;
         
         // 이벤트
         public System.Action<GameObject, Tile> OnUnitPlaced;
-        public System.Action<GameObject, Tile> OnUnitRemoved;
-        public System.Action<Tile.TileType> OnEnemyDefeated;
+        public System.Action<Tile.Team> OnTurnChanged;
+        public System.Action<int, int, GameResult> OnGameEnd;  // A점수, B점수, 결과
+        
+        public enum GameResult
+        {
+            Victory,    // 2점 - 승리
+            Draw,       // 1점 - 무승부
+            Defeat      // 0점 - 패배
+        }
         
         private void Awake()
         {
@@ -78,110 +74,109 @@ namespace GuildMaster.Systems
             }
             instance = this;
             
-            InitializeGrid();
+            InitializeDataStructures();
+        }
+        
+        private void Start()
+        {
+            // 타일이 프리팹으로 미리 배치되어 있다면 수집
+            CollectExistingTiles();
         }
         
         /// <summary>
-        /// 그리드 초기화
+        /// 데이터 구조 초기화
         /// </summary>
-        private void InitializeGrid()
+        private void InitializeDataStructures()
         {
-            // 4차원 배열: [타일타입(2), 진영(2), x(6), y(3)]
-            tileGrid = new Tile[2, 2, GRID_WIDTH, GRID_HEIGHT];
-            
-            if (tileContainer == null)
+            tileGroups = new Dictionary<Tile.TileType, List<Tile>>()
             {
-                tileContainer = new GameObject("TileContainer").transform;
-                tileContainer.parent = transform;
-            }
+                { Tile.TileType.A, new List<Tile>() },
+                { Tile.TileType.B, new List<Tile>() }
+            };
             
-            CreateTileGrid();
-        }
-        
-        /// <summary>
-        /// 타일 그리드 생성
-        /// </summary>
-        private void CreateTileGrid()
-        {
-            float startX = -((GRID_WIDTH * 2 + 2) * (tileSize + tileSpacing)) / 2f;
-            float startY = -(GRID_HEIGHT * (tileSize + tileSpacing)) / 2f;
-            
-            // A타일과 B타일 생성
-            for (int tileType = 0; tileType < 2; tileType++)
+            unitsOnTiles = new Dictionary<Tile.TileType, Dictionary<Tile.Team, List<GameObject>>>()
             {
-                float tileGroupOffsetY = tileType * (GRID_HEIGHT * (tileSize + tileSpacing) + 2f);
-                
-                // 아군 영역(왼쪽)과 적군 영역(오른쪽) 생성
-                for (int side = 0; side < 2; side++)
-                {
-                    float sideOffsetX = side * ((GRID_WIDTH + 1) * (tileSize + tileSpacing));
-                    
-                    for (int x = 0; x < GRID_WIDTH; x++)
+                { 
+                    Tile.TileType.A, new Dictionary<Tile.Team, List<GameObject>>()
                     {
-                        for (int y = 0; y < GRID_HEIGHT; y++)
-                        {
-                            Vector3 position = new Vector3(
-                                startX + x * (tileSize + tileSpacing) + sideOffsetX,
-                                startY + y * (tileSize + tileSpacing) + tileGroupOffsetY,
-                                0
-                            );
-                            
-                            GameObject tileGO = Instantiate(tilePrefab, position, Quaternion.identity, tileContainer);
-                            Tile tile = tileGO.GetComponent<Tile>();
-                            
-                            if (tile == null)
-                            {
-                                tile = tileGO.AddComponent<Tile>();
-                            }
-                            
-                            Tile.TileType type = (Tile.TileType)tileType;
-                            Tile.SideType sideType = (Tile.SideType)side;
-                            
-                            tile.Initialize(x, y, type, sideType);
-                            tileGrid[tileType, side, x, y] = tile;
-                        }
+                        { Tile.Team.Ally, new List<GameObject>() },
+                        { Tile.Team.Enemy, new List<GameObject>() }
+                    }
+                },
+                { 
+                    Tile.TileType.B, new Dictionary<Tile.Team, List<GameObject>>()
+                    {
+                        { Tile.Team.Ally, new List<GameObject>() },
+                        { Tile.Team.Enemy, new List<GameObject>() }
                     }
                 }
+            };
+        }
+        
+        /// <summary>
+        /// 이미 배치된 타일 수집
+        /// </summary>
+        private void CollectExistingTiles()
+        {
+            Tile[] allTiles = FindObjectsByType<Tile>(FindObjectsSortMode.None);
+            
+            foreach (Tile tile in allTiles)
+            {
+                if (tileGroups.ContainsKey(tile.tileType))
+                {
+                    tileGroups[tile.tileType].Add(tile);
+                }
             }
+            
+            Debug.Log($"수집된 타일 - A: {tileGroups[Tile.TileType.A].Count}개, B: {tileGroups[Tile.TileType.B].Count}개");
         }
         
         /// <summary>
         /// 배치 모드 시작
         /// </summary>
-        public void EnterPlacementMode(GameObject unit = null)
+        public void StartPlacementMode(GameObject unit)
         {
             isPlacementMode = true;
             selectedUnit = unit;
-            ShowPlacementIndicators(true);
-            Debug.Log("배치 모드 활성화");
+            Debug.Log($"{currentTeam} 팀의 배치 모드 시작");
         }
         
         /// <summary>
         /// 배치 모드 종료
         /// </summary>
-        public void ExitPlacementMode()
+        public void EndPlacementMode()
         {
             isPlacementMode = false;
             selectedUnit = null;
-            ShowPlacementIndicators(false);
-            Debug.Log("배치 모드 비활성화");
+            
+            // 모든 타일의 표시 제거
+            foreach (var tiles in tileGroups.Values)
+            {
+                foreach (var tile in tiles)
+                {
+                    tile.ShowPlacementIndicator(false);
+                }
+            }
         }
         
         /// <summary>
-        /// 배치 모드 여부
+        /// 배치 모드 확인
         /// </summary>
-        public bool IsInPlacementMode()
+        public bool IsPlacementMode()
         {
             return isPlacementMode;
         }
         
         /// <summary>
-        /// 유닛 선택
+        /// 타일에 배치 가능한지 확인
         /// </summary>
-        public void SelectUnit(GameObject unit)
+        public bool CanPlaceOnTile(Tile tile)
         {
-            selectedUnit = unit;
-            EnterPlacementMode(unit);
+            if (tile == null || !tile.CanPlaceUnit())
+                return false;
+                
+            // 현재 턴의 팀만 배치 가능
+            return true;
         }
         
         /// <summary>
@@ -191,298 +186,173 @@ namespace GuildMaster.Systems
         {
             if (!isPlacementMode || selectedUnit == null || tile == null)
                 return false;
-            
-            // 현재 타일 타입과 진영이 맞는지 확인
-            if (tile.tileType != currentTileType || tile.sideType != currentSideType)
+                
+            if (!CanPlaceOnTile(tile))
             {
-                Debug.Log($"잘못된 타일입니다. 현재 선택: {currentTileType}-{currentSideType}");
-                return false;
-            }
-            
-            // 배치 가능한지 확인
-            if (!tile.CanPlaceUnit())
-            {
-                Debug.Log("이 타일에는 유닛을 배치할 수 없습니다.");
-                return false;
-            }
-            
-            // 유닛 수 제한 확인
-            if (!CanAddUnit(tile.tileType, tile.sideType))
-            {
-                Debug.Log("최대 유닛 수에 도달했습니다.");
+                Debug.Log("이 타일에는 배치할 수 없습니다.");
                 return false;
             }
             
             // 유닛 배치
-            PlaceUnit(selectedUnit, tile);
+            tile.PlaceUnit(selectedUnit, currentTeam);
+            unitsOnTiles[tile.tileType][currentTeam].Add(selectedUnit);
+            
+            // 이벤트 발생
+            OnUnitPlaced?.Invoke(selectedUnit, tile);
             
             // 배치 모드 종료
-            ExitPlacementMode();
+            EndPlacementMode();
+            
+            // 턴 종료
+            EndTurn();
             
             return true;
         }
         
         /// <summary>
-        /// 유닛 배치
+        /// 턴 종료
         /// </summary>
-        private void PlaceUnit(GameObject unit, Tile tile)
+        private void EndTurn()
         {
-            // 유닛 위치 설정
-            unit.transform.position = tile.GetWorldPosition();
+            currentTurn++;
             
-            // 타일 점유 설정
-            tile.SetOccupied(unit);
+            // 팀 전환
+            currentTeam = currentTeam == Tile.Team.Ally ? Tile.Team.Enemy : Tile.Team.Ally;
+            OnTurnChanged?.Invoke(currentTeam);
             
-            // 해당 리스트에 유닛 추가
-            AddUnitToList(unit, tile.tileType, tile.sideType);
+            Debug.Log($"턴 {currentTurn}: {currentTeam} 팀의 차례");
             
-            // 이벤트 발생
-            OnUnitPlaced?.Invoke(unit, tile);
-            
-            Debug.Log($"유닛 배치 완료: {tile.GetTileInfo()}");
+            // 게임 종료 조건 체크 (예: 모든 타일이 채워졌을 때)
+            CheckGameEnd();
         }
         
         /// <summary>
-        /// 유닛을 해당 리스트에 추가
+        /// 게임 종료 확인
         /// </summary>
-        private void AddUnitToList(GameObject unit, Tile.TileType tileType, Tile.SideType sideType)
+        private void CheckGameEnd()
         {
-            if (tileType == Tile.TileType.A)
+            // 모든 타일이 채워졌는지 확인
+            bool allTilesFilled = true;
+            foreach (var tiles in tileGroups.Values)
             {
-                if (sideType == Tile.SideType.Player)
-                    tileA_PlayerUnits.Add(unit);
-                else
-                    tileA_EnemyUnits.Add(unit);
-            }
-            else // TileType.B
-            {
-                if (sideType == Tile.SideType.Player)
-                    tileB_PlayerUnits.Add(unit);
-                else
-                    tileB_EnemyUnits.Add(unit);
-            }
-        }
-        
-        /// <summary>
-        /// 유닛 추가 가능 여부
-        /// </summary>
-        private bool CanAddUnit(Tile.TileType tileType, Tile.SideType sideType)
-        {
-            int currentCount = GetUnitCount(tileType, sideType);
-            return currentCount < MAX_UNITS_PER_SIDE;
-        }
-        
-        /// <summary>
-        /// 현재 유닛 수 확인
-        /// </summary>
-        private int GetUnitCount(Tile.TileType tileType, Tile.SideType sideType)
-        {
-            if (tileType == Tile.TileType.A)
-            {
-                return sideType == Tile.SideType.Player ? 
-                    tileA_PlayerUnits.Count : tileA_EnemyUnits.Count;
-            }
-            else
-            {
-                return sideType == Tile.SideType.Player ? 
-                    tileB_PlayerUnits.Count : tileB_EnemyUnits.Count;
-            }
-        }
-        
-        /// <summary>
-        /// 배치 가능 타일 표시
-        /// </summary>
-        private void ShowPlacementIndicators(bool show)
-        {
-            for (int tileType = 0; tileType < 2; tileType++)
-            {
-                for (int side = 0; side < 2; side++)
+                foreach (var tile in tiles)
                 {
-                    for (int x = 0; x < GRID_WIDTH; x++)
+                    if (!tile.isOccupied)
                     {
-                        for (int y = 0; y < GRID_HEIGHT; y++)
-                        {
-                            Tile tile = tileGrid[tileType, side, x, y];
-                            if (tile != null)
-                            {
-                                bool canShow = show && 
-                                    tile.tileType == currentTileType && 
-                                    tile.sideType == currentSideType;
-                                tile.ShowPlacementIndicator(canShow);
-                            }
-                        }
+                        allTilesFilled = false;
+                        break;
                     }
                 }
+                if (!allTilesFilled) break;
+            }
+            
+            if (allTilesFilled)
+            {
+                CalculateGameResult();
             }
         }
         
         /// <summary>
-        /// 적 유닛이 쓰러졌을 때 처리
+        /// 게임 결과 계산
         /// </summary>
-        public void HandleEnemyDefeated(GameObject enemy, Tile.TileType tileType)
+        private void CalculateGameResult()
         {
-            // 해당 타일의 적군 리스트에서 제거
-            if (tileType == Tile.TileType.A)
-            {
-                tileA_EnemyUnits.Remove(enemy);
+            int allyScore = 0;
+            int enemyScore = 0;
+            
+            // A타일 판정
+            int allyCountA = unitsOnTiles[Tile.TileType.A][Tile.Team.Ally].Count;
+            int enemyCountA = unitsOnTiles[Tile.TileType.A][Tile.Team.Enemy].Count;
+            
+            if (allyCountA > enemyCountA)
+                allyScore++;
+            else if (enemyCountA > allyCountA)
+                enemyScore++;
+            
+            Debug.Log($"A타일: 아군 {allyCountA} vs 적군 {enemyCountA}");
+            
+            // B타일 판정
+            int allyCountB = unitsOnTiles[Tile.TileType.B][Tile.Team.Ally].Count;
+            int enemyCountB = unitsOnTiles[Tile.TileType.B][Tile.Team.Enemy].Count;
+            
+            if (allyCountB > enemyCountB)
+                allyScore++;
+            else if (enemyCountB > allyCountB)
+                enemyScore++;
                 
-                // 대기열에서 다음 적 배치
-                if (tileA_EnemyQueue.Count > 0)
-                {
-                    GameObject nextEnemy = tileA_EnemyQueue.Dequeue();
-                    SpawnEnemyOnEmptyTile(nextEnemy, Tile.TileType.A);
-                }
+            Debug.Log($"B타일: 아군 {allyCountB} vs 적군 {enemyCountB}");
+            
+            // 최종 결과
+            GameResult result;
+            if (allyScore == 2)
+            {
+                result = GameResult.Victory;
+                Debug.Log($"승리! (아군 {allyScore}점)");
+            }
+            else if (allyScore == 1)
+            {
+                result = GameResult.Draw;
+                Debug.Log($"무승부! (아군 {allyScore}점, 적군 {enemyScore}점)");
             }
             else
             {
-                tileB_EnemyUnits.Remove(enemy);
-                
-                // 대기열에서 다음 적 배치
-                if (tileB_EnemyQueue.Count > 0)
+                result = GameResult.Defeat;
+                Debug.Log($"패배! (아군 {allyScore}점, 적군 {enemyScore}점)");
+            }
+            
+            OnGameEnd?.Invoke(allyScore, enemyScore, result);
+        }
+        
+        /// <summary>
+        /// 특정 타일 그룹의 유닛 수 가져오기
+        /// </summary>
+        public int GetUnitCount(Tile.TileType tileType, Tile.Team team)
+        {
+            return unitsOnTiles[tileType][team].Count;
+        }
+        
+        /// <summary>
+        /// 게임 리셋
+        /// </summary>
+        public void ResetGame()
+        {
+            // 모든 타일 리셋
+            foreach (var tiles in tileGroups.Values)
+            {
+                foreach (var tile in tiles)
                 {
-                    GameObject nextEnemy = tileB_EnemyQueue.Dequeue();
-                    SpawnEnemyOnEmptyTile(nextEnemy, Tile.TileType.B);
+                    tile.ResetTile();
                 }
             }
             
-            // 이벤트 발생
-            OnEnemyDefeated?.Invoke(tileType);
-        }
-        
-        /// <summary>
-        /// 빈 타일에 적 유닛 스폰
-        /// </summary>
-        private void SpawnEnemyOnEmptyTile(GameObject enemy, Tile.TileType tileType)
-        {
-            // 빈 적군 타일 찾기
-            List<Tile> emptyTiles = GetEmptyTiles(tileType, Tile.SideType.Enemy);
-            
-            if (emptyTiles.Count > 0)
+            // 유닛 리스트 클리어
+            foreach (var tileDict in unitsOnTiles.Values)
             {
-                // 랜덤하게 빈 타일 선택
-                Tile targetTile = emptyTiles[Random.Range(0, emptyTiles.Count)];
-                PlaceUnit(enemy, targetTile);
-                
-                Debug.Log($"{tileType} 타일에 새로운 적 유닛 배치");
-            }
-            else
-            {
-                // 빈 타일이 없으면 다시 대기열에 추가
-                if (tileType == Tile.TileType.A)
-                    tileA_EnemyQueue.Enqueue(enemy);
-                else
-                    tileB_EnemyQueue.Enqueue(enemy);
-            }
-        }
-        
-        /// <summary>
-        /// 빈 타일 목록 가져오기
-        /// </summary>
-        private List<Tile> GetEmptyTiles(Tile.TileType tileType, Tile.SideType sideType)
-        {
-            List<Tile> emptyTiles = new List<Tile>();
-            int typeIndex = (int)tileType;
-            int sideIndex = (int)sideType;
-            
-            for (int x = 0; x < GRID_WIDTH; x++)
-            {
-                for (int y = 0; y < GRID_HEIGHT; y++)
+                foreach (var teamList in tileDict.Values)
                 {
-                    Tile tile = tileGrid[typeIndex, sideIndex, x, y];
-                    if (tile != null && tile.CanPlaceUnit())
-                    {
-                        emptyTiles.Add(tile);
-                    }
+                    teamList.Clear();
                 }
             }
             
-            return emptyTiles;
-        }
-        
-        /// <summary>
-        /// 적 유닛을 대기열에 추가
-        /// </summary>
-        public void AddEnemyToQueue(GameObject enemy, Tile.TileType tileType)
-        {
-            if (tileType == Tile.TileType.A)
-            {
-                tileA_EnemyQueue.Enqueue(enemy);
-            }
-            else
-            {
-                tileB_EnemyQueue.Enqueue(enemy);
-            }
-        }
-        
-        /// <summary>
-        /// 특정 타일 가져오기
-        /// </summary>
-        public Tile GetTile(Tile.TileType tileType, Tile.SideType sideType, int x, int y)
-        {
-            if (x < 0 || x >= GRID_WIDTH || y < 0 || y >= GRID_HEIGHT)
-                return null;
-                
-            return tileGrid[(int)tileType, (int)sideType, x, y];
-        }
-        
-        /// <summary>
-        /// 모든 타일 리셋
-        /// </summary>
-        public void ResetAllTiles()
-        {
-            for (int tileType = 0; tileType < 2; tileType++)
-            {
-                for (int side = 0; side < 2; side++)
-                {
-                    for (int x = 0; x < GRID_WIDTH; x++)
-                    {
-                        for (int y = 0; y < GRID_HEIGHT; y++)
-                        {
-                            Tile tile = tileGrid[tileType, side, x, y];
-                            if (tile != null)
-                            {
-                                tile.ResetTile();
-                            }
-                        }
-                    }
-                }
-            }
+            // 게임 상태 리셋
+            currentTurn = 0;
+            currentTeam = Tile.Team.Ally;
+            EndPlacementMode();
             
-            // 유닛 리스트 초기화
-            tileA_PlayerUnits.Clear();
-            tileA_EnemyUnits.Clear();
-            tileB_PlayerUnits.Clear();
-            tileB_EnemyUnits.Clear();
-            
-            // 대기열 초기화
-            tileA_EnemyQueue.Clear();
-            tileB_EnemyQueue.Clear();
+            Debug.Log("게임이 리셋되었습니다.");
         }
         
         /// <summary>
-        /// 현재 타일 설정
+        /// 현재 턴 정보
         /// </summary>
-        public void SetCurrentTileType(Tile.TileType tileType, Tile.SideType sideType)
+        public Tile.Team GetCurrentTeam()
         {
-            currentTileType = tileType;
-            currentSideType = sideType;
-            
-            if (isPlacementMode)
-            {
-                ShowPlacementIndicators(true);
-            }
+            return currentTeam;
         }
         
-        /// <summary>
-        /// 디버그용 타일 정보 출력
-        /// </summary>
-        public void DebugPrintTileInfo()
+        public int GetCurrentTurn()
         {
-            Debug.Log($"=== 타일 정보 ===");
-            Debug.Log($"A타일 - 아군: {tileA_PlayerUnits.Count}명, 적군: {tileA_EnemyUnits.Count}명");
-            Debug.Log($"B타일 - 아군: {tileB_PlayerUnits.Count}명, 적군: {tileB_EnemyUnits.Count}명");
-            Debug.Log($"A타일 적군 대기열: {tileA_EnemyQueue.Count}명");
-            Debug.Log($"B타일 적군 대기열: {tileB_EnemyQueue.Count}명");
+            return currentTurn;
         }
     }
 }
