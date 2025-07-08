@@ -4,7 +4,7 @@ using System.Collections;
 using System.Collections.Generic;
 using GuildMaster.Data;
 using GuildMaster.Systems;
-using Unit = GuildMaster.Battle.UnitStatus;
+using TMPro;
 
 namespace GuildMaster.Core
 {
@@ -28,65 +28,90 @@ namespace GuildMaster.Core
             }
         }
 
-        // Core Systems
-        public BattleManager BattleManager { get; private set; }
-        public Guild.GuildManager GuildManager { get; private set; }
-        // public ResourceManager ResourceManager { get; private set; } // Commented out - ResourceManager removed
-        // public SaveManager SaveManager { get; private set; } // SaveManager removed - class doesn't exist
-        public EventManager EventManager { get; private set; }
-        
-        // Game Systems
-        public Systems.StoryManager StoryManager { get; private set; }
-        public Systems.DailyContentManager DailyContentManager { get; private set; }
-        public Equipment.EquipmentManager EquipmentManager { get; private set; }
-        public Battle.SkillManager SkillManager { get; private set; }
-        public Systems.CharacterManager CharacterManager { get; private set; }
-        public Systems.GachaSystem GachaSystem { get; private set; }
-        public Systems.AchievementSystem AchievementSystem { get; private set; }
-        public Systems.GameLoopManager GameLoopManager { get; private set; }
-        public Systems.AutoBattleSystem AutoBattleSystem { get; private set; }
-
-        // Game States
-        public enum GameState
+        // 게임 모드 상태
+        public enum GameMode
         {
-            MainMenu,
-            Guild,
-            Battle,
-            Story,
-            Loading
+            CharacterSelection,  // 캐릭터 선택 단계
+            Battle,             // 배틀 진행 중
+            Result              // 결과 화면
         }
 
-        private GameState _currentState = GameState.MainMenu;
-        public GameState CurrentState
+        // 현재 게임 모드
+        private GameMode _currentMode = GameMode.CharacterSelection;
+        public GameMode CurrentMode
         {
-            get => _currentState;
+            get => _currentMode;
             set
             {
-                if (_currentState != value)
+                if (_currentMode != value)
                 {
-                    GameState previousState = _currentState;
-                    _currentState = value;
-                    OnGameStateChanged?.Invoke(previousState, _currentState);
+                    GameMode previousMode = _currentMode;
+                    _currentMode = value;
+                    OnGameModeChanged?.Invoke(previousMode, _currentMode);
                 }
             }
         }
 
-        // Character Management
-        public Battle.UnitStatus[] currentRegisteredCharacters = new Battle.UnitStatus[10];
+        // 게임 설정
+        [Header("Game Settings")]
+        public int maxSelectableCharacters = 10;  // 선택 가능한 최대 캐릭터 수
+        public float turnTimeLimit = 30f;         // 턴 제한 시간
+        public int boardWidth = 6;                // 보드 가로 크기
+        public int boardHeight = 3;               // 보드 세로 크기
 
-        // Events
-        public event Action<GameState, GameState> OnGameStateChanged;
-        public event Action OnGameInitialized;
+        // 선택된 캐릭터 목록
+        public List<CharacterData> playerSelectedCharacters = new List<CharacterData>();
+        public List<CharacterData> enemySelectedCharacters = new List<CharacterData>();
 
-        // Game Speed
-        private float _gameSpeed = 1f;
-        public float GameSpeed
+        // 현재 게임 상태
+        [Header("Game State")]
+        public bool isPlayerTurn = true;
+        public int currentTurn = 0;
+        public float remainingTurnTime;
+        public bool isGameOver = false;
+
+        // 점수 관리
+        [Header("Score Management")]
+        public int playerScore = 0;
+        public int enemyScore = 0;
+
+        // 타일 보드 상태 (A구역: 0, B구역: 1)
+        public TileState[,,] boardState = new TileState[2, 6, 3]; // [구역, x, y]
+
+        // 캐릭터 배치 정보
+        public Dictionary<Vector3Int, PlacedCharacter> placedCharacters = new Dictionary<Vector3Int, PlacedCharacter>();
+
+        // 이벤트
+        public event Action<GameMode, GameMode> OnGameModeChanged;
+        public event Action<bool> OnTurnChanged;  // bool: isPlayerTurn
+        public event Action<int, int> OnScoreChanged;  // playerScore, enemyScore
+        public event Action OnGameOver;
+        public event Action OnCharacterPlaced;
+
+        // 타일 상태
+        public enum TileState
         {
-            get => _gameSpeed;
-            set
+            Empty,
+            PlayerControlled,
+            EnemyControlled,
+            Contested  // 양쪽이 공격 중인 상태
+        }
+
+        // 배치된 캐릭터 정보
+        [System.Serializable]
+        public class PlacedCharacter
+        {
+            public CharacterData characterData;
+            public bool isPlayerCharacter;
+            public Vector3Int position;  // z: 0=A구역, 1=B구역
+            public List<Vector3Int> attackRange;
+
+            public PlacedCharacter(CharacterData data, bool isPlayer, Vector3Int pos)
             {
-                _gameSpeed = Mathf.Clamp(value, 0f, 4f);
-                Time.timeScale = _gameSpeed;
+                characterData = data;
+                isPlayerCharacter = isPlayer;
+                position = pos;
+                attackRange = new List<Vector3Int>();
             }
         }
 
@@ -101,159 +126,325 @@ namespace GuildMaster.Core
             _instance = this;
             DontDestroyOnLoad(gameObject);
             
-            InitializeSystems();
-            InitializeConvenienceSystems();
+            InitializeGame();
         }
 
-        void InitializeSystems()
+        void InitializeGame()
         {
-            // Initialize core systems
-            BattleManager = GetOrAddComponent<BattleManager>();
-            GuildManager = GetOrAddComponent<Guild.GuildManager>();
-            // ResourceManager = GetOrAddComponent<ResourceManager>(); // Commented out - ResourceManager removed
-            // SaveManager = GetOrAddComponent<SaveManager>(); // SaveManager removed - class doesn't exist
-            EventManager = GetOrAddComponent<EventManager>();
-            
-            // Initialize game systems
-            StoryManager = GetOrAddComponent<Systems.StoryManager>();
-            DailyContentManager = GetOrAddComponent<Systems.DailyContentManager>();
-            EquipmentManager = GetOrAddComponent<Equipment.EquipmentManager>();
-            SkillManager = GetOrAddComponent<Battle.SkillManager>();
-            CharacterManager = GetOrAddComponent<Systems.CharacterManager>();
-            GachaSystem = GetOrAddComponent<Systems.GachaSystem>();
-            AchievementSystem = GetOrAddComponent<Systems.AchievementSystem>();
-            GameLoopManager = GetOrAddComponent<Systems.GameLoopManager>();
-            AutoBattleSystem = GetOrAddComponent<Systems.AutoBattleSystem>();
-
-            StartCoroutine(InitializeGameCoroutine());
-        }
-        
-        void InitializeConvenienceSystems()
-        {
-            // 편의 기능 시스템들 초기화
-            GetOrAddComponent<Systems.GameSpeedSystem>();
-            GetOrAddComponent<Systems.ConvenienceSystem>();
-            GetOrAddComponent<Systems.SoundSystem>();
-            GetOrAddComponent<Systems.ParticleEffectsSystem>();
-            GetOrAddComponent<Systems.TutorialSystem>();
-            GetOrAddComponent<Systems.SettingsSystem>();
-        }
-
-        IEnumerator InitializeGameCoroutine()
-        {
-            CurrentState = GameState.Loading;
-            
-            // Load saved data
-            // SaveManager.LoadGame(0); // SaveManager removed - class doesn't exist
-            
-            // Initialize guild
-            yield return GuildManager.Initialize();
-            
-            // Initialize resources
-            // yield return ResourceManager.Initialize(); // Commented out - ResourceManager removed
-            
-            CurrentState = GameState.Guild;
-            OnGameInitialized?.Invoke();
-        }
-
-        T GetOrAddComponent<T>() where T : Component
-        {
-            T component = GetComponent<T>();
-            if (component == null)
+            // 보드 초기화
+            for (int area = 0; area < 2; area++)
             {
-                component = gameObject.AddComponent<T>();
+                for (int x = 0; x < boardWidth; x++)
+                {
+                    for (int y = 0; y < boardHeight; y++)
+                    {
+                        boardState[area, x, y] = TileState.Empty;
+                    }
+                }
             }
-            return component;
+
+            // 캐릭터 목록 초기화
+            playerSelectedCharacters.Clear();
+            enemySelectedCharacters.Clear();
+            placedCharacters.Clear();
+
+            // 점수 초기화
+            playerScore = 0;
+            enemyScore = 0;
+            
+            // 게임 상태 초기화
+            isPlayerTurn = true;
+            currentTurn = 0;
+            isGameOver = false;
+            remainingTurnTime = turnTimeLimit;
         }
 
-        public void SetGameSpeed(float speed)
+        // 캐릭터 선택 추가
+        public bool AddSelectedCharacter(CharacterData character, bool isPlayer)
         {
-            GameSpeed = speed;
-        }
-
-        public void PauseGame()
-        {
-            Time.timeScale = 0f;
-        }
-
-        public void ResumeGame()
-        {
-            Time.timeScale = _gameSpeed;
-        }
-
-        void OnApplicationPause(bool pauseStatus)
-        {
-            if (pauseStatus)
+            List<CharacterData> targetList = isPlayer ? playerSelectedCharacters : enemySelectedCharacters;
+            
+            // 중복 체크
+            if (targetList.Contains(character))
             {
-                // SaveManager?.SaveGame(0); // SaveManager removed - class doesn't exist
+                Debug.LogWarning("이미 선택된 캐릭터입니다.");
+                return false;
             }
-        }
 
-        void OnApplicationFocus(bool hasFocus)
-        {
-            if (!hasFocus)
+            // 최대 개수 체크
+            if (targetList.Count >= maxSelectableCharacters)
             {
-                // SaveManager?.SaveGame(0); // SaveManager removed - class doesn't exist
+                Debug.LogWarning("더 이상 캐릭터를 선택할 수 없습니다.");
+                return false;
             }
+
+            targetList.Add(character);
+            return true;
         }
 
-        void OnDestroy()
+        // 캐릭터 선택 제거
+        public bool RemoveSelectedCharacter(CharacterData character, bool isPlayer)
         {
-            if (_instance == this)
+            List<CharacterData> targetList = isPlayer ? playerSelectedCharacters : enemySelectedCharacters;
+            return targetList.Remove(character);
+        }
+
+        // 게임 시작
+        public void StartBattle()
+        {
+            if (playerSelectedCharacters.Count != maxSelectableCharacters ||
+                enemySelectedCharacters.Count != maxSelectableCharacters)
             {
-                _instance = null;
+                Debug.LogError("양쪽 모두 10개의 캐릭터를 선택해야 합니다.");
+                return;
+            }
+
+            CurrentMode = GameMode.Battle;
+            isPlayerTurn = UnityEngine.Random.Range(0, 2) == 0;  // 랜덤으로 선공 결정
+            currentTurn = 1;
+            StartCoroutine(TurnTimer());
+        }
+
+        // 턴 타이머
+        IEnumerator TurnTimer()
+        {
+            while (!isGameOver)
+            {
+                remainingTurnTime = turnTimeLimit;
+                
+                while (remainingTurnTime > 0 && !isGameOver)
+                {
+                    remainingTurnTime -= Time.deltaTime;
+                    yield return null;
+                }
+
+                if (!isGameOver)
+                {
+                    // 시간 초과 시 턴 종료
+                    EndTurn();
+                }
             }
         }
 
-        public void StartNewGame()
+        // 캐릭터 배치
+        public bool PlaceCharacter(CharacterData character, int area, int x, int y)
         {
-            Debug.Log("Starting new game...");
-            // 새 게임 초기화 로직
-            InitializeNewGame();
-        }
+            if (isGameOver) return false;
 
-        public void LoadGame(int slotIndex)
-        {
-            Debug.Log($"Loading game from slot {slotIndex}...");
-            // 게임 로드 로직
-            // SaveManager removed - class doesn't exist
-            // var saveData = SaveManager.Instance.LoadGame(slotIndex);
-            // if (saveData != null)
-            // {
-            //     LoadGameData(saveData);
-            // }
-        }
-
-        private void InitializeNewGame()
-        {
-            // 새 게임 초기화
-            if (GuildManager != null)
+            // 유효성 검사
+            if (area < 0 || area > 1 || x < 0 || x >= boardWidth || y < 0 || y >= boardHeight)
             {
-                GuildManager.Initialize();
+                Debug.LogError("잘못된 위치입니다.");
+                return false;
             }
-            // if (ResourceManager != null)
-            // {
-            //     StartCoroutine(ResourceManager.Initialize());
-            // } // Commented out - ResourceManager removed
+
+            Vector3Int position = new Vector3Int(x, y, area);
+            
+            // 이미 캐릭터가 있는지 확인
+            if (placedCharacters.ContainsKey(position))
+            {
+                Debug.LogWarning("이미 캐릭터가 배치된 위치입니다.");
+                return false;
+            }
+
+            // 사용 가능한 캐릭터인지 확인
+            List<CharacterData> availableCharacters = isPlayerTurn ? playerSelectedCharacters : enemySelectedCharacters;
+            bool canUse = false;
+            foreach (var c in availableCharacters)
+            {
+                if (c == character)
+                {
+                    // 이미 배치된 캐릭터인지 확인
+                    bool alreadyPlaced = false;
+                    foreach (var placed in placedCharacters.Values)
+                    {
+                        if (placed.characterData == character && placed.isPlayerCharacter == isPlayerTurn)
+                        {
+                            alreadyPlaced = true;
+                            break;
+                        }
+                    }
+                    if (!alreadyPlaced)
+                    {
+                        canUse = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!canUse)
+            {
+                Debug.LogWarning("사용할 수 없는 캐릭터입니다.");
+                return false;
+            }
+
+            // 캐릭터 배치
+            PlacedCharacter placedChar = new PlacedCharacter(character, isPlayerTurn, position);
+            placedCharacters[position] = placedChar;
+
+            // 공격 범위 계산
+            CalculateAttackRange(placedChar);
+
+            // 보드 상태 업데이트
+            UpdateBoardState();
+
+            OnCharacterPlaced?.Invoke();
+            
+            // 턴 종료
+            EndTurn();
+
+            return true;
         }
 
-        // SaveData removed - class doesn't exist
-        // private void LoadGameData(SaveData saveData)
-        // {
-        //     // 저장된 데이터로 게임 상태 복원
-        //     // if (ResourceManager != null)
-        //     // {
-        //     //     ResourceManager.GetResources().Gold = saveData.gold;
-        //     //     ResourceManager.GetResources().Wood = saveData.wood;
-        //     //     ResourceManager.GetResources().Stone = saveData.stone;
-        //     //     ResourceManager.GetResources().ManaStone = saveData.manaStone;
-        //     // } // Commented out - ResourceManager removed
-        // }
-
-        void Start()
+        // 공격 범위 계산 (캐릭터별로 다르게 구현 필요)
+        void CalculateAttackRange(PlacedCharacter character)
         {
-            // Start 메서드는 이전에 있었던 초기화 로직을 포함하고 있습니다.
-            // 이전 초기화 로직을 유지하면서 새로운 초기화 로직을 추가할 수 있습니다.
+            character.attackRange.Clear();
+            
+            // 캐릭터의 공격 패턴에 따라 범위 계산
+            // 예시: 십자 패턴, 대각선 패턴, 3x3 패턴 등
+            List<Vector2Int> pattern = GetAttackPattern(character.characterData);
+            
+            foreach (var offset in pattern)
+            {
+                int newX = character.position.x + offset.x;
+                int newY = character.position.y + offset.y;
+                
+                if (newX >= 0 && newX < boardWidth && newY >= 0 && newY < boardHeight)
+                {
+                    character.attackRange.Add(new Vector3Int(newX, newY, character.position.z));
+                }
+            }
+        }
+
+        // 캐릭터별 공격 패턴 반환 (예시)
+        List<Vector2Int> GetAttackPattern(CharacterData character)
+        {
+            List<Vector2Int> pattern = new List<Vector2Int>();
+            
+            // 캐릭터 ID나 타입에 따라 다른 패턴 반환
+            // 임시로 기본 십자 패턴
+            pattern.Add(new Vector2Int(0, 0));   // 자기 자신
+            pattern.Add(new Vector2Int(0, 1));   // 위
+            pattern.Add(new Vector2Int(0, -1));  // 아래
+            pattern.Add(new Vector2Int(1, 0));   // 오른쪽
+            pattern.Add(new Vector2Int(-1, 0));  // 왼쪽
+            
+            return pattern;
+        }
+
+        // 보드 상태 업데이트
+        void UpdateBoardState()
+        {
+            // 모든 타일 초기화
+            for (int area = 0; area < 2; area++)
+            {
+                for (int x = 0; x < boardWidth; x++)
+                {
+                    for (int y = 0; y < boardHeight; y++)
+                    {
+                        boardState[area, x, y] = TileState.Empty;
+                    }
+                }
+            }
+
+            // 각 캐릭터의 공격 범위에 따라 타일 상태 업데이트
+            foreach (var placed in placedCharacters.Values)
+            {
+                foreach (var rangePos in placed.attackRange)
+                {
+                    TileState currentState = boardState[rangePos.z, rangePos.x, rangePos.y];
+                    TileState newState = placed.isPlayerCharacter ? TileState.PlayerControlled : TileState.EnemyControlled;
+
+                    if (currentState == TileState.Empty)
+                    {
+                        boardState[rangePos.z, rangePos.x, rangePos.y] = newState;
+                    }
+                    else if (currentState != newState)
+                    {
+                        boardState[rangePos.z, rangePos.x, rangePos.y] = TileState.Contested;
+                    }
+                }
+            }
+        }
+
+        // 턴 종료
+        public void EndTurn()
+        {
+            currentTurn++;
+            isPlayerTurn = !isPlayerTurn;
+            remainingTurnTime = turnTimeLimit;
+            
+            OnTurnChanged?.Invoke(isPlayerTurn);
+
+            // 모든 캐릭터가 배치되었는지 확인
+            if (placedCharacters.Count >= playerSelectedCharacters.Count + enemySelectedCharacters.Count)
+            {
+                CalculateFinalScore();
+                EndGame();
+            }
+        }
+
+        // 최종 점수 계산
+        void CalculateFinalScore()
+        {
+            int areaAPlayerTiles = 0;
+            int areaAEnemyTiles = 0;
+            int areaBPlayerTiles = 0;
+            int areaBEnemyTiles = 0;
+
+            // A 구역 (area = 0) 계산
+            for (int x = 0; x < boardWidth; x++)
+            {
+                for (int y = 0; y < boardHeight; y++)
+                {
+                    if (boardState[0, x, y] == TileState.PlayerControlled)
+                        areaAPlayerTiles++;
+                    else if (boardState[0, x, y] == TileState.EnemyControlled)
+                        areaAEnemyTiles++;
+                }
+            }
+
+            // B 구역 (area = 1) 계산
+            for (int x = 0; x < boardWidth; x++)
+            {
+                for (int y = 0; y < boardHeight; y++)
+                {
+                    if (boardState[1, x, y] == TileState.PlayerControlled)
+                        areaBPlayerTiles++;
+                    else if (boardState[1, x, y] == TileState.EnemyControlled)
+                        areaBEnemyTiles++;
+                }
+            }
+
+            // 점수 계산
+            playerScore = 0;
+            enemyScore = 0;
+
+            // A 구역 점수
+            if (areaAPlayerTiles > areaAEnemyTiles) playerScore++;
+            else if (areaAEnemyTiles > areaAPlayerTiles) enemyScore++;
+
+            // B 구역 점수
+            if (areaBPlayerTiles > areaBEnemyTiles) playerScore++;
+            else if (areaBEnemyTiles > areaBPlayerTiles) enemyScore++;
+
+            OnScoreChanged?.Invoke(playerScore, enemyScore);
+        }
+
+        // 게임 종료
+        void EndGame()
+        {
+            isGameOver = true;
+            CurrentMode = GameMode.Result;
+            OnGameOver?.Invoke();
+        }
+
+        // 게임 재시작
+        public void RestartGame()
+        {
+            InitializeGame();
+            CurrentMode = GameMode.CharacterSelection;
         }
     }
 }

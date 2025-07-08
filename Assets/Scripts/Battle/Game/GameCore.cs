@@ -1,25 +1,49 @@
 using UnityEngine;
 using System;
 using System.Collections.Generic;
+using TMPro;
 
 namespace GuildMaster.Game
 {
     /// <summary>
-    /// 게임 전반의 핵심 기능을 관리하는 클래스
+    /// 턴제 범위 공격 게임의 핵심 로직 관리
     /// </summary>
     public class GameCore : MonoBehaviour
     {
-        [Header("Game Settings")]
-        public GameState currentState = GameState.MainMenu;
-        public float gameSpeed = 1f;
-        public bool isPaused = false;
-        public string gameVersion = "1.0.0";
-
-        [Header("Game Data")]
-        public GameSettings gameSettings;
-        public SaveData currentSaveData;
-
-        // Singleton pattern
+        [Header("Board Settings")]
+        public GameObject tilePrefab;
+        public Transform areaAParent;  // 위쪽 영역
+        public Transform areaBParent;  // 아래쪽 영역
+        public float tileSpacing = 1.1f;
+        
+        [Header("Visual Settings")]
+        public Color emptyTileColor = Color.gray;
+        public Color playerTileColor = Color.blue;
+        public Color enemyTileColor = Color.red;
+        public Color contestedTileColor = Color.yellow;
+        
+        [Header("UI References")]
+        public TextMeshProUGUI turnText;
+        public TextMeshProUGUI timerText;
+        public TextMeshProUGUI playerScoreText;
+        public TextMeshProUGUI enemyScoreText;
+        public GameObject characterSelectionPanel;
+        public GameObject battlePanel;
+        public GameObject resultPanel;
+        public TextMeshProUGUI resultText;
+        
+        [Header("Character Display")]
+        public Transform characterSlotParent;
+        public GameObject characterSlotPrefab;
+        
+        // 타일 게임오브젝트 배열
+        private GameObject[,,] tileObjects = new GameObject[2, 6, 3];
+        private Dictionary<GameObject, Vector3Int> tilePositions = new Dictionary<GameObject, Vector3Int>();
+        
+        // 캐릭터 게임오브젝트 관리
+        private Dictionary<Vector3Int, GameObject> characterObjects = new Dictionary<Vector3Int, GameObject>();
+        
+        // Singleton
         private static GameCore _instance;
         public static GameCore Instance
         {
@@ -39,430 +63,334 @@ namespace GuildMaster.Game
             }
         }
 
-        public enum GameState
-        {
-            MainMenu,
-            Loading,
-            Playing,
-            Paused,
-            Settings,
-            Battle,
-            Guild,
-            Exploration,
-            Shop,
-            Inventory,
-            Character,
-            GameOver
-        }
-
-        [System.Serializable]
-        public class GameSettings
-        {
-            public float masterVolume = 1f;
-            public float musicVolume = 1f;
-            public float sfxVolume = 1f;
-            public int targetFrameRate = 60;
-            public bool autoSave = true;
-            public float autoSaveInterval = 300f; // 5분
-            public string language = "Korean";
-            public int graphicsQuality = 3;
-            public bool fullScreen = true;
-            public Vector2Int resolution = new Vector2Int(1920, 1080);
-        }
-
-        [System.Serializable]
-        public class SaveData
-        {
-            public string saveId;
-            public DateTime createdTime;
-            public DateTime lastPlayedTime;
-            public int playTimeSeconds;
-            public string playerName;
-            public int playerLevel;
-            public long playerGold;
-            public string sceneName;
-            public Vector3 playerPosition;
-            public Dictionary<string, object> gameData = new Dictionary<string, object>();
-        }
-
-        // Events
-        public static event Action<GameState> OnGameStateChanged;
-        public static event Action<bool> OnGamePaused;
-        public static event Action OnGameSaved;
-        public static event Action OnGameLoaded;
-
-        private float lastAutoSaveTime;
-
         void Awake()
         {
-            if (_instance == null)
-            {
-                _instance = this;
-                DontDestroyOnLoad(gameObject);
-                InitializeGame();
-            }
-            else if (_instance != this)
+            if (_instance != null && _instance != this)
             {
                 Destroy(gameObject);
+                return;
             }
+
+            _instance = this;
+            DontDestroyOnLoad(gameObject);
         }
 
         void Start()
         {
-            LoadGameSettings();
-            ApplyGameSettings();
-        }
-
-        void Update()
-        {
-            HandleInput();
-            
-            if (gameSettings != null && gameSettings.autoSave)
-            {
-                CheckAutoSave();
-            }
-        }
-
-        void InitializeGame()
-        {
-            // 기본 게임 설정 초기화
-            if (gameSettings == null)
-            {
-                gameSettings = new GameSettings();
-            }
-
-            // 기본 저장 데이터 초기화
-            if (currentSaveData == null)
-            {
-                currentSaveData = new SaveData();
-            }
-
-            Application.targetFrameRate = gameSettings.targetFrameRate;
-            lastAutoSaveTime = Time.time;
-        }
-
-        void HandleInput()
-        {
-            // ESC 키로 일시정지
-            if (Input.GetKeyDown(KeyCode.Escape))
-            {
-                if (currentState == GameState.Playing)
-                {
-                    PauseGame();
-                }
-                else if (currentState == GameState.Paused)
-                {
-                    ResumeGame();
-                }
-            }
-
-            // F1 키로 설정 화면
-            if (Input.GetKeyDown(KeyCode.F1))
-            {
-                ToggleSettings();
-            }
-
-            // F5 키로 퀵세이브
-            if (Input.GetKeyDown(KeyCode.F5))
-            {
-                QuickSave();
-            }
-
-            // F9 키로 퀵로드
-            if (Input.GetKeyDown(KeyCode.F9))
-            {
-                QuickLoad();
-            }
-        }
-
-        void CheckAutoSave()
-        {
-            if (Time.time - lastAutoSaveTime >= gameSettings.autoSaveInterval)
-            {
-                AutoSave();
-                lastAutoSaveTime = Time.time;
-            }
-        }
-
-        public void ChangeGameState(GameState newState)
-        {
-            if (currentState == newState) return;
-
-            GameState previousState = currentState;
-            currentState = newState;
-
-            Debug.Log($"Game state changed from {previousState} to {newState}");
-            OnGameStateChanged?.Invoke(newState);
-        }
-
-        public void PauseGame()
-        {
-            if (currentState == GameState.Playing)
-            {
-                isPaused = true;
-                Time.timeScale = 0f;
-                ChangeGameState(GameState.Paused);
-                OnGamePaused?.Invoke(true);
-            }
-        }
-
-        public void ResumeGame()
-        {
-            if (currentState == GameState.Paused)
-            {
-                isPaused = false;
-                Time.timeScale = gameSpeed;
-                ChangeGameState(GameState.Playing);
-                OnGamePaused?.Invoke(false);
-            }
-        }
-
-        public void ToggleSettings()
-        {
-            if (currentState == GameState.Settings)
-            {
-                ChangeGameState(GameState.Playing);
-            }
-            else
-            {
-                ChangeGameState(GameState.Settings);
-            }
-        }
-
-        public void SetGameSpeed(float speed)
-        {
-            gameSpeed = Mathf.Clamp(speed, 0.1f, 5f);
-            if (!isPaused)
-            {
-                Time.timeScale = gameSpeed;
-            }
-        }
-
-        public void QuickSave()
-        {
-            SaveGame("quicksave");
-        }
-
-        public void QuickLoad()
-        {
-            LoadGame("quicksave");
-        }
-
-        public void AutoSave()
-        {
-            SaveGame("autosave");
-        }
-
-        public bool SaveGame(string saveSlot = "default")
-        {
-            try
-            {
-                currentSaveData.saveId = saveSlot;
-                currentSaveData.lastPlayedTime = DateTime.Now;
-                currentSaveData.sceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
-
-                // 플레이어 위치 저장
-                if (GameObject.FindWithTag("Player") != null)
-                {
-                    currentSaveData.playerPosition = GameObject.FindWithTag("Player").transform.position;
-                }
-
-                // 게임 데이터를 JSON으로 변환하여 저장
-                string jsonData = JsonUtility.ToJson(currentSaveData, true);
-                string filePath = GetSaveFilePath(saveSlot);
-                
-                System.IO.File.WriteAllText(filePath, jsonData);
-
-                Debug.Log($"Game saved to {saveSlot}");
-                OnGameSaved?.Invoke();
-                return true;
-            }
-            catch (Exception e)
-            {
-                Debug.LogError($"Failed to save game: {e.Message}");
-                return false;
-            }
-        }
-
-        public bool LoadGame(string saveSlot = "default")
-        {
-            try
-            {
-                string filePath = GetSaveFilePath(saveSlot);
-                
-                if (!System.IO.File.Exists(filePath))
-                {
-                    Debug.LogWarning($"Save file not found: {saveSlot}");
-                    return false;
-                }
-
-                string jsonData = System.IO.File.ReadAllText(filePath);
-                currentSaveData = JsonUtility.FromJson<SaveData>(jsonData);
-
-                Debug.Log($"Game loaded from {saveSlot}");
-                OnGameLoaded?.Invoke();
-                return true;
-            }
-            catch (Exception e)
-            {
-                Debug.LogError($"Failed to load game: {e.Message}");
-                return false;
-            }
-        }
-
-        public void LoadGameSettings()
-        {
-            try
-            {
-                string settingsPath = GetSettingsFilePath();
-                
-                if (System.IO.File.Exists(settingsPath))
-                {
-                    string jsonData = System.IO.File.ReadAllText(settingsPath);
-                    gameSettings = JsonUtility.FromJson<GameSettings>(jsonData);
-                }
-                else
-                {
-                    // 기본 설정 생성
-                    gameSettings = new GameSettings();
-                    SaveGameSettings();
-                }
-            }
-            catch (Exception e)
-            {
-                Debug.LogError($"Failed to load settings: {e.Message}");
-                gameSettings = new GameSettings();
-            }
-        }
-
-        public void SaveGameSettings()
-        {
-            try
-            {
-                string jsonData = JsonUtility.ToJson(gameSettings, true);
-                string settingsPath = GetSettingsFilePath();
-                System.IO.File.WriteAllText(settingsPath, jsonData);
-                
-                ApplyGameSettings();
-                Debug.Log("Game settings saved");
-            }
-            catch (Exception e)
-            {
-                Debug.LogError($"Failed to save settings: {e.Message}");
-            }
-        }
-
-        void ApplyGameSettings()
-        {
-            if (gameSettings == null) return;
-
-            // 오디오 설정 적용
-            AudioListener.volume = gameSettings.masterVolume;
-            
-            // 프레임레이트 설정 적용
-            Application.targetFrameRate = gameSettings.targetFrameRate;
-            
-            // 화면 설정 적용
-            if (gameSettings.fullScreen != Screen.fullScreen)
-            {
-                Screen.SetResolution(gameSettings.resolution.x, gameSettings.resolution.y, gameSettings.fullScreen);
-            }
-            
-            // 품질 설정 적용
-            QualitySettings.SetQualityLevel(gameSettings.graphicsQuality);
-        }
-
-        string GetSaveFilePath(string saveSlot)
-        {
-            string saveDirectory = Application.persistentDataPath + "/Saves";
-            if (!System.IO.Directory.Exists(saveDirectory))
-            {
-                System.IO.Directory.CreateDirectory(saveDirectory);
-            }
-            return saveDirectory + $"/{saveSlot}.json";
-        }
-
-        string GetSettingsFilePath()
-        {
-            return Application.persistentDataPath + "/settings.json";
-        }
-
-        public List<string> GetAvailableSaves()
-        {
-            List<string> saves = new List<string>();
-            string saveDirectory = Application.persistentDataPath + "/Saves";
-            
-            if (System.IO.Directory.Exists(saveDirectory))
-            {
-                string[] files = System.IO.Directory.GetFiles(saveDirectory, "*.json");
-                foreach (string file in files)
-                {
-                    string fileName = System.IO.Path.GetFileNameWithoutExtension(file);
-                    saves.Add(fileName);
-                }
-            }
-            
-            return saves;
-        }
-
-        public bool DeleteSave(string saveSlot)
-        {
-            try
-            {
-                string filePath = GetSaveFilePath(saveSlot);
-                if (System.IO.File.Exists(filePath))
-                {
-                    System.IO.File.Delete(filePath);
-                    Debug.Log($"Save deleted: {saveSlot}");
-                    return true;
-                }
-                return false;
-            }
-            catch (Exception e)
-            {
-                Debug.LogError($"Failed to delete save: {e.Message}");
-                return false;
-            }
-        }
-
-        public void QuitGame()
-        {
-            SaveGameSettings();
-            
-            if (gameSettings.autoSave && currentState == GameState.Playing)
-            {
-                AutoSave();
-            }
-
-#if UNITY_EDITOR
-            UnityEditor.EditorApplication.isPlaying = false;
-#else
-            Application.Quit();
-#endif
-        }
-
-        void OnApplicationPause(bool pauseStatus)
-        {
-            if (pauseStatus && currentState == GameState.Playing)
-            {
-                PauseGame();
-            }
-        }
-
-        void OnApplicationFocus(bool hasFocus)
-        {
-            if (!hasFocus && currentState == GameState.Playing)
-            {
-                PauseGame();
-            }
+            InitializeBoard();
+            SubscribeToEvents();
+            UpdateUI();
         }
 
         void OnDestroy()
         {
-            if (_instance == this)
+            UnsubscribeFromEvents();
+        }
+
+        // 이벤트 구독
+        void SubscribeToEvents()
+        {
+            if (Core.GameManager.Instance != null)
             {
-                _instance = null;
+                Core.GameManager.Instance.OnGameModeChanged += OnGameModeChanged;
+                Core.GameManager.Instance.OnTurnChanged += OnTurnChanged;
+                Core.GameManager.Instance.OnScoreChanged += OnScoreChanged;
+                Core.GameManager.Instance.OnGameOver += OnGameOver;
+                Core.GameManager.Instance.OnCharacterPlaced += OnCharacterPlaced;
+            }
+        }
+
+        // 이벤트 구독 해제
+        void UnsubscribeFromEvents()
+        {
+            if (Core.GameManager.Instance != null)
+            {
+                Core.GameManager.Instance.OnGameModeChanged -= OnGameModeChanged;
+                Core.GameManager.Instance.OnTurnChanged -= OnTurnChanged;
+                Core.GameManager.Instance.OnScoreChanged -= OnScoreChanged;
+                Core.GameManager.Instance.OnGameOver -= OnGameOver;
+                Core.GameManager.Instance.OnCharacterPlaced -= OnCharacterPlaced;
+            }
+        }
+
+        // 보드 초기화
+        void InitializeBoard()
+        {
+            // 기존 타일 제거
+            foreach (var tile in tileObjects)
+            {
+                if (tile != null) Destroy(tile);
+            }
+            tilePositions.Clear();
+
+            // A 영역 (위쪽) 타일 생성
+            CreateTilesForArea(0, areaAParent);
+
+            // B 영역 (아래쪽) 타일 생성
+            CreateTilesForArea(1, areaBParent);
+        }
+
+        // 영역별 타일 생성
+        void CreateTilesForArea(int area, Transform parent)
+        {
+            for (int y = 0; y < 3; y++)
+            {
+                for (int x = 0; x < 6; x++)
+                {
+                    Vector3 position = new Vector3(x * tileSpacing, -y * tileSpacing, 0);
+                    GameObject tile = Instantiate(tilePrefab, parent);
+                    tile.transform.localPosition = position;
+                    tile.name = $"Tile_Area{area}_X{x}_Y{y}";
+                    
+                    tileObjects[area, x, y] = tile;
+                    Vector3Int tilePos = new Vector3Int(x, y, area);
+                    tilePositions[tile] = tilePos;
+
+                    // 타일 클릭 이벤트 추가
+                    TileClickHandler clickHandler = tile.AddComponent<TileClickHandler>();
+                    clickHandler.Initialize(tilePos, this);
+
+                    // 초기 색상 설정
+                    SetTileColor(tile, emptyTileColor);
+                }
+            }
+        }
+
+        // 타일 색상 설정
+        void SetTileColor(GameObject tile, Color color)
+        {
+            SpriteRenderer renderer = tile.GetComponent<SpriteRenderer>();
+            if (renderer != null)
+            {
+                renderer.color = color;
+            }
+        }
+
+        // 타일 클릭 처리
+        public void OnTileClicked(Vector3Int position)
+        {
+            if (Core.GameManager.Instance == null) return;
+            if (Core.GameManager.Instance.CurrentMode != Core.GameManager.GameMode.Battle) return;
+            if (Core.GameManager.Instance.isGameOver) return;
+
+            // 현재 선택된 캐릭터 가져오기 (UI에서 선택된 캐릭터)
+            CharacterData selectedCharacter = GetCurrentSelectedCharacter();
+            if (selectedCharacter != null)
+            {
+                Core.GameManager.Instance.PlaceCharacter(selectedCharacter, position.z, position.x, position.y);
+            }
+        }
+
+        // 현재 선택된 캐릭터 가져오기 (구현 필요)
+        CharacterData GetCurrentSelectedCharacter()
+        {
+            // UI에서 선택된 캐릭터 반환
+            // 임시 구현
+            return null;
+        }
+
+        // 게임 모드 변경 시
+        void OnGameModeChanged(Core.GameManager.GameMode previousMode, Core.GameManager.GameMode newMode)
+        {
+            // UI 패널 전환
+            if (characterSelectionPanel != null)
+                characterSelectionPanel.SetActive(newMode == Core.GameManager.GameMode.CharacterSelection);
+            
+            if (battlePanel != null)
+                battlePanel.SetActive(newMode == Core.GameManager.GameMode.Battle);
+            
+            if (resultPanel != null)
+                resultPanel.SetActive(newMode == Core.GameManager.GameMode.Result);
+        }
+
+        // 턴 변경 시
+        void OnTurnChanged(bool isPlayerTurn)
+        {
+            UpdateUI();
+        }
+
+        // 점수 변경 시
+        void OnScoreChanged(int playerScore, int enemyScore)
+        {
+            if (playerScoreText != null)
+                playerScoreText.text = $"Player: {playerScore}";
+            
+            if (enemyScoreText != null)
+                enemyScoreText.text = $"Enemy: {enemyScore}";
+        }
+
+        // 게임 종료 시
+        void OnGameOver()
+        {
+            if (resultText != null && Core.GameManager.Instance != null)
+            {
+                int playerScore = Core.GameManager.Instance.playerScore;
+                int enemyScore = Core.GameManager.Instance.enemyScore;
+                
+                string result = "";
+                if (playerScore > enemyScore)
+                    result = "승리!";
+                else if (playerScore < enemyScore)
+                    result = "패배...";
+                else
+                    result = "무승부";
+                
+                resultText.text = $"{result}\n플레이어: {playerScore}점\n적: {enemyScore}점";
+            }
+        }
+
+        // 캐릭터 배치 시
+        void OnCharacterPlaced()
+        {
+            UpdateBoardVisuals();
+            UpdateCharacterVisuals();
+        }
+
+        // 보드 시각 효과 업데이트
+        void UpdateBoardVisuals()
+        {
+            if (Core.GameManager.Instance == null) return;
+
+            for (int area = 0; area < 2; area++)
+            {
+                for (int x = 0; x < 6; x++)
+                {
+                    for (int y = 0; y < 3; y++)
+                    {
+                        GameObject tile = tileObjects[area, x, y];
+                        if (tile != null)
+                        {
+                            Core.GameManager.TileState state = Core.GameManager.Instance.boardState[area, x, y];
+                            Color color = emptyTileColor;
+                            
+                            switch (state)
+                            {
+                                case Core.GameManager.TileState.PlayerControlled:
+                                    color = playerTileColor;
+                                    break;
+                                case Core.GameManager.TileState.EnemyControlled:
+                                    color = enemyTileColor;
+                                    break;
+                                case Core.GameManager.TileState.Contested:
+                                    color = contestedTileColor;
+                                    break;
+                            }
+                            
+                            SetTileColor(tile, color);
+                        }
+                    }
+                }
+            }
+        }
+
+        // 캐릭터 시각 효과 업데이트
+        void UpdateCharacterVisuals()
+        {
+            if (Core.GameManager.Instance == null) return;
+
+            // 기존 캐릭터 오브젝트 제거
+            foreach (var charObj in characterObjects.Values)
+            {
+                if (charObj != null) Destroy(charObj);
+            }
+            characterObjects.Clear();
+
+            // 배치된 캐릭터 표시
+            foreach (var kvp in Core.GameManager.Instance.placedCharacters)
+            {
+                Vector3Int position = kvp.Key;
+                Core.GameManager.PlacedCharacter placedChar = kvp.Value;
+                
+                GameObject tile = tileObjects[position.z, position.x, position.y];
+                if (tile != null)
+                {
+                    // 캐릭터 스프라이트 생성 (임시)
+                    GameObject charObj = new GameObject($"Character_{position}");
+                    charObj.transform.SetParent(tile.transform);
+                    charObj.transform.localPosition = Vector3.zero;
+                    charObj.transform.localScale = Vector3.one * 0.8f;
+                    
+                    SpriteRenderer renderer = charObj.AddComponent<SpriteRenderer>();
+                    renderer.sortingOrder = 10;
+                    
+                    // 임시 색상 (플레이어: 파랑, 적: 빨강)
+                    renderer.color = placedChar.isPlayerCharacter ? Color.blue : Color.red;
+                    
+                    characterObjects[position] = charObj;
+                }
+            }
+        }
+
+        // UI 업데이트
+        void UpdateUI()
+        {
+            if (Core.GameManager.Instance == null) return;
+
+            // 턴 표시
+            if (turnText != null)
+            {
+                string turnOwner = Core.GameManager.Instance.isPlayerTurn ? "플레이어" : "적";
+                turnText.text = $"턴 {Core.GameManager.Instance.currentTurn}: {turnOwner}";
+            }
+
+            // 타이머 표시
+            if (timerText != null)
+            {
+                timerText.text = $"남은 시간: {Core.GameManager.Instance.remainingTurnTime:F1}초";
+            }
+        }
+
+        void Update()
+        {
+            // 타이머 업데이트
+            if (Core.GameManager.Instance != null && 
+                Core.GameManager.Instance.CurrentMode == Core.GameManager.GameMode.Battle &&
+                !Core.GameManager.Instance.isGameOver)
+            {
+                UpdateUI();
+            }
+        }
+
+        // 타일 클릭 핸들러 컴포넌트
+        public class TileClickHandler : MonoBehaviour
+        {
+            private Vector3Int tilePosition;
+            private GameCore gameCore;
+
+            public void Initialize(Vector3Int position, GameCore core)
+            {
+                tilePosition = position;
+                gameCore = core;
+            }
+
+            void OnMouseDown()
+            {
+                if (gameCore != null)
+                {
+                    gameCore.OnTileClicked(tilePosition);
+                }
             }
         }
     }
-} 
+
+    // 캐릭터 데이터 (임시)
+    [System.Serializable]
+    public class CharacterData
+    {
+        public string characterName;
+        public int characterId;
+        public Sprite characterSprite;
+        public AttackPattern attackPattern;
+    }
+
+    // 공격 패턴 타입
+    public enum AttackPattern
+    {
+        Cross,      // 십자
+        Diagonal,   // 대각선
+        Square3x3,  // 3x3 정사각형
+        Line,       // 직선
+        Knight,     // 체스 나이트 패턴
+        Custom      // 커스텀 패턴
+    }
+}
