@@ -1,283 +1,206 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using System.Collections.Generic;
+using System.Linq;
 using TMPro;
 
 namespace GuildMaster.Battle
 {
     /// <summary>
-    /// 전투 캐릭터 선택 UI
+    /// 전투 시작 전 캐릭터 선택 UI
     /// </summary>
     public class CharacterSelectionUI : MonoBehaviour
     {
-        [Header("UI 참조")]
-        [SerializeField] private Transform characterButtonContainer;
-        [SerializeField] private GameObject characterButtonPrefab;
+        [Header("UI References")]
+        [SerializeField] private GameObject selectionPanel;
+        [SerializeField] private Transform characterListContainer;
+        [SerializeField] private Transform selectedCharactersContainer;
+        [SerializeField] private GameObject characterCardPrefab;
         [SerializeField] private Button confirmButton;
-        [SerializeField] private TextMeshProUGUI selectedCharacterText;
-        [SerializeField] private TextMeshProUGUI characterInfoText;
+        [SerializeField] private TextMeshProUGUI selectedCountText;
         
-        [Header("시스템 참조")]
-        [SerializeField] private BattleCharacterPlacement placementSystem;
-        [SerializeField] private CharacterCollection characterCollection;
+        [Header("Selection Settings")]
+        [SerializeField] private int maxCharacters = 10;
         
-        private CharacterData selectedCharacter;
-        private List<CharacterButton> characterButtons = new List<CharacterButton>();
+        private List<Character> availableCharacters = new List<Character>();
+        private List<Character> selectedCharacters = new List<Character>();
+        private System.Action<List<Character>> onSelectionComplete;
         
-        private void Start()
+        private Dictionary<string, CharacterCard> characterCards = new Dictionary<string, CharacterCard>();
+        
+        private void Awake()
         {
-            InitializeCharacterButtons();
-            confirmButton.onClick.AddListener(OnConfirmSelection);
+            if (confirmButton != null)
+                confirmButton.onClick.AddListener(OnConfirmSelection);
+        }
+        
+        public void Show(System.Action<List<Character>> callback)
+        {
+            onSelectionComplete = callback;
+            selectionPanel.SetActive(true);
+            
+            LoadAvailableCharacters();
             UpdateUI();
         }
         
-        /// <summary>
-        /// 캐릭터 버튼 초기화
-        /// </summary>
-        private void InitializeCharacterButtons()
+        private void LoadAvailableCharacters()
         {
-            // 기존 버튼 제거
-            foreach (Transform child in characterButtonContainer)
+            // DataManager에서 모든 캐릭터 로드
+            availableCharacters = DataManager.Instance.GetAllCharacters();
+            
+            // 캐릭터 카드 생성
+            foreach (var character in availableCharacters)
+            {
+                CreateCharacterCard(character);
+            }
+        }
+        
+        private void CreateCharacterCard(Character character)
+        {
+            GameObject cardObj = Instantiate(characterCardPrefab, characterListContainer);
+            CharacterCard card = cardObj.GetComponent<CharacterCard>();
+            
+            if (card == null)
+                card = cardObj.AddComponent<CharacterCard>();
+            
+            card.Initialize(character, OnCharacterClicked);
+            characterCards[character.characterID] = card;
+        }
+        
+        private void OnCharacterClicked(Character character)
+        {
+            if (selectedCharacters.Contains(character))
+            {
+                // 선택 해제
+                selectedCharacters.Remove(character);
+                characterCards[character.characterID].SetSelected(false);
+            }
+            else if (selectedCharacters.Count < maxCharacters)
+            {
+                // 선택
+                selectedCharacters.Add(character);
+                characterCards[character.characterID].SetSelected(true);
+            }
+            
+            UpdateUI();
+        }
+        
+        private void UpdateUI()
+        {
+            // 선택된 캐릭터 수 표시
+            if (selectedCountText != null)
+                selectedCountText.text = $"선택된 캐릭터: {selectedCharacters.Count}/{maxCharacters}";
+            
+            // 확인 버튼 활성화
+            if (confirmButton != null)
+                confirmButton.interactable = selectedCharacters.Count == maxCharacters;
+            
+            // 선택된 캐릭터 미리보기 업데이트
+            UpdateSelectedCharactersPreview();
+        }
+        
+        private void UpdateSelectedCharactersPreview()
+        {
+            // 기존 미리보기 제거
+            foreach (Transform child in selectedCharactersContainer)
             {
                 Destroy(child.gameObject);
             }
-            characterButtons.Clear();
             
-            // 컬렉션에서 캐릭터 가져오기
-            List<CharacterData> availableCharacters = GetAvailableCharacters();
+            // 직업별로 그룹화
+            var groupedByJob = selectedCharacters.GroupBy(c => c.jobClass);
             
-            foreach (CharacterData character in availableCharacters)
+            foreach (var group in groupedByJob)
             {
-                GameObject buttonObj = Instantiate(characterButtonPrefab, characterButtonContainer);
-                CharacterButton charButton = buttonObj.GetComponent<CharacterButton>();
+                GameObject jobGroupObj = new GameObject($"JobGroup_{group.Key}");
+                jobGroupObj.transform.SetParent(selectedCharactersContainer, false);
                 
-                if (charButton == null)
-                {
-                    charButton = buttonObj.AddComponent<CharacterButton>();
-                }
-                
-                charButton.Initialize(character, this);
-                characterButtons.Add(charButton);
+                TextMeshProUGUI jobText = jobGroupObj.AddComponent<TextMeshProUGUI>();
+                jobText.text = $"{JobClassSystem.GetJobClassName(group.Key)} x{group.Count()}";
+                jobText.fontSize = 18;
+                jobText.color = JobClassSystem.GetJobColor(group.Key);
             }
         }
         
-        /// <summary>
-        /// 사용 가능한 캐릭터 목록 가져오기
-        /// </summary>
-        private List<CharacterData> GetAvailableCharacters()
-        {
-            List<CharacterData> characters = new List<CharacterData>();
-            
-            // 테스트용 캐릭터 생성 (실제로는 CharacterCollection에서 가져옴)
-            characters.Add(CreateTestCharacter("전사 철수", JobClass.Warrior, 5));
-            characters.Add(CreateTestCharacter("기사 영희", JobClass.Knight, 4));
-            characters.Add(CreateTestCharacter("마법사 민수", JobClass.Wizard, 6));
-            characters.Add(CreateTestCharacter("성직자 지영", JobClass.Priest, 3));
-            characters.Add(CreateTestCharacter("도적 현우", JobClass.Rogue, 4));
-            characters.Add(CreateTestCharacter("현자 서연", JobClass.Sage, 5));
-            characters.Add(CreateTestCharacter("궁수 준호", JobClass.Archer, 4));
-            characters.Add(CreateTestCharacter("총사 민지", JobClass.Gunner, 5));
-            
-            return characters;
-        }
-        
-        /// <summary>
-        /// 테스트용 캐릭터 생성
-        /// </summary>
-        private CharacterData CreateTestCharacter(string name, JobClass job, int level)
-        {
-            CharacterData character = new CharacterData(
-                System.Guid.NewGuid().ToString(),
-                name,
-                job,
-                level,
-                CharacterRarity.Common
-            );
-            
-            // 직업별 기본 스탯 설정
-            switch (job)
-            {
-                case JobClass.Warrior:
-                    character.baseHP = 150;
-                    character.baseAttack = 20;
-                    character.baseDefense = 15;
-                    break;
-                case JobClass.Knight:
-                    character.baseHP = 180;
-                    character.baseAttack = 15;
-                    character.baseDefense = 25;
-                    break;
-                case JobClass.Wizard:
-                    character.baseHP = 80;
-                    character.baseMagicPower = 30;
-                    character.baseMP = 100;
-                    break;
-                case JobClass.Priest:
-                    character.baseHP = 100;
-                    character.baseMagicPower = 20;
-                    character.baseMP = 120;
-                    break;
-                case JobClass.Rogue:
-                    character.baseHP = 100;
-                    character.baseAttack = 25;
-                    character.baseSpeed = 20;
-                    break;
-                case JobClass.Sage:
-                    character.baseHP = 120;
-                    character.baseMagicPower = 25;
-                    character.baseAttack = 15;
-                    break;
-                case JobClass.Archer:
-                    character.baseHP = 110;
-                    character.baseAttack = 22;
-                    character.baseSpeed = 15;
-                    break;
-                case JobClass.Gunner:
-                    character.baseHP = 100;
-                    character.baseAttack = 28;
-                    character.baseSpeed = 12;
-                    break;
-            }
-            
-            return character;
-        }
-        
-        /// <summary>
-        /// 캐릭터 선택
-        /// </summary>
-        public void SelectCharacter(CharacterData character)
-        {
-            selectedCharacter = character;
-            UpdateUI();
-        }
-        
-        /// <summary>
-        /// 선택 확인
-        /// </summary>
         private void OnConfirmSelection()
         {
-            if (selectedCharacter != null && placementSystem != null)
+            if (selectedCharacters.Count == maxCharacters)
             {
-                placementSystem.SelectCharacter(selectedCharacter);
-                
-                // 선택 후 초기화
-                selectedCharacter = null;
-                UpdateUI();
+                selectionPanel.SetActive(false);
+                onSelectionComplete?.Invoke(selectedCharacters);
             }
         }
         
-        /// <summary>
-        /// UI 업데이트
-        /// </summary>
-        private void UpdateUI()
+        public void Hide()
         {
-            if (selectedCharacter != null)
-            {
-                selectedCharacterText.text = $"선택된 캐릭터: {selectedCharacter.characterName}";
-                
-                // 캐릭터 정보 표시
-                string info = $"직업: {selectedCharacter.jobClass}\n";
-                info += $"레벨: {selectedCharacter.level}\n";
-                info += $"공격 범위: {selectedCharacter.GetAttackRange()} 타일\n";
-                info += $"공격 타입: {selectedCharacter.GetAttackType()}\n";
-                info += $"HP: {selectedCharacter.currentHP}\n";
-                info += $"공격력: {selectedCharacter.totalAttack}";
-                
-                characterInfoText.text = info;
-                confirmButton.interactable = true;
-            }
-            else
-            {
-                selectedCharacterText.text = "캐릭터를 선택하세요";
-                characterInfoText.text = "";
-                confirmButton.interactable = false;
-            }
-            
-            // 버튼 상태 업데이트
-            foreach (CharacterButton button in characterButtons)
-            {
-                button.UpdateSelection(selectedCharacter);
-            }
+            selectionPanel.SetActive(false);
         }
     }
     
     /// <summary>
-    /// 캐릭터 버튼 컴포넌트
+    /// 개별 캐릭터 카드 UI
     /// </summary>
-    public class CharacterButton : MonoBehaviour
+    public class CharacterCard : MonoBehaviour
     {
-        [Header("UI 요소")]
-        [SerializeField] private Button button;
+        [Header("UI Components")]
+        [SerializeField] private Image portrait;
         [SerializeField] private TextMeshProUGUI nameText;
         [SerializeField] private TextMeshProUGUI jobText;
         [SerializeField] private TextMeshProUGUI levelText;
-        [SerializeField] private Image selectionFrame;
-        [SerializeField] private Image characterIcon;
+        [SerializeField] private Image rarityBackground;
+        [SerializeField] private GameObject selectedOverlay;
+        [SerializeField] private Button selectButton;
         
-        private CharacterData characterData;
-        private CharacterSelectionUI selectionUI;
+        private Character character;
+        private System.Action<Character> onClickCallback;
+        private bool isSelected = false;
         
-        /// <summary>
-        /// 버튼 초기화
-        /// </summary>
-        public void Initialize(CharacterData character, CharacterSelectionUI ui)
+        public void Initialize(Character character, System.Action<Character> onClick)
         {
-            characterData = character;
-            selectionUI = ui;
+            this.character = character;
+            this.onClickCallback = onClick;
             
-            // UI 요소가 없으면 자동으로 찾기
-            if (button == null) button = GetComponent<Button>();
-            if (nameText == null) nameText = transform.Find("NameText")?.GetComponent<TextMeshProUGUI>();
-            if (jobText == null) jobText = transform.Find("JobText")?.GetComponent<TextMeshProUGUI>();
-            if (levelText == null) levelText = transform.Find("LevelText")?.GetComponent<TextMeshProUGUI>();
-            if (selectionFrame == null) selectionFrame = transform.Find("SelectionFrame")?.GetComponent<Image>();
-            if (characterIcon == null) characterIcon = transform.Find("Icon")?.GetComponent<Image>();
+            // UI 업데이트
+            if (nameText != null)
+                nameText.text = character.characterName;
             
-            // 텍스트 설정
-            if (nameText != null) nameText.text = character.characterName;
-            if (jobText != null) jobText.text = character.jobClass.ToString();
-            if (levelText != null) levelText.text = $"Lv.{character.level}";
-            
-            // 아이콘 설정 (있다면)
-            if (characterIcon != null && character.characterSprite != null)
+            if (jobText != null)
             {
-                characterIcon.sprite = character.characterSprite;
+                jobText.text = JobClassSystem.GetJobClassName(character.jobClass);
+                jobText.color = JobClassSystem.GetJobColor(character.jobClass);
             }
             
-            // 버튼 클릭 이벤트
-            button.onClick.RemoveAllListeners();
-            button.onClick.AddListener(OnButtonClick);
+            if (levelText != null)
+                levelText.text = $"Lv.{character.level}";
             
-            UpdateSelection(null);
+            // 레어도 색상
+            if (rarityBackground != null)
+                rarityBackground.color = GetRarityColor(character.rarity);
+            
+            // 버튼 이벤트
+            if (selectButton != null)
+                selectButton.onClick.AddListener(() => onClickCallback?.Invoke(character));
+            
+            SetSelected(false);
         }
         
-        /// <summary>
-        /// 버튼 클릭 처리
-        /// </summary>
-        private void OnButtonClick()
+        public void SetSelected(bool selected)
         {
-            selectionUI.SelectCharacter(characterData);
+            isSelected = selected;
+            if (selectedOverlay != null)
+                selectedOverlay.SetActive(selected);
         }
         
-        /// <summary>
-        /// 선택 상태 업데이트
-        /// </summary>
-        public void UpdateSelection(CharacterData selectedCharacter)
+        private Color GetRarityColor(CharacterRarity rarity)
         {
-            bool isSelected = characterData == selectedCharacter;
-            
-            if (selectionFrame != null)
+            switch (rarity)
             {
-                selectionFrame.gameObject.SetActive(isSelected);
-            }
-            
-            // 선택된 버튼 강조
-            if (button != null)
-            {
-                ColorBlock colors = button.colors;
-                colors.normalColor = isSelected ? new Color(0.9f, 0.9f, 1f) : Color.white;
-                button.colors = colors;
+                case CharacterRarity.Common: return Color.gray;
+                case CharacterRarity.Uncommon: return Color.green;
+                case CharacterRarity.Rare: return Color.blue;
+                case CharacterRarity.Epic: return new Color(0.5f, 0, 0.5f); // 보라
+                case CharacterRarity.Legendary: return new Color(1f, 0.84f, 0); // 금색
+                default: return Color.white;
             }
         }
     }
