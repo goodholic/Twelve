@@ -1,207 +1,328 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
-using System.Collections.Generic;
-using System.Linq;
 using TMPro;
 
-namespace GuildMaster.Battle
+namespace GuildMaster.TileBattle
 {
     /// <summary>
-    /// 전투 시작 전 캐릭터 선택 UI
+    /// 캐릭터 선택 UI 관리
+    /// 플레이어가 10개의 캐릭터를 선택할 수 있는 인터페이스
     /// </summary>
-    public class CharacterSelectionUI : MonoBehaviour
+    public class CharacterSelectUI : MonoBehaviour
     {
         [Header("UI References")]
-        [SerializeField] private GameObject selectionPanel;
-        [SerializeField] private Transform characterListContainer;
-        [SerializeField] private Transform selectedCharactersContainer;
         [SerializeField] private GameObject characterCardPrefab;
+        [SerializeField] private Transform characterListContainer;
+        [SerializeField] private Transform selectedCharacterContainer;
         [SerializeField] private Button confirmButton;
-        [SerializeField] private TextMeshProUGUI selectedCountText;
+        [SerializeField] private TextMeshProUGUI selectionCountText;
+        [SerializeField] private GameObject attackRangePreview;
         
-        [Header("Selection Settings")]
-        [SerializeField] private int maxCharacters = 10;
+        [Header("Settings")]
+        [SerializeField] private int maxSelections = 10;
         
-        private List<Character> availableCharacters = new List<Character>();
-        private List<Character> selectedCharacters = new List<Character>();
-        private System.Action<List<Character>> onSelectionComplete;
-        
+        // 캐릭터 데이터
+        private List<TileBattleAI.Character> availableCharacters;
+        private List<TileBattleAI.Character> selectedCharacters = new List<TileBattleAI.Character>();
         private Dictionary<string, CharacterCard> characterCards = new Dictionary<string, CharacterCard>();
         
-        private void Awake()
-        {
-            if (confirmButton != null)
-                confirmButton.onClick.AddListener(OnConfirmSelection);
-        }
+        // 콜백
+        private System.Action<List<TileBattleAI.Character>> onSelectionComplete;
         
-        public void Show(System.Action<List<Character>> callback)
+        void Start()
         {
-            onSelectionComplete = callback;
-            selectionPanel.SetActive(true);
-            
-            LoadAvailableCharacters();
+            confirmButton.onClick.AddListener(OnConfirmSelection);
+            confirmButton.interactable = false;
             UpdateUI();
         }
-        
-        private void LoadAvailableCharacters()
+
+        /// <summary>
+        /// 캐릭터 선택 UI 초기화
+        /// </summary>
+        public void Initialize(List<TileBattleAI.Character> characters, 
+            System.Action<List<TileBattleAI.Character>> callback)
         {
-            // DataManager에서 모든 캐릭터 로드
-            availableCharacters = DataManager.Instance.GetAllCharacters();
+            availableCharacters = characters;
+            onSelectionComplete = callback;
+            
+            // 기존 카드 제거
+            foreach (Transform child in characterListContainer)
+            {
+                Destroy(child.gameObject);
+            }
+            characterCards.Clear();
             
             // 캐릭터 카드 생성
             foreach (var character in availableCharacters)
             {
                 CreateCharacterCard(character);
             }
+            
+            UpdateUI();
         }
-        
-        private void CreateCharacterCard(Character character)
+
+        /// <summary>
+        /// 캐릭터 카드 생성
+        /// </summary>
+        void CreateCharacterCard(TileBattleAI.Character character)
         {
             GameObject cardObj = Instantiate(characterCardPrefab, characterListContainer);
             CharacterCard card = cardObj.GetComponent<CharacterCard>();
             
             if (card == null)
+            {
                 card = cardObj.AddComponent<CharacterCard>();
+            }
             
-            card.Initialize(character, OnCharacterClicked);
-            characterCards[character.characterID] = card;
+            card.Initialize(character, OnCharacterCardClicked, OnCharacterCardHover);
+            characterCards[character.id] = card;
         }
-        
-        private void OnCharacterClicked(Character character)
+
+        /// <summary>
+        /// 캐릭터 카드 클릭 처리
+        /// </summary>
+        void OnCharacterCardClicked(TileBattleAI.Character character)
         {
             if (selectedCharacters.Contains(character))
             {
                 // 선택 해제
                 selectedCharacters.Remove(character);
-                characterCards[character.characterID].SetSelected(false);
+                characterCards[character.id].SetSelected(false);
             }
-            else if (selectedCharacters.Count < maxCharacters)
+            else if (selectedCharacters.Count < maxSelections)
             {
                 // 선택
                 selectedCharacters.Add(character);
-                characterCards[character.characterID].SetSelected(true);
+                characterCards[character.id].SetSelected(true);
+            }
+            else
+            {
+                // 최대 선택 수 도달
+                Debug.Log($"최대 {maxSelections}개까지만 선택할 수 있습니다.");
             }
             
             UpdateUI();
+            UpdateSelectedCharacterDisplay();
         }
-        
-        private void UpdateUI()
+
+        /// <summary>
+        /// 캐릭터 카드 호버 처리
+        /// </summary>
+        void OnCharacterCardHover(TileBattleAI.Character character, bool isHovering)
         {
-            // 선택된 캐릭터 수 표시
-            if (selectedCountText != null)
-                selectedCountText.text = $"선택된 캐릭터: {selectedCharacters.Count}/{maxCharacters}";
-            
-            // 확인 버튼 활성화
-            if (confirmButton != null)
-                confirmButton.interactable = selectedCharacters.Count == maxCharacters;
-            
-            // 선택된 캐릭터 미리보기 업데이트
-            UpdateSelectedCharactersPreview();
+            if (isHovering && attackRangePreview != null)
+            {
+                ShowAttackRangePreview(character);
+            }
+            else
+            {
+                HideAttackRangePreview();
+            }
         }
-        
-        private void UpdateSelectedCharactersPreview()
+
+        /// <summary>
+        /// 공격 범위 미리보기 표시
+        /// </summary>
+        void ShowAttackRangePreview(TileBattleAI.Character character)
         {
-            // 기존 미리보기 제거
-            foreach (Transform child in selectedCharactersContainer)
+            attackRangePreview.SetActive(true);
+            
+            // 공격 범위 시각화
+            var rangeVisualizer = attackRangePreview.GetComponent<AttackRangeVisualizer>();
+            if (rangeVisualizer != null)
+            {
+                rangeVisualizer.ShowRange(character.attackRange);
+            }
+        }
+
+        /// <summary>
+        /// 공격 범위 미리보기 숨김
+        /// </summary>
+        void HideAttackRangePreview()
+        {
+            if (attackRangePreview != null)
+            {
+                attackRangePreview.SetActive(false);
+            }
+        }
+
+        /// <summary>
+        /// 선택된 캐릭터 표시 업데이트
+        /// </summary>
+        void UpdateSelectedCharacterDisplay()
+        {
+            // 기존 표시 제거
+            foreach (Transform child in selectedCharacterContainer)
             {
                 Destroy(child.gameObject);
             }
             
-            // 직업별로 그룹화
-            var groupedByJob = selectedCharacters.GroupBy(c => c.jobClass);
-            
-            foreach (var group in groupedByJob)
+            // 선택된 캐릭터 표시
+            foreach (var character in selectedCharacters)
             {
-                GameObject jobGroupObj = new GameObject($"JobGroup_{group.Key}");
-                jobGroupObj.transform.SetParent(selectedCharactersContainer, false);
+                GameObject miniCard = new GameObject(character.name);
+                miniCard.transform.SetParent(selectedCharacterContainer);
                 
-                TextMeshProUGUI jobText = jobGroupObj.AddComponent<TextMeshProUGUI>();
-                jobText.text = $"{JobClassSystem.GetJobClassName(group.Key)} x{group.Count()}";
-                jobText.fontSize = 18;
-                jobText.color = JobClassSystem.GetJobColor(group.Key);
+                var text = miniCard.AddComponent<TextMeshProUGUI>();
+                text.text = character.name;
+                text.fontSize = 14;
             }
         }
-        
-        private void OnConfirmSelection()
+
+        /// <summary>
+        /// UI 업데이트
+        /// </summary>
+        void UpdateUI()
         {
-            if (selectedCharacters.Count == maxCharacters)
+            selectionCountText.text = $"선택: {selectedCharacters.Count}/{maxSelections}";
+            confirmButton.interactable = selectedCharacters.Count == maxSelections;
+        }
+
+        /// <summary>
+        /// 선택 확정
+        /// </summary>
+        void OnConfirmSelection()
+        {
+            if (selectedCharacters.Count == maxSelections)
             {
-                selectionPanel.SetActive(false);
-                onSelectionComplete?.Invoke(selectedCharacters);
+                onSelectionComplete?.Invoke(new List<TileBattleAI.Character>(selectedCharacters));
+                gameObject.SetActive(false);
             }
-        }
-        
-        public void Hide()
-        {
-            selectionPanel.SetActive(false);
         }
     }
-    
+
     /// <summary>
-    /// 개별 캐릭터 카드 UI
+    /// 캐릭터 카드 컴포넌트
     /// </summary>
     public class CharacterCard : MonoBehaviour
     {
-        [Header("UI Components")]
-        [SerializeField] private Image portrait;
+        [Header("UI References")]
         [SerializeField] private TextMeshProUGUI nameText;
-        [SerializeField] private TextMeshProUGUI jobText;
-        [SerializeField] private TextMeshProUGUI levelText;
-        [SerializeField] private Image rarityBackground;
-        [SerializeField] private GameObject selectedOverlay;
+        [SerializeField] private TextMeshProUGUI powerText;
+        [SerializeField] private Image characterIcon;
+        [SerializeField] private Image selectionOutline;
         [SerializeField] private Button selectButton;
         
-        private Character character;
-        private System.Action<Character> onClickCallback;
+        private TileBattleAI.Character character;
+        private System.Action<TileBattleAI.Character> onClickCallback;
+        private System.Action<TileBattleAI.Character, bool> onHoverCallback;
         private bool isSelected = false;
-        
-        public void Initialize(Character character, System.Action<Character> onClick)
+
+        /// <summary>
+        /// 카드 초기화
+        /// </summary>
+        public void Initialize(TileBattleAI.Character characterData, 
+            System.Action<TileBattleAI.Character> onClick,
+            System.Action<TileBattleAI.Character, bool> onHover)
         {
-            this.character = character;
-            this.onClickCallback = onClick;
+            character = characterData;
+            onClickCallback = onClick;
+            onHoverCallback = onHover;
             
-            // UI 업데이트
-            if (nameText != null)
-                nameText.text = character.characterName;
-            
-            if (jobText != null)
-            {
-                jobText.text = JobClassSystem.GetJobClassName(character.jobClass);
-                jobText.color = JobClassSystem.GetJobColor(character.jobClass);
-            }
-            
-            if (levelText != null)
-                levelText.text = $"Lv.{character.level}";
-            
-            // 레어도 색상
-            if (rarityBackground != null)
-                rarityBackground.color = GetRarityColor(character.rarity);
+            // UI 설정
+            if (nameText != null) nameText.text = character.name;
+            if (powerText != null) powerText.text = $"공격력: {character.attackPower}";
             
             // 버튼 이벤트
             if (selectButton != null)
+            {
                 selectButton.onClick.AddListener(() => onClickCallback?.Invoke(character));
+            }
+            
+            // 호버 이벤트
+            var eventTrigger = gameObject.AddComponent<UnityEngine.EventSystems.EventTrigger>();
+            
+            var pointerEnter = new UnityEngine.EventSystems.EventTrigger.Entry();
+            pointerEnter.eventID = UnityEngine.EventSystems.EventTriggerType.PointerEnter;
+            pointerEnter.callback.AddListener((data) => onHoverCallback?.Invoke(character, true));
+            eventTrigger.triggers.Add(pointerEnter);
+            
+            var pointerExit = new UnityEngine.EventSystems.EventTrigger.Entry();
+            pointerExit.eventID = UnityEngine.EventSystems.EventTriggerType.PointerExit;
+            pointerExit.callback.AddListener((data) => onHoverCallback?.Invoke(character, false));
+            eventTrigger.triggers.Add(pointerExit);
             
             SetSelected(false);
         }
-        
+
+        /// <summary>
+        /// 선택 상태 설정
+        /// </summary>
         public void SetSelected(bool selected)
         {
             isSelected = selected;
-            if (selectedOverlay != null)
-                selectedOverlay.SetActive(selected);
-        }
-        
-        private Color GetRarityColor(CharacterRarity rarity)
-        {
-            switch (rarity)
+            if (selectionOutline != null)
             {
-                case CharacterRarity.Common: return Color.gray;
-                case CharacterRarity.Uncommon: return Color.green;
-                case CharacterRarity.Rare: return Color.blue;
-                case CharacterRarity.Epic: return new Color(0.5f, 0, 0.5f); // 보라
-                case CharacterRarity.Legendary: return new Color(1f, 0.84f, 0); // 금색
-                default: return Color.white;
+                selectionOutline.gameObject.SetActive(selected);
             }
+        }
+    }
+
+    /// <summary>
+    /// 공격 범위 시각화 컴포넌트
+    /// </summary>
+    public class AttackRangeVisualizer : MonoBehaviour
+    {
+        [Header("Settings")]
+        [SerializeField] private GameObject tilePrefab;
+        [SerializeField] private float tileSize = 1f;
+        [SerializeField] private Color centerColor = Color.blue;
+        [SerializeField] private Color rangeColor = Color.red;
+        
+        private List<GameObject> rangeTiles = new List<GameObject>();
+
+        /// <summary>
+        /// 공격 범위 표시
+        /// </summary>
+        public void ShowRange(List<Vector2Int> attackRange)
+        {
+            ClearRange();
+            
+            // 중앙 타일
+            GameObject centerTile = Instantiate(tilePrefab, transform);
+            centerTile.transform.localPosition = Vector3.zero;
+            var centerRenderer = centerTile.GetComponent<Renderer>();
+            if (centerRenderer != null)
+            {
+                centerRenderer.material.color = centerColor;
+            }
+            rangeTiles.Add(centerTile);
+            
+            // 공격 범위 타일
+            foreach (var offset in attackRange)
+            {
+                GameObject rangeTile = Instantiate(tilePrefab, transform);
+                rangeTile.transform.localPosition = new Vector3(
+                    offset.x * tileSize, 
+                    0, 
+                    offset.y * tileSize
+                );
+                
+                var renderer = rangeTile.GetComponent<Renderer>();
+                if (renderer != null)
+                {
+                    renderer.material.color = rangeColor;
+                }
+                rangeTiles.Add(rangeTile);
+            }
+        }
+
+        /// <summary>
+        /// 범위 표시 제거
+        /// </summary>
+        public void ClearRange()
+        {
+            foreach (var tile in rangeTiles)
+            {
+                Destroy(tile);
+            }
+            rangeTiles.Clear();
+        }
+
+        void OnDisable()
+        {
+            ClearRange();
         }
     }
 }
