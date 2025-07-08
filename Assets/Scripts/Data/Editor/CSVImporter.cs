@@ -2,7 +2,8 @@ using UnityEngine;
 using UnityEditor;
 using System.IO;
 using System.Collections.Generic;
-using GuildMaster.Data;
+using GuildMaster.Battle;
+using GuildMaster.Game;
 
 namespace GuildMaster.Editor
 {

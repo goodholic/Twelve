@@ -3,8 +3,9 @@ using UnityEditor;
 using System.IO;
 using System.Collections.Generic;
 using System.Linq;
-using GuildMaster.Data;
 using GuildMaster.Battle;
+using GuildMaster.Game;
+using GuildMaster.Data;
 using System;
 using System.Text;
 using System.Threading.Tasks;
@@ -358,7 +359,7 @@ namespace GuildMaster.Editor
             LogOperation($"Imported {characters.Count} characters");
         }
 
-        private void ExportCharacterData(CharacterDatabase database)
+        private void ExportCharacterData(CharacterDatabaseSO database)
         {
             var sb = new StringBuilder();
             sb.AppendLine("ID,Name,JobClass,Level,Rarity,HP,MP,Attack,Defense,MagicPower,Speed,CritRate,CritDamage,Accuracy,Evasion,Skill1,Skill2,Skill3,Description");

@@ -3,8 +3,9 @@ using UnityEditor;
 using System.IO;
 using System.Collections.Generic;
 using System.Linq;
-using GuildMaster.Data;
 using GuildMaster.Battle;
+using GuildMaster.Game;
+using GuildMaster.Data;
 using System;
 using System.Text;
 
@@ -17,7 +18,7 @@ namespace GuildMaster.Editor
     public class DataExportManager : EditorWindow
     {
         private Vector2 scrollPosition;
-        private CharacterDatabase characterDatabase;
+        private CharacterDatabaseSO characterDatabase;
         private string selectedDatabasePath = "Assets/Prefabs/Data/CharacterDatabase.asset";
         
         // New character fields

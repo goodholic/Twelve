@@ -1,9 +1,11 @@
 using UnityEngine;
 using UnityEditor;
-using Twelve.Data;
+using GuildMaster.Battle;
+using GuildMaster.Game;
+using GuildMaster.Data;
 using System.IO;
 
-namespace Twelve.Editor
+namespace GuildMaster.Editor
 {
     /// <summary>
     /// JobLevelData 생성 및 관리를 위한 에디터 도구
