@@ -1,8 +1,7 @@
 using UnityEngine;
 using System;
 using System.Collections.Generic;
-using GuildMaster.Battle; // Unit, JobClass를 위해 추가
-using Unit = GuildMaster.Battle.UnitStatus;
+using GuildMaster.Battle; // JobClass를 위해 추가
 
 namespace GuildMaster.Data
 {
@@ -251,7 +250,7 @@ namespace GuildMaster.Data
         /// <summary>
         /// 스킬이 대상에게 사용 가능한지 확인
         /// </summary>
-        public bool CanUseOnTarget(Unit caster, Unit target)
+        public bool CanUseOnTarget(CharacterUnit caster, CharacterUnit target)
         {
             if (caster == null) return false;
             
@@ -279,7 +278,7 @@ namespace GuildMaster.Data
         /// <summary>
         /// 스킬 사용 조건 확인
         /// </summary>
-        public bool CanUseSkill(Unit caster)
+        public bool CanUseSkill(CharacterUnit caster)
         {
             if (caster == null) return false;
             
@@ -300,7 +299,7 @@ namespace GuildMaster.Data
         /// <summary>
         /// 스킬 데미지 계산 (새 시스템)
         /// </summary>
-        public int CalculateSkillDamage(Unit caster, Unit target)
+        public int CalculateSkillDamage(CharacterUnit caster, CharacterUnit target)
         {
             if (damage <= 0) return 0;
             
@@ -341,7 +340,7 @@ namespace GuildMaster.Data
         /// <summary>
         /// 스킬 치유량 계산
         /// </summary>
-        public int CalculateSkillHealing(Unit caster)
+        public int CalculateSkillHealing(CharacterUnit caster)
         {
             if (healing <= 0) return 0;
             

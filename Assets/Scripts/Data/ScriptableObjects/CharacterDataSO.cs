@@ -86,23 +86,7 @@ namespace GuildMaster.Data
         public Sprite portrait;
         public GameObject modelPrefab;
 
-        public Unit CreateUnit()
-        {
-            var unit = new Unit(characterName, baseLevel, jobClass, rarity);
-            unit.unitId = id;
-            unit.maxHP = baseHP;
-            unit.maxMP = baseMP;
-            unit.attackPower = baseAttack;
-            unit.defense = baseDefense;
-            unit.magicPower = baseMagicPower;
-            unit.speed = baseSpeed;
-            unit.criticalRate = critRate;
-            unit.accuracy = accuracy;
-            
-            unit.currentHP = unit.maxHP;
-            unit.currentMP = unit.maxMP;
-            
-            return unit;
-        }
+        // NOTE: CreateUnit method removed as Unit class does not exist.
+        // Use CharacterUnit component instead when creating units in battle.
     }
 }

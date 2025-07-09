@@ -1,7 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
 using TMPro;
-using Unit = GuildMaster.Battle.UnitStatus;
 
 namespace GuildMaster.Battle
 {
@@ -16,7 +15,7 @@ namespace GuildMaster.Battle
             public Vector2Int position;
             public GameObject tileObject;
             public SpriteRenderer spriteRenderer;
-            public Unit occupyingUnit;
+            public CharacterUnit occupyingUnit;
             public bool isHighlighted;
             
             public Tile(Vector2Int pos, GameObject obj)
@@ -35,7 +34,7 @@ namespace GuildMaster.Battle
             public string boardName;
             public Transform boardTransform;
             public Tile[,] tiles = new Tile[6, 3];
-            public List<Unit> units = new List<Unit>();
+            public List<CharacterUnit> units = new List<CharacterUnit>();
             
             public int GetUnitCount(bool isPlayerUnit)
             {
@@ -110,7 +109,7 @@ namespace GuildMaster.Battle
             board.boardTransform.position -= new Vector3(2.5f * tileSize, 1f * tileSize, 0);
         }
         
-        public bool PlaceUnit(Board board, Vector2Int position, Unit unit)
+        public bool PlaceUnit(Board board, Vector2Int position, CharacterUnit unit)
         {
             if (!IsValidPosition(position)) return false;
             
@@ -128,7 +127,7 @@ namespace GuildMaster.Battle
             return true;
         }
         
-        public void RemoveUnit(Board board, Unit unit)
+        public void RemoveUnit(Board board, CharacterUnit unit)
         {
             foreach (var tile in board.tiles)
             {

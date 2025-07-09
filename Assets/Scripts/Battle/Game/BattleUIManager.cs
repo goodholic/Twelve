@@ -2,7 +2,6 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using System.Collections;
-using Unit = GuildMaster.Battle.UnitStatus;
 
 namespace GuildMaster.Battle
 {
@@ -99,7 +98,7 @@ namespace GuildMaster.Battle
                 characterToPlaceImage.color = JobClassSystem.GetJobColor(character.jobClass);
         }
         
-        public void ShowUnitInfo(Unit unit)
+        public void ShowUnitInfo(CharacterUnit unit)
         {
             if (unitInfoPanel != null)
                 unitInfoPanel.SetActive(true);
