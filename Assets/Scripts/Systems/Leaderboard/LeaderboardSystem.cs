@@ -9,8 +9,7 @@ using GuildMaster.Data;
 namespace GuildMaster.Systems
 {
     /// <summary>
-    /// 리더보드 및 랭킹 시스템
-    /// 길드 랭킹, 개인 랭킹, 시즌별 랭킹 등을 관리
+    /// 리더보드 시스템 - 길드 순위 관리
     /// </summary>
     public class LeaderboardSystem : MonoBehaviour
     {
@@ -31,34 +30,22 @@ namespace GuildMaster.Systems
                 return _instance;
             }
         }
-
-        [Header("Leaderboard Settings")]
-        [SerializeField] private int maxLeaderboardEntries = 100;
-        [SerializeField] private float updateInterval = 60f; // 1분마다 업데이트
-        [SerializeField] private bool enableWeeklyReset = true;
-        [SerializeField] private bool enableMonthlyReset = true;
         
-        // 리더보드 데이터
-        private Dictionary<LeaderboardType, List<LeaderboardEntry>> leaderboards;
-        private Dictionary<string, PlayerRankingData> playerRankings;
-        private float lastUpdateTime;
-        
-        // 이벤트
+        // Events
         public event Action<LeaderboardType> OnLeaderboardUpdated;
         public event Action<string, int, int> OnRankingChanged; // playerId, oldRank, newRank
         public event Action<LeaderboardType> OnLeaderboardReset;
         
+        // Leaderboard types
         public enum LeaderboardType
         {
-            GuildPower,          // 길드 전투력
-            GuildWealth,         // 길드 재산
-            GuildReputation,     // 길드 명성
             GuildLevel,          // 길드 레벨
-            BattleWins,          // 전투 승리 횟수
-            // DungeonProgress,     // 던전 진행도 - Dungeon 기능 제거됨
+            TotalWealth,         // 총 재산
+            BattleWins,          // 전투 승리
+            QuestCompleted,      // 퀘스트 완료
             AchievementPoints,   // 업적 점수
-            WeeklyChallenge,     // 주간 챌린지
-            MonthlyChallenge,    // 월간 챌린지
+            WeeklyChallenge,     // 주간 도전
+            MonthlyChallenge,    // 월간 도전
             Season               // 시즌 랭킹
         }
         
@@ -111,6 +98,20 @@ namespace GuildMaster.Systems
             public DateTime achievedDate;
         }
         
+        // Leaderboard data
+        private Dictionary<LeaderboardType, List<LeaderboardEntry>> leaderboards;
+        private Dictionary<string, PlayerRankingData> playerRankings;
+        
+        // Settings
+        [Header("Leaderboard Settings")]
+        [SerializeField] private int maxLeaderboardEntries = 100;
+        [SerializeField] private float updateInterval = 60f; // 60초마다 업데이트
+        [SerializeField] private bool enableWeeklyReset = true;
+        [SerializeField] private bool enableMonthlyReset = true;
+        [SerializeField] private int simulatedAIGuilds = 50;
+        
+        private float lastUpdateTime;
+        
         void Awake()
         {
             if (_instance != null && _instance != this)
@@ -146,20 +147,6 @@ namespace GuildMaster.Systems
         void Start()
         {
             StartCoroutine(UpdateLeaderboardsRoutine());
-            SubscribeToEvents();
-        }
-        
-        void SubscribeToEvents()
-        {
-            var eventManager = EventManager.Instance;
-            if (eventManager != null)
-            {
-                eventManager.Subscribe(GuildMaster.Core.EventType.GuildLevelUp, OnGuildLevelUp);
-                eventManager.Subscribe(GuildMaster.Core.EventType.BattleVictory, OnBattleVictory);
-                // eventManager.Subscribe(GuildMaster.Core.EventType.DungeonCompleted, OnDungeonCompleted); // Dungeon 기능 제거됨
-                eventManager.Subscribe(GuildMaster.Core.EventType.AchievementUnlocked, OnAchievementUnlocked);
-                eventManager.Subscribe(GuildMaster.Core.EventType.ResourceChanged, OnResourceChanged);
-            }
         }
         
         IEnumerator UpdateLeaderboardsRoutine()
@@ -279,14 +266,13 @@ namespace GuildMaster.Systems
             rankInfo.rank = rank;
             rankInfo.score = score;
             
-            // 최고 기록 갱신
-            if (rankInfo.bestRank == 0 || rank < rankInfo.bestRank)
+            if (rank < rankInfo.bestRank || rankInfo.bestRank == 0)
             {
                 rankInfo.bestRank = rank;
                 rankInfo.achievedDate = DateTime.Now;
             }
             
-            // 총 포인트 계산
+            // 총 점수 계산
             CalculateTotalPoints(playerData);
         }
         
@@ -294,81 +280,60 @@ namespace GuildMaster.Systems
         {
             playerData.totalPoints = 0;
             
-            foreach (var ranking in playerData.rankings.Values)
+            foreach (var kvp in playerData.rankings)
             {
                 // 랭킹에 따른 포인트 계산 (1위: 100점, 2위: 90점, ...)
-                int points = Math.Max(0, 110 - ranking.rank * 10);
+                int points = Math.Max(0, 100 - (kvp.Value.rank - 1) * 10);
                 playerData.totalPoints += points;
             }
         }
         
-        /// <summary>
-        /// 초기 리더보드 생성 (AI 길드 데이터 사용)
-        /// </summary>
         void GenerateInitialLeaderboards()
         {
             // AI 길드 생성
-            var aiGuilds = GenerateAIGuildData(30);
-            
-            foreach (var guild in aiGuilds)
+            for (int i = 0; i < simulatedAIGuilds; i++)
             {
-                // 길드 파워
-                SubmitScore(LeaderboardType.GuildPower, guild.id, guild.name, guild.power);
+                string guildId = $"ai_guild_{i}";
+                string guildName = GenerateGuildName();
                 
-                // 길드 재산
-                SubmitScore(LeaderboardType.GuildWealth, guild.id, guild.name, guild.wealth);
-                
-                // 길드 명성
-                SubmitScore(LeaderboardType.GuildReputation, guild.id, guild.name, guild.reputation);
-                
-                // 길드 레벨
-                SubmitScore(LeaderboardType.GuildLevel, guild.id, guild.name, guild.level);
-                
-                // 전투 승리
-                SubmitScore(LeaderboardType.BattleWins, guild.id, guild.name, guild.battleWins);
-            }
-        }
-        
-        List<AIGuildData> GenerateAIGuildData(int count)
-        {
-            var guilds = new List<AIGuildData>();
-            string[] prefixes = { "용맹한", "강철", "불꽃", "서리", "황금", "은빛", "붉은", "푸른", "검은", "하얀" };
-            string[] suffixes = { "사자단", "독수리단", "늑대단", "용단", "기사단", "수호자", "전사단", "마법단", "십자군", "성기사단" };
-            
-            for (int i = 0; i < count; i++)
-            {
-                var guild = new AIGuildData
+                // 각 리더보드에 랜덤 점수 생성
+                foreach (LeaderboardType type in Enum.GetValues(typeof(LeaderboardType)))
                 {
-                    id = $"ai_guild_{i}",
-                    name = $"{prefixes[UnityEngine.Random.Range(0, prefixes.Length)]} {suffixes[UnityEngine.Random.Range(0, suffixes.Length)]}",
-                    level = UnityEngine.Random.Range(5, 50),
-                    power = UnityEngine.Random.Range(1000, 50000),
-                    wealth = UnityEngine.Random.Range(10000, 1000000),
-                    reputation = UnityEngine.Random.Range(100, 10000),
-                    battleWins = UnityEngine.Random.Range(10, 500)
-                };
-                
-                guilds.Add(guild);
+                    int score = GenerateScoreForType(type);
+                    SubmitScore(type, guildId, guildName, score);
+                }
             }
-            
-            return guilds;
         }
         
-        class AIGuildData
+        string GenerateGuildName()
         {
-            public string id;
-            public string name;
-            public int level;
-            public int power;
-            public int wealth;
-            public int reputation;
-            public int battleWins;
+            string[] prefixes = { "Iron", "Golden", "Silver", "Diamond", "Crystal", "Shadow", "Light", "Dark", "Fire", "Ice" };
+            string[] suffixes = { "Knights", "Warriors", "Guardians", "Legion", "Order", "Brotherhood", "Alliance", "Company", "Squad", "Force" };
+            
+            return $"{prefixes[UnityEngine.Random.Range(0, prefixes.Length)]} {suffixes[UnityEngine.Random.Range(0, suffixes.Length)]}";
         }
         
+        int GenerateScoreForType(LeaderboardType type)
+        {
+            return type switch
+            {
+                LeaderboardType.GuildLevel => UnityEngine.Random.Range(1, 50),
+                LeaderboardType.TotalWealth => UnityEngine.Random.Range(1000, 1000000),
+                LeaderboardType.BattleWins => UnityEngine.Random.Range(0, 500),
+                LeaderboardType.QuestCompleted => UnityEngine.Random.Range(0, 200),
+                LeaderboardType.AchievementPoints => UnityEngine.Random.Range(0, 5000),
+                LeaderboardType.WeeklyChallenge => UnityEngine.Random.Range(0, 1000),
+                LeaderboardType.MonthlyChallenge => UnityEngine.Random.Range(0, 5000),
+                LeaderboardType.Season => UnityEngine.Random.Range(0, 10000),
+                _ => 0
+            };
+        }
+        
+        // Public Methods
         /// <summary>
-        /// 리더보드 조회
+        /// 특정 리더보드의 상위 엔트리 조회
         /// </summary>
-        public List<LeaderboardEntry> GetLeaderboard(LeaderboardType type, int count = 10)
+        public List<LeaderboardEntry> GetTopEntries(LeaderboardType type, int count = 10)
         {
             if (!leaderboards.ContainsKey(type))
                 return new List<LeaderboardEntry>();
@@ -378,15 +343,29 @@ namespace GuildMaster.Systems
         }
         
         /// <summary>
-        /// 플레이어 랭킹 조회
+        /// 플레이어의 특정 리더보드 점수 조회
+        /// </summary>
+        public int GetPlayerScore(LeaderboardType type, string playerId)
+        {
+            var entry = GetEntry(type, playerId);
+            return entry?.score ?? 0;
+        }
+        
+        /// <summary>
+        /// 플레이어의 특정 리더보드 랭킹 조회
         /// </summary>
         public int GetPlayerRank(LeaderboardType type, string playerId)
         {
-            if (!leaderboards.ContainsKey(type))
-                return -1;
-            
-            var entry = leaderboards[type].FirstOrDefault(e => e.id == playerId);
+            var entry = GetEntry(type, playerId);
             return entry?.rank ?? -1;
+        }
+        
+        LeaderboardEntry GetEntry(LeaderboardType type, string playerId)
+        {
+            if (!leaderboards.ContainsKey(type))
+                return null;
+            
+            return leaderboards[type].FirstOrDefault(e => e.id == playerId);
         }
         
         /// <summary>
@@ -452,144 +431,38 @@ namespace GuildMaster.Systems
             Debug.Log("Monthly leaderboard reset completed");
         }
         
-        // 이벤트 핸들러
-        void OnGuildLevelUp(GameEvent gameEvent)
+        // 수동으로 점수 업데이트하는 메서드들
+        public void UpdateGuildLevel(string guildId, string guildName, int level)
         {
-            var guildId = GameManager.Instance?.GuildManager?.GetGuildId() ?? "player";
-            var guildName = GameManager.Instance?.GuildManager?.GetGuildName() ?? "Player Guild";
-            var newLevel = gameEvent.GetParameter<int>("newLevel");
-            
-            SubmitScore(LeaderboardType.GuildLevel, guildId, guildName, newLevel);
+            SubmitScore(LeaderboardType.GuildLevel, guildId, guildName, level);
         }
         
-        void OnBattleVictory(GameEvent gameEvent)
+        public void UpdateBattleWins(string guildId, string guildName)
         {
-            var guildId = GameManager.Instance?.GuildManager?.GetGuildId() ?? "player";
-            var guildName = GameManager.Instance?.GuildManager?.GetGuildName() ?? "Player Guild";
-            
             var currentWins = GetPlayerScore(LeaderboardType.BattleWins, guildId);
             SubmitScore(LeaderboardType.BattleWins, guildId, guildName, currentWins + 1);
         }
         
-        // void OnDungeonCompleted(GameEvent gameEvent) // Dungeon 기능 제거됨
-        // {
-        //     var guildId = GameManager.Instance?.GuildManager?.GetGuildId() ?? "player";
-        //     var guildName = GameManager.Instance?.GuildManager?.GetGuildName() ?? "Player Guild";
-        //     var floor = gameEvent.GetParameter<int>("floor");
-        //     
-        //     var currentProgress = GetPlayerScore(LeaderboardType.DungeonProgress, guildId);
-        //     if (floor > currentProgress)
-        //     {
-        //         SubmitScore(LeaderboardType.DungeonProgress, guildId, guildName, floor);
-        //     }
-        // }
-        
-        void OnAchievementUnlocked(GameEvent gameEvent)
+        public void UpdateAchievementPoints(string guildId, string guildName, int points)
         {
-            var guildId = GameManager.Instance?.GuildManager?.GetGuildId() ?? "player";
-            var guildName = GameManager.Instance?.GuildManager?.GetGuildName() ?? "Player Guild";
-            var points = gameEvent.GetParameter<int>("points");
-            
             var currentPoints = GetPlayerScore(LeaderboardType.AchievementPoints, guildId);
             SubmitScore(LeaderboardType.AchievementPoints, guildId, guildName, currentPoints + points);
         }
         
-        void OnResourceChanged(GameEvent gameEvent)
+        public void UpdateGuildWealth(string guildId, string guildName, int totalWealth)
         {
-            // 길드 재산 업데이트
-            UpdateGuildWealth();
+            SubmitScore(LeaderboardType.TotalWealth, guildId, guildName, totalWealth);
         }
         
-        void UpdateGuildWealth()
-        {
-            var guildId = GameManager.Instance?.GuildManager?.GetGuildId() ?? "player";
-            var guildName = GameManager.Instance?.GuildManager?.GetGuildName() ?? "Player Guild";
-            // ResourceManager 타입이 제거되어 주석 처리
-            // var resourceManager = GameManager.Instance?.ResourceManager;
-            // 
-            // if (resourceManager != null)
-            // {
-            //     int totalWealth = resourceManager.GetGold() + 
-            //                     resourceManager.GetWood() * 2 + 
-            //                     resourceManager.GetStone() * 3 + 
-            //                     resourceManager.GetManaStone() * 10;
-            //     
-            //     SubmitScore(LeaderboardType.GuildWealth, guildId, guildName, totalWealth);
-            // }
-            
-            // 임시로 0 값 제출
-            SubmitScore(LeaderboardType.GuildWealth, guildId, guildName, 0);
-        }
-        
-        int GetPlayerScore(LeaderboardType type, string playerId)
-        {
-            var entry = leaderboards[type].FirstOrDefault(e => e.id == playerId);
-            return entry?.score ?? 0;
-        }
-        
-        // 저장/로드
+        // Save/Load methods
         void SaveLeaderboardData()
         {
-            // 리더보드 데이터 저장 (PlayerPrefs 또는 파일 시스템 사용)
-            foreach (var kvp in leaderboards)
-            {
-                string json = JsonUtility.ToJson(new SerializableList<LeaderboardEntry>(kvp.Value));
-                PlayerPrefs.SetString($"Leaderboard_{kvp.Key}", json);
-            }
-            
-            PlayerPrefs.Save();
+            // TODO: 실제 저장 구현
         }
         
         void LoadLeaderboardData()
         {
-            foreach (LeaderboardType type in Enum.GetValues(typeof(LeaderboardType)))
-            {
-                string key = $"Leaderboard_{type}";
-                if (PlayerPrefs.HasKey(key))
-                {
-                    string json = PlayerPrefs.GetString(key);
-                    var data = JsonUtility.FromJson<SerializableList<LeaderboardEntry>>(json);
-                    if (data != null && data.items != null)
-                    {
-                        leaderboards[type] = data.items;
-                    }
-                }
-            }
-        }
-        
-        [System.Serializable]
-        class SerializableList<T>
-        {
-            public List<T> items;
-            
-            public SerializableList(List<T> list)
-            {
-                items = list;
-            }
-        }
-        
-        void OnApplicationPause(bool pauseStatus)
-        {
-            if (pauseStatus)
-            {
-                SaveLeaderboardData();
-            }
-        }
-        
-        void OnDestroy()
-        {
-            SaveLeaderboardData();
-            
-            // 이벤트 구독 해제
-            var eventManager = EventManager.Instance;
-            if (eventManager != null)
-            {
-                eventManager.Unsubscribe(GuildMaster.Core.EventType.GuildLevelUp, OnGuildLevelUp);
-                eventManager.Unsubscribe(GuildMaster.Core.EventType.BattleVictory, OnBattleVictory);
-                // eventManager.Unsubscribe(GuildMaster.Core.EventType.DungeonCompleted, OnDungeonCompleted); // Dungeon 기능 제거됨
-                eventManager.Unsubscribe(GuildMaster.Core.EventType.AchievementUnlocked, OnAchievementUnlocked);
-                eventManager.Unsubscribe(GuildMaster.Core.EventType.ResourceChanged, OnResourceChanged);
-            }
+            // TODO: 실제 로드 구현
         }
     }
 }

@@ -2,16 +2,14 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using GuildMaster.Core;
-using GuildMaster.UI;
+using TMPro;
+using UnityEngine.UI;
 using GuildMaster.Data;
 
 namespace GuildMaster.Systems
 {
-
     /// <summary>
-    /// 알림 관리 시스템
-    /// 인게임 알림, 팝업, 토스트 메시지 등을 관리
+    /// 알림 시스템 매니저 - 게임 내 알림 표시
     /// </summary>
     public class NotificationManager : MonoBehaviour
     {
@@ -32,36 +30,6 @@ namespace GuildMaster.Systems
                 return _instance;
             }
         }
-
-        [Header("Notification Settings")]
-        [SerializeField] private GameObject notificationPrefab;
-        [SerializeField] private Transform notificationContainer;
-        [SerializeField] private int maxVisibleNotifications = 5;
-        [SerializeField] private float notificationDuration = 3f;
-        [SerializeField] private float notificationSpacing = 10f;
-        
-        [Header("Popup Settings")]
-        [SerializeField] private GameObject popupPrefab;
-        [SerializeField] private Transform popupContainer;
-        
-        [Header("Toast Settings")]
-        [SerializeField] private GameObject toastPrefab;
-        [SerializeField] private Transform toastContainer;
-        [SerializeField] private float toastDuration = 2f;
-        
-        [Header("Sound Settings")]
-        [SerializeField] private string defaultNotificationSound = "notification_default";
-        [SerializeField] private string achievementSound = "achievement_unlock";
-        [SerializeField] private string questCompleteSound = "quest_complete";
-        [SerializeField] private string errorSound = "error";
-        
-        // 알림 큐
-        private Queue<NotificationData> notificationQueue = new Queue<NotificationData>();
-        private List<GameObject> activeNotifications = new List<GameObject>();
-        private Dictionary<string, GameObject> popups = new Dictionary<string, GameObject>();
-        
-        // 설정
-        private NotificationSettings settings;
         
         [System.Serializable]
         public class NotificationData
@@ -69,21 +37,18 @@ namespace GuildMaster.Systems
             public string id;
             public string title;
             public string message;
-            public GuildMaster.Data.NotificationType type;
+            public NotificationType type;
             public float duration;
-            public Sprite icon;
-            public Action onClick;
-            public bool autoClose;
-            public int priority;
             public DateTime timestamp;
+            public bool isRead;
+            public Dictionary<string, object> metadata;
             
             public NotificationData()
             {
                 id = Guid.NewGuid().ToString();
-                duration = 3f;
-                autoClose = true;
-                priority = 0;
                 timestamp = DateTime.Now;
+                metadata = new Dictionary<string, object>();
+                duration = 3f;
             }
         }
         
@@ -101,6 +66,39 @@ namespace GuildMaster.Systems
             public float notificationScale = 1f;
         }
         
+        // UI References
+        [Header("UI Components")]
+        [SerializeField] private GameObject notificationPrefab;
+        [SerializeField] private Transform notificationContainer;
+        [SerializeField] private GameObject toastPrefab;
+        [SerializeField] private Transform toastContainer;
+        [SerializeField] private GameObject floatingTextPrefab;
+        
+        // Audio
+        [Header("Audio")]
+        [SerializeField] private AudioClip notificationSound;
+        [SerializeField] private AudioClip achievementSound;
+        [SerializeField] private AudioClip warningSound;
+        [SerializeField] private AudioClip errorSound;
+        
+        // Settings
+        [Header("Settings")]
+        [SerializeField] private NotificationSettings settings = new NotificationSettings();
+        [SerializeField] private int maxNotifications = 50;
+        [SerializeField] private float defaultDuration = 3f;
+        [SerializeField] private float toastDuration = 2f;
+        
+        // Notification queue
+        private Queue<NotificationData> notificationQueue = new Queue<NotificationData>();
+        private List<NotificationData> notificationHistory = new List<NotificationData>();
+        private List<GameObject> activeNotifications = new List<GameObject>();
+        private bool isProcessingNotifications = false;
+        
+        // Events
+        public event Action<NotificationData> OnNotificationShown;
+        public event Action<NotificationData> OnNotificationClicked;
+        public event Action<NotificationData> OnNotificationDismissed;
+        
         void Awake()
         {
             if (_instance != null && _instance != this)
@@ -108,211 +106,91 @@ namespace GuildMaster.Systems
                 Destroy(gameObject);
                 return;
             }
-            
             _instance = this;
             DontDestroyOnLoad(gameObject);
             
             LoadSettings();
-            SubscribeToEvents();
         }
         
-        void LoadSettings()
+        void Start()
         {
-            settings = new NotificationSettings();
-            
-            // PlayerPrefs에서 설정 로드
-            settings.enableNotifications = PlayerPrefs.GetInt("NotificationsEnabled", 1) == 1;
-            settings.enableQuestNotifications = PlayerPrefs.GetInt("QuestNotifications", 1) == 1;
-            settings.enableAchievementNotifications = PlayerPrefs.GetInt("AchievementNotifications", 1) == 1;
-            settings.enableLevelUpNotifications = PlayerPrefs.GetInt("LevelUpNotifications", 1) == 1;
-            settings.enableResourceNotifications = PlayerPrefs.GetInt("ResourceNotifications", 1) == 1;
-            settings.enableBattleNotifications = PlayerPrefs.GetInt("BattleNotifications", 1) == 1;
-            settings.enableSystemNotifications = PlayerPrefs.GetInt("SystemNotifications", 1) == 1;
-            settings.playSounds = PlayerPrefs.GetInt("NotificationSounds", 1) == 1;
-            settings.notificationScale = PlayerPrefs.GetFloat("NotificationScale", 1f);
+            StartCoroutine(ProcessNotificationQueue());
         }
         
-        void SubscribeToEvents()
+        public IEnumerator Initialize()
         {
-            var eventManager = EventManager.Instance;
-            if (eventManager == null) return;
+            Debug.Log("알림 시스템 초기화 중...");
             
-            // 퀘스트 관련
-            eventManager.Subscribe(GuildMaster.Core.EventType.QuestCompleted, OnQuestCompleted);
-            eventManager.Subscribe(GuildMaster.Core.EventType.QuestStarted, OnQuestStarted);
-            eventManager.Subscribe(GuildMaster.Core.EventType.QuestFailed, OnQuestFailed);
+            // UI 컴포넌트 찾기
+            if (notificationContainer == null)
+            {
+                var canvas = FindObjectOfType<Canvas>();
+                if (canvas != null)
+                {
+                    GameObject container = new GameObject("NotificationContainer");
+                    container.transform.SetParent(canvas.transform, false);
+                    notificationContainer = container.transform;
+                    
+                    // RectTransform 설정
+                    RectTransform rt = container.AddComponent<RectTransform>();
+                    rt.anchorMin = new Vector2(1, 1);
+                    rt.anchorMax = new Vector2(1, 1);
+                    rt.pivot = new Vector2(1, 1);
+                    rt.anchoredPosition = new Vector2(-10, -10);
+                    rt.sizeDelta = new Vector2(300, 600);
+                    
+                    // Vertical Layout Group 추가
+                    VerticalLayoutGroup vlg = container.AddComponent<VerticalLayoutGroup>();
+                    vlg.spacing = 10;
+                    vlg.childAlignment = TextAnchor.UpperRight;
+                    vlg.childControlHeight = false;
+                    vlg.childControlWidth = true;
+                    vlg.childForceExpandHeight = false;
+                    vlg.childForceExpandWidth = true;
+                }
+            }
             
-            // 업적 관련
-            eventManager.Subscribe(GuildMaster.Core.EventType.AchievementUnlocked, OnAchievementUnlocked);
-            
-            // 레벨업 관련
-            eventManager.Subscribe(GuildMaster.Core.EventType.GuildLevelUp, OnGuildLevelUp);
-            eventManager.Subscribe(GuildMaster.Core.EventType.AdventurerLevelUp, OnAdventurerLevelUp);
-            
-            // 자원 관련
-            eventManager.Subscribe(GuildMaster.Core.EventType.ResourceCapacityReached, OnResourceCapacityReached);
-            
-            // 전투 관련
-            eventManager.Subscribe(GuildMaster.Core.EventType.BattleVictory, OnBattleVictory);
-            eventManager.Subscribe(GuildMaster.Core.EventType.BattleDefeat, OnBattleDefeat);
-            
-            // 건물 관련
-            eventManager.Subscribe(GuildMaster.Core.EventType.BuildingConstructed, OnBuildingConstructed);
-            eventManager.Subscribe(GuildMaster.Core.EventType.BuildingUpgraded, OnBuildingUpgraded);
-            
-            // 특별 이벤트
-            eventManager.Subscribe(GuildMaster.Core.EventType.SpecialEventStarted, OnSpecialEventStarted);
+            Debug.Log("알림 시스템 초기화 완료");
+            yield break;
         }
         
+        IEnumerator ProcessNotificationQueue()
+        {
+            while (true)
+            {
+                if (notificationQueue.Count > 0 && !isProcessingNotifications)
+                {
+                    isProcessingNotifications = true;
+                    var notification = notificationQueue.Dequeue();
+                    ShowNotificationInternal(notification);
+                    yield return new WaitForSeconds(0.5f);
+                    isProcessingNotifications = false;
+                }
+                yield return null;
+            }
+        }
+        
+        // Public Methods
         /// <summary>
-        /// 일반 알림 표시
+        /// 알림 표시
         /// </summary>
-        public void ShowNotification(string title, string message, GuildMaster.Data.NotificationType type = GuildMaster.Data.NotificationType.Info, float duration = 0f)
+        public void ShowNotification(string title, string message, NotificationType type = NotificationType.Info, float duration = 0f)
         {
             if (!settings.enableNotifications) return;
+            
+            // 타입별 필터링
+            if (!ShouldShowNotificationType(type)) return;
             
             var notification = new NotificationData
             {
                 title = title,
                 message = message,
                 type = type,
-                duration = duration > 0 ? duration : notificationDuration,
-                autoClose = true
+                duration = duration > 0 ? duration : defaultDuration
             };
             
-            ShowNotification(notification);
-        }
-        
-        /// <summary>
-        /// 상세 알림 표시
-        /// </summary>
-        public void ShowNotification(NotificationData data)
-        {
-            if (!settings.enableNotifications) return;
-            
-            // 우선순위에 따라 큐에 추가
-            notificationQueue.Enqueue(data);
-            
-            // 즉시 표시 시도
-            TryShowNextNotification();
-            
-            // 사운드 재생
-            if (settings.playSounds)
-            {
-                PlayNotificationSound(data.type);
-            }
-        }
-        
-        void TryShowNextNotification()
-        {
-            if (activeNotifications.Count >= maxVisibleNotifications || notificationQueue.Count == 0)
-                return;
-            
-            var data = notificationQueue.Dequeue();
-            StartCoroutine(ShowNotificationCoroutine(data));
-        }
-        
-        IEnumerator ShowNotificationCoroutine(NotificationData data)
-        {
-            GameObject notificationObj = null;
-            
-            if (notificationPrefab != null && notificationContainer != null)
-            {
-                notificationObj = Instantiate(notificationPrefab, notificationContainer);
-                var notificationUI = notificationObj.GetComponent<NotificationUI>();
-                
-                if (notificationUI != null)
-                {
-                    notificationUI.Setup(data.message, data.type, data.duration);
-                }
-                
-                // 스케일 적용
-                notificationObj.transform.localScale = Vector3.one * settings.notificationScale;
-                
-                // 위치 조정
-                UpdateNotificationPositions();
-                
-                activeNotifications.Add(notificationObj);
-                
-                // 클릭 이벤트
-                if (data.onClick != null)
-                {
-                    var button = notificationObj.GetComponent<UnityEngine.UI.Button>();
-                    if (button != null)
-                    {
-                        button.onClick.AddListener(() => data.onClick.Invoke());
-                    }
-                }
-            }
-            
-            // 자동 닫기
-            if (data.autoClose && data.duration > 0)
-            {
-                yield return new WaitForSeconds(data.duration);
-                
-                if (notificationObj != null)
-                {
-                    activeNotifications.Remove(notificationObj);
-                    Destroy(notificationObj);
-                    UpdateNotificationPositions();
-                    
-                    // 다음 알림 표시
-                    TryShowNextNotification();
-                }
-            }
-        }
-        
-        void UpdateNotificationPositions()
-        {
-            for (int i = 0; i < activeNotifications.Count; i++)
-            {
-                if (activeNotifications[i] != null)
-                {
-                    var rectTransform = activeNotifications[i].GetComponent<RectTransform>();
-                    if (rectTransform != null)
-                    {
-                        float yPos = -i * (rectTransform.sizeDelta.y + notificationSpacing);
-                        rectTransform.anchoredPosition = new Vector2(0, yPos);
-                    }
-                }
-            }
-        }
-        
-        /// <summary>
-        /// 팝업 표시
-        /// </summary>
-        public void ShowPopup(string id, string title, string message, Action onConfirm = null, Action onCancel = null)
-        {
-            if (popups.ContainsKey(id))
-            {
-                // 이미 표시 중인 팝업
-                return;
-            }
-            
-            if (popupPrefab != null && popupContainer != null)
-            {
-                var popupObj = Instantiate(popupPrefab, popupContainer);
-                popups[id] = popupObj;
-                
-                // 팝업 설정 (구현에 따라 수정 필요)
-                // var popup = popupObj.GetComponent<PopupUI>();
-                // if (popup != null)
-                // {
-                //     popup.Setup(title, message, onConfirm, onCancel);
-                // }
-            }
-        }
-        
-        /// <summary>
-        /// 팝업 닫기
-        /// </summary>
-        public void ClosePopup(string id)
-        {
-            if (popups.ContainsKey(id))
-            {
-                Destroy(popups[id]);
-                popups.Remove(id);
-            }
+            notificationQueue.Enqueue(notification);
+            AddToHistory(notification);
         }
         
         /// <summary>
@@ -320,184 +198,274 @@ namespace GuildMaster.Systems
         /// </summary>
         public void ShowToast(string message, float duration = 0f)
         {
-            if (!settings.enableNotifications) return;
+            if (toastContainer == null || toastPrefab == null) return;
             
-            StartCoroutine(ShowToastCoroutine(message, duration > 0 ? duration : toastDuration));
+            GameObject toast = Instantiate(toastPrefab, toastContainer);
+            TextMeshProUGUI text = toast.GetComponentInChildren<TextMeshProUGUI>();
+            if (text != null)
+            {
+                text.text = message;
+            }
+            
+            // 애니메이션
+            StartCoroutine(AnimateToast(toast, duration > 0 ? duration : toastDuration));
         }
         
-        IEnumerator ShowToastCoroutine(string message, float duration)
+        /// <summary>
+        /// 플로팅 텍스트 표시
+        /// </summary>
+        public void ShowFloatingText(string text, Vector3 worldPosition, Color color, float duration = 1f)
         {
-            if (toastPrefab != null && toastContainer != null)
+            if (floatingTextPrefab == null) return;
+            
+            GameObject floatingText = Instantiate(floatingTextPrefab);
+            floatingText.transform.position = worldPosition;
+            
+            TextMeshProUGUI tmp = floatingText.GetComponentInChildren<TextMeshProUGUI>();
+            if (tmp != null)
             {
-                var toastObj = Instantiate(toastPrefab, toastContainer);
-                
-                // 토스트 메시지 설정
-                var text = toastObj.GetComponentInChildren<TMPro.TextMeshProUGUI>();
-                if (text != null)
+                tmp.text = text;
+                tmp.color = color;
+            }
+            
+            StartCoroutine(AnimateFloatingText(floatingText, duration));
+        }
+        
+        void ShowNotificationInternal(NotificationData notification)
+        {
+            if (notificationContainer == null || notificationPrefab == null) return;
+            
+            GameObject notificationObj = Instantiate(notificationPrefab, notificationContainer);
+            
+            // UI 설정
+            SetupNotificationUI(notificationObj, notification);
+            
+            // 사운드 재생
+            PlayNotificationSound(notification.type);
+            
+            // 활성 알림 목록에 추가
+            activeNotifications.Add(notificationObj);
+            
+            // 애니메이션
+            StartCoroutine(AnimateNotification(notificationObj, notification));
+            
+            // 이벤트 발생
+            OnNotificationShown?.Invoke(notification);
+        }
+        
+        void SetupNotificationUI(GameObject notificationObj, NotificationData notification)
+        {
+            // 제목 설정
+            Transform titleTransform = notificationObj.transform.Find("Title");
+            if (titleTransform != null)
+            {
+                TextMeshProUGUI titleText = titleTransform.GetComponent<TextMeshProUGUI>();
+                if (titleText != null)
                 {
-                    text.text = message;
+                    titleText.text = notification.title;
+                }
+            }
+            
+            // 메시지 설정
+            Transform messageTransform = notificationObj.transform.Find("Message");
+            if (messageTransform != null)
+            {
+                TextMeshProUGUI messageText = messageTransform.GetComponent<TextMeshProUGUI>();
+                if (messageText != null)
+                {
+                    messageText.text = notification.message;
+                }
+            }
+            
+            // 아이콘 설정
+            Transform iconTransform = notificationObj.transform.Find("Icon");
+            if (iconTransform != null)
+            {
+                Image iconImage = iconTransform.GetComponent<Image>();
+                if (iconImage != null)
+                {
+                    iconImage.sprite = GetIconForType(notification.type);
+                    iconImage.color = GetColorForType(notification.type);
+                }
+            }
+            
+            // 클릭 이벤트
+            Button button = notificationObj.GetComponent<Button>();
+            if (button != null)
+            {
+                button.onClick.AddListener(() => OnNotificationClick(notification, notificationObj));
+            }
+        }
+        
+        void OnNotificationClick(NotificationData notification, GameObject notificationObj)
+        {
+            notification.isRead = true;
+            OnNotificationClicked?.Invoke(notification);
+            
+            // 알림 제거
+            RemoveNotification(notificationObj, notification);
+        }
+        
+        void RemoveNotification(GameObject notificationObj, NotificationData notification)
+        {
+            activeNotifications.Remove(notificationObj);
+            Destroy(notificationObj);
+            OnNotificationDismissed?.Invoke(notification);
+        }
+        
+        IEnumerator AnimateNotification(GameObject notificationObj, NotificationData notification)
+        {
+            // 페이드 인
+            CanvasGroup canvasGroup = notificationObj.GetComponent<CanvasGroup>();
+            if (canvasGroup == null)
+            {
+                canvasGroup = notificationObj.AddComponent<CanvasGroup>();
+            }
+            
+            float elapsed = 0f;
+            float fadeInDuration = 0.3f;
+            
+            canvasGroup.alpha = 0f;
+            while (elapsed < fadeInDuration)
+            {
+                elapsed += Time.deltaTime;
+                canvasGroup.alpha = Mathf.Lerp(0f, 1f, elapsed / fadeInDuration);
+                yield return null;
+            }
+            
+            // 대기
+            yield return new WaitForSeconds(notification.duration);
+            
+            // 페이드 아웃
+            elapsed = 0f;
+            float fadeOutDuration = 0.3f;
+            
+            while (elapsed < fadeOutDuration)
+            {
+                elapsed += Time.deltaTime;
+                canvasGroup.alpha = Mathf.Lerp(1f, 0f, elapsed / fadeOutDuration);
+                yield return null;
+            }
+            
+            // 제거
+            RemoveNotification(notificationObj, notification);
+        }
+        
+        IEnumerator AnimateToast(GameObject toast, float duration)
+        {
+            CanvasGroup canvasGroup = toast.GetComponent<CanvasGroup>();
+            if (canvasGroup == null)
+            {
+                canvasGroup = toast.AddComponent<CanvasGroup>();
+            }
+            
+            RectTransform rt = toast.GetComponent<RectTransform>();
+            Vector2 startPos = rt.anchoredPosition;
+            Vector2 endPos = startPos + new Vector2(0, 50);
+            
+            float elapsed = 0f;
+            
+            while (elapsed < duration)
+            {
+                elapsed += Time.deltaTime;
+                float t = elapsed / duration;
+                
+                rt.anchoredPosition = Vector2.Lerp(startPos, endPos, t);
+                canvasGroup.alpha = Mathf.Lerp(1f, 0f, t);
+                
+                yield return null;
+            }
+            
+            Destroy(toast);
+        }
+        
+        IEnumerator AnimateFloatingText(GameObject floatingText, float duration)
+        {
+            float elapsed = 0f;
+            Vector3 startPos = floatingText.transform.position;
+            Vector3 endPos = startPos + Vector3.up * 2f;
+            
+            TextMeshProUGUI tmp = floatingText.GetComponentInChildren<TextMeshProUGUI>();
+            Color startColor = tmp.color;
+            Color endColor = new Color(startColor.r, startColor.g, startColor.b, 0f);
+            
+            while (elapsed < duration)
+            {
+                elapsed += Time.deltaTime;
+                float t = elapsed / duration;
+                
+                floatingText.transform.position = Vector3.Lerp(startPos, endPos, t);
+                if (tmp != null)
+                {
+                    tmp.color = Color.Lerp(startColor, endColor, t);
                 }
                 
-                yield return new WaitForSeconds(duration);
-                
-                Destroy(toastObj);
+                yield return null;
             }
+            
+            Destroy(floatingText);
         }
         
-        void PlayNotificationSound(GuildMaster.Data.NotificationType type)
+        bool ShouldShowNotificationType(NotificationType type)
         {
-            string soundName = defaultNotificationSound;
-            
-            switch (type)
+            return type switch
             {
-                case GuildMaster.Data.NotificationType.Success:
-                    soundName = questCompleteSound;
-                    break;
-                case GuildMaster.Data.NotificationType.Warning:
-                    soundName = defaultNotificationSound;
-                    break;
-                case GuildMaster.Data.NotificationType.Error:
-                    soundName = errorSound;
-                    break;
-            }
-            
-            SoundSystem.Instance?.PlaySound(soundName);
+                NotificationType.Quest => settings.enableQuestNotifications,
+                NotificationType.Achievement => settings.enableAchievementNotifications,
+                NotificationType.LevelUp => settings.enableLevelUpNotifications,
+                NotificationType.Resource => settings.enableResourceNotifications,
+                NotificationType.Battle => settings.enableBattleNotifications,
+                NotificationType.System => settings.enableSystemNotifications,
+                _ => true
+            };
         }
         
-        // 이벤트 핸들러들
-        void OnQuestCompleted(GameEvent gameEvent)
+        void PlayNotificationSound(NotificationType type)
         {
-            if (!settings.enableQuestNotifications) return;
+            if (!settings.playSounds) return;
             
-            var questName = gameEvent.GetParameter<string>("questName");
-            var goldReward = gameEvent.GetParameter<int>("goldReward");
-            var expReward = gameEvent.GetParameter<int>("expReward");
-            
-            ShowNotification(
-                "퀘스트 완료!",
-                $"{questName}\n보상: {goldReward} 골드, {expReward} 경험치",
-                GuildMaster.Data.NotificationType.Success
-            );
-        }
-        
-        void OnQuestStarted(GameEvent gameEvent)
-        {
-            if (!settings.enableQuestNotifications) return;
-            
-            var questName = gameEvent.GetParameter<string>("questName");
-            ShowToast($"새로운 퀘스트: {questName}");
-        }
-        
-        void OnQuestFailed(GameEvent gameEvent)
-        {
-            if (!settings.enableQuestNotifications) return;
-            
-            var questName = gameEvent.GetParameter<string>("questName");
-            ShowNotification(
-                "퀘스트 실패",
-                questName,
-                GuildMaster.Data.NotificationType.Error
-            );
-        }
-        
-        void OnAchievementUnlocked(GameEvent gameEvent)
-        {
-            if (!settings.enableAchievementNotifications) return;
-            
-            var achievementName = gameEvent.GetParameter<string>("achievementName");
-            
-            ShowNotification(
-                "업적 달성!",
-                achievementName,
-                GuildMaster.Data.NotificationType.Success,
-                5f
-            );
-            
-            if (settings.playSounds)
+            AudioClip clip = type switch
             {
-                SoundSystem.Instance?.PlaySound(achievementSound);
+                NotificationType.Achievement => achievementSound,
+                NotificationType.Warning => warningSound,
+                NotificationType.Error => errorSound,
+                _ => notificationSound
+            };
+            
+            if (clip != null && AudioManager.Instance != null)
+            {
+                AudioManager.Instance.PlaySFX(clip);
             }
         }
         
-        void OnGuildLevelUp(GameEvent gameEvent)
+        Sprite GetIconForType(NotificationType type)
         {
-            if (!settings.enableLevelUpNotifications) return;
-            
-            var newLevel = gameEvent.GetParameter<int>("newLevel");
-            ShowNotification(
-                "길드 레벨업!",
-                $"길드가 레벨 {newLevel}이 되었습니다!",
-                GuildMaster.Data.NotificationType.Success,
-                5f
-            );
+            // TODO: 실제 아이콘 리소스 로드
+            return null;
         }
         
-        void OnAdventurerLevelUp(GameEvent gameEvent)
+        Color GetColorForType(NotificationType type)
         {
-            if (!settings.enableLevelUpNotifications) return;
-            
-            var adventurerName = gameEvent.GetParameter<string>("adventurerName");
-            var newLevel = gameEvent.GetParameter<int>("newLevel");
-            
-            ShowToast($"{adventurerName}이(가) 레벨 {newLevel} 달성!");
+            return type switch
+            {
+                NotificationType.Success => Color.green,
+                NotificationType.Warning => Color.yellow,
+                NotificationType.Error => Color.red,
+                NotificationType.Achievement => new Color(1f, 0.8f, 0f), // Gold
+                NotificationType.LevelUp => Color.cyan,
+                _ => Color.white
+            };
         }
         
-        void OnResourceCapacityReached(GameEvent gameEvent)
+        void AddToHistory(NotificationData notification)
         {
-            if (!settings.enableResourceNotifications) return;
+            notificationHistory.Add(notification);
             
-            // ResourceType changed to string
-            var resourceType = gameEvent.GetParameter<string>("resourceType");
-            ShowNotification(
-                "창고 가득!",
-                $"{resourceType} 창고가 가득 찼습니다!",
-                GuildMaster.Data.NotificationType.Warning
-            );
-        }
-        
-        void OnBattleVictory(GameEvent gameEvent)
-        {
-            if (!settings.enableBattleNotifications) return;
-            
-            var goldReward = gameEvent.GetParameter<int>("goldReward");
-            var expReward = gameEvent.GetParameter<int>("expReward");
-            
-            ShowToast($"전투 승리! +{goldReward} 골드, +{expReward} 경험치");
-        }
-        
-        void OnBattleDefeat(GameEvent gameEvent)
-        {
-            if (!settings.enableBattleNotifications) return;
-            
-            ShowNotification(
-                "전투 패배",
-                "부대가 패배했습니다...",
-                GuildMaster.Data.NotificationType.Error
-            );
-        }
-        
-        void OnBuildingConstructed(GameEvent gameEvent)
-        {
-            var buildingName = gameEvent.GetParameter<string>("buildingName");
-            ShowToast($"{buildingName} 건설 완료!");
-        }
-        
-        void OnBuildingUpgraded(GameEvent gameEvent)
-        {
-            var buildingName = gameEvent.GetParameter<string>("buildingName");
-            var newLevel = gameEvent.GetParameter<int>("newLevel");
-            ShowToast($"{buildingName}이(가) 레벨 {newLevel}로 업그레이드!");
-        }
-        
-        void OnSpecialEventStarted(GameEvent gameEvent)
-        {
-            var eventName = gameEvent.GetParameter<string>("eventName");
-            ShowNotification(
-                "특별 이벤트!",
-                eventName,
-                GuildMaster.Data.NotificationType.Info,
-                5f
-            );
+            // 최대 개수 제한
+            while (notificationHistory.Count > maxNotifications)
+            {
+                notificationHistory.RemoveAt(0);
+            }
         }
         
         // 설정 메서드
@@ -518,29 +486,43 @@ namespace GuildMaster.Systems
             PlayerPrefs.SetInt("SystemNotifications", settings.enableSystemNotifications ? 1 : 0);
             PlayerPrefs.SetInt("NotificationSounds", settings.playSounds ? 1 : 0);
             PlayerPrefs.SetFloat("NotificationScale", settings.notificationScale);
-            PlayerPrefs.Save();
         }
         
-        public NotificationSettings GetSettings() => settings;
-        
-        void OnDestroy()
+        void LoadSettings()
         {
-            var eventManager = EventManager.Instance;
-            if (eventManager != null)
+            settings.enableNotifications = PlayerPrefs.GetInt("NotificationsEnabled", 1) == 1;
+            settings.enableQuestNotifications = PlayerPrefs.GetInt("QuestNotifications", 1) == 1;
+            settings.enableAchievementNotifications = PlayerPrefs.GetInt("AchievementNotifications", 1) == 1;
+            settings.enableLevelUpNotifications = PlayerPrefs.GetInt("LevelUpNotifications", 1) == 1;
+            settings.enableResourceNotifications = PlayerPrefs.GetInt("ResourceNotifications", 1) == 1;
+            settings.enableBattleNotifications = PlayerPrefs.GetInt("BattleNotifications", 1) == 1;
+            settings.enableSystemNotifications = PlayerPrefs.GetInt("SystemNotifications", 1) == 1;
+            settings.playSounds = PlayerPrefs.GetInt("NotificationSounds", 1) == 1;
+            settings.notificationScale = PlayerPrefs.GetFloat("NotificationScale", 1f);
+        }
+        
+        // 히스토리 관련 메서드
+        public List<NotificationData> GetNotificationHistory()
+        {
+            return new List<NotificationData>(notificationHistory);
+        }
+        
+        public List<NotificationData> GetUnreadNotifications()
+        {
+            return notificationHistory.FindAll(n => !n.isRead);
+        }
+        
+        public void MarkAllAsRead()
+        {
+            foreach (var notification in notificationHistory)
             {
-                eventManager.Unsubscribe(GuildMaster.Core.EventType.QuestCompleted, OnQuestCompleted);
-                eventManager.Unsubscribe(GuildMaster.Core.EventType.QuestStarted, OnQuestStarted);
-                eventManager.Unsubscribe(GuildMaster.Core.EventType.QuestFailed, OnQuestFailed);
-                eventManager.Unsubscribe(GuildMaster.Core.EventType.AchievementUnlocked, OnAchievementUnlocked);
-                eventManager.Unsubscribe(GuildMaster.Core.EventType.GuildLevelUp, OnGuildLevelUp);
-                eventManager.Unsubscribe(GuildMaster.Core.EventType.AdventurerLevelUp, OnAdventurerLevelUp);
-                eventManager.Unsubscribe(GuildMaster.Core.EventType.ResourceCapacityReached, OnResourceCapacityReached);
-                eventManager.Unsubscribe(GuildMaster.Core.EventType.BattleVictory, OnBattleVictory);
-                eventManager.Unsubscribe(GuildMaster.Core.EventType.BattleDefeat, OnBattleDefeat);
-                eventManager.Unsubscribe(GuildMaster.Core.EventType.BuildingConstructed, OnBuildingConstructed);
-                eventManager.Unsubscribe(GuildMaster.Core.EventType.BuildingUpgraded, OnBuildingUpgraded);
-                eventManager.Unsubscribe(GuildMaster.Core.EventType.SpecialEventStarted, OnSpecialEventStarted);
+                notification.isRead = true;
             }
+        }
+        
+        public void ClearHistory()
+        {
+            notificationHistory.Clear();
         }
     }
 }

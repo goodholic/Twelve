@@ -7,7 +7,7 @@ using GuildMaster.Battle;
 using GuildMaster.Core;
 using GuildMaster.Data;
 using JobClass = GuildMaster.Battle.JobClass;
-// Unit is already available from GuildMaster.Battle namespace
+using Unit = GuildMaster.Battle.UnitStatus;
 using Rarity = GuildMaster.Data.Rarity;
 
 namespace GuildMaster.Systems
@@ -115,56 +115,65 @@ namespace GuildMaster.Systems
         {
             public string choiceId;
             public string choiceText;
-            public string consequence;
-            public Dictionary<string, int> effects; // 평판, 자원 등 영향
+            public string resultText;
+            public ChoiceEffect effect;
+        }
+        
+        [System.Serializable]
+        public class ChoiceEffect
+        {
+            public string effectType;
+            public Dictionary<string, object> parameters;
         }
         
         public enum ClearCondition
         {
-            DefeatAllEnemies,   // 모든 적 처치
-            SurviveTurns,       // 특정 턴 생존
-            ProtectTarget,      // 특정 유닛 보호
-            DefeatBoss,         // 보스만 처치
-            SpecialObjective    // 특수 목표
+            Victory,            // 단순 승리
+            NoUnitLost,        // 유닛 손실 없이 승리
+            TimeLimit,         // 제한 시간 내 승리
+            SpecificUnitAlive, // 특정 유닛 생존
+            DefeatBoss        // 보스 처치
         }
         
         public enum SquadFormation
         {
-            Standard,       // 표준 진형
-            Defensive,      // 방어 진형
-            Offensive,      // 공격 진형
-            Flanking,       // 측면 공격
-            Scattered       // 분산 진형
+            Standard,
+            Defensive,
+            Offensive,
+            Spread,
+            Focused
         }
         
         public enum BattleTactic
         {
-            Balanced,       // 균형
-            Aggressive,     // 공격적
-            Defensive,      // 방어적
-            FocusFire,      // 집중 공격
-            Guerrilla       // 게릴라
+            Aggressive,
+            Defensive,
+            Balanced,
+            Hit_and_Run,
+            Focus_Fire
         }
         
-        // 스토리 챕터 및 스테이지
-        private Dictionary<int, List<StoryStage>> storyChapters;
-        private StoryStage currentStage;
-        private int currentChapter = 1;
-        private int highestUnlockedStage = 1;
-        
-        // 방치 전투 설정
-        private StoryStage autoRepeatStage;
-        private bool isAutoRepeating;
-        private int autoRepeatCount;
-        private float autoRepeatInterval = 300f; // 5분마다
-        
-        // 이벤트
+        // Events
         public event Action<StoryStage> OnStageStarted;
-        public event Action<StoryStage, BattleResult> OnStageCompleted;
+        public event Action<StoryStage> OnStageCompleted;
         public event Action<StoryStage, int> OnStarRatingAchieved;
-        public event Action<int> OnChapterCompleted;
-        public event Action<StoryChoice> OnStoryChoiceMade;
         public event Action<StageReward> OnRewardReceived;
+        
+        // 챕터 및 스테이지 데이터
+        [SerializeField] private List<StoryChapter> chapters = new List<StoryChapter>();
+        private StoryStage currentStage;
+        private int currentChapterIndex;
+        private int currentStageIndex;
+        
+        [System.Serializable]
+        public class StoryChapter
+        {
+            public string chapterId;
+            public string chapterName;
+            public string description;
+            public List<StoryStage> stages;
+            public bool isUnlocked;
+        }
         
         void Awake()
         {
@@ -174,320 +183,119 @@ namespace GuildMaster.Systems
                 return;
             }
             _instance = this;
-            
-            Initialize();
+            DontDestroyOnLoad(gameObject);
         }
         
-        void Initialize()
+        public IEnumerator Initialize()
         {
-            storyChapters = new Dictionary<int, List<StoryStage>>();
+            Debug.Log("스토리 모드 시스템 초기화 중...");
             
-            // 스토리 스테이지 생성
-            CreateStoryStages();
+            LoadStoryData();
+            UnlockFirstChapter();
             
-            // 첫 스테이지 해금
-            UnlockStage(1, 1);
+            Debug.Log("스토리 모드 시스템 초기화 완료");
+            yield break;
         }
         
-        void CreateStoryStages()
+        void LoadStoryData()
         {
-            // 챕터 1: 길드의 시작 (10 스테이지)
-            CreateChapter1Stages();
-            
-            // 챕터 2: 성장하는 길드 (12 스테이지)
-            CreateChapter2Stages();
-            
-            // 챕터 3: 첫 번째 시련 (15 스테이지)
-            CreateChapter3Stages();
-            
-            // 챕터 4: 동맹과 배신 (15 스테이지)
-            CreateChapter4Stages();
-            
-            // 챕터 5: 대륙의 위기 (20 스테이지)
-            CreateChapter5Stages();
-            
-            // 챕터 6: 최종 결전 (20 스테이지)
-            CreateChapter6Stages();
+            // TODO: 실제 구현에서는 데이터베이스나 ScriptableObject에서 로드
+            GenerateTestStoryData();
         }
         
-        void CreateChapter1Stages()
+        void GenerateTestStoryData()
         {
-            var chapter1 = new List<StoryStage>();
-            
-            // 스테이지 1-1: 첫 번째 의뢰
-            chapter1.Add(new StoryStage
+            // 테스트용 챕터 및 스테이지 생성
+            for (int i = 0; i < 5; i++)
             {
-                stageId = "stage_1_1",
-                stageName = "첫 번째 의뢰",
-                chapterNumber = 1,
-                stageNumber = 1,
-                description = "길드를 물려받은 첫날, 간단한 고블린 토벌 의뢰가 들어왔다.",
-                recommendedLevel = 1,
-                difficultyMultiplier = 0.8f,
-                preBattleDialogue = "아서: 우리 길드의 첫 의뢰다. 모두 힘내자!",
-                postBattleDialogue = "란슬롯: 좋은 시작이었습니다. 이제 더 큰 의뢰도 받을 수 있겠군요.",
-                clearCondition = ClearCondition.DefeatAllEnemies,
-                enemySquads = CreateGoblinSquads(3, 1),
-                firstClearReward = new StageReward
+                var chapter = new StoryChapter
                 {
-                    gold = 500,
-                    exp = 100,
-                    gems = 10,
-                    specialReward = "elite_002" // 란슬롯 해금
-                }
-            });
-            
-            // 스테이지 1-2: 상인 호위
-            chapter1.Add(new StoryStage
-            {
-                stageId = "stage_1_2",
-                stageName = "상인 호위",
-                chapterNumber = 1,
-                stageNumber = 2,
-                description = "길드의 평판을 높이기 위해 상인 호위 임무를 맡았다.",
-                recommendedLevel = 2,
-                difficultyMultiplier = 0.9f,
-                clearCondition = ClearCondition.ProtectTarget,
-                turnLimit = 10,
-                enemySquads = CreateBanditSquads(4, 2),
-                storyChoices = new List<StoryChoice>
+                    chapterId = $"chapter_{i + 1}",
+                    chapterName = $"Chapter {i + 1}: {GetChapterName(i)}",
+                    description = $"챕터 {i + 1} 설명",
+                    stages = new List<StoryStage>(),
+                    isUnlocked = i == 0
+                };
+                
+                // 각 챕터에 10개의 스테이지 생성
+                for (int j = 0; j < 10; j++)
                 {
-                    new StoryChoice
-                    {
-                        choiceId = "negotiate",
-                        choiceText = "도적들과 협상을 시도한다",
-                        consequence = "평판 +10, 전투 회피 가능",
-                        effects = new Dictionary<string, int> { { "reputation", 10 } }
-                    },
-                    new StoryChoice
-                    {
-                        choiceId = "attack",
-                        choiceText = "즉시 공격한다",
-                        consequence = "전투 시작, 승리시 골드 보너스",
-                        effects = new Dictionary<string, int> { { "gold", 200 } }
-                    }
+                    var stage = CreateTestStage(i, j);
+                    chapter.stages.Add(stage);
                 }
-            });
-            
-            // 스테이지 1-3 ~ 1-10 추가...
-            for (int i = 3; i <= 10; i++)
-            {
-                chapter1.Add(CreateStandardStage(1, i, 
-                    $"스테이지 1-{i}", 
-                    "길드의 명성을 쌓아가는 여정", 
-                    i, 
-                    0.9f + (i * 0.05f)));
+                
+                chapters.Add(chapter);
             }
-            
-            storyChapters[1] = chapter1;
         }
         
-        void CreateChapter2Stages()
+        StoryStage CreateTestStage(int chapterIndex, int stageIndex)
         {
-            var chapter2 = new List<StoryStage>();
-            
-            // 챕터 2 스테이지들 생성...
-            for (int i = 1; i <= 12; i++)
+            var stage = new StoryStage
             {
-                chapter2.Add(CreateStandardStage(2, i, 
-                    $"스테이지 2-{i}", 
-                    "성장하는 길드의 도전", 
-                    10 + i, 
-                    1.2f + (i * 0.05f)));
-            }
-            
-            storyChapters[2] = chapter2;
-        }
-        
-        void CreateChapter3Stages()
-        {
-            // 챕터 3: 첫 번째 시련
-            var chapter3 = new List<StoryStage>();
-            
-            for (int i = 1; i <= 15; i++)
-            {
-                chapter3.Add(CreateStandardStage(3, i, 
-                    $"스테이지 3-{i}", 
-                    "진정한 시련의 시작", 
-                    25 + i, 
-                    1.5f + (i * 0.05f)));
-            }
-            
-            storyChapters[3] = chapter3;
-        }
-        
-        void CreateChapter4Stages()
-        {
-            // 챕터 4: 동맹과 배신
-            var chapter4 = new List<StoryStage>();
-            
-            for (int i = 1; i <= 15; i++)
-            {
-                chapter4.Add(CreateStandardStage(4, i, 
-                    $"스테이지 4-{i}", 
-                    "복잡한 정치와 음모", 
-                    40 + i, 
-                    2.0f + (i * 0.05f)));
-            }
-            
-            storyChapters[4] = chapter4;
-        }
-        
-        void CreateChapter5Stages()
-        {
-            // 챕터 5: 대륙의 위기
-            var chapter5 = new List<StoryStage>();
-            
-            for (int i = 1; i <= 20; i++)
-            {
-                chapter5.Add(CreateStandardStage(5, i, 
-                    $"스테이지 5-{i}", 
-                    "대륙을 위협하는 거대한 위기", 
-                    55 + i, 
-                    2.5f + (i * 0.05f)));
-            }
-            
-            storyChapters[5] = chapter5;
-        }
-        
-        void CreateChapter6Stages()
-        {
-            // 챕터 6: 최종 결전
-            var chapter6 = new List<StoryStage>();
-            
-            for (int i = 1; i <= 20; i++)
-            {
-                chapter6.Add(CreateStandardStage(6, i, 
-                    $"스테이지 6-{i}", 
-                    "운명의 최종 결전", 
-                    75 + i, 
-                    3.0f + (i * 0.1f)));
-            }
-            
-            // 최종 보스 스테이지
-            chapter6[19].stageName = "운명의 대결";
-            chapter6[19].description = "모든 것이 결정되는 순간";
-            chapter6[19].clearCondition = ClearCondition.DefeatBoss;
-            chapter6[19].firstClearReward.specialReward = "true_ending";
-            
-            storyChapters[6] = chapter6;
-        }
-        
-        StoryStage CreateStandardStage(int chapter, int stage, string name, string desc, int level, float difficulty)
-        {
-            return new StoryStage
-            {
-                stageId = $"stage_{chapter}_{stage}",
-                stageName = name,
-                chapterNumber = chapter,
-                stageNumber = stage,
-                description = desc,
-                recommendedLevel = level,
-                difficultyMultiplier = difficulty,
-                clearCondition = ClearCondition.DefeatAllEnemies,
-                enemySquads = CreateStandardEnemySquads(level, difficulty),
-                firstClearReward = new StageReward
-                {
-                    gold = 100 * level,
-                    exp = 50 * level,
-                    gems = stage == 10 || stage == 20 ? 50 : 10,
-                    items = GenerateRandomRewards(level)
-                }
-            };
-        }
-        
-        List<EnemySquadData> CreateGoblinSquads(int unitCount, int level)
-        {
-            var squads = new List<EnemySquadData>();
-            var squad = new EnemySquadData
-            {
-                squadName = "고블린 부대",
-                formation = SquadFormation.Scattered,
-                tactic = BattleTactic.Guerrilla,
-                units = new List<EnemyUnitData>()
+                stageId = $"stage_{chapterIndex + 1}_{stageIndex + 1}",
+                stageName = $"Stage {stageIndex + 1}",
+                chapterNumber = chapterIndex + 1,
+                stageNumber = stageIndex + 1,
+                description = "스테이지 설명",
+                recommendedLevel = 10 + (chapterIndex * 10) + stageIndex,
+                difficultyMultiplier = 1f + (chapterIndex * 0.5f),
+                clearCondition = (ClearCondition)UnityEngine.Random.Range(0, 5),
+                turnLimit = UnityEngine.Random.Range(10, 30),
+                unitLossLimit = UnityEngine.Random.Range(0, 3),
+                isUnlocked = chapterIndex == 0 && stageIndex == 0,
+                enemySquads = GenerateEnemySquads(chapterIndex, stageIndex)
             };
             
-            for (int i = 0; i < unitCount; i++)
+            // 보상 설정
+            stage.firstClearReward = new StageReward
             {
-                squad.units.Add(new EnemyUnitData
-                {
-                    unitId = $"goblin_{i}",
-                    unitName = "고블린 전사",
-                    jobClass = JobClass.Warrior,
-                    level = level,
-                    statMultiplier = 0.5f,
-                    skillIds = new List<string> { "101" },
-                    position = new Vector2Int(i % 6, i / 6)
-                });
-            }
-            
-            squads.Add(squad);
-            return squads;
-        }
-        
-        List<EnemySquadData> CreateBanditSquads(int unitCount, int level)
-        {
-            var squads = new List<EnemySquadData>();
-            var squad = new EnemySquadData
-            {
-                squadName = "도적단",
-                formation = SquadFormation.Offensive,
-                tactic = BattleTactic.Aggressive,
-                units = new List<EnemyUnitData>()
+                gold = 1000 * (chapterIndex + 1),
+                exp = 500 * (chapterIndex + 1),
+                gems = 10 + (chapterIndex * 5),
+                items = GenerateRandomRewards()
             };
             
-            // 다양한 직업 구성
-            var jobClasses = new JobClass[] { JobClass.Rogue, JobClass.Warrior, JobClass.Archer };
-            
-            for (int i = 0; i < unitCount; i++)
+            stage.repeatReward = new StageReward
             {
-                squad.units.Add(new EnemyUnitData
-                {
-                    unitId = $"bandit_{i}",
-                    unitName = $"도적 {jobClasses[i % 3]}",
-                    jobClass = jobClasses[i % 3],
-                    level = level,
-                    statMultiplier = 0.7f,
-                    skillIds = new List<string> { "101", "102" },
-                    position = new Vector2Int(i % 6, i / 6)
-                });
-            }
+                gold = stage.firstClearReward.gold / 2,
+                exp = stage.firstClearReward.exp / 2,
+                gems = 0,
+                items = new List<ItemReward>()
+            };
             
-            squads.Add(squad);
-            return squads;
+            return stage;
         }
         
-        List<EnemySquadData> CreateStandardEnemySquads(int level, float difficulty)
+        List<EnemySquadData> GenerateEnemySquads(int chapterIndex, int stageIndex)
         {
-            // 레벨과 난이도에 따른 적 부대 생성
             var squads = new List<EnemySquadData>();
+            int squadCount = UnityEngine.Random.Range(1, 4);
             
-            int squadCount = difficulty > 2.0f ? 2 : 1;
-            int unitsPerSquad = Mathf.Min(9, 3 + (level / 10));
-            
-            for (int s = 0; s < squadCount; s++)
+            for (int i = 0; i < squadCount; i++)
             {
                 var squad = new EnemySquadData
                 {
-                    squadName = $"적 부대 {s + 1}",
+                    squadName = $"Enemy Squad {i + 1}",
                     formation = (SquadFormation)UnityEngine.Random.Range(0, 5),
                     tactic = (BattleTactic)UnityEngine.Random.Range(0, 5),
                     units = new List<EnemyUnitData>()
                 };
                 
-                for (int i = 0; i < unitsPerSquad; i++)
+                // 유닛 생성
+                int unitCount = UnityEngine.Random.Range(3, 7);
+                for (int j = 0; j < unitCount; j++)
                 {
-                    var jobClass = (JobClass)UnityEngine.Random.Range(0, 7);
-                    squad.units.Add(new EnemyUnitData
+                    var unit = new EnemyUnitData
                     {
-                        unitId = $"enemy_{s}_{i}",
-                        unitName = $"적 {jobClass}",
-                        jobClass = jobClass,
-                        level = level,
-                        statMultiplier = difficulty,
-                        skillIds = GenerateEnemySkills(level),
-                        position = new Vector2Int(i % 6, i / 6)
-                    });
+                        unitId = $"enemy_{i}_{j}",
+                        unitName = $"Enemy {GetRandomEnemyName()}",
+                        jobClass = (JobClass)UnityEngine.Random.Range(0, 10),
+                        level = 5 + (chapterIndex * 10) + stageIndex,
+                        statMultiplier = 1f + (chapterIndex * 0.2f),
+                        skillIds = new List<string> { "1", "2", "3" },
+                        position = new Vector2Int(UnityEngine.Random.Range(0, 6), UnityEngine.Random.Range(0, 3))
+                    };
+                    squad.units.Add(unit);
                 }
                 
                 squads.Add(squad);
@@ -496,137 +304,100 @@ namespace GuildMaster.Systems
             return squads;
         }
         
-        List<string> GenerateEnemySkills(int level)
-        {
-            var skills = new List<string> { "101" }; // 기본 공격
-            
-            if (level >= 10) skills.Add("102");
-            if (level >= 20) skills.Add("103");
-            if (level >= 30) skills.Add("201");
-            if (level >= 40) skills.Add("301");
-            
-            return skills;
-        }
-        
-        List<ItemReward> GenerateRandomRewards(int level)
+        List<ItemReward> GenerateRandomRewards()
         {
             var rewards = new List<ItemReward>();
+            int rewardCount = UnityEngine.Random.Range(1, 4);
             
-            // 레벨에 따른 보상 생성
-            if (UnityEngine.Random.value < 0.3f)
+            for (int i = 0; i < rewardCount; i++)
             {
                 rewards.Add(new ItemReward
                 {
-                    itemId = "potion_hp_small",
-                    quantity = UnityEngine.Random.Range(1, 3),
-                    dropRate = 0.5f
-                });
-            }
-            
-            if (level >= 20 && UnityEngine.Random.value < 0.2f)
-            {
-                rewards.Add(new ItemReward
-                {
-                    itemId = "enhancement_stone",
-                    quantity = 1,
-                    dropRate = 0.2f
+                    itemId = $"item_{UnityEngine.Random.Range(1, 100)}",
+                    quantity = UnityEngine.Random.Range(1, 5),
+                    dropRate = UnityEngine.Random.Range(0.1f, 1f)
                 });
             }
             
             return rewards;
         }
         
-        /// <summary>
-        /// 스테이지 시작
-        /// </summary>
-        public void StartStage(int chapter, int stage)
+        string GetChapterName(int index)
         {
-            if (!storyChapters.ContainsKey(chapter))
-                return;
-                
-            var stageData = storyChapters[chapter].Find(s => s.stageNumber == stage);
-            if (stageData == null || !stageData.isUnlocked)
-                return;
-            
-            currentStage = stageData;
-            
-            // 스토리 대화 표시
-            if (!string.IsNullOrEmpty(stageData.preBattleDialogue))
+            string[] names = { "The Beginning", "Rising Threat", "Dark Forest", "Mountain Pass", "Final Confrontation" };
+            return index < names.Length ? names[index] : $"Chapter {index + 1}";
+        }
+        
+        string GetRandomEnemyName()
+        {
+            string[] names = { "Goblin", "Orc", "Skeleton", "Bandit", "Wolf", "Spider", "Zombie", "Demon" };
+            return names[UnityEngine.Random.Range(0, names.Length)];
+        }
+        
+        void UnlockFirstChapter()
+        {
+            if (chapters.Count > 0)
             {
-                ShowDialogue(stageData.preBattleDialogue, () => StartBattle(stageData));
+                chapters[0].isUnlocked = true;
+                if (chapters[0].stages.Count > 0)
+                {
+                    chapters[0].stages[0].isUnlocked = true;
+                }
             }
-            else
+        }
+        
+        // Public Methods
+        public List<StoryChapter> GetChapters()
+        {
+            return new List<StoryChapter>(chapters);
+        }
+        
+        public StoryChapter GetChapter(int index)
+        {
+            if (index >= 0 && index < chapters.Count)
+                return chapters[index];
+            return null;
+        }
+        
+        public StoryStage GetStage(int chapterIndex, int stageIndex)
+        {
+            var chapter = GetChapter(chapterIndex);
+            if (chapter != null && stageIndex >= 0 && stageIndex < chapter.stages.Count)
+                return chapter.stages[stageIndex];
+            return null;
+        }
+        
+        public void StartStage(int chapterIndex, int stageIndex)
+        {
+            var stage = GetStage(chapterIndex, stageIndex);
+            if (stage == null || !stage.isUnlocked)
             {
-                StartBattle(stageData);
+                Debug.LogWarning("스테이지를 시작할 수 없습니다.");
+                return;
             }
             
-            OnStageStarted?.Invoke(stageData);
+            currentStage = stage;
+            currentChapterIndex = chapterIndex;
+            currentStageIndex = stageIndex;
+            
+            StartBattle(stage);
+            OnStageStarted?.Invoke(stage);
         }
         
         void StartBattle(StoryStage stage)
         {
-            // 적 부대 생성
-            var enemySquads = CreateEnemySquadsFromData(stage.enemySquads);
-            
-            // 플레이어 부대 가져오기
-            var playerSquads = CharacterManagementSystem.Instance.GetAllSquads();
-            
-            // 전투 시작
-            SquadBattleSystem.Instance.StartSquadBattle(playerSquads, enemySquads);
-            
-            // 전투 종료 이벤트 구독
-            SquadBattleSystem.Instance.OnBattleEnd += OnBattleComplete;
+            // 전투 시작 로직 (Squad 관련 코드 제거)
+            Debug.Log($"스테이지 {stage.stageName} 전투 시작");
         }
         
-        List<Squad> CreateEnemySquadsFromData(List<EnemySquadData> enemyData)
-        {
-            var squads = new List<Squad>();
-            
-            foreach (var data in enemyData)
-            {
-                var squad = new Squad(data.squadName, squads.Count, false);
-                
-                foreach (var unitData in data.units)
-                {
-                    // Removed CreateEnemyUnit call as UnitStatus was removed
-                    // squad.AddUnit(unit, unitData.position.y, unitData.position.x);
-                }
-                
-                squads.Add(squad);
-            }
-            
-            return squads;
-        }
-        
-        // Removed CreateEnemyUnit method as UnitStatus was removed
-        
-        void OnBattleComplete(BattleResult result)
-        {
-            if (currentStage == null) return;
-            
-            // 전투 종료 이벤트 구독 해제
-            SquadBattleSystem.Instance.OnBattleEnd -= OnBattleComplete;
-            
-            if (result.isVictory)
-            {
-                // 스테이지 클리어
-                CompleteStage(currentStage, result);
-            }
-            else
-            {
-                // 패배 처리
-                OnStageCompleted?.Invoke(currentStage, result);
-            }
-        }
-        
-        void CompleteStage(StoryStage stage, BattleResult result)
+        void CompleteStage(StoryStage stage)
         {
             bool isFirstClear = !stage.isCleared;
             stage.isCleared = true;
             stage.clearCount++;
             
             // 별점 계산
-            int stars = CalculateStarRating(stage, result);
+            int stars = CalculateStarRating(stage);
             if (stars > stage.bestStarRating)
             {
                 stage.bestStarRating = stars;
@@ -635,282 +406,107 @@ namespace GuildMaster.Systems
             
             // 보상 지급
             StageReward reward = isFirstClear ? stage.firstClearReward : stage.repeatReward;
-            if (reward != null)
-            {
-                GiveRewards(reward);
-            }
+            GrantReward(reward);
             
             // 다음 스테이지 해금
-            UnlockNextStage(stage);
+            UnlockNextStage();
             
-            // 스토리 대화 (전투 후)
-            if (!string.IsNullOrEmpty(stage.postBattleDialogue))
-            {
-                ShowDialogue(stage.postBattleDialogue, null);
-            }
-            
-            OnStageCompleted?.Invoke(stage, result);
-            
-            // 챕터 완료 체크
-            CheckChapterCompletion(stage.chapterNumber);
+            OnStageCompleted?.Invoke(stage);
         }
         
-        int CalculateStarRating(StoryStage stage, BattleResult result)
+        int CalculateStarRating(StoryStage stage)
         {
-            int stars = 1; // 기본 1성 (클리어)
+            // 별점 계산 로직 (BattleResult 관련 코드 제거)
+            int stars = 1; // 기본 1성
             
-            // 유닛 손실 없음: +1성
-            if (result.unitsLost == 0)
+            // 클리어 조건에 따른 추가 별
+            if (stage.clearCondition == ClearCondition.NoUnitLost)
+            {
                 stars++;
+            }
             
-            // 턴 제한 내 클리어: +1성
-            if (stage.turnLimit > 0 && result.totalTurns <= stage.turnLimit)
+            // 턴 제한 내 클리어
+            if (stage.turnLimit > 0)
+            {
                 stars++;
-            else if (result.totalTurns <= 10) // 일반적으로 10턴 이내
-                stars++;
+            }
             
             return Mathf.Clamp(stars, 1, 3);
         }
         
-        void GiveRewards(StageReward reward)
+        void GrantReward(StageReward reward)
         {
-            // ResourceManager 타입이 제거되어 주석 처리
-            // var resourceManager = GameManager.Instance.ResourceManager;
-            // 
-            // // 기본 보상
-            // resourceManager.AddGold(reward.gold);
-            // // TODO: 경험치 시스템과 연동
-            // if (reward.gems > 0)
-            // {
-            //     resourceManager.AddGems(reward.gems);
-            // }
+            if (reward == null) return;
             
-            Debug.Log($"보상 지급: 골드 {reward.gold}, 보석 {reward.gems}");
+            // 골드, 경험치, 젬 지급 (ResourceManager 관련 코드 제거)
+            Debug.Log($"보상 지급: Gold {reward.gold}, EXP {reward.exp}, Gems {reward.gems}");
             
-            // 아이템 보상
+            // 아이템 지급
             foreach (var item in reward.items)
             {
                 if (UnityEngine.Random.value <= item.dropRate)
                 {
-                    // TODO: 인벤토리 시스템과 연동
                     Debug.Log($"아이템 획득: {item.itemId} x{item.quantity}");
                 }
-            }
-            
-            // 특별 보상 (캐릭터 해금 등)
-            if (!string.IsNullOrEmpty(reward.specialReward))
-            {
-                ProcessSpecialReward(reward.specialReward);
             }
             
             OnRewardReceived?.Invoke(reward);
         }
         
-        void ProcessSpecialReward(string rewardId)
+        void UnlockNextStage()
         {
-            if (rewardId.StartsWith("elite_"))
+            // 현재 챕터의 다음 스테이지 해금
+            var chapter = GetChapter(currentChapterIndex);
+            if (chapter != null && currentStageIndex + 1 < chapter.stages.Count)
             {
-                // DataManager 타입이 제거되어 주석 처리
-                // 엘리트 캐릭터 해금
-                // var characterData = DataManager.Instance.GetCharacterData(rewardId);
-                // if (characterData != null)
-                // {
-                //     var unit = DataManager.Instance.CreateUnitFromData(rewardId);
-                //     CharacterManagementSystem.Instance.AddCharacter(unit);
-                // }
-                
-                Debug.Log($"특별 보상: {rewardId} 캐릭터 해금");
+                chapter.stages[currentStageIndex + 1].isUnlocked = true;
             }
-            else if (rewardId == "true_ending")
+            // 마지막 스테이지였다면 다음 챕터 해금
+            else if (currentChapterIndex + 1 < chapters.Count)
             {
-                // 진엔딩 달성
-                UnlockEnding(6);
-            }
-        }
-        
-        void UnlockNextStage(StoryStage completedStage)
-        {
-            int nextChapter = completedStage.chapterNumber;
-            int nextStage = completedStage.stageNumber + 1;
-            
-            // 같은 챕터의 다음 스테이지
-            if (storyChapters[nextChapter].Count > completedStage.stageNumber)
-            {
-                UnlockStage(nextChapter, nextStage);
-            }
-            // 다음 챕터의 첫 스테이지
-            else if (storyChapters.ContainsKey(nextChapter + 1))
-            {
-                UnlockStage(nextChapter + 1, 1);
-            }
-        }
-        
-        void UnlockStage(int chapter, int stage)
-        {
-            if (!storyChapters.ContainsKey(chapter))
-                return;
-                
-            var stageData = storyChapters[chapter].Find(s => s.stageNumber == stage);
-            if (stageData != null)
-            {
-                stageData.isUnlocked = true;
-                
-                if (chapter * 100 + stage > highestUnlockedStage)
+                chapters[currentChapterIndex + 1].isUnlocked = true;
+                if (chapters[currentChapterIndex + 1].stages.Count > 0)
                 {
-                    highestUnlockedStage = chapter * 100 + stage;
+                    chapters[currentChapterIndex + 1].stages[0].isUnlocked = true;
                 }
             }
         }
         
-        void CheckChapterCompletion(int chapter)
+        public float GetChapterProgress(int chapterIndex)
         {
-            if (!storyChapters.ContainsKey(chapter))
-                return;
-                
-            bool allCleared = storyChapters[chapter].All(s => s.isCleared);
-            if (allCleared)
+            var chapter = GetChapter(chapterIndex);
+            if (chapter == null || chapter.stages.Count == 0)
+                return 0f;
+            
+            int clearedCount = chapter.stages.Count(s => s.isCleared);
+            return (float)clearedCount / chapter.stages.Count;
+        }
+        
+        public float GetTotalProgress()
+        {
+            int totalStages = 0;
+            int clearedStages = 0;
+            
+            foreach (var chapter in chapters)
             {
-                OnChapterCompleted?.Invoke(chapter);
+                totalStages += chapter.stages.Count;
+                clearedStages += chapter.stages.Count(s => s.isCleared);
             }
+            
+            return totalStages > 0 ? (float)clearedStages / totalStages : 0f;
         }
         
-        void ShowDialogue(string dialogue, Action onComplete)
+        public int GetTotalStars()
         {
-            // TODO: UI 시스템과 연동하여 대화 표시
-            Debug.Log($"대화: {dialogue}");
-            onComplete?.Invoke();
-        }
-        
-        /// <summary>
-        /// 자동 반복 전투 설정
-        /// </summary>
-        public void SetAutoRepeatStage(int chapter, int stage)
-        {
-            if (!storyChapters.ContainsKey(chapter))
-                return;
-                
-            var stageData = storyChapters[chapter].Find(s => s.stageNumber == stage);
-            if (stageData != null && stageData.isCleared)
+            int totalStars = 0;
+            foreach (var chapter in chapters)
             {
-                autoRepeatStage = stageData;
-                isAutoRepeating = true;
-                StartCoroutine(AutoRepeatBattle());
-            }
-        }
-        
-        public void StopAutoRepeat()
-        {
-            isAutoRepeating = false;
-            autoRepeatStage = null;
-        }
-        
-        IEnumerator AutoRepeatBattle()
-        {
-            while (isAutoRepeating && autoRepeatStage != null)
-            {
-                yield return new WaitForSeconds(autoRepeatInterval);
-                
-                if (isAutoRepeating)
+                foreach (var stage in chapter.stages)
                 {
-                    // 자동 전투 시뮬레이션
-                    SimulateAutoBattle(autoRepeatStage);
-                    autoRepeatCount++;
+                    totalStars += stage.bestStarRating;
                 }
             }
-        }
-        
-        void SimulateAutoBattle(StoryStage stage)
-        {
-            // 간단한 전투 시뮬레이션
-            var playerPower = CalculatePlayerPower();
-            var enemyPower = CalculateEnemyPower(stage);
-            
-            bool victory = playerPower > enemyPower;
-            
-            if (victory)
-            {
-                // 반복 보상 지급
-                var reward = stage.repeatReward ?? new StageReward
-                {
-                    gold = 50 * stage.recommendedLevel,
-                    exp = 25 * stage.recommendedLevel
-                };
-                
-                GiveRewards(reward);
-                stage.clearCount++;
-            }
-        }
-        
-        float CalculatePlayerPower()
-        {
-            float totalPower = 0;
-            var characters = CharacterManagementSystem.Instance.GetAllCharacters();
-            
-            foreach (var character in characters)
-            {
-                totalPower += character.level * 10 + character.attackPower + character.defense;
-            }
-            
-            return totalPower;
-        }
-        
-        float CalculateEnemyPower(StoryStage stage)
-        {
-            return stage.recommendedLevel * 100 * stage.difficultyMultiplier;
-        }
-        
-        void UnlockEnding(int endingIndex)
-        {
-            // 엔딩 해금 처리
-            Debug.Log($"엔딩 {endingIndex} 해금!");
-        }
-        
-        // 공개 API
-        public List<StoryStage> GetChapterStages(int chapter)
-        {
-            return storyChapters.GetValueOrDefault(chapter, new List<StoryStage>());
-        }
-        
-        public StoryStage GetStage(int chapter, int stage)
-        {
-            if (!storyChapters.ContainsKey(chapter))
-                return null;
-                
-            return storyChapters[chapter].Find(s => s.stageNumber == stage);
-        }
-        
-        public int GetHighestUnlockedStage() => highestUnlockedStage;
-        
-        public bool IsAutoRepeating() => isAutoRepeating;
-        
-        public StoryStage GetAutoRepeatStage() => autoRepeatStage;
-        
-        public int GetTotalStages()
-        {
-            int total = 0;
-            foreach (var chapter in storyChapters.Values)
-            {
-                total += chapter.Count;
-            }
-            return total;
-        }
-        
-        public int GetClearedStages()
-        {
-            int cleared = 0;
-            foreach (var chapter in storyChapters.Values)
-            {
-                cleared += chapter.Count(s => s.isCleared);
-            }
-            return cleared;
-        }
-        
-        public float GetProgressPercentage()
-        {
-            int total = GetTotalStages();
-            if (total == 0) return 0;
-            
-            return (float)GetClearedStages() / total * 100f;
+            return totalStars;
         }
     }
 }
