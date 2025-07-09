@@ -5,6 +5,7 @@ using UnityEngine.UI;
 using TMPro;
 using System.Linq;
 using GuildMaster.Data;
+using GuildMaster.Game;
 
 namespace pjy.Managers
 {
@@ -38,8 +39,8 @@ namespace pjy.Managers
         [SerializeField] private CharacterInventoryManager inventoryManager;
         [SerializeField] private LobbySceneManager lobbyManager;
         
-        private GuildMaster.Data.CharacterData targetCharacter;
-        private List<GuildMaster.Data.CharacterData> materialCharacters = new List<GuildMaster.Data.CharacterData>();
+        private CharacterData targetCharacter;
+        private List<CharacterData> materialCharacters = new List<CharacterData>();
         private bool isUpgrading = false;
         
         private void Start()
@@ -92,7 +93,7 @@ namespace pjy.Managers
         /// <summary>
         /// 대상 캐릭터 설정 (드래그 앤 드롭)
         /// </summary>
-        public void SetTargetCharacter(GuildMaster.Data.CharacterData character)
+        public void SetTargetCharacter(CharacterData character)
         {
             if (character == null || isUpgrading) return;
             
@@ -104,7 +105,7 @@ namespace pjy.Managers
         /// <summary>
         /// 재료 캐릭터 추가 (드래그 앤 드롭)
         /// </summary>
-        public void AddMaterialCharacter(GuildMaster.Data.CharacterData character)
+        public void AddMaterialCharacter(CharacterData character)
         {
             if (character == null || isUpgrading) return;
             if (targetCharacter == null)
@@ -144,7 +145,7 @@ namespace pjy.Managers
         /// <summary>
         /// 재료 캐릭터 제거
         /// </summary>
-        public void RemoveMaterialCharacter(GuildMaster.Data.CharacterData character)
+        public void RemoveMaterialCharacter(CharacterData character)
         {
             if (materialCharacters.Remove(character))
             {

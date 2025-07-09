@@ -4,6 +4,7 @@ using UnityEngine.UI;
 using TMPro;
 using UnityEngine.SceneManagement;
 using GuildMaster.Data;
+using GuildMaster.Battle;
 
 [System.Serializable]
 public class StageInfo

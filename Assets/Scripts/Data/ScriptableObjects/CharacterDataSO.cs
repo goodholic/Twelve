@@ -3,7 +3,7 @@ using UnityEngine;
 using System.Collections.Generic;
 using System.Linq;
 using GuildMaster.Battle;
-using Unit = GuildMaster.Battle.UnitStatus;
+// using Unit = GuildMaster.Battle.Unit; // Not needed - Unit is already in the namespace
 
 namespace GuildMaster.Data
 {

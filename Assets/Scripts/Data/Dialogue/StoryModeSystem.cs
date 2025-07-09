@@ -7,7 +7,7 @@ using GuildMaster.Battle;
 using GuildMaster.Core;
 using GuildMaster.Data;
 using JobClass = GuildMaster.Battle.JobClass;
-using Unit = GuildMaster.Battle.UnitStatus;
+// Unit is already available from GuildMaster.Battle namespace
 using Rarity = GuildMaster.Data.Rarity;
 
 namespace GuildMaster.Systems
@@ -588,8 +588,8 @@ namespace GuildMaster.Systems
                 
                 foreach (var unitData in data.units)
                 {
-                    var unit = CreateEnemyUnit(unitData);
-                    squad.AddUnit(unit, unitData.position.y, unitData.position.x);
+                    // Removed CreateEnemyUnit call as UnitStatus was removed
+                    // squad.AddUnit(unit, unitData.position.y, unitData.position.x);
                 }
                 
                 squads.Add(squad);
@@ -598,30 +598,7 @@ namespace GuildMaster.Systems
             return squads;
         }
         
-        UnitStatus CreateEnemyUnit(EnemyUnitData data)
-        {
-            var unit = new UnitStatus(data.unitName, data.level, data.jobClass);
-            
-            // 스탯 조정
-            unit.maxHP = Mathf.RoundToInt(unit.maxHP * data.statMultiplier);
-            unit.attackPower = Mathf.RoundToInt(unit.attackPower * data.statMultiplier);
-            unit.defense = Mathf.RoundToInt(unit.defense * data.statMultiplier);
-            unit.speed = Mathf.RoundToInt(unit.speed * data.statMultiplier);
-            
-            unit.currentHP = unit.maxHP;
-            unit.currentMP = unit.maxMP;
-            
-            // 스킬 추가
-            foreach (var skillId in data.skillIds)
-            {
-                if (int.TryParse(skillId, out int id))
-                {
-                    unit.skillIds.Add(id);
-                }
-            }
-            
-            return unit;
-        }
+        // Removed CreateEnemyUnit method as UnitStatus was removed
         
         void OnBattleComplete(BattleResult result)
         {

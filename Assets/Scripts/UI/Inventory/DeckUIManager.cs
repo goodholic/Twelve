@@ -3,6 +3,7 @@ using UnityEngine.UI;
 using TMPro;
 using System.Collections.Generic;
 using GuildMaster.Data;
+using GuildMaster.Game;
 
 public class DeckUIManager : MonoBehaviour
 {

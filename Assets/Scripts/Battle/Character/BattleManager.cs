@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using GuildMaster.TileBattle;
 
 namespace GuildMaster.Battle
 {
@@ -30,7 +31,7 @@ namespace GuildMaster.Battle
         
         [Header("시스템 참조")]
         [SerializeField] private BattleCharacterPlacement placementSystem;
-        [SerializeField] private CharacterSelectionUI selectionUI;
+        [SerializeField] private CharacterSelectUI selectionUI;
         [SerializeField] private GameObject battleUICanvas;
         
         [Header("전투 UI")]

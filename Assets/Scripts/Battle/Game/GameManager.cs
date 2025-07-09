@@ -4,6 +4,7 @@ using System.Collections;
 using System.Collections.Generic;
 using GuildMaster.Data;
 using GuildMaster.Systems;
+using GuildMaster.Game;
 using TMPro;
 
 namespace GuildMaster.Core

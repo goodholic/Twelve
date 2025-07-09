@@ -7,7 +7,7 @@ using GuildMaster.Core;
 using GuildMaster.Battle;
 using GuildMaster.Data;
 using GuildMaster.UI;
-using Unit = GuildMaster.Battle.UnitStatus;
+// Unit is already available from GuildMaster.Battle namespace
 
 namespace GuildMaster.Systems
 {

@@ -8,9 +8,8 @@ using System.Text;
 using GuildMaster.Core;
 using GuildMaster.Data;
 using GuildMaster.Battle;
-using GuildMaster.Guild;
+// using GuildMaster.Guild; // Namespace doesn't exist
 using JobClass = GuildMaster.Battle.JobClass;
-using Unit = GuildMaster.Battle.UnitStatus;
 using Rarity = GuildMaster.Data.Rarity;
 // using ResourceType = GuildMaster.Core.ResourceType; // ResourceType removed
 
@@ -104,11 +103,11 @@ namespace GuildMaster.Systems
         [System.Serializable]
         public class BuildingAnalytics
         {
-            public Dictionary<string, int> buildingCounts = new Dictionary<string, int>(); // Changed BuildingType to string
-            public Dictionary<string, float> averageLevels = new Dictionary<string, float>(); // Changed BuildingType to string
-            public List<string> constructionOrder = new List<string>(); // Changed BuildingType to string
-            public Dictionary<string, float> timeToConstruct = new Dictionary<string, float>(); // Changed BuildingType to string
-            public Dictionary<string, int> upgradeFrequency = new Dictionary<string, int>(); // Changed BuildingType to string
+            public Dictionary<string, int> buildingCounts = new Dictionary<string, int>();
+            public Dictionary<string, float> averageLevels = new Dictionary<string, float>();
+            public List<string> constructionOrder = new List<string>();
+            public Dictionary<string, float> timeToConstruct = new Dictionary<string, float>();
+            public Dictionary<string, int> upgradeFrequency = new Dictionary<string, int>();
             public float averageConstructionTime;
             public int totalBuildings;
             public int totalUpgrades;
@@ -553,7 +552,7 @@ namespace GuildMaster.Systems
                 eventManager.Subscribe(GuildMaster.Core.EventType.AdventurerLevelUp, OnAdventurerLevelUp);
                 
                 // Building Events
-                eventManager.Subscribe(GuildMaster.Core.EventType.BuildingConstructed, OnBuildingConstructed);
+                // eventManager.Subscribe(GuildMaster.Core.EventType.BuildingConstructed, OnBuildingConstructed); // Removed as requested
                 eventManager.Subscribe(GuildMaster.Core.EventType.BuildingUpgraded, OnBuildingUpgraded);
                 eventManager.Subscribe(GuildMaster.Core.EventType.BuildingProductionComplete, OnBuildingProductionComplete);
                 
@@ -577,7 +576,6 @@ namespace GuildMaster.Systems
             // var resourceManager = ResourceManager.Instance;
             // if (resourceManager != null)
             // {
-            //     resourceManager.OnResourcesChanged += OnResourcesChanged;
             // }
             
             // Battle Manager Events
@@ -626,7 +624,7 @@ namespace GuildMaster.Systems
                 GuildMaster.Core.EventType.GuildLevelUp => OnGuildLevelUp,
                 GuildMaster.Core.EventType.NewAdventurer => OnNewAdventurer,
                 GuildMaster.Core.EventType.AdventurerLevelUp => OnAdventurerLevelUp,
-                GuildMaster.Core.EventType.BuildingConstructed => OnBuildingConstructed,
+                // GuildMaster.Core.EventType.BuildingConstructed => OnBuildingConstructed, // Removed as requested
                 GuildMaster.Core.EventType.BuildingUpgraded => OnBuildingUpgraded,
                 GuildMaster.Core.EventType.BuildingProductionComplete => OnBuildingProductionComplete,
                 GuildMaster.Core.EventType.BattleStarted => OnBattleStarted,
@@ -646,7 +644,7 @@ namespace GuildMaster.Systems
 
         #region Event Handlers
 
-        void OnGameStateChanged(GameManager.GameState previousState, GameManager.GameState newState)
+        void OnGameStateChanged(GameState previousState, GameState newState)
         {
             TrackAction("GameStateChanged", new Dictionary<string, object>
             {
@@ -729,7 +727,7 @@ namespace GuildMaster.Systems
         }
 
         // Commented out - ResourceManager removed
-        // void OnResourcesChanged(ResourceManager.Resources resources)
+        // Removed OnResourcesChanged method as requested
         // {
         //     // Additional resource tracking if needed
         // }
@@ -755,7 +753,7 @@ namespace GuildMaster.Systems
 
         void OnNewAdventurer(GameEvent gameEvent)
         {
-            var adventurer = gameEvent.GetParameter<UnitStatus>("adventurer");
+            // var adventurer = gameEvent.GetParameter<UnitStatus>("adventurer"); // Removed as UnitStatus was removed
             if (adventurer != null)
             {
                 UpdateCharacterAnalytics(adventurer);
@@ -770,7 +768,7 @@ namespace GuildMaster.Systems
 
         void OnAdventurerLevelUp(GameEvent gameEvent)
         {
-            var adventurer = gameEvent.GetParameter<UnitStatus>("adventurer");
+            // var adventurer = gameEvent.GetParameter<UnitStatus>("adventurer"); // Removed as UnitStatus was removed
             var newLevel = gameEvent.GetParameter<int>("newLevel");
             
             if (adventurer != null)
@@ -784,9 +782,10 @@ namespace GuildMaster.Systems
             }
         }
 
-        void OnBuildingConstructed(GameEvent gameEvent)
+        // Removed OnBuildingConstructed method as requested
+        void OnBuildingConstructed_Removed(GameEvent gameEvent)
         {
-            var buildingType = gameEvent.GetParameter<string>("buildingType"); // Changed BuildingType to string
+            var buildingType = gameEvent.GetParameter<string>("buildingType");
             
             if (!buildingAnalytics.buildingCounts.ContainsKey(buildingType))
                 buildingAnalytics.buildingCounts[buildingType] = 0;
@@ -875,7 +874,7 @@ namespace GuildMaster.Systems
 
         void OnUnitKilled(GameEvent gameEvent)
         {
-            var unit = gameEvent.GetParameter<UnitStatus>("unit");
+            // var unit = gameEvent.GetParameter<UnitStatus>("unit"); // Removed as UnitStatus was removed
             var isPlayerUnit = gameEvent.GetParameter<bool>("isPlayerUnit");
             
             if (!isPlayerUnit)
@@ -887,28 +886,11 @@ namespace GuildMaster.Systems
             }
         }
 
-        void OnUnitAttack(UnitStatus attacker, UnitStatus target, float damage)
-        {
-            battleAnalytics.totalDamageDealt += (long)damage;
-            
-            if (attacker != null)
-            {
-                var unitId = attacker.unitId;
-                if (!battleAnalytics.unitDamageContribution.ContainsKey(unitId))
-                    battleAnalytics.unitDamageContribution[unitId] = 0;
-                battleAnalytics.unitDamageContribution[unitId] += damage;
-            }
-        }
+        // Removed OnUnitAttack method as UnitStatus was removed
 
-        void OnUnitHeal(UnitStatus healer, float healAmount)
-        {
-            battleAnalytics.totalHealingDone += (long)healAmount;
-        }
+        // Removed OnUnitHeal method as UnitStatus was removed
 
-        void OnUnitDeath(UnitStatus unit)
-        {
-            // Track unit deaths
-        }
+        // Removed OnUnitDeath method as UnitStatus was removed
 
         void OnQuestCompleted(GameEvent gameEvent)
         {
@@ -1069,29 +1051,7 @@ namespace GuildMaster.Systems
             }
         }
 
-        public void TrackBattleParticipation(UnitStatus unit, bool isVictory)
-        {
-            if (!enableAnalytics || unit == null) return;
-            
-            var unitId = unit.unitId;
-            if (!battleAnalytics.unitUsageCount.ContainsKey(unitId))
-            {
-                battleAnalytics.unitUsageCount[unitId] = 0;
-                battleAnalytics.unitWinRates[unitId] = 0;
-            }
-            
-            battleAnalytics.unitUsageCount[unitId]++;
-            
-            if (isVictory)
-            {
-                battleAnalytics.unitWinRates[unitId] = 
-                    ((battleAnalytics.unitWinRates[unitId] * (battleAnalytics.unitUsageCount[unitId] - 1)) + 1) / 
-                    battleAnalytics.unitUsageCount[unitId];
-            }
-            
-            // Update character analytics
-            UpdateCharacterAnalytics(unit);
-        }
+        // Removed TrackBattleParticipation method as UnitStatus was removed
 
         public void TrackSkillUsage(string skillId, float effectiveness)
         {
@@ -1109,40 +1069,7 @@ namespace GuildMaster.Systems
                 battleAnalytics.skillUsageCounts[skillId];
         }
 
-        void UpdateCharacterAnalytics(UnitStatus unit)
-        {
-            if (unit == null) return;
-            
-            var characterId = unit.unitId;
-            if (!characterAnalytics.characterStats.ContainsKey(characterId))
-            {
-                characterAnalytics.characterStats[characterId] = new CharacterAnalytics.CharacterStats
-                {
-                    characterId = characterId,
-                    characterName = unit.unitName,
-                    jobClass = unit.jobClass,
-                    level = unit.level,
-                    awakenLevel = unit.awakenLevel
-                };
-            }
-            
-            var stats = characterAnalytics.characterStats[characterId];
-            stats.level = unit.level;
-            stats.awakenLevel = unit.awakenLevel;
-            stats.lastUsed = DateTime.Now;
-            
-            // Update class and rarity counts
-            characterAnalytics.classCounts[unit.jobClass] = 
-                characterAnalytics.characterStats.Values.Count(c => c.jobClass == unit.jobClass);
-            characterAnalytics.rarityCounts[unit.rarity] = 
-                characterAnalytics.characterStats.Values.Count(c => c.jobClass == unit.jobClass);
-            
-            // Update average level
-            characterAnalytics.averageLevel = 
-                (float)characterAnalytics.characterStats.Values.Average(c => c.level);
-            characterAnalytics.averageAwakenLevel = 
-                (float)characterAnalytics.characterStats.Values.Average(c => c.awakenLevel);
-        }
+        // Removed UpdateCharacterAnalytics method as UnitStatus was removed
 
         #endregion
 

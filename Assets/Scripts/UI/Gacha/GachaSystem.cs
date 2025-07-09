@@ -6,7 +6,7 @@ using UnityEngine;
 using GuildMaster.Battle;
 using GuildMaster.Data;
 using JobClass = GuildMaster.Battle.JobClass;
-using Unit = GuildMaster.Battle.UnitStatus;
+// Unit is already available from GuildMaster.Battle namespace
 using Rarity = GuildMaster.Data.Rarity;
 
 namespace GuildMaster.Systems
@@ -72,7 +72,7 @@ namespace GuildMaster.Systems
         [System.Serializable]
         public class GachaResult
         {
-            public UnitStatus unit;
+            // public UnitStatus unit; // Removed as UnitStatus was removed
             public bool isNew;
             public bool isFeatured;
             public int duplicateTokens; // 중복 시 받는 토큰
@@ -285,7 +285,7 @@ namespace GuildMaster.Systems
             }
             
             // 유닛 선택
-            UnitStatus unit = null;
+            // UnitStatus unit = null; // Removed as UnitStatus was removed
             if (isFeatured && banner.featuredUnits.Count > 0)
             {
                 int featuredId = banner.featuredUnits[UnityEngine.Random.Range(0, banner.featuredUnits.Count)];
@@ -415,28 +415,10 @@ namespace GuildMaster.Systems
         }
         
         // 유닛 소유 확인
-        bool IsUnitOwned(UnitStatus unit)
-        {
-            var gameManager = Core.GameManager.Instance;
-            if (gameManager?.GuildManager == null) return false;
-            
-            return gameManager.GuildManager.GetAdventurers()
-                .Any(u => u.unitName == unit.unitName);
-        }
+        // Removed IsUnitOwned method as UnitStatus was removed
         
         // 중복 토큰 계산
-        int CalculateDuplicateTokens(UnitStatus unit)
-        {
-            switch (unit.rarity)
-            {
-                case Rarity.Common: return 10;
-                case Rarity.Uncommon: return 20;
-                case Rarity.Rare: return 50;
-                case Rarity.Epic: return 100;
-                case Rarity.Legendary: return 200;
-                default: return 10;
-            }
-        }
+        // Removed CalculateDuplicateTokens method as UnitStatus was removed
         
         // 배너 업데이트 체크
         IEnumerator BannerUpdateChecker()
@@ -488,12 +470,6 @@ namespace GuildMaster.Systems
             return pity.pityCount - pity.currentCount;
         }
 
-        UnitStatus CreateUnitFromCharacterData(CharacterData characterData)
-        {
-            if (characterData == null) return null;
-            
-            // string ID를 사용하여 유닛 생성
-            return CharacterManager.Instance.CreateUnit(characterData.id);
-        }
+        // Removed CreateUnitFromCharacterData method as UnitStatus was removed
     }
 }

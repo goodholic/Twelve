@@ -5,11 +5,12 @@ using TMPro;
 using System.Collections;
 using System.Linq;
 using GuildMaster.Data;
+using GuildMaster.Game;
 
 public class BookPanelManager : MonoBehaviour
 {
     [Header("Character Database (ScriptableObject)")]
-    [SerializeField] private CharacterDatabaseObject characterDatabaseObject;
+    [SerializeField] private CharacterDatabaseSO characterDatabaseObject;
 
     [Header("CharacterInventoryManager (인벤토리/덱 정보)")]
     [SerializeField] private CharacterInventoryManager characterInventory;

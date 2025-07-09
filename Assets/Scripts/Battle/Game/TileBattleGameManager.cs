@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using GuildMaster.TileBattle;
 
 namespace GuildMaster.Battle
 {
@@ -11,7 +12,7 @@ namespace GuildMaster.Battle
         [Header("Game Systems")]
         [SerializeField] private TileBoardSystem tileBoardSystem;
         [SerializeField] private TurnBasedBattleSystem battleSystem;
-        [SerializeField] private CharacterSelectionUI characterSelectionUI;
+        [SerializeField] private CharacterSelectUI characterSelectionUI;
         [SerializeField] private BattleUIManager battleUIManager;
         
         [Header("Prefabs")]

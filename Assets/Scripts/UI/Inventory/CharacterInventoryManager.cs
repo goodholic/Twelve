@@ -5,6 +5,7 @@ using UnityEngine.UI;
 using TMPro;
 using System.Linq;
 using GuildMaster.Data;
+using GuildMaster.Game;
 
 public class CharacterInventoryManager : MonoBehaviour
 {
@@ -27,7 +28,7 @@ public class CharacterInventoryManager : MonoBehaviour
     }
 
     [Header("ScriptableObject DB 참조")]
-    [SerializeField] public CharacterDatabaseObject characterDatabaseObject;
+    [SerializeField] public CharacterDatabaseSO characterDatabaseObject;
 
     [SerializeField] private List<CharacterData> ownedCharacters = new List<CharacterData>();
     private List<CharacterData> deckCharacters = new List<CharacterData>();

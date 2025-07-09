@@ -101,7 +101,7 @@ namespace GuildMaster.Data
                 LoadQuestData();
                 LoadEnemyData();
                 LoadFormationData();
-                LoadLocalizationData();
+                // LoadLocalizationData(); // Removed as requested
                 
                 OnDataLoaded?.Invoke();
                 Debug.Log($"CSV 데이터 로딩 완료! (언어: {currentLanguage})");
@@ -294,7 +294,8 @@ namespace GuildMaster.Data
         /// 다국어 데이터 로드
         /// </summary>
         // LocalizationData 타입이 제거되어 주석 처리
-        private void LoadLocalizationData()
+        // Removed LoadLocalizationData method as requested
+        private void LoadLocalizationData_Removed()
         {
             // string fileName = $"Localization_{GetLanguageCode(currentLanguage)}";
             // string csvContent = LoadCSVFile(fileName);
@@ -711,10 +712,7 @@ namespace GuildMaster.Data
             return characterDataDict.Values.Where(c => c.jobClass == jobClass).ToList();
         }
         
-        public List<CharacterData> GetCharactersByRarity(GuildMaster.Data.CharacterRarity rarity)
-        {
-            return characterDataDict.Values.Where(c => (CharacterRarity)c.rarity == rarity).ToList();
-        }
+        // Removed CharacterRarity method as requested
         
         public List<SkillData> GetSkillsByJob(GuildMaster.Battle.JobClass jobClass)
         {

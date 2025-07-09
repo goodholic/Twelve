@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using TMPro;
 using UnityEngine.UI;
+using GuildMaster.TileBattle;
 
 namespace GuildMaster.Battle
 {
@@ -30,7 +31,7 @@ namespace GuildMaster.Battle
         
         [Header("System References")]
         [SerializeField] private TileBoardSystem tileBoardSystem;
-        [SerializeField] private CharacterSelectionUI characterSelectionUI;
+        [SerializeField] private CharacterSelectUI characterSelectionUI;
         [SerializeField] private BattleUIManager battleUI;
         
         [Header("Current Battle State")]
@@ -624,30 +625,8 @@ namespace GuildMaster.Battle
             }
         }
     }
-}using UnityEngine;
-using System.Collections.Generic;
-using System.Linq;
-using TMPro;
-using UnityEngine.UI;
-
-namespace GuildMaster.Battle
-{
-    public enum BattlePhase
-    {
-        CharacterSelection,
-        Placement,
-        Battle,
-        Result
-    }
     
-    public enum TurnState
-    {
-        PlayerTurn,
-        EnemyTurn,
-        Processing
-    }
-    
-    public class TurnBasedBattleSystem : MonoBehaviour
+    public class AIBattleController : MonoBehaviour
     {
         [Header("Battle Settings")]
         [SerializeField] private int maxCharactersPerPlayer = 10;
@@ -656,7 +635,7 @@ namespace GuildMaster.Battle
         
         [Header("System References")]
         [SerializeField] private TileBoardSystem tileBoardSystem;
-        [SerializeField] private CharacterSelectionUI characterSelectionUI;
+        [SerializeField] private CharacterSelectUI characterSelectionUI;
         [SerializeField] private BattleUIManager battleUI;
         
         [Header("Current Battle State")]

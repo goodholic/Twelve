@@ -2,6 +2,7 @@ using UnityEngine;
 using System.Collections.Generic;
 using System.IO;
 using GuildMaster.Data;
+using GuildMaster.Game;
 
 public class CharacterCSVDatabase : MonoBehaviour
 {
@@ -9,7 +10,7 @@ public class CharacterCSVDatabase : MonoBehaviour
     public string csvFileName = "character_data.csv";
     
     [Header("캐릭터 데이터")]
-    public List<GuildMaster.Data.CharacterData> characters = new List<GuildMaster.Data.CharacterData>();
+    public List<CharacterData> characters = new List<CharacterData>();
     
     private void Start()
     {
@@ -35,7 +36,7 @@ public class CharacterCSVDatabase : MonoBehaviour
             
             if (values.Length < 10) continue; // 최소 필드 수 확인
             
-            GuildMaster.Data.CharacterData character = new GuildMaster.Data.CharacterData();
+            CharacterData character = new CharacterData();
             
             // CSV 데이터 파싱
             character.characterName = values[0];
@@ -53,27 +54,27 @@ public class CharacterCSVDatabase : MonoBehaviour
         Debug.Log($"CSV에서 {characters.Count}개의 캐릭터 데이터를 로드했습니다.");
     }
     
-    public GuildMaster.Data.CharacterData GetCharacterByName(string name)
+    public CharacterData GetCharacterByName(string name)
     {
         return characters.Find(c => c.characterName == name);
     }
     
-    public GuildMaster.Data.CharacterData GetCharacterByIndex(int index)
+    public CharacterData GetCharacterByIndex(int index)
     {
         return characters.Find(c => c.characterIndex == index);
     }
     
-    public List<GuildMaster.Data.CharacterData> GetCharacterDataList()
+    public List<CharacterData> GetCharacterDataList()
     {
         return characters;
     }
     
-    public List<GuildMaster.Data.CharacterData> GetCharactersByStar(int star)
+    public List<CharacterData> GetCharactersByStar(int star)
     {
         return characters.FindAll(c => c.star == star);
     }
     
-    public GuildMaster.Data.CharacterData GetRandomCharacterByStar(int star)
+    public CharacterData GetRandomCharacterByStar(int star)
     {
         var charactersWithStar = GetCharactersByStar(star);
         if (charactersWithStar.Count > 0)

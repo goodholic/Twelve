@@ -3,14 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using TMPro;
 using UnityEngine.UI;
-// pjy.Data 네임스페이스가 제거되어 주석 처리
-// using pjy.Data;
 using System.Collections;
 using GuildMaster.Data;
+using GuildMaster.Game;
+using GuildMaster.Battle;
 
-// pjy.Managers 네임스페이스를 제거하고 글로벌 네임스페이스로 변경
-// namespace pjy.Managers
-// {
     /// <summary>
     /// 가챠 시스템 매니저 - 단일/10연차 캐릭터 뽑기 시스템
     /// </summary>
@@ -284,7 +281,7 @@ using GuildMaster.Data;
         /// <summary>
         /// 특정 등급의 랜덤 캐릭터 가져오기
         /// </summary>
-        private CharacterData GetRandomCharacterByStarLevel(int starLevel)
+        private GuildMaster.Battle.CharacterData GetRandomCharacterByStarLevel(int starLevel)
         {
             if (characterDatabase == null) return null;
             
@@ -565,7 +562,7 @@ using GuildMaster.Data;
     [System.Serializable]
     public class GachaResult
     {
-        public CharacterData character;
+        public GuildMaster.Battle.CharacterData character;
         public bool isNew;
         public System.DateTime drawTime;
 
@@ -574,4 +571,4 @@ using GuildMaster.Data;
             drawTime = System.DateTime.Now;
         }
     }
-// } // namespace pjy.Managers 닫기
+// }
