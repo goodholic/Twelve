@@ -93,7 +93,7 @@ namespace GuildMaster.Battle
             }
         }
         
-        public float EvaluateTarget(UnitStatus unit, UnitStatus target, BattleContext context)
+        public float EvaluateTarget(UnitState unit, UnitState target, BattleContext context)
         {
             float score = 0f;
             
@@ -106,7 +106,7 @@ namespace GuildMaster.Battle
             return score;
         }
         
-        float EvaluateTargetCondition(UnitStatus unit, UnitStatus target, TargetPriority.TargetCondition condition, BattleContext context)
+        float EvaluateTargetCondition(UnitState unit, UnitState target, TargetPriority.TargetCondition condition, BattleContext context)
         {
             switch (condition)
             {
@@ -149,7 +149,7 @@ namespace GuildMaster.Battle
             }
         }
         
-        public bool ShouldUseSkill(string skillId, UnitStatus unit, BattleContext context)
+        public bool ShouldUseSkill(string skillId, UnitState unit, BattleContext context)
         {
             var rule = skillRules.Find(r => r.skillId == skillId);
             if (rule == null) return false;
@@ -157,7 +157,7 @@ namespace GuildMaster.Battle
             return EvaluateSkillCondition(rule.condition, rule.threshold, unit, context);
         }
         
-        bool EvaluateSkillCondition(SkillUsageRule.SkillCondition condition, float threshold, UnitStatus unit, BattleContext context)
+        bool EvaluateSkillCondition(SkillUsageRule.SkillCondition condition, float threshold, UnitState unit, BattleContext context)
         {
             switch (condition)
             {
@@ -196,7 +196,7 @@ namespace GuildMaster.Battle
             }
         }
         
-        public Vector3 GetMovementPosition(UnitStatus unit, BattleContext context)
+        public Vector3 GetMovementPosition(UnitState unit, BattleContext context)
         {
             switch (movementStrategy)
             {
@@ -223,7 +223,7 @@ namespace GuildMaster.Battle
                     break;
                     
                 case MovementStrategy.ProtectAllies:
-                    UnitStatus weakestAlly = GetWeakestAlly(context.allies);
+                    UnitState weakestAlly = GetWeakestAlly(context.allies);
                     if (weakestAlly != null)
                         return weakestAlly.transform.position;
                     break;
@@ -235,9 +235,9 @@ namespace GuildMaster.Battle
             return unit.transform.position;
         }
         
-        UnitStatus GetWeakestAlly(List<UnitStatus> allies)
+        UnitState GetWeakestAlly(List<UnitState> allies)
         {
-            UnitStatus weakest = null;
+            UnitState weakest = null;
             float lowestHPRatio = 1f;
             
             foreach (var ally in allies)
@@ -253,7 +253,7 @@ namespace GuildMaster.Battle
             return weakest;
         }
         
-        Vector3 GetStrategicPosition(UnitStatus unit, BattleContext context)
+        Vector3 GetStrategicPosition(UnitState unit, BattleContext context)
         {
             // Complex strategic positioning logic
             // For now, return a position between allies and enemies
@@ -263,7 +263,7 @@ namespace GuildMaster.Battle
             return Vector3.Lerp(allyCenter, enemyCenter, 0.6f);
         }
         
-        Vector3 GetTeamCenter(List<UnitStatus> units)
+        Vector3 GetTeamCenter(List<UnitState> units)
         {
             if (units.Count == 0) return Vector3.zero;
             
@@ -305,9 +305,9 @@ namespace GuildMaster.Battle
     [System.Serializable]
     public class BattleContext
     {
-        public List<UnitStatus> allies = new List<UnitStatus>();
-        public List<UnitStatus> enemies = new List<UnitStatus>();
-        public UnitStatus currentTarget;
+        public List<UnitState> allies = new List<UnitState>();
+        public List<UnitState> enemies = new List<UnitState>();
+        public UnitState currentTarget;
         public float battleTime;
         public int turnNumber;
     }

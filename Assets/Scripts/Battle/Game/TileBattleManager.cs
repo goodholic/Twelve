@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections.Generic;
 using System.Linq;
+using GuildMaster.Data;
 
 namespace TacticalTileGame.Battle
 {
@@ -368,14 +369,14 @@ namespace TacticalTileGame.Battle
     /// </summary>
     public class CharacterUnit
     {
-        public TacticalCharacterDataSO Data { get; private set; }
+        public CharacterDataSO Data { get; private set; }
         public Vector2Int Position { get; set; }
         public bool IsUpperGrid { get; private set; }
         public bool IsPlayer { get; private set; }
         public int CurrentHP { get; private set; }
         public bool IsDead => CurrentHP <= 0;
         
-        public CharacterUnit(TacticalCharacterDataSO data, Vector2Int position, bool isUpper, bool isPlayer)
+        public CharacterUnit(CharacterDataSO data, Vector2Int position, bool isUpper, bool isPlayer)
         {
             Data = data;
             Position = position;
