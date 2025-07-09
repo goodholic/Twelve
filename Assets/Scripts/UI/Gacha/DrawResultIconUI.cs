@@ -4,6 +4,7 @@ using TMPro;
 using System.Collections;
 using GuildMaster.Data;
 using GuildMaster.Game;
+using CharacterData = GuildMaster.Data.CharacterData;
 
 /// <summary>
 /// 뽑기 결과의 각 캐릭터 아이콘을 표시하는 UI 요소입니다.

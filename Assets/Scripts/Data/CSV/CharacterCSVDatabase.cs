@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using GuildMaster.Data;
 using GuildMaster.Game;
+using CharacterData = GuildMaster.Data.CharacterData;
 
 public class CharacterCSVDatabase : MonoBehaviour
 {

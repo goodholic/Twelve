@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using GuildMaster.Data;
 using GuildMaster.Game;
+using CharacterData = GuildMaster.Data.CharacterData;
 
 public class DrawPanelManager : MonoBehaviour
 {
