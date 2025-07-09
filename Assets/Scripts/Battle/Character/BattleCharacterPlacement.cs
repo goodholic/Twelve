@@ -188,7 +188,7 @@ namespace GuildMaster.Battle
         /// <summary>
         /// 공격 범위 표시
         /// </summary>
-        public void ShowAttackRange(Tile centerTile, AttackPattern pattern)
+        public void ShowAttackRange(Tile centerTile, BattleAttackPattern pattern)
         {
             List<Vector2Int> attackPositions = pattern.GetAttackPositions();
             Tile[,] tiles = centerTile.tileType == Tile.TileType.A ? aTiles : bTiles;
@@ -315,12 +315,12 @@ namespace GuildMaster.Battle
     /// 공격 패턴 클래스
     /// </summary>
     [System.Serializable]
-    public class AttackPattern
+    public class BattleAttackPattern
     {
         public string patternName;
         public List<Vector2Int> attackOffsets = new List<Vector2Int>();
         
-        public AttackPattern(string name)
+        public BattleAttackPattern(string name)
         {
             patternName = name;
         }
@@ -331,9 +331,9 @@ namespace GuildMaster.Battle
         }
         
         // 기본 공격 패턴들
-        public static AttackPattern GetCrossPattern()
+        public static BattleAttackPattern GetCrossPattern()
         {
-            AttackPattern pattern = new AttackPattern("십자형");
+            BattleAttackPattern pattern = new BattleAttackPattern("십자형");
             pattern.attackOffsets.Add(new Vector2Int(0, 1));
             pattern.attackOffsets.Add(new Vector2Int(0, -1));
             pattern.attackOffsets.Add(new Vector2Int(1, 0));
@@ -341,9 +341,9 @@ namespace GuildMaster.Battle
             return pattern;
         }
         
-        public static AttackPattern GetDiagonalPattern()
+        public static BattleAttackPattern GetDiagonalPattern()
         {
-            AttackPattern pattern = new AttackPattern("대각선");
+            BattleAttackPattern pattern = new BattleAttackPattern("대각선");
             pattern.attackOffsets.Add(new Vector2Int(1, 1));
             pattern.attackOffsets.Add(new Vector2Int(1, -1));
             pattern.attackOffsets.Add(new Vector2Int(-1, 1));
@@ -351,9 +351,9 @@ namespace GuildMaster.Battle
             return pattern;
         }
         
-        public static AttackPattern GetSquarePattern()
+        public static BattleAttackPattern GetSquarePattern()
         {
-            AttackPattern pattern = new AttackPattern("사각형");
+            BattleAttackPattern pattern = new BattleAttackPattern("사각형");
             for (int x = -1; x <= 1; x++)
             {
                 for (int y = -1; y <= 1; y++)
@@ -365,9 +365,9 @@ namespace GuildMaster.Battle
             return pattern;
         }
         
-        public static AttackPattern GetLinePattern(int range)
+        public static BattleAttackPattern GetLinePattern(int range)
         {
-            AttackPattern pattern = new AttackPattern($"직선 {range}칸");
+            BattleAttackPattern pattern = new BattleAttackPattern($"직선 {range}칸");
             for (int i = 1; i <= range; i++)
             {
                 pattern.attackOffsets.Add(new Vector2Int(i, 0));

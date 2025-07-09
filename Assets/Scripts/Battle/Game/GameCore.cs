@@ -375,16 +375,16 @@ namespace GuildMaster.Game
 
     // 캐릭터 데이터 (임시)
     [System.Serializable]
-    public class CharacterData
+    public class GameCharacterData
     {
         public string characterName;
         public int characterId;
         public Sprite characterSprite;
-        public AttackPattern attackPattern;
+        public GameAttackPattern attackPattern;
     }
 
     // 공격 패턴 타입
-    public enum AttackPattern
+    public enum GameAttackPattern
     {
         Cross,      // 십자
         Diagonal,   // 대각선
