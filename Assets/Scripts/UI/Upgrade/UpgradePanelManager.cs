@@ -6,7 +6,6 @@ using System.Collections;
 using System.Linq;
 using GuildMaster.Data;
 using GuildMaster.Game;
-using CharacterData = GuildMaster.Data.CharacterData;
 
 /// <summary>
 /// 등록된 캐릭터(10칸)에 대해 '업그레이드' 기능을 담당하는 패널 매니저.

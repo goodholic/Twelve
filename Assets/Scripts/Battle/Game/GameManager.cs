@@ -6,7 +6,6 @@ using GuildMaster.Data;
 using GuildMaster.Systems;
 using GuildMaster.Game;
 using TMPro;
-using CharacterData = GuildMaster.Data.CharacterData;
 
 namespace GuildMaster.Core
 {

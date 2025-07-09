@@ -1,6 +1,25 @@
 using UnityEngine;
 using System.Collections.Generic;
 
+namespace GuildMaster.Data
+{
+    [System.Serializable]
+    public enum AttackPatternType
+    {
+        Single,
+        Line,
+        Cross,
+        Square,
+        Circle,
+        Random,
+        All,
+        Front,
+        Back,
+        Self,
+        None
+    }
+}
+
 namespace GuildMaster.Battle
 {
     /// <summary>

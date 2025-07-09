@@ -1,14 +1,15 @@
 using UnityEngine;
 using System.Collections.Generic;
+using GuildMaster.Battle;
 
-namespace GuildMaster.Battle
+namespace GuildMaster.Data
 {
     /// <summary>
     /// 캐릭터의 기본 데이터를 담는 ScriptableObject
     /// CSV 데이터로부터 생성되며, 전투에서 사용됨
     /// </summary>
     [CreateAssetMenu(fileName = "CharacterData", menuName = "GuildMaster/Battle/CharacterData", order = 0)]
-    public class CharacterData : ScriptableObject
+    public partial class CharacterData : ScriptableObject
     {
         [Header("기본 정보")]
         public string ID;

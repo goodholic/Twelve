@@ -4,7 +4,6 @@ using TMPro;
 using System.Collections.Generic;
 using GuildMaster.Data;
 using GuildMaster.Game;
-using CharacterData = GuildMaster.Data.CharacterData;
 
 public class DeckUIManager : MonoBehaviour
 {

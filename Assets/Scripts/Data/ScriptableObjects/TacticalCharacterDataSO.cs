@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
+using AttackPattern = GuildMaster.Data.AttackPatternType;
 
 namespace TacticalTileGame.Data
 {

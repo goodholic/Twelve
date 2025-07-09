@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections.Generic;
 using TMPro;
+using Unit = GuildMaster.Battle.UnitStatus;
 
 namespace GuildMaster.Battle
 {

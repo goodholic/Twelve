@@ -1,1 +1,1 @@
-using CharacterData = GuildMaster.Data.CharacterData;
+using GuildMaster.Data;

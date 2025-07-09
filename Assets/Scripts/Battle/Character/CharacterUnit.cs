@@ -1,6 +1,8 @@
 using UnityEngine;
+using UnityEngine.UI;
 using System.Collections.Generic;
 using TMPro;
+using GuildMaster.Data;
 
 namespace GuildMaster.Battle
 {
@@ -92,16 +94,16 @@ namespace GuildMaster.Battle
                     case JobClass.Knight:
                         attackPattern.Initialize(AttackPattern.PatternType.Adjacent, 1);
                         break;
-                    case JobClass.Mage:
+                    case JobClass.Wizard:
                         attackPattern.Initialize(AttackPattern.PatternType.Line, 3);
                         break;
                     case JobClass.Priest:
                         attackPattern.Initialize(AttackPattern.PatternType.Square, 2);
                         break;
-                    case JobClass.Assassin:
+                    case JobClass.Rogue:
                         attackPattern.Initialize(AttackPattern.PatternType.Diagonal, 2);
                         break;
-                    case JobClass.Ranger:
+                    case JobClass.Archer:
                         attackPattern.Initialize(AttackPattern.PatternType.Line, 4);
                         break;
                     case JobClass.Sage:
@@ -320,20 +322,6 @@ namespace GuildMaster.Battle
         }
     }
     
-    /// <summary>
-    /// 직업 클래스
-    /// </summary>
-    public enum JobClass
-    {
-        None,
-        Warrior,    // 전사
-        Knight,     // 기사
-        Mage,       // 마법사
-        Priest,     // 성직자
-        Assassin,   // 암살자
-        Ranger,     // 궁수
-        Sage        // 현자
-    }
     
     /// <summary>
     /// 희귀도

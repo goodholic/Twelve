@@ -28,16 +28,16 @@ namespace GuildMaster.Battle
         public GameObject defeatPanel;
         
         [Header("Battle State")]
-        public List<UnitState> playerUnits = new List<UnitState>();
-        public List<UnitState> enemyUnits = new List<UnitState>();
-        public List<UnitState> allUnits = new List<UnitState>();
-        private UnitState currentUnit;
+        public List<UnitStatus> playerUnits = new List<UnitStatus>();
+        public List<UnitStatus> enemyUnits = new List<UnitStatus>();
+        public List<UnitStatus> allUnits = new List<UnitStatus>();
+        private UnitStatus currentUnit;
         private int currentTurn = 1;
         private BattlePhase currentPhase = BattlePhase.Deployment;
         
         [Header("Grid System")]
         private TileGrid battleGrid;
-        private Dictionary<UnitState, Tile> unitPositions = new Dictionary<UnitState, Tile>();
+        private Dictionary<UnitStatus, Tile> unitPositions = new Dictionary<UnitStatus, Tile>();
         
         [Header("Battle Settings")]
         public float turnDelay = 1f;
@@ -110,7 +110,7 @@ namespace GuildMaster.Battle
             public int x;
             public int y;
             public GameObject tileObject;
-            public UnitState occupyingUnit;
+            public UnitStatus occupyingUnit;
             public bool isWalkable = true;
             public TileType tileType = TileType.Normal;
             
@@ -125,7 +125,7 @@ namespace GuildMaster.Battle
             
             public bool IsOccupied => occupyingUnit != null;
             
-            public void SetUnit(UnitState unit)
+            public void SetUnit(UnitStatus unit)
             {
                 occupyingUnit = unit;
                 if (unit != null)
@@ -300,7 +300,7 @@ namespace GuildMaster.Battle
             yield return new WaitForSeconds(turnDelay);
         }
         
-        IEnumerator ProcessUnitTurn(UnitState unit, bool isPlayerControlled)
+        IEnumerator ProcessUnitTurn(UnitStatus unit, bool isPlayerControlled)
         {
             Debug.Log($"{unit.unitName}'s turn");
             
@@ -321,7 +321,7 @@ namespace GuildMaster.Battle
             yield return new WaitForSeconds(actionDelay);
         }
         
-        IEnumerator WaitForPlayerAction(UnitState unit)
+        IEnumerator WaitForPlayerAction(UnitStatus unit)
         {
             // Highlight available actions
             ShowAvailableActions(unit);
@@ -337,10 +337,10 @@ namespace GuildMaster.Battle
             HideAvailableActions();
         }
         
-        IEnumerator ProcessAIAction(UnitState unit)
+        IEnumerator ProcessAIAction(UnitStatus unit)
         {
             // Simple AI logic
-            UnitState target = GetBestTarget(unit);
+            UnitStatus target = GetBestTarget(unit);
             
             if (target != null)
             {
@@ -363,7 +363,7 @@ namespace GuildMaster.Battle
             }
         }
         
-        void PlaceUnit(UnitState unit, Tile tile)
+        void PlaceUnit(UnitStatus unit, Tile tile)
         {
             if (unitPositions.ContainsKey(unit))
             {
@@ -375,17 +375,17 @@ namespace GuildMaster.Battle
             allUnits.Add(unit);
         }
         
-        Tile GetUnitTile(UnitState unit)
+        Tile GetUnitTile(UnitStatus unit)
         {
             return unitPositions.ContainsKey(unit) ? unitPositions[unit] : null;
         }
         
-        UnitState GetBestTarget(UnitState attacker)
+        UnitStatus GetBestTarget(UnitStatus attacker)
         {
-            List<UnitState> targets = attacker.isPlayerUnit ? enemyUnits : playerUnits;
+            List<UnitStatus> targets = attacker.isPlayerUnit ? enemyUnits : playerUnits;
             
             // Find lowest HP target
-            UnitState bestTarget = null;
+            UnitStatus bestTarget = null;
             float lowestHPRatio = float.MaxValue;
             
             foreach (var target in targets)
@@ -403,7 +403,7 @@ namespace GuildMaster.Battle
             return bestTarget;
         }
         
-        IEnumerator PerformAttack(UnitState attacker, UnitState defender)
+        IEnumerator PerformAttack(UnitStatus attacker, UnitStatus defender)
         {
             Debug.Log($"{attacker.unitName} attacks {defender.unitName}");
             
@@ -425,7 +425,7 @@ namespace GuildMaster.Battle
             }
         }
         
-        int CalculateDamage(UnitState attacker, UnitState defender)
+        int CalculateDamage(UnitStatus attacker, UnitStatus defender)
         {
             float baseDamage = attacker.attackPower;
             float defense = defender.defense;
@@ -442,7 +442,7 @@ namespace GuildMaster.Battle
             return Mathf.RoundToInt(damage);
         }
         
-        IEnumerator MoveTowardsTarget(UnitState unit, UnitState target)
+        IEnumerator MoveTowardsTarget(UnitStatus unit, UnitStatus target)
         {
             Tile currentTile = GetUnitTile(unit);
             Tile targetTile = GetUnitTile(target);
@@ -465,7 +465,7 @@ namespace GuildMaster.Battle
             }
         }
         
-        void HandleUnitDeath(UnitState unit)
+        void HandleUnitDeath(UnitStatus unit)
         {
             Debug.Log($"{unit.unitName} has been defeated!");
             
@@ -533,7 +533,7 @@ namespace GuildMaster.Battle
             }
         }
         
-        void ShowAvailableActions(UnitState unit)
+        void ShowAvailableActions(UnitStatus unit)
         {
             // Highlight movement range
             Tile unitTile = GetUnitTile(unit);
@@ -582,10 +582,10 @@ namespace GuildMaster.Battle
             }
         }
         
-        public void SetupBattle(List<UnitState> playerTeam, List<UnitState> enemyTeam)
+        public void SetupBattle(List<UnitStatus> playerTeam, List<UnitStatus> enemyTeam)
         {
-            playerUnits = new List<UnitState>(playerTeam);
-            enemyUnits = new List<UnitState>(enemyTeam);
+            playerUnits = new List<UnitStatus>(playerTeam);
+            enemyUnits = new List<UnitStatus>(enemyTeam);
             
             foreach (var unit in playerUnits)
             {

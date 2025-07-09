@@ -4,6 +4,7 @@ using System.Linq;
 using TMPro;
 using UnityEngine.UI;
 using GuildMaster.TileBattle;
+using Unit = GuildMaster.Battle.UnitStatus;
 
 namespace GuildMaster.Battle
 {

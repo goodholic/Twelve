@@ -1,6 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
-using CharacterData = GuildMaster.Data.CharacterData;
+using GuildMaster.Data;
 
 namespace GuildMaster.Battle
 {
