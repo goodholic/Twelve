@@ -447,7 +447,7 @@ namespace GuildMaster.Core
         [Header("Gameplay Configuration")]
         public int maxGuildLevel = 50;
         public int maxAdventurerLevel = 100;
-        public int maxSquadSize = 36;
+        public int maxFormationSize = 36;
         public int maxBuildings = 10;
         
         [Header("Economy Settings")]

@@ -8,7 +8,7 @@ using GuildMaster.Data;
 using GuildMaster.Game;
 using CharacterData = GuildMaster.Data.CharacterData;
 
-namespace pjy.Managers
+namespace GuildMaster.UI
 {
     /// <summary>
     /// 캐릭터 업그레이드 시스템 매니저 (인게임 전 로비에서 사용)

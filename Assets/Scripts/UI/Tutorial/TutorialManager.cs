@@ -5,7 +5,7 @@ using System.Collections;
 using GuildMaster.Core;
 using System.Collections.Generic;
 
-namespace pjy.Managers
+namespace GuildMaster.Tutorial
 {
     /// <summary>
     /// 게임 튜토리얼 관리 시스템

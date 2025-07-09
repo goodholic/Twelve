@@ -308,7 +308,7 @@ namespace GuildMaster.Systems
         string GenerateGuildName()
         {
             string[] prefixes = { "Iron", "Golden", "Silver", "Diamond", "Crystal", "Shadow", "Light", "Dark", "Fire", "Ice" };
-            string[] suffixes = { "Knights", "Warriors", "Guardians", "Legion", "Order", "Brotherhood", "Alliance", "Company", "Squad", "Force" };
+            string[] suffixes = { "Knights", "Warriors", "Guardians", "Legion", "Order", "Brotherhood", "Alliance", "Company", "Guild", "Force" };
             
             return $"{prefixes[UnityEngine.Random.Range(0, prefixes.Length)]} {suffixes[UnityEngine.Random.Range(0, suffixes.Length)]}";
         }

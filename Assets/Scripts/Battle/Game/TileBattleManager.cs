@@ -1,7 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
 using System.Linq;
-using TacticalTileGame.Data;
 
 namespace TacticalTileGame.Battle
 {
@@ -29,11 +28,8 @@ namespace TacticalTileGame.Battle
         private CharacterUnit selectedUnit;
         private List<Vector2Int> highlightedTiles = new List<Vector2Int>();
         
-        private TacticalDataManager dataManager;
-        
         private void Start()
         {
-            dataManager = TacticalDataManager.Instance;
             InitializeBattleGrid();
         }
         

@@ -131,7 +131,7 @@ namespace GuildMaster.Systems
                         stepId = "form_squad",
                         title = "부대 편성",
                         description = "오른쪽 부대 편성에서 모험가를 배치해보세요.",
-                        targetUIElement = "Squad1Container",
+                        targetUIElement = "FormationContainer",
                         requiresAction = true,
                         actionType = "place_unit"
                     },
