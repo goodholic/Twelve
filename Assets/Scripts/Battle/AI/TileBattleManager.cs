@@ -1,629 +1,622 @@
+using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
-using UnityEngine;
+using System.Linq;
 using TMPro;
+using UnityEngine.UI;
+using GuildMaster.Data; // CharacterDataSO를 위해 추가
+using GuildMaster.Battle;
 
-namespace GuildMaster.TileBattle
+namespace GuildMaster.Battle
 {
-    /// <summary>
-    /// 타일 배틀 게임 매니저
-    /// 게임 진행, 턴 관리, 승리 조건 체크
-    /// </summary>
     public class TileBattleManager : MonoBehaviour
     {
-        [Header("Game Settings")]
-        [SerializeField] private TileBattleAI.AILevel aiDifficulty = TileBattleAI.AILevel.Normal;
-        [SerializeField] private float turnDelay = 0.5f;
+        [Header("Battle Setup")]
+        public Transform playerDeploymentZone;
+        public Transform enemyDeploymentZone;
+        public GameObject tilePrefab;
+        public int gridWidth = 6;
+        public int gridHeight = 3;
+        public float tileSpacing = 1.1f;
         
         [Header("UI References")]
-        [SerializeField] private GameObject tilePrefab;
-        [SerializeField] private Transform tileAParent; // A타일 부모
-        [SerializeField] private Transform tileBParent; // B타일 부모
-        [SerializeField] private TextMeshProUGUI turnText;
-        [SerializeField] private TextMeshProUGUI scoreText;
-        [SerializeField] private GameObject characterSelectPanel;
-        [SerializeField] private GameObject gameResultPanel;
+        public GameObject battleUI;
+        public TextMeshProUGUI turnText;
+        public TextMeshProUGUI phaseText;
+        public Button endTurnButton;
+        public GameObject victoryPanel;
+        public GameObject defeatPanel;
         
-        // 게임 상태
-        private TileBattleAI battleAI;
-        private TileBattleAI.TileInfo[,] tileA;
-        private TileBattleAI.TileInfo[,] tileB;
-        private GameObject[,] tileObjectsA;
-        private GameObject[,] tileObjectsB;
+        [Header("Battle State")]
+        public List<UnitStatus> playerUnits = new List<UnitStatus>();
+        public List<UnitStatus> enemyUnits = new List<UnitStatus>();
+        public List<UnitStatus> allUnits = new List<UnitStatus>();
+        private UnitStatus currentUnit;
+        private int currentTurn = 1;
+        private BattlePhase currentPhase = BattlePhase.Deployment;
         
-        private List<TileBattleAI.Character> playerCharacters;
-        private List<TileBattleAI.Character> aiCharacters;
-        private List<TileBattleAI.Character> playerSelectedCharacters;
-        private List<TileBattleAI.Character> aiSelectedCharacters;
+        [Header("Grid System")]
+        private TileGrid battleGrid;
+        private Dictionary<UnitStatus, Tile> unitPositions = new Dictionary<UnitStatus, Tile>();
         
-        private int currentTurn = 0; // 0 = 플레이어, 1 = AI
-        private int turnCount = 0;
-        private bool isGameActive = false;
-        private int playerDeployedCount = 0;
-        private int aiDeployedCount = 0;
+        [Header("Battle Settings")]
+        public float turnDelay = 1f;
+        public float actionDelay = 0.5f;
+        public bool autoEndTurn = true;
         
-        // 상수
-        private const int TILE_WIDTH = 6;
-        private const int TILE_HEIGHT = 3;
-        private const int MAX_CHARACTERS = 10;
-
-        void Start()
+        public enum BattlePhase
         {
-            InitializeGame();
+            Deployment,
+            PlayerTurn,
+            EnemyTurn,
+            Victory,
+            Defeat
         }
-
-        /// <summary>
-        /// 게임 초기화
-        /// </summary>
-        void InitializeGame()
+        
+        [System.Serializable]
+        public class TileGrid
         {
-            // AI 초기화
-            battleAI = gameObject.AddComponent<TileBattleAI>();
+            public Tile[,] tiles;
+            public int width;
+            public int height;
             
-            // 타일 초기화
-            InitializeTiles();
-            
-            // 캐릭터 풀 초기화
-            InitializeCharacterPools();
-            
-            // UI 초기화
-            UpdateUI();
-            
-            // 캐릭터 선택 단계 시작
-            StartCharacterSelection();
-        }
-
-        /// <summary>
-        /// 타일 초기화 및 생성
-        /// </summary>
-        void InitializeTiles()
-        {
-            tileA = new TileBattleAI.TileInfo[TILE_WIDTH, TILE_HEIGHT];
-            tileB = new TileBattleAI.TileInfo[TILE_WIDTH, TILE_HEIGHT];
-            tileObjectsA = new GameObject[TILE_WIDTH, TILE_HEIGHT];
-            tileObjectsB = new GameObject[TILE_WIDTH, TILE_HEIGHT];
-            
-            // A타일 생성 (위쪽)
-            for (int x = 0; x < TILE_WIDTH; x++)
+            public TileGrid(int w, int h)
             {
-                for (int y = 0; y < TILE_HEIGHT; y++)
+                width = w;
+                height = h;
+                tiles = new Tile[w, h];
+            }
+            
+            public Tile GetTile(int x, int y)
+            {
+                if (x < 0 || x >= width || y < 0 || y >= height)
+                    return null;
+                return tiles[x, y];
+            }
+            
+            public List<Tile> GetTilesInRange(Tile center, int range)
+            {
+                List<Tile> tilesInRange = new List<Tile>();
+                
+                for (int x = 0; x < width; x++)
                 {
-                    tileA[x, y] = new TileBattleAI.TileInfo { 
-                        tileIndex = 0, 
-                        position = new Vector2Int(x, y) 
-                    };
-                    
-                    Vector3 position = new Vector3(x * 1.1f, 0, y * 1.1f);
-                    GameObject tile = Instantiate(tilePrefab, position, Quaternion.identity, tileAParent);
-                    tile.name = $"TileA_{x}_{y}";
-                    tileObjectsA[x, y] = tile;
-                    
-                    // 타일 클릭 이벤트 추가
-                    int capturedX = x;
-                    int capturedY = y;
-                    tile.GetComponent<TileClickHandler>()?.SetCallback(() => OnTileClicked(0, capturedX, capturedY));
-                }
-            }
-            
-            // B타일 생성 (아래쪽)
-            for (int x = 0; x < TILE_WIDTH; x++)
-            {
-                for (int y = 0; y < TILE_HEIGHT; y++)
-                {
-                    tileB[x, y] = new TileBattleAI.TileInfo { 
-                        tileIndex = 1, 
-                        position = new Vector2Int(x, y) 
-                    };
-                    
-                    Vector3 position = new Vector3(x * 1.1f, -4, y * 1.1f);
-                    GameObject tile = Instantiate(tilePrefab, position, Quaternion.identity, tileBParent);
-                    tile.name = $"TileB_{x}_{y}";
-                    tileObjectsB[x, y] = tile;
-                    
-                    // 타일 클릭 이벤트 추가
-                    int capturedX = x;
-                    int capturedY = y;
-                    tile.GetComponent<TileClickHandler>()?.SetCallback(() => OnTileClicked(1, capturedX, capturedY));
-                }
-            }
-        }
-
-        /// <summary>
-        /// 캐릭터 풀 초기화
-        /// </summary>
-        void InitializeCharacterPools()
-        {
-            playerCharacters = CreateCharacterPool(0); // 플레이어 팀
-            aiCharacters = CreateCharacterPool(1);     // AI 팀
-        }
-
-        /// <summary>
-        /// 캐릭터 풀 생성
-        /// </summary>
-        List<TileBattleAI.Character> CreateCharacterPool(int team)
-        {
-            var characters = new List<TileBattleAI.Character>();
-            
-            // 다양한 공격 패턴을 가진 캐릭터들
-            var attackPatterns = new Dictionary<string, List<Vector2Int>>
-            {
-                ["cross"] = new List<Vector2Int> { 
-                    new Vector2Int(0, 1), new Vector2Int(0, -1), 
-                    new Vector2Int(1, 0), new Vector2Int(-1, 0) 
-                },
-                ["diagonal"] = new List<Vector2Int> { 
-                    new Vector2Int(1, 1), new Vector2Int(1, -1), 
-                    new Vector2Int(-1, 1), new Vector2Int(-1, -1) 
-                },
-                ["surrounding"] = new List<Vector2Int> { 
-                    new Vector2Int(0, 1), new Vector2Int(0, -1), 
-                    new Vector2Int(1, 0), new Vector2Int(-1, 0),
-                    new Vector2Int(1, 1), new Vector2Int(1, -1), 
-                    new Vector2Int(-1, 1), new Vector2Int(-1, -1) 
-                },
-                ["line2"] = new List<Vector2Int> { 
-                    new Vector2Int(0, 1), new Vector2Int(0, 2) 
-                },
-                ["bigCross"] = new List<Vector2Int> { 
-                    new Vector2Int(0, 1), new Vector2Int(0, 2),
-                    new Vector2Int(0, -1), new Vector2Int(0, -2),
-                    new Vector2Int(1, 0), new Vector2Int(2, 0),
-                    new Vector2Int(-1, 0), new Vector2Int(-2, 0)
-                }
-            };
-            
-            // 캐릭터 생성
-            characters.Add(new TileBattleAI.Character { 
-                id = $"warrior_{team}", name = "전사", 
-                attackPower = 10, attackRange = attackPatterns["cross"], team = team 
-            });
-            
-            characters.Add(new TileBattleAI.Character { 
-                id = $"mage_{team}", name = "마법사", 
-                attackPower = 8, attackRange = attackPatterns["surrounding"], team = team 
-            });
-            
-            characters.Add(new TileBattleAI.Character { 
-                id = $"archer_{team}", name = "궁수", 
-                attackPower = 7, attackRange = attackPatterns["line2"], team = team 
-            });
-            
-            characters.Add(new TileBattleAI.Character { 
-                id = $"knight_{team}", name = "기사", 
-                attackPower = 9, attackRange = attackPatterns["cross"], team = team 
-            });
-            
-            characters.Add(new TileBattleAI.Character { 
-                id = $"assassin_{team}", name = "암살자", 
-                attackPower = 11, attackRange = attackPatterns["diagonal"], team = team 
-            });
-            
-            characters.Add(new TileBattleAI.Character { 
-                id = $"priest_{team}", name = "성직자", 
-                attackPower = 5, attackRange = attackPatterns["surrounding"], team = team 
-            });
-            
-            characters.Add(new TileBattleAI.Character { 
-                id = $"paladin_{team}", name = "성기사", 
-                attackPower = 9, attackRange = attackPatterns["bigCross"], team = team 
-            });
-            
-            // 추가 캐릭터들
-            for (int i = 2; i <= 5; i++)
-            {
-                characters.Add(new TileBattleAI.Character { 
-                    id = $"soldier_{team}_{i}", name = $"병사{i}", 
-                    attackPower = 6 + i, attackRange = attackPatterns["cross"], team = team 
-                });
-            }
-            
-            return characters;
-        }
-
-        /// <summary>
-        /// 캐릭터 선택 단계 시작
-        /// </summary>
-        void StartCharacterSelection()
-        {
-            characterSelectPanel.SetActive(true);
-            
-            // AI 캐릭터 선택
-            aiSelectedCharacters = battleAI.SelectCharacters();
-            
-            // 플레이어 캐릭터 선택 UI 표시
-            DisplayCharacterSelection();
-        }
-
-        /// <summary>
-        /// 캐릭터 선택 UI 표시
-        /// </summary>
-        void DisplayCharacterSelection()
-        {
-            // 플레이어가 선택할 수 있는 캐릭터 목록 표시
-            // (실제 구현시 UI 프리팹과 연동)
-            Debug.Log("플레이어는 10개의 캐릭터를 선택하세요.");
-        }
-
-        /// <summary>
-        /// 플레이어 캐릭터 선택 완료
-        /// </summary>
-        public void OnPlayerCharacterSelectionComplete(List<TileBattleAI.Character> selected)
-        {
-            playerSelectedCharacters = selected;
-            characterSelectPanel.SetActive(false);
-            
-            // 게임 시작
-            StartBattle();
-        }
-
-        /// <summary>
-        /// 전투 시작
-        /// </summary>
-        void StartBattle()
-        {
-            isGameActive = true;
-            currentTurn = 0; // 플레이어 선공
-            turnCount = 0;
-            playerDeployedCount = 0;
-            aiDeployedCount = 0;
-            
-            UpdateUI();
-            
-            // 첫 턴 시작
-            if (currentTurn == 0)
-            {
-                Debug.Log("플레이어 턴입니다. 캐릭터를 배치하세요.");
-            }
-            else
-            {
-                StartCoroutine(AITurn());
-            }
-        }
-
-        /// <summary>
-        /// 타일 클릭 처리
-        /// </summary>
-        void OnTileClicked(int tileIndex, int x, int y)
-        {
-            if (!isGameActive || currentTurn != 0) return;
-            
-            var tile = (tileIndex == 0) ? tileA : tileB;
-            
-            // 빈 타일인지 확인
-            if (tile[x, y].occupant != null)
-            {
-                Debug.Log("이미 캐릭터가 배치된 타일입니다.");
-                return;
-            }
-            
-            // 플레이어 캐릭터 배치
-            if (playerDeployedCount < playerSelectedCharacters.Count)
-            {
-                var character = playerSelectedCharacters[playerDeployedCount];
-                PlaceCharacter(character, tileIndex, x, y);
-                playerDeployedCount++;
-                
-                // 턴 종료
-                EndTurn();
-            }
-        }
-
-        /// <summary>
-        /// 캐릭터 배치
-        /// </summary>
-        void PlaceCharacter(TileBattleAI.Character character, int tileIndex, int x, int y)
-        {
-            var tile = (tileIndex == 0) ? tileA : tileB;
-            var tileObject = (tileIndex == 0) ? tileObjectsA[x, y] : tileObjectsB[x, y];
-            
-            tile[x, y].occupant = character;
-            
-            // 시각적 표시 (캐릭터 스프라이트 또는 3D 모델)
-            var visual = tileObject.transform.Find("CharacterVisual");
-            if (visual != null)
-            {
-                visual.gameObject.SetActive(true);
-                // 팀 색상 설정
-                var renderer = visual.GetComponent<Renderer>();
-                if (renderer != null)
-                {
-                    renderer.material.color = (character.team == 0) ? Color.blue : Color.red;
-                }
-            }
-            
-            Debug.Log($"{(character.team == 0 ? "플레이어" : "AI")}가 {character.name}을(를) " +
-                     $"{(tileIndex == 0 ? "A" : "B")}타일 ({x}, {y})에 배치했습니다.");
-        }
-
-        /// <summary>
-        /// AI 턴 처리
-        /// </summary>
-        IEnumerator AITurn()
-        {
-            yield return new WaitForSeconds(turnDelay);
-            
-            if (aiDeployedCount < aiSelectedCharacters.Count)
-            {
-                var character = aiSelectedCharacters[aiDeployedCount];
-                
-                // AI 결정 대기
-                var moveEnumerator = battleAI.MakeMove(character, tileA, tileB);
-                while (moveEnumerator.MoveNext())
-                {
-                    yield return moveEnumerator.Current;
-                }
-                
-                var position = moveEnumerator.Current;
-                
-                // 위치 디코딩
-                int tileIndex = position.x >= 100 ? 1 : 0;
-                int x = position.x % 100;
-                int y = position.y;
-                
-                PlaceCharacter(character, tileIndex, x, y);
-                aiDeployedCount++;
-                
-                EndTurn();
-            }
-        }
-
-        /// <summary>
-        /// 턴 종료
-        /// </summary>
-        void EndTurn()
-        {
-            turnCount++;
-            
-            // 모든 캐릭터 배치 완료 확인
-            if (playerDeployedCount >= MAX_CHARACTERS && aiDeployedCount >= MAX_CHARACTERS)
-            {
-                // 전투 단계로 진행
-                StartCombatPhase();
-                return;
-            }
-            
-            // 턴 교체
-            currentTurn = 1 - currentTurn;
-            UpdateUI();
-            
-            if (currentTurn == 1)
-            {
-                StartCoroutine(AITurn());
-            }
-            else
-            {
-                Debug.Log("플레이어 턴입니다. 캐릭터를 배치하세요.");
-            }
-        }
-
-        /// <summary>
-        /// 전투 단계 시작
-        /// </summary>
-        void StartCombatPhase()
-        {
-            Debug.Log("배치 완료! 전투를 시작합니다.");
-            StartCoroutine(ExecuteCombat());
-        }
-
-        /// <summary>
-        /// 전투 실행
-        /// </summary>
-        IEnumerator ExecuteCombat()
-        {
-            // 모든 캐릭터가 동시에 공격
-            yield return new WaitForSeconds(1f);
-            
-            // A타일 전투
-            ExecuteTileCombat(tileA);
-            
-            // B타일 전투
-            ExecuteTileCombat(tileB);
-            
-            // 전투 애니메이션 대기
-            yield return new WaitForSeconds(2f);
-            
-            // 승리 조건 체크
-            CheckVictoryCondition();
-        }
-
-        /// <summary>
-        /// 타일별 전투 실행
-        /// </summary>
-        void ExecuteTileCombat(TileBattleAI.TileInfo[,] tile)
-        {
-            // 모든 캐릭터가 자신의 공격 범위 내 적을 공격
-            for (int x = 0; x < TILE_WIDTH; x++)
-            {
-                for (int y = 0; y < TILE_HEIGHT; y++)
-                {
-                    var attacker = tile[x, y].occupant;
-                    if (attacker != null && attacker.isAlive)
+                    for (int y = 0; y < height; y++)
                     {
-                        // 공격 범위 내 적 공격
-                        foreach (var offset in attacker.attackRange)
+                        Tile tile = tiles[x, y];
+                        int distance = Mathf.Abs(tile.x - center.x) + Mathf.Abs(tile.y - center.y);
+                        
+                        if (distance <= range)
                         {
-                            var targetPos = new Vector2Int(x, y) + offset;
-                            if (IsValidPosition(targetPos))
-                            {
-                                var target = tile[targetPos.x, targetPos.y].occupant;
-                                if (target != null && target.team != attacker.team && target.isAlive)
-                                {
-                                    // 데미지 처리 (간단한 버전)
-                                    Debug.Log($"{attacker.name}이(가) {target.name}을(를) 공격!");
-                                    target.isAlive = false;
-                                    
-                                    // 시각적 효과
-                                    UpdateCharacterVisual(tile == tileA ? 0 : 1, targetPos.x, targetPos.y, false);
-                                }
-                            }
+                            tilesInRange.Add(tile);
                         }
                     }
                 }
+                
+                return tilesInRange;
+            }
+            
+            public List<Tile> GetPath(Tile start, Tile end)
+            {
+                // Simple A* pathfinding implementation
+                List<Tile> path = new List<Tile>();
+                // ... pathfinding logic ...
+                return path;
             }
         }
-
-        /// <summary>
-        /// 캐릭터 시각 효과 업데이트
-        /// </summary>
-        void UpdateCharacterVisual(int tileIndex, int x, int y, bool isAlive)
+        
+        [System.Serializable]
+        public class Tile
         {
-            var tileObject = (tileIndex == 0) ? tileObjectsA[x, y] : tileObjectsB[x, y];
-            var visual = tileObject.transform.Find("CharacterVisual");
+            public int x;
+            public int y;
+            public GameObject tileObject;
+            public UnitStatus occupyingUnit;
+            public bool isWalkable = true;
+            public TileType tileType = TileType.Normal;
             
-            if (visual != null)
+            public enum TileType
             {
-                if (!isAlive)
+                Normal,
+                Obstacle,
+                Hazard,
+                Buff,
+                Deployment
+            }
+            
+            public bool IsOccupied => occupyingUnit != null;
+            
+            public void SetUnit(UnitStatus unit)
+            {
+                occupyingUnit = unit;
+                if (unit != null)
                 {
-                    // 사망 효과
-                    visual.gameObject.SetActive(false);
+                    unit.transform.position = tileObject.transform.position;
                 }
             }
-        }
-
-        /// <summary>
-        /// 승리 조건 체크
-        /// </summary>
-        void CheckVictoryCondition()
-        {
-            int playerScore = 0;
-            int aiScore = 0;
             
-            // A타일 점수 계산
-            int playerCountA = 0, aiCountA = 0;
-            for (int x = 0; x < TILE_WIDTH; x++)
+            public void ClearUnit()
             {
-                for (int y = 0; y < TILE_HEIGHT; y++)
+                occupyingUnit = null;
+            }
+        }
+        
+        void Start()
+        {
+            InitializeBattle();
+        }
+        
+        void InitializeBattle()
+        {
+            CreateBattleGrid();
+            SetupUI();
+            StartCoroutine(BattleFlow());
+        }
+        
+        void CreateBattleGrid()
+        {
+            battleGrid = new TileGrid(gridWidth, gridHeight * 2); // Double height for both sides
+            
+            for (int x = 0; x < gridWidth; x++)
+            {
+                for (int y = 0; y < gridHeight * 2; y++)
                 {
-                    var occupant = tileA[x, y].occupant;
-                    if (occupant != null && occupant.isAlive)
+                    Vector3 position = new Vector3(x * tileSpacing, 0, y * tileSpacing);
+                    GameObject tileObj = Instantiate(tilePrefab, position, Quaternion.identity);
+                    tileObj.name = $"Tile_{x}_{y}";
+                    
+                    Tile tile = new Tile
                     {
-                        if (occupant.team == 0) playerCountA++;
-                        else aiCountA++;
-                    }
-                }
-            }
-            if (playerCountA > aiCountA) playerScore++;
-            else if (aiCountA > playerCountA) aiScore++;
-            
-            // B타일 점수 계산
-            int playerCountB = 0, aiCountB = 0;
-            for (int x = 0; x < TILE_WIDTH; x++)
-            {
-                for (int y = 0; y < TILE_HEIGHT; y++)
-                {
-                    var occupant = tileB[x, y].occupant;
-                    if (occupant != null && occupant.isAlive)
+                        x = x,
+                        y = y,
+                        tileObject = tileObj
+                    };
+                    
+                    // Set deployment zones
+                    if (y < gridHeight)
                     {
-                        if (occupant.team == 0) playerCountB++;
-                        else aiCountB++;
+                        tile.tileType = Tile.TileType.Deployment;
+                        tileObj.GetComponent<Renderer>().material.color = Color.blue;
                     }
+                    else
+                    {
+                        tile.tileType = Tile.TileType.Normal;
+                    }
+                    
+                    battleGrid.tiles[x, y] = tile;
                 }
             }
-            if (playerCountB > aiCountB) playerScore++;
-            else if (aiCountB > playerCountB) aiScore++;
-            
-            // 게임 종료
-            EndGame(playerScore, aiScore);
         }
-
-        /// <summary>
-        /// 게임 종료
-        /// </summary>
-        void EndGame(int playerScore, int aiScore)
+        
+        void SetupUI()
         {
-            isGameActive = false;
-            
-            string result;
-            if (playerScore > aiScore)
+            if (endTurnButton != null)
             {
-                result = $"플레이어 승리! ({playerScore} vs {aiScore})";
+                endTurnButton.onClick.AddListener(OnEndTurnClicked);
             }
-            else if (aiScore > playerScore)
+            
+            UpdateUI();
+        }
+        
+        IEnumerator BattleFlow()
+        {
+            // Deployment Phase
+            currentPhase = BattlePhase.Deployment;
+            yield return StartCoroutine(DeploymentPhase());
+            
+            // Battle Loop
+            while (currentPhase != BattlePhase.Victory && currentPhase != BattlePhase.Defeat)
             {
-                result = $"AI 승리! ({aiScore} vs {playerScore})";
+                // Player Turn
+                currentPhase = BattlePhase.PlayerTurn;
+                UpdateUI();
+                yield return StartCoroutine(PlayerTurnPhase());
+                
+                // Check victory
+                if (CheckVictoryCondition())
+                {
+                    currentPhase = BattlePhase.Victory;
+                    break;
+                }
+                
+                // Enemy Turn
+                currentPhase = BattlePhase.EnemyTurn;
+                UpdateUI();
+                yield return StartCoroutine(EnemyTurnPhase());
+                
+                // Check defeat
+                if (CheckDefeatCondition())
+                {
+                    currentPhase = BattlePhase.Defeat;
+                    break;
+                }
+                
+                currentTurn++;
+            }
+            
+            // End Battle
+            EndBattle();
+        }
+        
+        IEnumerator DeploymentPhase()
+        {
+            Debug.Log("Deployment Phase Started");
+            
+            // Deploy player units
+            for (int i = 0; i < playerUnits.Count && i < gridWidth; i++)
+            {
+                Tile deployTile = battleGrid.GetTile(i, 0);
+                if (deployTile != null)
+                {
+                    PlaceUnit(playerUnits[i], deployTile);
+                }
+            }
+            
+            // Deploy enemy units
+            for (int i = 0; i < enemyUnits.Count && i < gridWidth; i++)
+            {
+                Tile deployTile = battleGrid.GetTile(i, gridHeight * 2 - 1);
+                if (deployTile != null)
+                {
+                    PlaceUnit(enemyUnits[i], deployTile);
+                }
+            }
+            
+            yield return new WaitForSeconds(1f);
+        }
+        
+        IEnumerator PlayerTurnPhase()
+        {
+            Debug.Log($"Player Turn {currentTurn} Started");
+            
+            // Sort units by speed
+            var sortedPlayerUnits = playerUnits.OrderByDescending(u => u.speed).ToList();
+            
+            foreach (var unit in sortedPlayerUnits)
+            {
+                if (unit.isDead) continue;
+                
+                currentUnit = unit;
+                yield return StartCoroutine(ProcessUnitTurn(unit, true));
+            }
+            
+            yield return new WaitForSeconds(turnDelay);
+        }
+        
+        IEnumerator EnemyTurnPhase()
+        {
+            Debug.Log($"Enemy Turn {currentTurn} Started");
+            
+            // Sort units by speed
+            var sortedEnemyUnits = enemyUnits.OrderByDescending(u => u.speed).ToList();
+            
+            foreach (var unit in sortedEnemyUnits)
+            {
+                if (unit.isDead) continue;
+                
+                currentUnit = unit;
+                yield return StartCoroutine(ProcessUnitTurn(unit, false));
+            }
+            
+            yield return new WaitForSeconds(turnDelay);
+        }
+        
+        IEnumerator ProcessUnitTurn(UnitStatus unit, bool isPlayerControlled)
+        {
+            Debug.Log($"{unit.unitName}'s turn");
+            
+            // Update status effects
+            unit.UpdateStatusEffects();
+            
+            if (isPlayerControlled)
+            {
+                // Wait for player input
+                yield return StartCoroutine(WaitForPlayerAction(unit));
             }
             else
             {
-                result = $"무승부! ({playerScore} vs {aiScore})";
+                // AI action
+                yield return StartCoroutine(ProcessAIAction(unit));
             }
             
-            Debug.Log(result);
-            
-            // 결과 UI 표시
-            gameResultPanel.SetActive(true);
-            var resultText = gameResultPanel.GetComponentInChildren<TextMeshProUGUI>();
-            if (resultText != null)
-            {
-                resultText.text = result;
-            }
-            
-            // AI 평가 출력
-            battleAI.EvaluateGameState();
+            yield return new WaitForSeconds(actionDelay);
         }
-
-        /// <summary>
-        /// UI 업데이트
-        /// </summary>
+        
+        IEnumerator WaitForPlayerAction(UnitStatus unit)
+        {
+            // Highlight available actions
+            ShowAvailableActions(unit);
+            
+            // Wait for player to select action
+            bool actionCompleted = false;
+            while (!actionCompleted && !autoEndTurn)
+            {
+                // Check for input
+                yield return null;
+            }
+            
+            HideAvailableActions();
+        }
+        
+        IEnumerator ProcessAIAction(UnitStatus unit)
+        {
+            // Simple AI logic
+            UnitStatus target = GetBestTarget(unit);
+            
+            if (target != null)
+            {
+                // Check if in range
+                Tile unitTile = GetUnitTile(unit);
+                Tile targetTile = GetUnitTile(target);
+                
+                int distance = Mathf.Abs(unitTile.x - targetTile.x) + Mathf.Abs(unitTile.y - targetTile.y);
+                
+                if (distance <= 1) // Melee range
+                {
+                    // Attack
+                    yield return StartCoroutine(PerformAttack(unit, target));
+                }
+                else
+                {
+                    // Move towards target
+                    yield return StartCoroutine(MoveTowardsTarget(unit, target));
+                }
+            }
+        }
+        
+        void PlaceUnit(UnitStatus unit, Tile tile)
+        {
+            if (unitPositions.ContainsKey(unit))
+            {
+                unitPositions[unit].ClearUnit();
+            }
+            
+            tile.SetUnit(unit);
+            unitPositions[unit] = tile;
+            allUnits.Add(unit);
+        }
+        
+        Tile GetUnitTile(UnitStatus unit)
+        {
+            return unitPositions.ContainsKey(unit) ? unitPositions[unit] : null;
+        }
+        
+        UnitStatus GetBestTarget(UnitStatus attacker)
+        {
+            List<UnitStatus> targets = attacker.isPlayerUnit ? enemyUnits : playerUnits;
+            
+            // Find lowest HP target
+            UnitStatus bestTarget = null;
+            float lowestHPRatio = float.MaxValue;
+            
+            foreach (var target in targets)
+            {
+                if (target.isDead) continue;
+                
+                float hpRatio = target.currentHP / (float)target.maxHP;
+                if (hpRatio < lowestHPRatio)
+                {
+                    lowestHPRatio = hpRatio;
+                    bestTarget = target;
+                }
+            }
+            
+            return bestTarget;
+        }
+        
+        IEnumerator PerformAttack(UnitStatus attacker, UnitStatus defender)
+        {
+            Debug.Log($"{attacker.unitName} attacks {defender.unitName}");
+            
+            // Calculate damage
+            int damage = CalculateDamage(attacker, defender);
+            
+            // Apply damage
+            defender.TakeDamage(damage);
+            
+            // Visual feedback
+            // TODO: Add attack animation
+            
+            yield return new WaitForSeconds(0.5f);
+            
+            // Check if defender died
+            if (defender.isDead)
+            {
+                HandleUnitDeath(defender);
+            }
+        }
+        
+        int CalculateDamage(UnitStatus attacker, UnitStatus defender)
+        {
+            float baseDamage = attacker.attackPower;
+            float defense = defender.defense;
+            
+            float damage = baseDamage * (100f / (100f + defense));
+            
+            // Critical hit
+            if (Random.value < attacker.criticalRate)
+            {
+                damage *= 2f;
+                Debug.Log("Critical Hit!");
+            }
+            
+            return Mathf.RoundToInt(damage);
+        }
+        
+        IEnumerator MoveTowardsTarget(UnitStatus unit, UnitStatus target)
+        {
+            Tile currentTile = GetUnitTile(unit);
+            Tile targetTile = GetUnitTile(target);
+            
+            // Simple movement - move one tile closer
+            int dx = Mathf.Clamp(targetTile.x - currentTile.x, -1, 1);
+            int dy = Mathf.Clamp(targetTile.y - currentTile.y, -1, 1);
+            
+            Tile newTile = battleGrid.GetTile(currentTile.x + dx, currentTile.y + dy);
+            
+            if (newTile != null && !newTile.IsOccupied)
+            {
+                currentTile.ClearUnit();
+                PlaceUnit(unit, newTile);
+                
+                // Visual movement
+                // TODO: Add movement animation
+                
+                yield return new WaitForSeconds(0.3f);
+            }
+        }
+        
+        void HandleUnitDeath(UnitStatus unit)
+        {
+            Debug.Log($"{unit.unitName} has been defeated!");
+            
+            // Remove from tile
+            Tile tile = GetUnitTile(unit);
+            if (tile != null)
+            {
+                tile.ClearUnit();
+            }
+            
+            // Remove from lists
+            unitPositions.Remove(unit);
+            allUnits.Remove(unit);
+            
+            if (unit.isPlayerUnit)
+            {
+                playerUnits.Remove(unit);
+            }
+            else
+            {
+                enemyUnits.Remove(unit);
+            }
+            
+            // Destroy game object
+            Destroy(unit.gameObject);
+        }
+        
+        bool CheckVictoryCondition()
+        {
+            return enemyUnits.Count(u => !u.isDead) == 0;
+        }
+        
+        bool CheckDefeatCondition()
+        {
+            return playerUnits.Count(u => !u.isDead) == 0;
+        }
+        
+        void EndBattle()
+        {
+            Debug.Log($"Battle Ended - {currentPhase}");
+            
+            if (currentPhase == BattlePhase.Victory)
+            {
+                ShowVictoryScreen();
+            }
+            else if (currentPhase == BattlePhase.Defeat)
+            {
+                ShowDefeatScreen();
+            }
+        }
+        
+        void ShowVictoryScreen()
+        {
+            if (victoryPanel != null)
+            {
+                victoryPanel.SetActive(true);
+            }
+        }
+        
+        void ShowDefeatScreen()
+        {
+            if (defeatPanel != null)
+            {
+                defeatPanel.SetActive(true);
+            }
+        }
+        
+        void ShowAvailableActions(UnitStatus unit)
+        {
+            // Highlight movement range
+            Tile unitTile = GetUnitTile(unit);
+            List<Tile> movementRange = battleGrid.GetTilesInRange(unitTile, 3);
+            
+            foreach (var tile in movementRange)
+            {
+                if (!tile.IsOccupied)
+                {
+                    tile.tileObject.GetComponent<Renderer>().material.color = Color.green;
+                }
+            }
+        }
+        
+        void HideAvailableActions()
+        {
+            // Reset tile colors
+            for (int x = 0; x < battleGrid.width; x++)
+            {
+                for (int y = 0; y < battleGrid.height; y++)
+                {
+                    Tile tile = battleGrid.GetTile(x, y);
+                    tile.tileObject.GetComponent<Renderer>().material.color = Color.white;
+                }
+            }
+        }
+        
         void UpdateUI()
         {
             if (turnText != null)
             {
-                turnText.text = $"턴: {(currentTurn == 0 ? "플레이어" : "AI")} (턴 {turnCount + 1})";
+                turnText.text = $"Turn: {currentTurn}";
             }
             
-            if (scoreText != null)
+            if (phaseText != null)
             {
-                scoreText.text = $"배치: 플레이어 {playerDeployedCount}/{MAX_CHARACTERS} | AI {aiDeployedCount}/{MAX_CHARACTERS}";
+                phaseText.text = $"Phase: {currentPhase}";
             }
-        }
-
-        /// <summary>
-        /// 유효한 위치 확인
-        /// </summary>
-        bool IsValidPosition(Vector2Int position)
-        {
-            return position.x >= 0 && position.x < TILE_WIDTH && 
-                   position.y >= 0 && position.y < TILE_HEIGHT;
-        }
-
-        /// <summary>
-        /// 게임 재시작
-        /// </summary>
-        public void RestartGame()
-        {
-            // 기존 타일 제거
-            foreach (Transform child in tileAParent)
-            {
-                Destroy(child.gameObject);
-            }
-            foreach (Transform child in tileBParent)
-            {
-                Destroy(child.gameObject);
-            }
-            
-            // AI 리셋
-            battleAI.ResetAI();
-            
-            // 게임 재초기화
-            InitializeGame();
-        }
-    }
-
-    /// <summary>
-    /// 타일 클릭 핸들러
-    /// </summary>
-    public class TileClickHandler : MonoBehaviour
-    {
-        private System.Action onClickCallback;
-        
-        public void SetCallback(System.Action callback)
-        {
-            onClickCallback = callback;
         }
         
-        void OnMouseDown()
+        void OnEndTurnClicked()
         {
-            onClickCallback?.Invoke();
+            if (currentPhase == BattlePhase.PlayerTurn)
+            {
+                autoEndTurn = true;
+            }
+        }
+        
+        public void SetupBattle(List<UnitStatus> playerTeam, List<UnitStatus> enemyTeam)
+        {
+            playerUnits = new List<UnitStatus>(playerTeam);
+            enemyUnits = new List<UnitStatus>(enemyTeam);
+            
+            foreach (var unit in playerUnits)
+            {
+                unit.isPlayerUnit = true;
+            }
+            
+            foreach (var unit in enemyUnits)
+            {
+                unit.isPlayerUnit = false;
+            }
+        }
+        
+        // TacticalCharacterDataSO를 CharacterDataSO로 변경
+        public void SetupBattleFromData(List<CharacterDataSO> playerCharacters, List<CharacterDataSO> enemyCharacters)
+        {
+            // CharacterDataSO를 사용해서 유닛 생성
+            playerUnits.Clear();
+            foreach (var characterData in playerCharacters)
+            {
+                var unit = characterData.CreateUnit();
+                unit.isPlayerUnit = true;
+                playerUnits.Add(unit);
+            }
+            
+            enemyUnits.Clear();
+            foreach (var characterData in enemyCharacters)
+            {
+                var unit = characterData.CreateUnit();
+                unit.isPlayerUnit = false;
+                enemyUnits.Add(unit);
+            }
         }
     }
 }

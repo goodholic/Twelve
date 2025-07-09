@@ -1,373 +1,314 @@
 using UnityEngine;
 using System.Collections.Generic;
-using System.Linq;
-using TMPro;
+using GuildMaster.Battle; // JobClass를 위해 추가
+using GuildMaster.Data;
 
-namespace TileConquest.Data
+namespace GuildMaster.Battle
 {
-    /// <summary>
-    /// AI 행동 패턴을 정의하는 ScriptableObject
-    /// </summary>
-    [CreateAssetMenu(fileName = "AIBehavior", menuName = "TileConquest/AI Behavior", order = 4)]
+    [CreateAssetMenu(fileName = "AIBehavior", menuName = "GuildMaster/AI/Behavior")]
     public class AIBehaviorSO : ScriptableObject
     {
-        [Header("AI 정보")]
+        [Header("AI Identity")]
         public string behaviorName;
-        public AIDifficulty difficulty;
+        public AIType aiType;
         
-        [Header("캐릭터 선택 전략")]
-        [Tooltip("캐릭터 선택 시 우선순위")]
-        public CharacterSelectionStrategy selectionStrategy;
+        [Header("Combat Preferences")]
+        [Range(0f, 1f)] public float aggressiveness = 0.5f;
+        [Range(0f, 1f)] public float defensiveness = 0.5f;
+        [Range(0f, 1f)] public float supportiveness = 0.5f;
         
-        [Tooltip("선호하는 직업 조합")]
-        public List<JobClass> preferredJobClasses = new List<JobClass>();
+        [Header("Target Priority")]
+        public List<TargetPriority> targetPriorities = new List<TargetPriority>();
         
-        [Tooltip("직업별 선택 비중")]
-        public List<JobWeight> jobWeights = new List<JobWeight>();
+        [Header("Skill Usage")]
+        public List<SkillUsageRule> skillRules = new List<SkillUsageRule>();
         
-        [Header("배치 전략")]
-        [Tooltip("배치 우선순위 전략")]
-        public PlacementStrategy placementStrategy;
+        [Header("Movement Behavior")]
+        public MovementStrategy movementStrategy;
+        [Range(0f, 1f)] public float retreatThreshold = 0.3f;
         
-        [Tooltip("타일 선호도 (A:B 비율)")]
-        [Range(0f, 1f)]
-        public float tileAPreference = 0.5f;
+        [Header("Team Behavior")]
+        public bool prioritizeHealing = true;
+        public bool protectAllies = true;
+        public float allyProtectionRange = 3f;
         
-        [Tooltip("위치 평가 가중치")]
-        public PositionWeights positionWeights;
-        
-        [Header("전술적 행동")]
-        [Tooltip("공격적 성향 (0 = 방어적, 1 = 공격적)")]
-        [Range(0f, 1f)]
-        public float aggressiveness = 0.5f;
-        
-        [Tooltip("집중 공격 성향")]
-        public bool focusFire = true;
-        
-        [Tooltip("카운터 플레이 활성화")]
-        public bool counterPlay = true;
-        
-        [Header("의사결정 매개변수")]
-        [Tooltip("미래 예측 턴 수")]
-        [Range(0, 3)]
-        public int lookAheadTurns = 1;
-        
-        [Tooltip("랜덤성 (0 = 완전 결정적, 1 = 완전 랜덤)")]
-        [Range(0f, 0.5f)]
-        public float randomness = 0.1f;
-        
-        /// <summary>
-        /// AI가 선택할 캐릭터 목록 생성
-        /// </summary>
-        public List<CharacterTileDataSO> SelectCharacters(List<CharacterTileDataSO> availableCharacters, int maxCount)
+        public enum AIType
         {
-            List<CharacterTileDataSO> selected = new List<CharacterTileDataSO>();
-            
-            switch (selectionStrategy)
-            {
-                case CharacterSelectionStrategy.Balanced:
-                    selected = SelectBalancedTeam(availableCharacters, maxCount);
-                    break;
-                    
-                case CharacterSelectionStrategy.Aggressive:
-                    selected = SelectAggressiveTeam(availableCharacters, maxCount);
-                    break;
-                    
-                case CharacterSelectionStrategy.Defensive:
-                    selected = SelectDefensiveTeam(availableCharacters, maxCount);
-                    break;
-                    
-                case CharacterSelectionStrategy.Synergy:
-                    selected = SelectSynergyTeam(availableCharacters, maxCount);
-                    break;
-                    
-                case CharacterSelectionStrategy.Counter:
-                    selected = SelectCounterTeam(availableCharacters, maxCount);
-                    break;
-                    
-                case CharacterSelectionStrategy.Random:
-                    selected = availableCharacters.OrderBy(x => Random.value).Take(maxCount).ToList();
-                    break;
-            }
-            
-            return selected;
+            Aggressive,
+            Defensive,
+            Balanced,
+            Support,
+            Strategic
         }
         
-        /// <summary>
-        /// 최적의 배치 위치 계산
-        /// </summary>
-        public Vector2Int CalculateBestPosition(TileBoard board, CharacterTileDataSO character, bool isTopBoard)
+        public enum MovementStrategy
         {
-            List<Vector2Int> availablePositions = board.GetEmptyPositions();
-            if (availablePositions.Count == 0) return new Vector2Int(-1, -1);
-            
-            float bestScore = float.MinValue;
-            Vector2Int bestPosition = availablePositions[0];
-            
-            foreach (var pos in availablePositions)
-            {
-                float score = EvaluatePosition(board, pos, character, isTopBoard);
-                
-                // 랜덤성 추가
-                score += Random.Range(-randomness, randomness) * 100f;
-                
-                if (score > bestScore)
-                {
-                    bestScore = score;
-                    bestPosition = pos;
-                }
-            }
-            
-            return bestPosition;
+            RushToTarget,
+            MaintainDistance,
+            FlankTarget,
+            ProtectAllies,
+            Strategic
         }
         
-        /// <summary>
-        /// 위치 평가
-        /// </summary>
-        private float EvaluatePosition(TileBoard board, Vector2Int position, CharacterTileDataSO character, bool isTopBoard)
+        [System.Serializable]
+        public class TargetPriority
+        {
+            public TargetCondition condition;
+            public float weight = 1f;
+            
+            public enum TargetCondition
+            {
+                LowestHP,
+                HighestHP,
+                LowestDefense,
+                HighestAttack,
+                IsHealer,
+                IsDamageDealer,
+                ClosestTarget,
+                FarthestTarget,
+                MostBuffed,
+                MostDebuffed
+            }
+        }
+        
+        [System.Serializable]
+        public class SkillUsageRule
+        {
+            public string skillId;
+            public SkillCondition condition;
+            public float threshold = 0.5f;
+            public int priority = 1;
+            
+            public enum SkillCondition
+            {
+                AlwaysUse,
+                TargetHPBelow,
+                SelfHPBelow,
+                AllyHPBelow,
+                EnemyCount,
+                AllyCount,
+                HasDebuff,
+                HasBuff,
+                ManaCostEfficient
+            }
+        }
+        
+        public float EvaluateTarget(UnitStatus unit, UnitStatus target, BattleContext context)
         {
             float score = 0f;
             
-            // 공격 가능한 적 수
-            int attackableEnemies = CountAttackableEnemies(board, position, character);
-            score += attackableEnemies * positionWeights.attackWeight;
-            
-            // 방어 위치 평가
-            int protectedAllies = CountProtectedAllies(board, position);
-            score += protectedAllies * positionWeights.defenseWeight;
-            
-            // 영역 제어
-            int controlledTiles = CountControlledTiles(board, position, character);
-            score += controlledTiles * positionWeights.controlWeight;
-            
-            // 시너지 효과
-            int adjacentAllies = CountAdjacentAllies(board, position);
-            score += adjacentAllies * positionWeights.synergyWeight;
-            
-            // 위치별 보너스
-            score += GetPositionBonus(position, board.Width, board.Height, character.aiPreferredPosition);
+            foreach (var priority in targetPriorities)
+            {
+                float conditionScore = EvaluateTargetCondition(unit, target, priority.condition, context);
+                score += conditionScore * priority.weight;
+            }
             
             return score;
         }
         
-        // 균형잡힌 팀 선택
-        private List<CharacterTileDataSO> SelectBalancedTeam(List<CharacterTileDataSO> available, int maxCount)
+        float EvaluateTargetCondition(UnitStatus unit, UnitStatus target, TargetPriority.TargetCondition condition, BattleContext context)
         {
-            var result = new List<CharacterTileDataSO>();
-            var jobCounts = new Dictionary<JobClass, int>();
-            
-            // 각 직업별로 균등하게 선택
-            while (result.Count < maxCount && available.Count > result.Count)
+            switch (condition)
             {
-                var leastRepresentedJob = GetLeastRepresentedJob(jobCounts);
-                var candidate = available
-                    .Where(c => c.baseCharacterData.jobClass == leastRepresentedJob && !result.Contains(c))
-                    .FirstOrDefault();
+                case TargetPriority.TargetCondition.LowestHP:
+                    return 1f - (target.currentHP / (float)target.maxHP);
                     
-                if (candidate == null)
-                {
-                    candidate = available.Where(c => !result.Contains(c)).FirstOrDefault();
-                }
-                
-                if (candidate != null)
-                {
-                    result.Add(candidate);
-                    if (!jobCounts.ContainsKey(candidate.baseCharacterData.jobClass))
-                        jobCounts[candidate.baseCharacterData.jobClass] = 0;
-                    jobCounts[candidate.baseCharacterData.jobClass]++;
-                }
-            }
-            
-            return result;
-        }
-        
-        // 공격적인 팀 선택
-        private List<CharacterTileDataSO> SelectAggressiveTeam(List<CharacterTileDataSO> available, int maxCount)
-        {
-            return available
-                .OrderByDescending(c => c.baseCharacterData.baseAttack * c.attackMultiplier)
-                .ThenByDescending(c => c.attackRange?.rangeSize ?? 0)
-                .Take(maxCount)
-                .ToList();
-        }
-        
-        // 방어적인 팀 선택
-        private List<CharacterTileDataSO> SelectDefensiveTeam(List<CharacterTileDataSO> available, int maxCount)
-        {
-            return available
-                .OrderByDescending(c => c.baseCharacterData.baseHP + c.baseCharacterData.baseDefense)
-                .Take(maxCount)
-                .ToList();
-        }
-        
-        // 시너지 중심 팀 선택
-        private List<CharacterTileDataSO> SelectSynergyTeam(List<CharacterTileDataSO> available, int maxCount)
-        {
-            var result = new List<CharacterTileDataSO>();
-            
-            // 시너지가 있는 직업 그룹 우선 선택
-            var synergyGroups = available
-                .Where(c => c.hasJobSynergy)
-                .GroupBy(c => c.baseCharacterData.jobClass)
-                .OrderByDescending(g => g.Count())
-                .ToList();
-                
-            foreach (var group in synergyGroups)
-            {
-                result.AddRange(group.Take(maxCount - result.Count));
-                if (result.Count >= maxCount) break;
-            }
-            
-            // 나머지 채우기
-            if (result.Count < maxCount)
-            {
-                result.AddRange(available.Where(c => !result.Contains(c)).Take(maxCount - result.Count));
-            }
-            
-            return result.Take(maxCount).ToList();
-        }
-        
-        // 카운터 팀 선택 (플레이어의 선택에 대응)
-        private List<CharacterTileDataSO> SelectCounterTeam(List<CharacterTileDataSO> available, int maxCount)
-        {
-            // 실제 구현에서는 플레이어의 선택을 분석하여 카운터 선택
-            // 여기서는 간단히 방어적 선택으로 대체
-            return SelectDefensiveTeam(available, maxCount);
-        }
-        
-        // 헬퍼 메서드들
-        private JobClass GetLeastRepresentedJob(Dictionary<JobClass, int> jobCounts)
-        {
-            var allJobs = System.Enum.GetValues(typeof(JobClass)).Cast<JobClass>();
-            return allJobs.OrderBy(j => jobCounts.ContainsKey(j) ? jobCounts[j] : 0).First();
-        }
-        
-        private int CountAttackableEnemies(TileBoard board, Vector2Int position, CharacterTileDataSO character)
-        {
-            // 실제 구현 필요
-            return 0;
-        }
-        
-        private int CountProtectedAllies(TileBoard board, Vector2Int position)
-        {
-            // 실제 구현 필요
-            return 0;
-        }
-        
-        private int CountControlledTiles(TileBoard board, Vector2Int position, CharacterTileDataSO character)
-        {
-            var attackPositions = character.GetAttackablePositions(position);
-            return attackPositions.Count(pos => board.IsInBounds(pos));
-        }
-        
-        private int CountAdjacentAllies(TileBoard board, Vector2Int position)
-        {
-            // 실제 구현 필요
-            return 0;
-        }
-        
-        private float GetPositionBonus(Vector2Int position, int width, int height, PreferredPosition preference)
-        {
-            switch (preference)
-            {
-                case PreferredPosition.Center:
-                    float distFromCenter = Vector2.Distance(position, new Vector2(width / 2f, height / 2f));
-                    return 10f - distFromCenter;
+                case TargetPriority.TargetCondition.HighestHP:
+                    return target.currentHP / (float)target.maxHP;
                     
-                case PreferredPosition.Edge:
-                    if (position.x == 0 || position.x == width - 1 || position.y == 0 || position.y == height - 1)
-                        return 10f;
-                    return 0f;
+                case TargetPriority.TargetCondition.LowestDefense:
+                    return 1f - (target.defense / 100f);
                     
-                case PreferredPosition.Corner:
-                    if ((position.x == 0 || position.x == width - 1) && (position.y == 0 || position.y == height - 1))
-                        return 10f;
-                    return 0f;
+                case TargetPriority.TargetCondition.HighestAttack:
+                    return target.attackPower / 100f;
                     
-                case PreferredPosition.Front:
-                    return position.y * 2f;
+                case TargetPriority.TargetCondition.IsHealer:
+                    return IsHealer(target.jobClass) ? 1f : 0f;
                     
-                case PreferredPosition.Back:
-                    return (height - position.y) * 2f;
+                case TargetPriority.TargetCondition.IsDamageDealer:
+                    return IsDamageDealer(target.jobClass) ? 1f : 0f;
+                    
+                case TargetPriority.TargetCondition.ClosestTarget:
+                    float maxDistance = 10f;
+                    float distance = Vector3.Distance(unit.transform.position, target.transform.position);
+                    return 1f - (distance / maxDistance);
+                    
+                case TargetPriority.TargetCondition.FarthestTarget:
+                    float maxDist = 10f;
+                    float dist = Vector3.Distance(unit.transform.position, target.transform.position);
+                    return dist / maxDist;
+                    
+                case TargetPriority.TargetCondition.MostBuffed:
+                    return target.activeBuffs.Count / 5f;
+                    
+                case TargetPriority.TargetCondition.MostDebuffed:
+                    return target.activeDebuffs.Count / 5f;
                     
                 default:
-                    return 0f;
+                    return 0.5f;
             }
         }
-    }
-    
-    /// <summary>
-    /// 캐릭터 선택 전략
-    /// </summary>
-    public enum CharacterSelectionStrategy
-    {
-        Balanced,       // 균형잡힌 선택
-        Aggressive,     // 공격 위주
-        Defensive,      // 방어 위주
-        Synergy,        // 시너지 중심
-        Counter,        // 플레이어 카운터
-        Random          // 랜덤
-    }
-    
-    /// <summary>
-    /// 배치 전략
-    /// </summary>
-    public enum PlacementStrategy
-    {
-        Spread,         // 분산 배치
-        Concentrated,   // 집중 배치
-        Frontline,      // 전선 구축
-        Flanking,       // 측면 공략
-        Adaptive        // 적응형
-    }
-    
-    /// <summary>
-    /// 직업별 가중치
-    /// </summary>
-    [System.Serializable]
-    public class JobWeight
-    {
-        public JobClass jobClass;
-        [Range(0f, 2f)]
-        public float weight = 1f;
-    }
-    
-    /// <summary>
-    /// 위치 평가 가중치
-    /// </summary>
-    [System.Serializable]
-    public class PositionWeights
-    {
-        [Range(0f, 100f)]
-        public float attackWeight = 40f;
         
-        [Range(0f, 100f)]
-        public float defenseWeight = 20f;
-        
-        [Range(0f, 100f)]
-        public float controlWeight = 25f;
-        
-        [Range(0f, 100f)]
-        public float synergyWeight = 15f;
-    }
-    
-    /// <summary>
-    /// 타일 보드 (임시 클래스 - 실제 구현 시 교체)
-    /// </summary>
-    public class TileBoard
-    {
-        public int Width { get; set; }
-        public int Height { get; set; }
-        
-        public List<Vector2Int> GetEmptyPositions()
+        public bool ShouldUseSkill(string skillId, UnitStatus unit, BattleContext context)
         {
-            // 실제 구현 필요
-            return new List<Vector2Int>();
+            var rule = skillRules.Find(r => r.skillId == skillId);
+            if (rule == null) return false;
+            
+            return EvaluateSkillCondition(rule.condition, rule.threshold, unit, context);
         }
         
-        public bool IsInBounds(Vector2Int pos)
+        bool EvaluateSkillCondition(SkillUsageRule.SkillCondition condition, float threshold, UnitStatus unit, BattleContext context)
         {
-            return pos.x >= 0 && pos.x < Width && pos.y >= 0 && pos.y < Height;
+            switch (condition)
+            {
+                case SkillUsageRule.SkillCondition.AlwaysUse:
+                    return true;
+                    
+                case SkillUsageRule.SkillCondition.TargetHPBelow:
+                    if (context.currentTarget != null)
+                        return (context.currentTarget.currentHP / (float)context.currentTarget.maxHP) < threshold;
+                    return false;
+                    
+                case SkillUsageRule.SkillCondition.SelfHPBelow:
+                    return (unit.currentHP / (float)unit.maxHP) < threshold;
+                    
+                case SkillUsageRule.SkillCondition.AllyHPBelow:
+                    return context.allies.Exists(ally => (ally.currentHP / (float)ally.maxHP) < threshold);
+                    
+                case SkillUsageRule.SkillCondition.EnemyCount:
+                    return context.enemies.Count >= threshold;
+                    
+                case SkillUsageRule.SkillCondition.AllyCount:
+                    return context.allies.Count >= threshold;
+                    
+                case SkillUsageRule.SkillCondition.HasDebuff:
+                    return unit.activeDebuffs.Count > 0;
+                    
+                case SkillUsageRule.SkillCondition.HasBuff:
+                    return unit.activeBuffs.Count > 0;
+                    
+                case SkillUsageRule.SkillCondition.ManaCostEfficient:
+                    // Implement mana cost efficiency logic
+                    return true;
+                    
+                default:
+                    return false;
+            }
         }
+        
+        public Vector3 GetMovementPosition(UnitStatus unit, BattleContext context)
+        {
+            switch (movementStrategy)
+            {
+                case MovementStrategy.RushToTarget:
+                    if (context.currentTarget != null)
+                        return context.currentTarget.transform.position;
+                    break;
+                    
+                case MovementStrategy.MaintainDistance:
+                    if (context.currentTarget != null)
+                    {
+                        Vector3 direction = unit.transform.position - context.currentTarget.transform.position;
+                        return unit.transform.position + direction.normalized * 2f;
+                    }
+                    break;
+                    
+                case MovementStrategy.FlankTarget:
+                    if (context.currentTarget != null)
+                    {
+                        Vector3 toTarget = context.currentTarget.transform.position - unit.transform.position;
+                        Vector3 flank = Quaternion.Euler(0, 90, 0) * toTarget.normalized * 3f;
+                        return context.currentTarget.transform.position + flank;
+                    }
+                    break;
+                    
+                case MovementStrategy.ProtectAllies:
+                    UnitStatus weakestAlly = GetWeakestAlly(context.allies);
+                    if (weakestAlly != null)
+                        return weakestAlly.transform.position;
+                    break;
+                    
+                case MovementStrategy.Strategic:
+                    return GetStrategicPosition(unit, context);
+            }
+            
+            return unit.transform.position;
+        }
+        
+        UnitStatus GetWeakestAlly(List<UnitStatus> allies)
+        {
+            UnitStatus weakest = null;
+            float lowestHPRatio = 1f;
+            
+            foreach (var ally in allies)
+            {
+                float hpRatio = ally.currentHP / (float)ally.maxHP;
+                if (hpRatio < lowestHPRatio)
+                {
+                    lowestHPRatio = hpRatio;
+                    weakest = ally;
+                }
+            }
+            
+            return weakest;
+        }
+        
+        Vector3 GetStrategicPosition(UnitStatus unit, BattleContext context)
+        {
+            // Complex strategic positioning logic
+            // For now, return a position between allies and enemies
+            Vector3 allyCenter = GetTeamCenter(context.allies);
+            Vector3 enemyCenter = GetTeamCenter(context.enemies);
+            
+            return Vector3.Lerp(allyCenter, enemyCenter, 0.6f);
+        }
+        
+        Vector3 GetTeamCenter(List<UnitStatus> units)
+        {
+            if (units.Count == 0) return Vector3.zero;
+            
+            Vector3 sum = Vector3.zero;
+            foreach (var unit in units)
+            {
+                sum += unit.transform.position;
+            }
+            
+            return sum / units.Count;
+        }
+        
+        bool IsHealer(JobClass jobClass)
+        {
+            return jobClass == JobClass.Priest || jobClass == JobClass.Sage;
+        }
+        
+        bool IsDamageDealer(JobClass jobClass)
+        {
+            return jobClass == JobClass.Warrior || 
+                   jobClass == JobClass.Assassin || 
+                   jobClass == JobClass.Mage ||
+                   jobClass == JobClass.Ranger;
+        }
+        
+        public string GetBehaviorDescription()
+        {
+            string description = $"AI Behavior: {behaviorName}\n";
+            description += $"Type: {aiType}\n";
+            description += $"Aggressiveness: {aggressiveness:P0}\n";
+            description += $"Defensiveness: {defensiveness:P0}\n";
+            description += $"Supportiveness: {supportiveness:P0}\n";
+            description += $"Movement Strategy: {movementStrategy}\n";
+            
+            return description;
+        }
+    }
+    
+    [System.Serializable]
+    public class BattleContext
+    {
+        public List<UnitStatus> allies = new List<UnitStatus>();
+        public List<UnitStatus> enemies = new List<UnitStatus>();
+        public UnitStatus currentTarget;
+        public float battleTime;
+        public int turnNumber;
     }
 }
