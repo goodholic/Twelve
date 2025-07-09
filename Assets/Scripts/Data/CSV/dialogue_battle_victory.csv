@@ -1,8 +1,0 @@
-ID,CharacterName,DialogueText,Position,Expression,Effect,Duration,NextID,Background,BGM,SFX
-200,,"[전투 승리!]",,,Flash,2,201,BattleField,VictoryTheme,Victory
-201,전사 알렉스,"하하! 우리가 해냈다!",Left,Happy,,0,202,BattleField,,
-202,마법사 리나,"모두 수고했어요. 완벽한 팀워크였어요!",Right,Happy,,0,203,BattleField,,
-203,길드장,"정말 대단했어! 우리 길드가 점점 강해지고 있어!",Left,Happy,,0,204,GuildHall,MainTheme,
-204,엘리나,"축하해요! 이번 전투로 많은 경험을 쌓았을 거예요.",Right,Happy,,0,205,GuildHall,,
-205,엘리나,"보상도 푸짐하네요! 금화 1000개와 희귀 아이템을 획득했어요!",Right,Normal,,0,206,GuildHall,,Coin
-206,길드장,"좋아! 이 기세로 계속 나아가자!",Left,Happy,,0,,GuildHall,,
