@@ -75,24 +75,17 @@ namespace GuildMaster.Battle
         /// <summary>
         /// 유닛 배치
         /// </summary>
-        public void PlaceUnit(GameObject unit, Team team)
-        {
-            if (isOccupied)
-            {
-                Debug.LogWarning($"타일 [{x},{y}]는 이미 점유되어 있습니다!");
-                return;
-            }
-            
-            isOccupied = true;
-            occupiedUnit = unit;
-            occupiedTeam = team;
-            
-            // 유닛 위치 설정
-            unit.transform.position = transform.position;
-            unit.transform.parent = transform;
-            
-            UpdateVisual();
-        }
+        public void PlaceUnit(CharacterUnit unit, Team team)
+{
+    if (isOccupied || unit == null) return;
+    
+    occupiedUnit = unit.gameObject;
+    occupiedTeam = team;
+    isOccupied = true;
+    unit.CurrentTile = this;
+    
+    UpdateVisual();
+}
         
         /// <summary>
         /// 유닛 제거

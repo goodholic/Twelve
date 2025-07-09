@@ -1,469 +1,256 @@
-using System;
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.SceneManagement;
-using GuildMaster.Systems;
-using GuildMaster.UI;
-using GuildMaster.Data;
+using System.Collections.Generic;
+using System.Linq;
 
-namespace GuildMaster.Core
+namespace GuildMaster.Battle
 {
+    /// <summary>
+    /// 게임 초기화 및 테스트를 위한 스크립트
+    /// </summary>
     public class GameInitializer : MonoBehaviour
     {
-        [Header("Game Configuration")]
-        [SerializeField] private GameConfiguration gameConfig;
-        [SerializeField] private bool isDebugMode = false;
-        [SerializeField] private bool skipIntro = false;
+        [Header("테스트 설정")]
+        [SerializeField] private bool autoStartBattle = true;
+        [SerializeField] private AITurnController.AIDifficulty aiDifficulty = AITurnController.AIDifficulty.Normal;
         
-        [Header("Loading Screen")]
-        [SerializeField] private GameObject loadingScreenPrefab;
-        [SerializeField] private UnityEngine.UI.Image loadingBar;
-        [SerializeField] private TMPro.TextMeshProUGUI loadingText;
-        [SerializeField] private TMPro.TextMeshProUGUI versionText;
+        [Header("테스트용 캐릭터 데이터")]
+        [SerializeField] private List<CharacterData> testPlayerCharacters = new List<CharacterData>();
+        [SerializeField] private List<CharacterData> testEnemyCharacters = new List<CharacterData>();
         
-        [Header("Initial Scene Setup")]
-        [SerializeField] private string mainMenuScene = "MainMenu";
-        [SerializeField] private string gameplayScene = "Gameplay";
-        [SerializeField] private float minimumLoadTime = 2f;
+        [Header("매니저 참조")]
+        private TurnBasedBattleManager battleManager;
+        private TileGridManager tileGridManager;
+        private AITurnController aiController;
         
-        private LoadingScreen currentLoadingScreen;
-        private float loadProgress = 0f;
-        private List<string> loadingSteps = new List<string>();
-        
-        // 게임 버전
-        private const string GAME_VERSION = "1.0.0";
-        private const string BUILD_NUMBER = "20250127";
-        
-        void Awake()
+        void Start()
         {
-            // 프레임레이트 설정
-            Application.targetFrameRate = 60;
-            QualitySettings.vSyncCount = 1;
+            InitializeManagers();
             
-            // 화면 설정
-            Screen.orientation = ScreenOrientation.LandscapeLeft;
-            Screen.sleepTimeout = SleepTimeout.NeverSleep;
-            
-            // 디버그 설정
-            Debug.unityLogger.logEnabled = isDebugMode;
-            
-            StartCoroutine(InitializeGame());
+            if (autoStartBattle)
+            {
+                StartTestBattle();
+            }
         }
         
-        IEnumerator InitializeGame()
+        /// <summary>
+        /// 매니저 초기화
+        /// </summary>
+        void InitializeManagers()
         {
-            // 로딩 화면 생성
-            ShowLoadingScreen();
-            
-            float startTime = Time.time;
-            
-            // 1. 핵심 시스템 초기화
-            UpdateLoadingStatus("Initializing Core Systems...", 0.1f);
-            yield return InitializeCoreSystems();
-            
-            // 2. 데이터 시스템 초기화
-            UpdateLoadingStatus("Loading Game Data...", 0.2f);
-            yield return InitializeDataSystems();
-            
-            // 3. 리소스 로드
-            UpdateLoadingStatus("Loading Resources...", 0.3f);
-            yield return LoadResources();
-            
-            // 4. 오디오 시스템 초기화
-            UpdateLoadingStatus("Initializing Audio...", 0.4f);
-            yield return InitializeAudio();
-            
-            // 5. 그래픽 시스템 초기화
-            UpdateLoadingStatus("Initializing Graphics...", 0.5f);
-            yield return InitializeGraphics();
-            
-            // 6. UI 시스템 초기화
-            UpdateLoadingStatus("Initializing UI...", 0.6f);
-            yield return InitializeUI();
-            
-            // 7. 게임플레이 시스템 초기화
-            UpdateLoadingStatus("Initializing Gameplay Systems...", 0.7f);
-            yield return InitializeGameplaySystems();
-            
-            // 8. 네트워크 시스템 초기화 (멀티플레이어용)
-            UpdateLoadingStatus("Checking Network...", 0.8f);
-            yield return InitializeNetworking();
-            
-            // 9. 세이브 데이터 확인
-            UpdateLoadingStatus("Checking Save Data...", 0.9f);
-            yield return CheckSaveData();
-            
-            // 최소 로딩 시간 보장
-            float elapsedTime = Time.time - startTime;
-            if (elapsedTime < minimumLoadTime)
+            // 매니저 찾기 또는 생성
+            battleManager = FindObjectOfType<TurnBasedBattleManager>();
+            if (battleManager == null)
             {
-                yield return new WaitForSeconds(minimumLoadTime - elapsedTime);
+                GameObject bmGO = new GameObject("TurnBasedBattleManager");
+                battleManager = bmGO.AddComponent<TurnBasedBattleManager>();
             }
             
-            // 10. 완료
-            UpdateLoadingStatus("Loading Complete!", 1.0f);
-            yield return new WaitForSeconds(0.5f);
+            tileGridManager = FindObjectOfType<TileGridManager>();
+            if (tileGridManager == null)
+            {
+                GameObject tgGO = new GameObject("TileGridManager");
+                tileGridManager = tgGO.AddComponent<TileGridManager>();
+            }
             
-            // 메인 메뉴로 전환
-            LoadMainMenu();
+            aiController = FindObjectOfType<AITurnController>();
+            if (aiController == null)
+            {
+                GameObject aiGO = new GameObject("AITurnController");
+                aiController = aiGO.AddComponent<AITurnController>();
+            }
+            
+            // AI 난이도 설정
+            aiController.SetDifficulty(aiDifficulty);
         }
         
-        void ShowLoadingScreen()
+        /// <summary>
+        /// 테스트 전투 시작
+        /// </summary>
+        public void StartTestBattle()
         {
-            if (loadingScreenPrefab != null)
+            // 테스트 데이터가 없으면 생성
+            if (testPlayerCharacters.Count == 0)
             {
-                GameObject loadingGO = Instantiate(loadingScreenPrefab);
-                currentLoadingScreen = loadingGO.GetComponent<LoadingScreen>();
-                DontDestroyOnLoad(loadingGO);
-                
-                if (versionText != null)
+                CreateTestCharacters();
+            }
+            
+            // 전투 시작
+            if (battleManager != null)
+            {
+                battleManager.StartBattle(testPlayerCharacters, testEnemyCharacters);
+            }
+        }
+        
+        /// <summary>
+        /// 테스트용 캐릭터 생성
+        /// </summary>
+        void CreateTestCharacters()
+        {
+            // 플레이어 팀 생성
+            testPlayerCharacters.Clear();
+            testPlayerCharacters.Add(CreateTestCharacter("전사 알렉스", JobClass.Warrior, 5, Rarity.Common));
+            testPlayerCharacters.Add(CreateTestCharacter("기사 헬레나", JobClass.Knight, 5, Rarity.Uncommon));
+            testPlayerCharacters.Add(CreateTestCharacter("마법사 리나", JobClass.Mage, 5, Rarity.Common));
+            testPlayerCharacters.Add(CreateTestCharacter("사제 마리아", JobClass.Priest, 5, Rarity.Common));
+            testPlayerCharacters.Add(CreateTestCharacter("암살자 카이", JobClass.Assassin, 5, Rarity.Rare));
+            testPlayerCharacters.Add(CreateTestCharacter("궁수 로빈", JobClass.Ranger, 5, Rarity.Common));
+            testPlayerCharacters.Add(CreateTestCharacter("현자 소피아", JobClass.Sage, 5, Rarity.Uncommon));
+            testPlayerCharacters.Add(CreateTestCharacter("전사 토르", JobClass.Warrior, 6, Rarity.Rare));
+            testPlayerCharacters.Add(CreateTestCharacter("기사 롤랜드", JobClass.Knight, 6, Rarity.Rare));
+            testPlayerCharacters.Add(CreateTestCharacter("마법사 멀린", JobClass.Mage, 7, Rarity.Epic));
+            
+            // 적 팀 생성
+            testEnemyCharacters.Clear();
+            testEnemyCharacters.Add(CreateTestCharacter("오크 전사", JobClass.Warrior, 5, Rarity.Common));
+            testEnemyCharacters.Add(CreateTestCharacter("오크 버서커", JobClass.Warrior, 6, Rarity.Uncommon));
+            testEnemyCharacters.Add(CreateTestCharacter("고블린 도적", JobClass.Assassin, 4, Rarity.Common));
+            testEnemyCharacters.Add(CreateTestCharacter("고블린 궁수", JobClass.Ranger, 4, Rarity.Common));
+            testEnemyCharacters.Add(CreateTestCharacter("다크 메이지", JobClass.Mage, 6, Rarity.Rare));
+            testEnemyCharacters.Add(CreateTestCharacter("언데드 기사", JobClass.Knight, 7, Rarity.Rare));
+            testEnemyCharacters.Add(CreateTestCharacter("타락한 사제", JobClass.Priest, 5, Rarity.Uncommon));
+            testEnemyCharacters.Add(CreateTestCharacter("늑대인간", JobClass.Assassin, 6, Rarity.Rare));
+            testEnemyCharacters.Add(CreateTestCharacter("리치", JobClass.Sage, 8, Rarity.Epic));
+            testEnemyCharacters.Add(CreateTestCharacter("드래곤 나이트", JobClass.Knight, 9, Rarity.Legendary));
+        }
+        
+        /// <summary>
+        /// 테스트 캐릭터 데이터 생성
+        /// </summary>
+        CharacterData CreateTestCharacter(string name, JobClass jobClass, int level, Rarity rarity)
+        {
+            CharacterData data = ScriptableObject.CreateInstance<CharacterData>();
+            
+            data.ID = $"test_{name.ToLower().Replace(" ", "_")}";
+            data.Name = name;
+            data.jobClass = jobClass;
+            data.Level = level;
+            data.rarity = rarity;
+            
+            // 레벨과 희귀도에 따른 스탯 계산
+            float levelMultiplier = 1f + (level - 1) * 0.1f;
+            float rarityMultiplier = 1f + (int)rarity * 0.2f;
+            
+            // 직업별 기본 스탯
+            switch (jobClass)
+            {
+                case JobClass.Warrior:
+                    data.HP = Mathf.RoundToInt(150 * levelMultiplier * rarityMultiplier);
+                    data.Attack = Mathf.RoundToInt(15 * levelMultiplier * rarityMultiplier);
+                    data.Defense = Mathf.RoundToInt(10 * levelMultiplier * rarityMultiplier);
+                    data.Speed = 8;
+                    break;
+                    
+                case JobClass.Knight:
+                    data.HP = Mathf.RoundToInt(200 * levelMultiplier * rarityMultiplier);
+                    data.Attack = Mathf.RoundToInt(12 * levelMultiplier * rarityMultiplier);
+                    data.Defense = Mathf.RoundToInt(18 * levelMultiplier * rarityMultiplier);
+                    data.Speed = 6;
+                    break;
+                    
+                case JobClass.Mage:
+                    data.HP = Mathf.RoundToInt(80 * levelMultiplier * rarityMultiplier);
+                    data.Attack = Mathf.RoundToInt(8 * levelMultiplier * rarityMultiplier);
+                    data.Defense = Mathf.RoundToInt(5 * levelMultiplier * rarityMultiplier);
+                    data.MagicPower = Mathf.RoundToInt(20 * levelMultiplier * rarityMultiplier);
+                    data.Speed = 9;
+                    break;
+                    
+                case JobClass.Priest:
+                    data.HP = Mathf.RoundToInt(100 * levelMultiplier * rarityMultiplier);
+                    data.Attack = Mathf.RoundToInt(6 * levelMultiplier * rarityMultiplier);
+                    data.Defense = Mathf.RoundToInt(8 * levelMultiplier * rarityMultiplier);
+                    data.MagicPower = Mathf.RoundToInt(18 * levelMultiplier * rarityMultiplier);
+                    data.Speed = 7;
+                    break;
+                    
+                case JobClass.Assassin:
+                    data.HP = Mathf.RoundToInt(90 * levelMultiplier * rarityMultiplier);
+                    data.Attack = Mathf.RoundToInt(18 * levelMultiplier * rarityMultiplier);
+                    data.Defense = Mathf.RoundToInt(6 * levelMultiplier * rarityMultiplier);
+                    data.Speed = 15;
+                    data.CritRate = 0.25f;
+                    break;
+                    
+                case JobClass.Ranger:
+                    data.HP = Mathf.RoundToInt(110 * levelMultiplier * rarityMultiplier);
+                    data.Attack = Mathf.RoundToInt(16 * levelMultiplier * rarityMultiplier);
+                    data.Defense = Mathf.RoundToInt(8 * levelMultiplier * rarityMultiplier);
+                    data.Speed = 12;
+                    data.Accuracy = 0.98f;
+                    break;
+                    
+                case JobClass.Sage:
+                    data.HP = Mathf.RoundToInt(120 * levelMultiplier * rarityMultiplier);
+                    data.Attack = Mathf.RoundToInt(10 * levelMultiplier * rarityMultiplier);
+                    data.Defense = Mathf.RoundToInt(10 * levelMultiplier * rarityMultiplier);
+                    data.MagicPower = Mathf.RoundToInt(15 * levelMultiplier * rarityMultiplier);
+                    data.Speed = 10;
+                    break;
+            }
+            
+            data.MP = 50 + level * 10;
+            data.CritDamage = 1.5f + (int)rarity * 0.1f;
+            data.Description = $"테스트용 {name} 캐릭터";
+            
+            return data;
+        }
+        
+        /// <summary>
+        /// UI 버튼용 - 전투 시작
+        /// </summary>
+        public void OnStartBattleButton()
+        {
+            StartTestBattle();
+        }
+        
+        /// <summary>
+        /// UI 버튼용 - AI 난이도 변경
+        /// </summary>
+        public void SetAIDifficulty(int difficulty)
+        {
+            aiDifficulty = (AITurnController.AIDifficulty)difficulty;
+            if (aiController != null)
+            {
+                aiController.SetDifficulty(aiDifficulty);
+            }
+        }
+        
+        /// <summary>
+        /// 디버그용 - 즉시 승리
+        /// </summary>
+        [ContextMenu("Debug - Instant Victory")]
+        public void DebugInstantVictory()
+        {
+            if (battleManager != null && battleManager.IsBattleActive())
+            {
+                // 모든 타일에 아군 배치
+                for (int x = 0; x < 6; x++)
                 {
-                    versionText.text = $"v{GAME_VERSION} (Build {BUILD_NUMBER})";
+                    for (int y = 0; y < 3; y++)
+                    {
+                        Tile tileA = tileGridManager.GetTile(Tile.TileType.A, x, y);
+                        Tile tileB = tileGridManager.GetTile(Tile.TileType.B, x, y);
+                        
+                        if (tileA != null && !tileA.isOccupied && testPlayerCharacters.Count > 0)
+                        {
+                            var character = CreateTestCharacter("Debug Hero", JobClass.Warrior, 10, Rarity.Legendary);
+                            GameObject charGO = new GameObject("DebugHero");
+                            CharacterUnit unit = charGO.AddComponent<CharacterUnit>();
+                            unit.Initialize(character, Tile.Team.Ally);
+                            tileGridManager.PlaceCharacter(unit, tileA);
+                        }
+                        
+                        if (tileB != null && !tileB.isOccupied && testPlayerCharacters.Count > 0)
+                        {
+                            var character = CreateTestCharacter("Debug Hero", JobClass.Knight, 10, Rarity.Legendary);
+                            GameObject charGO = new GameObject("DebugHero");
+                            CharacterUnit unit = charGO.AddComponent<CharacterUnit>();
+                            unit.Initialize(character, Tile.Team.Ally);
+                            tileGridManager.PlaceCharacter(unit, tileB);
+                        }
+                    }
                 }
             }
         }
-        
-        void UpdateLoadingStatus(string status, float progress)
-        {
-            loadProgress = progress;
-            
-            if (currentLoadingScreen != null)
-            {
-                currentLoadingScreen.UpdateProgress(progress, status);
-            }
-            else
-            {
-                if (loadingBar != null)
-                    loadingBar.fillAmount = progress;
-                    
-                if (loadingText != null)
-                    loadingText.text = status;
-            }
-            
-            Debug.Log($"[GameInit] {status} ({(int)(progress * 100)}%)");
-        }
-        
-        IEnumerator InitializeCoreSystems()
-        {
-            // GameManager 생성
-            if (GameManager.Instance == null)
-            {
-                GameObject gmObject = new GameObject("GameManager");
-                gmObject.AddComponent<GameManager>();
-                DontDestroyOnLoad(gmObject);
-            }
-            
-            yield return null;
-            
-            // 필수 시스템 매니저 생성
-            // SaveManager 타입이 제거되어 주석 처리
-            // CreateSystemManager<SaveManager>("SaveManager");
-            // ResourceManager 타입이 제거되어 주석 처리
-            // CreateSystemManager<ResourceManager>("ResourceManager");
-            CreateSystemManager<EventManager>("EventManager");
-            
-            yield return null;
-        }
-        
-        IEnumerator InitializeDataSystems()
-        {
-            // DataManager 타입이 제거되어 주석 처리
-            // 데이터 매니저 초기화
-            // var dataManager = CreateSystemManager<DataManager>("DataManager");
-            // if (dataManager != null)
-            // {
-            //     dataManager.LoadAllData();
-            // }
-            
-            yield return null;
-            
-            // 게임 구성 로드
-            if (gameConfig == null)
-            {
-                gameConfig = Resources.Load<GameConfiguration>("GameConfiguration");
-            }
-            
-            yield return null;
-        }
-        
-        IEnumerator LoadResources()
-        {
-            // 리소스 프리로드
-            yield return PreloadResources();
-            
-            // 에셋 번들 로드 (있는 경우)
-            yield return LoadAssetBundles();
-        }
-        
-        IEnumerator PreloadResources()
-        {
-            // UI 프리팹 로드
-            Resources.LoadAsync<GameObject>("Prefabs/UI/MainMenu");
-            Resources.LoadAsync<GameObject>("Prefabs/UI/GameHUD");
-            yield return null;
-            
-            // 캐릭터 프리팹 로드
-            Resources.LoadAsync<GameObject>("Prefabs/Characters/AdventurerBase");
-            yield return null;
-            
-            // 이펙트 프리팹 로드
-            Resources.LoadAsync<GameObject>("Prefabs/Effects/CommonEffects");
-            yield return null;
-        }
-        
-        IEnumerator LoadAssetBundles()
-        {
-            // 에셋 번들이 있다면 여기서 로드
-            yield return null;
-        }
-        
-        IEnumerator InitializeAudio()
-        {
-            // 사운드 시스템 초기화
-            var soundSystem = CreateSystemManager<SoundSystem>("SoundSystem");
-            
-            yield return null;
-            
-            // 오디오 믹서 설정
-            if (soundSystem != null)
-            {
-                soundSystem.SetMasterVolume(PlayerPrefs.GetFloat("MasterVolume", 1f));
-                soundSystem.SetMusicVolume(PlayerPrefs.GetFloat("MusicVolume", 0.7f));
-                soundSystem.SetSFXVolume(PlayerPrefs.GetFloat("SFXVolume", 1f));
-            }
-            
-            yield return null;
-        }
-        
-        IEnumerator InitializeGraphics()
-        {
-            // 파티클 시스템 초기화
-            CreateSystemManager<ParticleEffectsSystem>("ParticleEffectsSystem");
-            
-            yield return null;
-            
-            // 그래픽 설정 적용
-            ApplyGraphicsSettings();
-            
-            yield return null;
-        }
-        
-        void ApplyGraphicsSettings()
-        {
-            // 저장된 그래픽 설정 적용
-            int qualityLevel = PlayerPrefs.GetInt("GraphicsQuality", 2); // 0: Low, 1: Medium, 2: High
-            QualitySettings.SetQualityLevel(qualityLevel);
-            
-            // 해상도 설정
-            int resolutionIndex = PlayerPrefs.GetInt("Resolution", -1);
-            if (resolutionIndex >= 0 && resolutionIndex < Screen.resolutions.Length)
-            {
-                Resolution resolution = Screen.resolutions[resolutionIndex];
-                Screen.SetResolution(resolution.width, resolution.height, Screen.fullScreen);
-            }
-        }
-        
-        IEnumerator InitializeUI()
-        {
-            // UI 매니저 초기화
-            var uiManager = CreateSystemManager<GuildMaster.UI.UIManager>("UIManager");
-            
-            yield return null;
-            
-            // LocalizationSystem 타입이 제거되어 주석 처리
-            // 로컬라이제이션 시스템 초기화
-            // var localizationSystem = CreateSystemManager<LocalizationSystem>("LocalizationSystem");
-            
-            yield return null;
-            
-            // UI 스케일 설정
-            if (uiManager != null)
-            {
-                float uiScale = PlayerPrefs.GetFloat("UIScale", 1f);
-                uiManager.SetUIScale(uiScale);
-            }
-        }
-        
-        IEnumerator InitializeGameplaySystems()
-        {
-            // 전투 시스템
-            CreateSystemManager<BattleManager>("BattleManager");
-            yield return null;
-            
-            // 길드 시스템
-            CreateSystemManager<Guild.GuildManager>("GuildManager");
-            yield return null;
-            
-            // 튜토리얼 시스템
-            CreateSystemManager<TutorialSystem>("TutorialSystem");
-            yield return null;
-            
-            // 업적 시스템
-            CreateSystemManager<AchievementSystem>("AchievementSystem");
-            yield return null;
-            
-            // 일일 콘텐츠 매니저
-            CreateSystemManager<DailyContentManager>("DailyContentManager");
-            yield return null;
-            
-            // 시즌 패스 시스템
-            CreateSystemManager<SeasonPassSystem>("SeasonPassSystem");
-            yield return null;
-            
-            // 자동 전투 시스템
-            CreateSystemManager<AutoBattleSystem>("AutoBattleSystem");
-            yield return null;
-            
-            // 편의 시스템
-            CreateSystemManager<ConvenienceSystem>("ConvenienceSystem");
-            yield return null;
-            
-            // 게임 속도 시스템
-            CreateSystemManager<GameSpeedSystem>("GameSpeedSystem");
-            yield return null;
-        }
-        
-        IEnumerator InitializeNetworking()
-        {
-            // 네트워크 매니저 초기화 (멀티플레이어 지원 시)
-            // 현재는 싱글플레이어 전용이므로 스킵
-            yield return null;
-        }
-        
-        IEnumerator CheckSaveData()
-        {
-            // SaveManager가 제거되어 주석 처리
-            // var saveManager = SaveManager.Instance;
-            // if (saveManager != null)
-            // {
-            //     saveManager.Initialize();
-            //     
-            //     // 자동 저장 파일 확인
-            //     if (saveManager.HasAutoSave())
-            //     {
-            //         // 자동 저장 복구 옵션 제공
-            //         Debug.Log("Auto-save found. Recovery option available.");
-            //     }
-            // }
-            
-            yield return null;
-        }
-        
-        T CreateSystemManager<T>(string objectName) where T : MonoBehaviour
-        {
-            // 이미 존재하는지 확인
-            T existing = FindObjectOfType<T>();
-            if (existing != null)
-                return existing;
-            
-            GameObject managerObject = new GameObject(objectName);
-            T component = managerObject.AddComponent<T>();
-            DontDestroyOnLoad(managerObject);
-            
-            return component;
-        }
-        
-        void LoadMainMenu()
-        {
-            if (currentLoadingScreen != null)
-            {
-                currentLoadingScreen.FadeOut(() =>
-                {
-                    Destroy(currentLoadingScreen.gameObject);
-                    SceneManager.LoadScene(mainMenuScene);
-                });
-            }
-            else
-            {
-                SceneManager.LoadScene(mainMenuScene);
-            }
-        }
-        
-        // 게임 시작 (메인 메뉴에서 호출)
-        public void StartNewGame()
-        {
-            StartCoroutine(LoadGameplayScene(true));
-        }
-        
-        public void ContinueGame()
-        {
-            StartCoroutine(LoadGameplayScene(false));
-        }
-        
-        IEnumerator LoadGameplayScene(bool isNewGame)
-        {
-            // 로딩 화면 표시
-            ShowLoadingScreen();
-            UpdateLoadingStatus("Loading Game World...", 0f);
-            
-            // 씬 로드
-            AsyncOperation asyncLoad = SceneManager.LoadSceneAsync(gameplayScene);
-            asyncLoad.allowSceneActivation = false;
-            
-            while (asyncLoad.progress < 0.9f)
-            {
-                UpdateLoadingStatus("Loading Game World...", asyncLoad.progress);
-                yield return null;
-            }
-            
-            UpdateLoadingStatus("Preparing Game...", 0.9f);
-            
-            // 게임 데이터 준비
-            if (isNewGame)
-            {
-                GameManager.Instance.StartNewGame();
-            }
-            else
-            {
-                GameManager.Instance.LoadGame(0); // 슬롯 0에서 로드
-            }
-            
-            UpdateLoadingStatus("Ready!", 1f);
-            yield return new WaitForSeconds(0.5f);
-            
-            // 씬 활성화
-            asyncLoad.allowSceneActivation = true;
-            
-            // 로딩 화면 제거
-            if (currentLoadingScreen != null)
-            {
-                currentLoadingScreen.FadeOut(() =>
-                {
-                    Destroy(currentLoadingScreen.gameObject);
-                });
-            }
-        }
-    }
-    
-    [System.Serializable]
-    public class GameConfiguration : ScriptableObject
-    {
-        [Header("Game Settings")]
-        public string gameName = "Guild Master";
-        public string companyName = "YourCompany";
-        public string gameVersion = "1.0.0";
-        
-        [Header("Gameplay Configuration")]
-        public int maxGuildLevel = 50;
-        public int maxAdventurerLevel = 100;
-        public int maxFormationSize = 36;
-        public int maxBuildings = 10;
-        
-        [Header("Economy Settings")]
-        public int startingGold = 1000;
-        public int startingWood = 500;
-        public int startingStone = 500;
-        public float taxRate = 0.1f;
-        
-        [Header("Battle Settings")]
-        public float defaultBattleSpeed = 1f;
-        public int maxBattleTurns = 100;
-        public float criticalHitMultiplier = 2f;
-        
-        [Header("Save Settings")]
-        public float autoSaveInterval = 300f; // 5 minutes
-        public int maxSaveSlots = 3;
-        public bool enableCloudSave = false;
     }
 }

@@ -1,162 +1,192 @@
 using UnityEngine;
-using System;
-using GuildMaster.Battle;
+using System.Collections.Generic;
 
-namespace GuildMaster.Data
+namespace GuildMaster.Battle
 {
-    [System.Serializable]
-    public class CharacterData
+    /// <summary>
+    /// 캐릭터의 기본 데이터를 담는 ScriptableObject
+    /// CSV 데이터로부터 생성되며, 전투에서 사용됨
+    /// </summary>
+    [CreateAssetMenu(fileName = "CharacterData", menuName = "GuildMaster/Battle/CharacterData", order = 0)]
+    public class CharacterData : ScriptableObject
     {
         [Header("기본 정보")]
-        public string characterName;
-        public int characterIndex;
-        public string race = "Human";
-        public int star = 1;
+        public string ID;
+        public string Name;
+        public JobClass jobClass;
+        public int Level = 1;
+        public Rarity rarity = Rarity.Common;
+        
+        [Header("기본 스탯")]
+        public int HP = 100;
+        public int MP = 50;
+        public int Attack = 10;
+        public int Defense = 5;
+        public int MagicPower = 5;
+        public int Speed = 10;
         
         [Header("전투 스탯")]
-        public int attackPower = 10;
-        public int attackSpeed = 1;
-        public int health = 100;
-        public int cost = 1;
-        public int level = 1;
+        public float CritRate = 0.1f;
+        public float CritDamage = 1.5f;
+        public float Accuracy = 0.95f;
+        public float Evasion = 0.05f;
         
-        [Header("경험치")]
-        public int currentExp = 0;
-        public int expToNextLevel = 100;
+        [Header("스킬")]
+        public List<string> skillIDs = new List<string>();
         
-        [Header("추가 스탯")]
-        public int maxHP = 100;
-        public float moveSpeed = 5f;
-        public float attackRange = 1.5f;
+        [Header("설명")]
+        [TextArea(3, 5)]
+        public string Description;
         
-        [Header("타입 정보")]
-        public string rangeType = "Melee";
-        public bool isAreaAttack = false;
-        public bool isBuffSupport = false;
-        public bool isFreeSlotOnly = false;
+        [Header("비주얼")]
+        public Sprite sprite;
+        public Sprite portrait;
+        public GameObject modelPrefab;
         
-        [Header("레어도")]
-        public int initialStar = 1;
+        [Header("사운드")]
+        public AudioClip attackSound;
+        public AudioClip hitSound;
+        public AudioClip deathSound;
         
-        [Header("리소스")]
-        public Sprite buttonIcon;
-        public Sprite frontSprite;
-        public Sprite backSprite;
-        public GameObject spawnPrefab;
-        public GameObject motionPrefab;
-        
-        [Header("범위 공격")]
-        public float areaAttackRadius = 0f;
-        
-        // Battle.CharacterData와의 호환성을 위한 추가 프로퍼티
-        public string id { get; set; }
-        public string characterID { get; set; }
-        public JobClass jobClass { get; set; }
-        public int starLevel => star;
-        
-        // 생성자
-        public CharacterData()
+        /// <summary>
+        /// CSV 데이터로 초기화
+        /// </summary>
+        public void InitializeFromCSV(string csvLine)
         {
-            id = System.Guid.NewGuid().ToString();
-            characterID = id;
+            string[] values = csvLine.Split(',');
+            
+            if (values.Length >= 15)
+            {
+                ID = values[0];
+                Name = values[1];
+                
+                // JobClass 파싱
+                if (System.Enum.TryParse<JobClass>(values[2], out JobClass parsedJob))
+                    jobClass = parsedJob;
+                    
+                Level = int.Parse(values[3]);
+                
+                // Rarity 파싱
+                if (System.Enum.TryParse<Rarity>(values[4], out Rarity parsedRarity))
+                    rarity = parsedRarity;
+                    
+                HP = int.Parse(values[5]);
+                MP = int.Parse(values[6]);
+                Attack = int.Parse(values[7]);
+                Defense = int.Parse(values[8]);
+                MagicPower = int.Parse(values[9]);
+                Speed = int.Parse(values[10]);
+                
+                CritRate = float.Parse(values[11]);
+                CritDamage = float.Parse(values[12]);
+                Accuracy = float.Parse(values[13]);
+                Evasion = float.Parse(values[14]);
+                
+                // 스킬 ID 파싱 (15, 16, 17번 인덱스)
+                skillIDs.Clear();
+                if (values.Length > 15 && !string.IsNullOrEmpty(values[15]))
+                    skillIDs.Add(values[15]);
+                if (values.Length > 16 && !string.IsNullOrEmpty(values[16]))
+                    skillIDs.Add(values[16]);
+                if (values.Length > 17 && !string.IsNullOrEmpty(values[17]))
+                    skillIDs.Add(values[17]);
+                
+                // 설명 (따옴표 제거)
+                if (values.Length > 18)
+                {
+                    Description = values[18].Trim('"');
+                }
+            }
         }
         
-        // 복사 생성자
-        public CharacterData(CharacterData other)
+        /// <summary>
+        /// 전투력 계산 (간단한 공식)
+        /// </summary>
+        public int GetCombatPower()
         {
-            if (other == null) return;
-            
-            characterName = other.characterName;
-            characterIndex = other.characterIndex;
-            race = other.race;
-            star = other.star;
-            attackPower = other.attackPower;
-            attackSpeed = other.attackSpeed;
-            health = other.health;
-            cost = other.cost;
-            level = other.level;
-            currentExp = other.currentExp;
-            expToNextLevel = other.expToNextLevel;
-            maxHP = other.maxHP;
-            moveSpeed = other.moveSpeed;
-            attackRange = other.attackRange;
-            rangeType = other.rangeType;
-            isAreaAttack = other.isAreaAttack;
-            isBuffSupport = other.isBuffSupport;
-            isFreeSlotOnly = other.isFreeSlotOnly;
-            initialStar = other.initialStar;
-            buttonIcon = other.buttonIcon;
-            frontSprite = other.frontSprite;
-            backSprite = other.backSprite;
-            spawnPrefab = other.spawnPrefab;
-            motionPrefab = other.motionPrefab;
-            areaAttackRadius = other.areaAttackRadius;
-            id = other.id;
-            characterID = other.characterID;
-            jobClass = other.jobClass;
+            int basePower = HP + (Attack * 5) + (Defense * 3) + (MagicPower * 4) + (Speed * 2);
+            float rarityMultiplier = 1f + ((int)rarity * 0.2f);
+            return Mathf.RoundToInt(basePower * rarityMultiplier);
         }
         
-        // Battle.CharacterData로 변환
-        public GuildMaster.Battle.CharacterData ToBattleCharacterData()
+        /// <summary>
+        /// 희귀도에 따른 색상
+        /// </summary>
+        public Color GetRarityColor()
         {
-            var battleData = new GuildMaster.Battle.CharacterData();
-            battleData.id = this.id;
-            battleData.characterID = this.characterID;
-            battleData.name = this.characterName;
-            battleData.characterName = this.characterName;
-            battleData.jobClass = this.jobClass;
-            battleData.level = this.level;
-            battleData.star = this.star;
-            battleData.baseHP = this.health;
-            battleData.baseAttack = this.attackPower;
-            battleData.cost = this.cost;
-            battleData.buttonIcon = this.buttonIcon;
-            battleData.frontSprite = this.frontSprite;
-            battleData.backSprite = this.backSprite;
-            battleData.spawnPrefab = this.spawnPrefab;
-            battleData.motionPrefab = this.motionPrefab;
-            battleData.moveSpeed = this.moveSpeed;
-            battleData.areaAttackRadius = this.areaAttackRadius;
-            battleData.isAreaAttack = this.isAreaAttack;
-            battleData.isBuffSupport = this.isBuffSupport;
-            battleData.rangeType = this.rangeType;
-            battleData.isFreeSlotOnly = this.isFreeSlotOnly;
-            battleData.race = this.race;
-            battleData.experience = this.currentExp;
-            
-            return battleData;
+            switch (rarity)
+            {
+                case Rarity.Common:
+                    return Color.gray;
+                case Rarity.Uncommon:
+                    return Color.green;
+                case Rarity.Rare:
+                    return new Color(0.2f, 0.6f, 1f); // 파란색
+                case Rarity.Epic:
+                    return new Color(0.6f, 0.2f, 0.8f); // 보라색
+                case Rarity.Legendary:
+                    return new Color(1f, 0.6f, 0f); // 주황색
+                default:
+                    return Color.white;
+            }
         }
         
-        // Battle.CharacterData에서 가져오기
-        public static CharacterData FromBattleCharacterData(GuildMaster.Battle.CharacterData battleData)
+        /// <summary>
+        /// 직업 아이콘 경로
+        /// </summary>
+        public string GetJobIconPath()
         {
-            if (battleData == null) return null;
+            return $"Icons/Jobs/{jobClass}";
+        }
+        
+        /// <summary>
+        /// 캐릭터 정보 문자열
+        /// </summary>
+        public string GetInfoText()
+        {
+            return $"{Name} Lv.{Level}\n" +
+                   $"{jobClass} ({rarity})\n" +
+                   $"HP: {HP} ATK: {Attack}\n" +
+                   $"DEF: {Defense} SPD: {Speed}";
+        }
+        
+        /// <summary>
+        /// 복사본 생성
+        /// </summary>
+        public CharacterData Clone()
+        {
+            CharacterData clone = CreateInstance<CharacterData>();
             
-            var data = new CharacterData();
-            data.id = battleData.id;
-            data.characterID = battleData.characterID;
-            data.characterName = battleData.characterName;
-            data.jobClass = battleData.jobClass;
-            data.level = battleData.level;
-            data.star = battleData.star;
-            data.health = battleData.baseHP;
-            data.attackPower = battleData.baseAttack;
-            data.cost = battleData.cost;
-            data.buttonIcon = battleData.buttonIcon;
-            data.frontSprite = battleData.frontSprite;
-            data.backSprite = battleData.backSprite;
-            data.spawnPrefab = battleData.spawnPrefab;
-            data.motionPrefab = battleData.motionPrefab;
-            data.moveSpeed = battleData.moveSpeed;
-            data.areaAttackRadius = battleData.areaAttackRadius;
-            data.isAreaAttack = battleData.isAreaAttack;
-            data.isBuffSupport = battleData.isBuffSupport;
-            data.rangeType = battleData.rangeType;
-            data.isFreeSlotOnly = battleData.isFreeSlotOnly;
-            data.race = battleData.race;
-            data.currentExp = battleData.experience;
+            clone.ID = ID;
+            clone.Name = Name;
+            clone.jobClass = jobClass;
+            clone.Level = Level;
+            clone.rarity = rarity;
             
-            return data;
+            clone.HP = HP;
+            clone.MP = MP;
+            clone.Attack = Attack;
+            clone.Defense = Defense;
+            clone.MagicPower = MagicPower;
+            clone.Speed = Speed;
+            
+            clone.CritRate = CritRate;
+            clone.CritDamage = CritDamage;
+            clone.Accuracy = Accuracy;
+            clone.Evasion = Evasion;
+            
+            clone.skillIDs = new List<string>(skillIDs);
+            clone.Description = Description;
+            
+            clone.sprite = sprite;
+            clone.portrait = portrait;
+            clone.modelPrefab = modelPrefab;
+            
+            clone.attackSound = attackSound;
+            clone.hitSound = hitSound;
+            clone.deathSound = deathSound;
+            
+            return clone;
         }
     }
 }
