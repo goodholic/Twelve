@@ -11,10 +11,11 @@ namespace TwelveGame.Battle
     public class BoardManager : MonoBehaviour
 {
     [Header("보드 설정")]
-    public GameObject tilePrefab;
-    public float tileSize = 1.0f;
-    public float boardSpacing = 2.0f; // A와 B 보드 사이 간격
-
+    [Tooltip("A타일들 (6x3=18개, 왼쪽 위에서 아래로 순서)")]
+    public Transform[] aTiles = new Transform[18];
+    [Tooltip("B타일들 (6x3=18개, 왼쪽 위에서 아래로 순서)")]
+    public Transform[] bTiles = new Transform[18];
+    
     [Header("타일 색상")]
     public Color normalTileColor = Color.white;
     public Color hoverTileColor = Color.yellow;
@@ -22,7 +23,7 @@ namespace TwelveGame.Battle
     public Color invalidPlacementColor = Color.red;
     public Color attackPreviewColor = new Color(1f, 0.5f, 0f, 0.5f); // 주황색 반투명
 
-    // 보드 타일 배열
+    // 보드 타일 배열 (이미 만들어진 타일들을 할당)
     private TileObject[,,] tiles = new TileObject[2, GameManager.BOARD_WIDTH, GameManager.BOARD_HEIGHT];
     
     // 현재 hover 중인 타일
@@ -33,40 +34,76 @@ namespace TwelveGame.Battle
 
     void Start()
     {
-        CreateBoards();
+        AssignExistingTiles();
     }
 
-    void CreateBoards()
+    void AssignExistingTiles()
     {
-        // 보드 A (위쪽) 생성
-        Vector3 boardAStartPos = new Vector3(-GameManager.BOARD_WIDTH * tileSize / 2f, boardSpacing, 0);
-        CreateBoard(0, boardAStartPos, "Board A");
-
-        // 보드 B (아래쪽) 생성
-        Vector3 boardBStartPos = new Vector3(-GameManager.BOARD_WIDTH * tileSize / 2f, -boardSpacing - GameManager.BOARD_HEIGHT * tileSize, 0);
-        CreateBoard(1, boardBStartPos, "Board B");
+        // A타일들 할당 (6x3=18개, 왼쪽 위에서 아래로 순서)
+        AssignTilesFromArray(0, aTiles, "A");
+        
+        // B타일들 할당 (6x3=18개, 왼쪽 위에서 아래로 순서)
+        AssignTilesFromArray(1, bTiles, "B");
     }
 
-    void CreateBoard(int boardIndex, Vector3 startPos, string boardName)
+    void AssignTilesFromArray(int boardIndex, Transform[] tileArray, string boardPrefix)
     {
-        GameObject boardParent = new GameObject(boardName);
-        boardParent.transform.parent = transform;
-
-        for (int x = 0; x < GameManager.BOARD_WIDTH; x++)
+        int requiredTileCount = GameManager.BOARD_WIDTH * GameManager.BOARD_HEIGHT; // 6 * 3 = 18
+        
+        // 배열 크기 체크
+        if (tileArray.Length != requiredTileCount)
         {
-            for (int y = 0; y < GameManager.BOARD_HEIGHT; y++)
+            Debug.LogWarning($"{boardPrefix}타일 배열 크기 오류: {requiredTileCount}개가 필요하지만 {tileArray.Length}개 슬롯이 있습니다.");
+        }
+
+        // 타일 할당 순서: 왼쪽 위에서 아래로 (열 우선)
+        // A타일 순서: [0]=>(0,0), [1]=>(0,1), [2]=>(0,2) | [3]=>(1,0), [4]=>(1,1), [5]=>(1,2) | ... | [15]=>(5,0), [16]=>(5,1), [17]=>(5,2)
+        // B타일 순서: 동일한 방식
+        int tileIndex = 0;
+        int assignedCount = 0;
+        
+        for (int x = 0; x < GameManager.BOARD_WIDTH; x++) // 열 (왼쪽에서 오른쪽)
+        {
+            for (int y = 0; y < GameManager.BOARD_HEIGHT; y++) // 행 (위에서 아래로)
             {
-                Vector3 tilePos = startPos + new Vector3(x * tileSize, y * tileSize, 0);
-                GameObject tileObj = Instantiate(tilePrefab, tilePos, Quaternion.identity, boardParent.transform);
-                tileObj.name = $"Tile_{x}_{y}";
+                if (tileIndex < tileArray.Length && tileArray[tileIndex] != null)
+                {
+                    GameObject tileObj = tileArray[tileIndex].gameObject;
+                    
+                    // 타일 이름 설정 (옵션)
+                    tileObj.name = $"Tile_{boardPrefix}_{x}_{y}";
 
-                TileObject tile = tileObj.GetComponent<TileObject>();
-                if (tile == null)
-                    tile = tileObj.AddComponent<TileObject>();
+                    TileObject tile = tileObj.GetComponent<TileObject>();
+                    if (tile == null)
+                        tile = tileObj.AddComponent<TileObject>();
 
-                tile.Initialize(boardIndex, x, y, this);
-                tiles[boardIndex, x, y] = tile;
+                    tile.Initialize(boardIndex, x, y, this);
+                    tiles[boardIndex, x, y] = tile;
+                    
+                    assignedCount++;
+                }
+                else
+                {
+                    if (tileIndex < tileArray.Length)
+                    {
+                        Debug.LogWarning($"{boardPrefix}타일 [{tileIndex}] (위치: {x},{y})가 null입니다. Inspector에서 할당해주세요.");
+                    }
+                    else
+                    {
+                        Debug.LogWarning($"{boardPrefix}타일 배열 인덱스 {tileIndex}가 범위를 벗어났습니다.");
+                    }
+                }
+                
+                tileIndex++;
             }
+        }
+
+        Debug.Log($"{boardPrefix}타일 할당 완료: {assignedCount}/{requiredTileCount}개 타일이 순서대로 할당되었습니다.");
+        
+        // 할당 순서 가이드 출력
+        if (assignedCount > 0)
+        {
+            Debug.Log($"{boardPrefix}타일 순서: 배열[0]=(0,0) → 배열[1]=(0,1) → 배열[2]=(0,2) → 배열[3]=(1,0) → ... → 배열[17]=(5,2)");
         }
     }
 
@@ -202,9 +239,9 @@ public class TileObject : MonoBehaviour
     
     public void Initialize(int boardIdx, int xPos, int yPos, BoardManager manager)
     {
-        boardIndex = boardIdx;
-        x = xPos;
-        y = yPos;
+        boardIndex = boardIdx; // 0=A타일, 1=B타일
+        x = xPos; // 열 (0~5, 왼쪽에서 오른쪽)
+        y = yPos; // 행 (0~2, 위에서 아래로)
         boardManager = manager;
         
         spriteRenderer = GetComponent<SpriteRenderer>();
