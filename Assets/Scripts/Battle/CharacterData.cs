@@ -52,15 +52,15 @@ public class CharacterData : ScriptableObject
     public int baseAttack = 10; // 기본 공격력
     public int baseDefense = 5; // 기본 방어력
     public int baseMagicPower = 0; // 기본 마법력
-    public int baseSpeed = 5; // 기본 속도
+    // baseSpeed 제거됨 - 게임에서 사용하지 않음
     
     // TacticalCharacterDataSO에서 통합된 속성들
     public string characterId = ""; // 전술 게임용 ID (id와 동기화)  
     public string description = ""; // 캐릭터 설명
     public GameObject characterPrefab; // 전술 게임용 프리팹
     public float baseCritRate = 0.1f; // 기본 크리티컬 확률
-    public List<string> skillIds = new List<string>(); // 스킬 ID 목록
-    public List<SkillDataSO> skills = new List<SkillDataSO>(); // 스킬 객체 목록 (통합)
+    public string skillId = ""; // 스킬 ID (캐릭터당 하나)
+    public SkillDataSO skill; // 스킬 객체 (캐릭터당 하나)
     public string attackPatternCSV = ""; // CSV 패턴 문자열
     public int maxLevel = 50; // 최대 레벨
     public CharacterRarity tacticalRarity = CharacterRarity.Common; // 전술 게임용 레어도
@@ -68,9 +68,7 @@ public class CharacterData : ScriptableObject
     public float critDamage = 150.0f; // 크리티컬 데미지
     public float accuracy = 95.0f; // 명중률
     public float evasion = 5.0f; // 회피율
-    public string skill1Id = ""; // 스킬 1 ID
-    public string skill2Id = ""; // 스킬 2 ID  
-    public string skill3Id = ""; // 스킬 3 ID
+    // 개별 스킬 ID들 제거됨 - 이제 skillId 하나만 사용
     [Header("공격 패턴")]
     public AttackPattern attackPattern;
     
@@ -210,7 +208,7 @@ public static class CharacterDataExtensions
         if (csvData.ContainsKey("magic") && int.TryParse(csvData["magic"], out int mag))
             character.baseMagicPower = mag;
         if (csvData.ContainsKey("speed") && int.TryParse(csvData["speed"], out int spd))
-            character.baseSpeed = spd;
+            // baseSpeed 제거됨
         if (csvData.ContainsKey("critRate") && float.TryParse(csvData["critRate"], out float crit))
             character.baseCritRate = crit;
         
@@ -225,17 +223,13 @@ public static class CharacterDataExtensions
             }
         }
         
-        // 스킬 ID 파싱
+        // 스킬 ID 파싱 (첫 번째 스킬만 사용)
         if (csvData.ContainsKey("skills"))
         {
             string[] skills = csvData["skills"].Split(',');
-            character.skillIds.Clear();
-            foreach (string skillId in skills)
+            if (skills.Length > 0 && !string.IsNullOrEmpty(skills[0].Trim()))
             {
-                if (!string.IsNullOrEmpty(skillId.Trim()))
-                {
-                    character.skillIds.Add(skillId.Trim());
-                }
+                character.skillId = skills[0].Trim();
             }
         }
         

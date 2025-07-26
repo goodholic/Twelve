@@ -37,14 +37,12 @@ namespace GuildMaster.Editor
         private int newCharAttack = 10;
         private int newCharDefense = 5;
         private int newCharMagicPower = 5;
-        private int newCharSpeed = 10;
+        // private int newCharSpeed = 10; // baseSpeed 제거됨
         private float newCharCritRate = 0.1f;
         private float newCharCritDamage = 1.5f;
         private float newCharAccuracy = 0.95f;
         private float newCharEvasion = 0.05f;
-        private string newCharSkill1 = "101";
-        private string newCharSkill2 = "102";
-        private string newCharSkill3 = "103";
+            private string newCharSkill = "101"; // 스킬 하나로 통합
         private string newCharDescription = "";
         
         // Bulk operations
@@ -179,7 +177,7 @@ namespace GuildMaster.Editor
             newCharAttack = EditorGUILayout.IntField("Attack", newCharAttack);
             newCharDefense = EditorGUILayout.IntField("Defense", newCharDefense);
             newCharMagicPower = EditorGUILayout.IntField("Magic Power", newCharMagicPower);
-            newCharSpeed = EditorGUILayout.IntField("Speed", newCharSpeed);
+            // newCharSpeed = EditorGUILayout.IntField("Speed", newCharSpeed); // baseSpeed 제거됨
             
             EditorGUILayout.Space();
             
@@ -194,9 +192,7 @@ namespace GuildMaster.Editor
             
             // Skills
             EditorGUILayout.LabelField("Skills", EditorStyles.boldLabel);
-            newCharSkill1 = EditorGUILayout.TextField("Skill 1 ID", newCharSkill1);
-            newCharSkill2 = EditorGUILayout.TextField("Skill 2 ID", newCharSkill2);
-            newCharSkill3 = EditorGUILayout.TextField("Skill 3 ID", newCharSkill3);
+            newCharSkill = EditorGUILayout.TextField("Skill ID", newCharSkill); // 스킬 하나로 통합
             
             EditorGUILayout.Space();
             
@@ -278,14 +274,12 @@ namespace GuildMaster.Editor
             newCharAttack = 10;
             newCharDefense = 5;
             newCharMagicPower = 5;
-            newCharSpeed = 10;
+            // newCharSpeed = 10; // baseSpeed 제거됨
             newCharCritRate = 0.1f;
             newCharCritDamage = 1.5f;
             newCharAccuracy = 0.95f;
             newCharEvasion = 0.05f;
-            newCharSkill1 = "101";
-            newCharSkill2 = "102";
-            newCharSkill3 = "103";
+            newCharSkill = "101"; // 스킬 하나로 통합
             newCharDescription = "";
         }
 
@@ -307,14 +301,12 @@ namespace GuildMaster.Editor
             newCharAttack = character.baseAttack;
             newCharDefense = character.baseDefense;
             newCharMagicPower = character.baseMagicPower;
-            newCharSpeed = character.baseSpeed;
+                            // newCharSpeed = character.baseSpeed; // baseSpeed 제거됨
             newCharCritRate = character.critRate;
             newCharCritDamage = character.critDamage;
             newCharAccuracy = character.accuracy;
             newCharEvasion = character.evasion;
-            newCharSkill1 = character.skill1Id;
-            newCharSkill2 = character.skill2Id;
-            newCharSkill3 = character.skill3Id;
+                            newCharSkill = character.skillId; // 스킬 하나로 통합
             newCharDescription = character.description;
         }
 
@@ -335,14 +327,12 @@ namespace GuildMaster.Editor
             newCharAttack = original.baseAttack;
             newCharDefense = original.baseDefense;
             newCharMagicPower = original.baseMagicPower;
-            newCharSpeed = original.baseSpeed;
+                            // newCharSpeed = original.baseSpeed; // baseSpeed 제거됨
             newCharCritRate = original.critRate;
             newCharCritDamage = original.critDamage;
             newCharAccuracy = original.accuracy;
             newCharEvasion = original.evasion;
-            newCharSkill1 = original.skill1Id;
-            newCharSkill2 = original.skill2Id;
-            newCharSkill3 = original.skill3Id;
+                            newCharSkill = original.skillId; // 스킬 하나로 통합
             newCharDescription = original.description;
         }
 
@@ -356,42 +346,42 @@ namespace GuildMaster.Editor
                     newCharAttack = 15;
                     newCharDefense = 12;
                     newCharMagicPower = 5;
-                    newCharSpeed = 8;
+                    // newCharSpeed = 8; // baseSpeed 제거됨
                     break;
                 case JobClass.Mage:
                     newCharHP = 80;
                     newCharAttack = 5;
                     newCharDefense = 5;
                     newCharMagicPower = 20;
-                    newCharSpeed = 10;
+                    // newCharSpeed = 10; // baseSpeed 제거됨
                     break;
                 case JobClass.Archer:
                     newCharHP = 100;
                     newCharAttack = 12;
                     newCharDefense = 8;
                     newCharMagicPower = 8;
-                    newCharSpeed = 15;
+                    // newCharSpeed = 15; // baseSpeed 제거됨
                     break;
                 case JobClass.Priest:
                     newCharHP = 90;
                     newCharAttack = 5;
                     newCharDefense = 8;
                     newCharMagicPower = 15;
-                    newCharSpeed = 10;
+                    // newCharSpeed = 10; // baseSpeed 제거됨
                     break;
                 case JobClass.Rogue:
                     newCharHP = 90;
                     newCharAttack = 18;
                     newCharDefense = 6;
                     newCharMagicPower = 8;
-                    newCharSpeed = 18;
+                    // newCharSpeed = 18; // baseSpeed 제거됨
                     break;
                 case JobClass.Knight:
                     newCharHP = 180;
                     newCharAttack = 12;
                     newCharDefense = 18;
                     newCharMagicPower = 10;
-                    newCharSpeed = 6;
+                    // newCharSpeed = 6; // baseSpeed 제거됨
                     break;
             }
             
@@ -402,7 +392,7 @@ namespace GuildMaster.Editor
             newCharAttack = Mathf.RoundToInt(newCharAttack * levelMultiplier);
             newCharDefense = Mathf.RoundToInt(newCharDefense * levelMultiplier);
             newCharMagicPower = Mathf.RoundToInt(newCharMagicPower * levelMultiplier);
-            newCharSpeed = Mathf.RoundToInt(newCharSpeed * levelMultiplier);
+            // newCharSpeed = Mathf.RoundToInt(newCharSpeed * levelMultiplier); // baseSpeed 제거됨
             
             // Apply rarity multiplier
             float rarityMultiplier = newCharRarity switch
@@ -420,7 +410,7 @@ namespace GuildMaster.Editor
             newCharAttack = Mathf.RoundToInt(newCharAttack * rarityMultiplier);
             newCharDefense = Mathf.RoundToInt(newCharDefense * rarityMultiplier);
             newCharMagicPower = Mathf.RoundToInt(newCharMagicPower * rarityMultiplier);
-            newCharSpeed = Mathf.RoundToInt(newCharSpeed * rarityMultiplier);
+            // newCharSpeed = Mathf.RoundToInt(newCharSpeed * rarityMultiplier); // baseSpeed 제거됨
         }
 
         private bool ValidateCharacterData()
@@ -478,10 +468,10 @@ namespace GuildMaster.Editor
                 errors.Add("Defense cannot be negative");
             }
             
-            if (newCharSpeed <= 0)
-            {
-                errors.Add("Speed must be greater than 0");
-            }
+            // if (newCharSpeed <= 0) // baseSpeed 제거됨
+            // {
+            //     errors.Add("Speed must be greater than 0");
+            // }
             
             // Combat stats validation
             if (newCharCritRate < 0 || newCharCritRate > 1)
@@ -535,14 +525,12 @@ namespace GuildMaster.Editor
                 baseAttack = newCharAttack,
                 baseDefense = newCharDefense,
                 baseMagicPower = newCharMagicPower,
-                baseSpeed = newCharSpeed,
+                                    // baseSpeed 제거됨
                 critRate = newCharCritRate,
                 critDamage = newCharCritDamage,
                 accuracy = newCharAccuracy,
                 evasion = newCharEvasion,
-                skill1Id = newCharSkill1,
-                skill2Id = newCharSkill2,
-                skill3Id = newCharSkill3,
+                                    skillId = newCharSkill, // 스킬 하나로 통합
                 description = newCharDescription
             };
             
@@ -572,14 +560,12 @@ namespace GuildMaster.Editor
                 editingCharacter.baseAttack = newCharAttack;
                 editingCharacter.baseDefense = newCharDefense;
                 editingCharacter.baseMagicPower = newCharMagicPower;
-                editingCharacter.baseSpeed = newCharSpeed;
+                // editingCharacter.baseSpeed = newCharSpeed; // baseSpeed 제거됨
                 editingCharacter.critRate = newCharCritRate;
                 editingCharacter.critDamage = newCharCritDamage;
                 editingCharacter.accuracy = newCharAccuracy;
                 editingCharacter.evasion = newCharEvasion;
-                editingCharacter.skill1Id = newCharSkill1;
-                editingCharacter.skill2Id = newCharSkill2;
-                editingCharacter.skill3Id = newCharSkill3;
+                editingCharacter.skillId = newCharSkill; // 스킬 하나로 통합
                 editingCharacter.description = newCharDescription;
                 
                 // CharacterDatabase 업데이트 제거됨
@@ -607,7 +593,7 @@ namespace GuildMaster.Editor
                     character.baseAttack = Mathf.RoundToInt(character.baseAttack * bulkStatMultiplier);
                     character.baseDefense = Mathf.RoundToInt(character.baseDefense * bulkStatMultiplier);
                     character.baseMagicPower = Mathf.RoundToInt(character.baseMagicPower * bulkStatMultiplier);
-                    character.baseSpeed = Mathf.RoundToInt(character.baseSpeed * bulkStatMultiplier);
+                    // character.baseSpeed = Mathf.RoundToInt(character.baseSpeed * bulkStatMultiplier); // baseSpeed 제거됨
                 }
                 
                 // CharacterDatabase 업데이트 제거됨
@@ -658,9 +644,9 @@ namespace GuildMaster.Editor
             {
                 csv.AppendLine($"{character.id},{character.name},{character.jobClass},{character.level}," +
                     $"{character.rarity},{character.baseHP},{character.baseMP},{character.baseAttack}," +
-                    $"{character.baseDefense},{character.baseMagicPower},{character.baseSpeed}," +
+                    $"{character.baseDefense},{character.baseMagicPower}," + // baseSpeed 제거됨
                     $"{character.critRate},{character.critDamage},{character.accuracy},{character.evasion}," +
-                    $"{character.skill1Id},{character.skill2Id},{character.skill3Id},\"{character.description}\"");
+                    $"{character.skillId},\"{character.description}\""); // 스킬 하나로 통합
             }
             
             File.WriteAllText(path, csv.ToString());

@@ -659,12 +659,53 @@ namespace TwelveGame.Battle
         currentState = GameState.GameOver;
         CalculateFinalScore();
         
+        // 20턴까지 살아남은 캐릭터들의 승리 카운트 증가
+        RecordSurvivorVictories();
+        
         if (UIManager.Instance != null)
         {
             UIManager.Instance.ShowGameOver();
         }
         
         Debug.Log($"게임 종료! 최종 점수 - X팀: {xTeamScore}, O팀: {oTeamScore}");
+    }
+
+    void RecordSurvivorVictories()
+    {
+        // 20턴까지 도달한 경우에만 승리 기록
+        if (currentTurnNumber >= maxTurns)
+        {
+            // 보드에 살아남은 모든 캐릭터들의 승리 카운트 증가
+            for (int b = 0; b < BOARD_COUNT; b++)
+            {
+                for (int x = 0; x < BOARD_WIDTH; x++)
+                {
+                    for (int y = 0; y < BOARD_HEIGHT; y++)
+                    {
+                        Character survivor = boardState[b, x, y];
+                        if (survivor != null && survivor.characterData != null)
+                        {
+                            string characterId = survivor.characterData.characterId;
+                            if (!string.IsNullOrEmpty(characterId))
+                            {
+                                int currentWins = PlayerPrefs.GetInt($"CharacterWins_{characterId}", 0);
+                                currentWins++;
+                                PlayerPrefs.SetInt($"CharacterWins_{characterId}", currentWins);
+                                
+                                Debug.Log($"{survivor.characterData.characterName} 승리 카운트: {currentWins}/100");
+                                
+                                // 100승 달성 시 특별 메시지
+                                if (currentWins == 100)
+                                {
+                                    Debug.Log($"🎉 {survivor.characterData.characterName}이(가) 100승을 달성했습니다! 엔딩을 확인해보세요!");
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            PlayerPrefs.Save();
+        }
     }
 
     void CalculateFinalScore()

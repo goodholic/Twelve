@@ -22,7 +22,7 @@ public class CSVCharacter
     public int baseAttack;
     public int baseDefense;
     public int baseMagicPower;
-    public int baseSpeed;
+    // baseSpeed 제거됨
     public float baseCritRate;
     public float baseCritDamage;
     public float baseAccuracy;
@@ -33,9 +33,7 @@ public class CSVCharacter
     public float critDamage;
     public float accuracy;
     public float evasion;
-    public string skill1Id;
-    public string skill2Id;
-    public string skill3Id;
+    public string skillId; // 스킬 하나로 통합
     public List<int> skillIDs;
     public string description;
 }
@@ -89,7 +87,7 @@ public static class CharacterConverter
             baseAttack = so.baseAttack,
             baseDefense = so.baseDefense,
             baseMagicPower = so.baseMagicPower,
-            baseSpeed = so.baseSpeed,
+                            // baseSpeed 제거됨
             critRate = so.critRate,
             critDamage = so.critDamage,
             accuracy = so.accuracy,
@@ -113,14 +111,12 @@ public static class CharacterConverter
         characterData.baseAttack = csvChar.baseAttack;
         characterData.baseDefense = csvChar.baseDefense;
         characterData.baseMagicPower = csvChar.baseMagicPower;
-        characterData.baseSpeed = csvChar.baseSpeed;
+                    // characterData.baseSpeed = csvChar.baseSpeed; // baseSpeed 제거됨
         characterData.critRate = csvChar.critRate;
         characterData.critDamage = csvChar.critDamage;
         characterData.accuracy = csvChar.accuracy;
         characterData.evasion = csvChar.evasion;
-        characterData.skill1Id = csvChar.skill1Id;
-        characterData.skill2Id = csvChar.skill2Id;
-        characterData.skill3Id = csvChar.skill3Id;
+                    characterData.skillId = csvChar.skillId;
         characterData.description = csvChar.description;
         
         return characterData;
@@ -144,14 +140,12 @@ public static class CharacterConverter
             baseAttack = charData.baseAttack,
             baseDefense = charData.baseDefense,
             baseMagicPower = charData.baseMagicPower,
-            baseSpeed = charData.baseSpeed,
+                            // baseSpeed 제거됨
             critRate = charData.critRate,
             critDamage = charData.critDamage,
             accuracy = charData.accuracy,
             evasion = charData.evasion,
-            skill1Id = charData.skill1Id,
-            skill2Id = charData.skill2Id,
-            skill3Id = charData.skill3Id,
+                            skillId = charData.skillId,
             description = charData.description ?? ""
         };
     }
@@ -171,7 +165,7 @@ public static class CharacterConverter
         so.baseAttack = csvChar.baseAttack;
         so.baseDefense = csvChar.baseDefense;
         so.baseMagicPower = csvChar.baseMagicPower;
-        so.baseSpeed = csvChar.baseSpeed;
+                    // so.baseSpeed = csvChar.baseSpeed; // baseSpeed 제거됨
         so.critRate = csvChar.critRate;
         so.critDamage = csvChar.critDamage;
         so.accuracy = csvChar.accuracy;

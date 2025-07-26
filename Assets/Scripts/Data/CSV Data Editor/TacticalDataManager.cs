@@ -130,17 +130,18 @@ namespace TacticalTileGame.Data
         {
             foreach (var character in mainDatabase.GetAllTacticalCharacters())
             {
-                character.skills.Clear();
+                // character.skills.Clear(); // skills 목록 제거됨
                 
-                foreach (string skillId in character.skillIds)
+                // 단일 스킬만 로드
+        if (!string.IsNullOrEmpty(character.skillId))
                 {
-                    if (skillDatabase.TryGetValue(skillId, out SkillDataSO skill))
-                    {
-                        character.skills.Add(skill);
-                    }
+                                    if (skillDatabase.TryGetValue(character.skillId, out SkillDataSO skill))
+                {
+                    character.skill = skill;
+                }
                     else
                     {
-                        Debug.LogWarning($"Skill {skillId} not found for character {character.characterId}");
+                        Debug.LogWarning($"Skill {character.skillId} not found for character {character.characterId}");
                     }
                 }
             }

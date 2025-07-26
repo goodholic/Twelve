@@ -117,18 +117,17 @@ namespace GuildMaster.Editor
                 character.baseAttack = int.Parse(values[7]);
                 character.baseDefense = int.Parse(values[8]);
                 character.baseMagicPower = int.Parse(values[9]);
-                character.baseSpeed = int.Parse(values[10]);
-                character.critRate = float.Parse(values[11]);
-                character.critDamage = float.Parse(values[12]);
-                character.accuracy = float.Parse(values[13]);
-                character.evasion = float.Parse(values[14]);
+                // character.baseSpeed = int.Parse(values[10]); // baseSpeed 제거됨
+                // baseSpeed 제거로 인덱스 조정됨
+                character.critRate = float.Parse(values[10]);
+                character.critDamage = float.Parse(values[11]);
+                character.accuracy = float.Parse(values[12]);
+                character.evasion = float.Parse(values[13]);
                 
-                // Set skill IDs
-                character.skill1Id = values[15];
-                character.skill2Id = values[16];
-                character.skill3Id = values[17];
+                // 스킬 하나로 통합
+                character.skillId = values[14];
                     
-                character.description = values[18];
+                character.description = values[15]; // 인덱스 조정됨
                 
                 // Note: Individual CharacterData ScriptableObjects are not supported
                 // since CharacterData is not a ScriptableObject

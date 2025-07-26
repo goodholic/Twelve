@@ -5,7 +5,7 @@ using UnityEngine;
 public class CharacterCSVGenerator : MonoBehaviour
 {
     // CSV 헤더
-    private const string CSV_HEADER = "id,name,jobClass,level,rarity,baseHP,baseMP,baseAttack,baseDefense,baseMagicPower,baseSpeed,critRate,critDamage,accuracy,evasion,skill1Id,skill2Id,skill3Id,description";
+    private const string CSV_HEADER = "id,name,jobClass,level,rarity,baseHP,baseMP,baseAttack,baseDefense,baseMagicPower,critRate,critDamage,accuracy,evasion,skillId,description";
     
     // 캐릭터 데이터를 생성하는 메서드
     public static string GenerateCharacterCSV()

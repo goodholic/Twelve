@@ -135,12 +135,12 @@ namespace GuildMaster.Data
         public int baseAttack;
         public int baseDefense;
         public int baseMagicPower;
-        public int baseSpeed;
+        // baseSpeed 제거됨
         public float critRate;
         public float critDamage;
         public float accuracy;
         public float evasion;
-        public List<string> skillIds;
+        public string skillId; // 스킬 하나로 통합
         public string description;
         public Sprite portrait;
         public GameObject modelPrefab;

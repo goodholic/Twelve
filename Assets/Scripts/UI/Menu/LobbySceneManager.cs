@@ -650,7 +650,51 @@ public class LobbySceneManager : MonoBehaviour
 
     public void OnClickStoryButton()
     {
-        if (explainText) explainText.text = storyStr;
+        ShowCharacterEndingList();
+    }
+
+    void ShowCharacterEndingList()
+    {
+        string endingList = "=== 캐릭터 엔딩 목록 ===\n\n";
+        
+        // CharacterEndingManager에서 캐릭터 정보 가져오기
+        CharacterEndingManager endingManager = CharacterEndingManager.Instance;
+        
+        if (endingManager != null)
+        {
+            bool hasUnlockedEnding = false;
+            
+            for (int i = 0; i < endingManager.characterIds.Length && i < endingManager.characterNames.Length; i++)
+            {
+                int wins = endingManager.GetCharacterWins(endingManager.characterIds[i]);
+                
+                if (wins >= 100)
+                {
+                    endingList += $"🎬 {endingManager.characterNames[i]} - 엔딩 해금됨!\n";
+                    hasUnlockedEnding = true;
+                }
+                else
+                {
+                    endingList += $"🔒 {endingManager.characterNames[i]} - {wins}/100승\n";
+                }
+            }
+            
+            if (!hasUnlockedEnding)
+            {
+                endingList += "\n💡 캐릭터가 20턴까지 살아남으면 승리 카운트가 증가합니다!\n";
+                endingList += "100승을 달성하여 캐릭터별 엔딩을 해금하세요!";
+            }
+            else
+            {
+                endingList += "\n🎉 엔딩 해금! Inspector에서 CharacterEndingManager의 테스트 메서드를 사용하여 엔딩을 확인하세요!";
+            }
+        }
+        else
+        {
+            endingList = "CharacterEndingManager를 찾을 수 없습니다.\n씬에 CharacterEndingManager 컴포넌트를 추가해주세요.";
+        }
+        
+        if (explainText) explainText.text = endingList;
     }
 
     public void OnClickClearExplainText()
