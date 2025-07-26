@@ -28,15 +28,19 @@ namespace TwelveGame.Battle
     public TextMeshProUGUI gameStateText;
 
     [Header("캐릭터 선택 버튼")]
-    public GameObject[] characterButtons = new GameObject[4];
+    public GameObject[] characterButtons = new GameObject[4]; // 현재 선택 가능한 4개 캐릭터
     public Image[] buttonImages;
     public TextMeshProUGUI[] buttonTexts;
+    
+    [Header("다음 캐릭터 미리보기")]
+    public GameObject nextCharacterCard; // 다음에 나올 캐릭터 미리보기 카드
+    public Image nextCharacterImage; // 다음 캐릭터 이미지
+    public TextMeshProUGUI nextCharacterText; // 다음 캐릭터 이름
 
     [Header("게임 준비 UI")]
-    public GameObject preparationPanel;
-    public Button startBattleButton;
-    public TextMeshProUGUI xTeamCountText;
-    public TextMeshProUGUI oTeamCountText;
+    public GameObject preparationPanel; // 더 이상 사용되지 않음 (로비에서 바로 배틀 시작)
+    public TextMeshProUGUI aTileCountText; // A타일 X:O 비율 표시
+    public TextMeshProUGUI bTileCountText; // B타일 X:O 비율 표시
 
     [Header("게임 종료 UI")]
     public GameObject gameOverPanel;
@@ -76,8 +80,7 @@ namespace TwelveGame.Battle
             }
         }
 
-        if (startBattleButton != null)
-            startBattleButton.onClick.AddListener(OnStartBattleClick);
+        // 배틀 시작 버튼 제거됨 - 로비에서 바로 배틀씬 진입 시 자동 시작
 
         if (restartButton != null)
             restartButton.onClick.AddListener(OnRestartClick);
@@ -100,16 +103,22 @@ namespace TwelveGame.Battle
             scoreText.text = $"X팀: {GameManager.Instance.xTeamScore} - O팀: {GameManager.Instance.oTeamScore}";
         }
 
-        // 게임 상태 표시
+        // 타일별 X:O 비율 표시
+        UpdateTileCountTexts();
+
+        // 다음 캐릭터 미리보기 업데이트
+        UpdateNextCharacterPreview();
+
+        // 게임 상태 표시 (턴 수 중심)
         if (gameStateText != null)
         {
             switch (GameManager.Instance.currentState)
             {
                 case GameManager.GameState.Preparation:
-                    gameStateText.text = "준비 단계";
+                    gameStateText.text = $"{GameManager.Instance.currentTurnNumber}턴 (준비)";
                     break;
                 case GameManager.GameState.Battle:
-                    gameStateText.text = "배틀 진행 중";
+                    gameStateText.text = $"{GameManager.Instance.currentTurnNumber}턴 / {GameManager.Instance.maxTurns}턴";
                     break;
                 case GameManager.GameState.GameOver:
                     gameStateText.text = "게임 종료";
@@ -121,23 +130,69 @@ namespace TwelveGame.Battle
         UpdatePanels();
     }
 
+    void UpdateTileCountTexts()
+    {
+        // A타일과 B타일별 X:O 비율 계산
+        var aTileCount = GameManager.Instance.GetTileTeamCount(0); // A타일 (보드 인덱스 0)
+        var bTileCount = GameManager.Instance.GetTileTeamCount(1); // B타일 (보드 인덱스 1)
+
+        // A타일 X:O 표시
+        if (aTileCountText != null)
+        {
+            aTileCountText.text = $"A타일 {aTileCount.xCount}:{aTileCount.oCount}";
+        }
+
+        // B타일 X:O 표시
+        if (bTileCountText != null)
+        {
+            bTileCountText.text = $"B타일 {bTileCount.xCount}:{bTileCount.oCount}";
+        }
+    }
+
+    void UpdateNextCharacterPreview()
+    {
+        // 다음 캐릭터 미리보기 업데이트
+        CharacterData nextCharacter = GameManager.Instance.GetNextCharacter();
+        
+        if (nextCharacterCard != null)
+        {
+            nextCharacterCard.SetActive(nextCharacter != null);
+            
+            if (nextCharacter != null)
+            {
+                // 다음 캐릭터 이미지 설정
+                if (nextCharacterImage != null && nextCharacter.characterIcon != null)
+                {
+                    nextCharacterImage.sprite = nextCharacter.characterIcon;
+                }
+                
+                // 다음 캐릭터 이름 설정
+                if (nextCharacterText != null)
+                {
+                    nextCharacterText.text = nextCharacter.characterName;
+                }
+            }
+        }
+    }
+
     void UpdatePanels()
     {
         bool isPreparation = GameManager.Instance.currentState == GameManager.GameState.Preparation;
         bool isBattle = GameManager.Instance.currentState == GameManager.GameState.Battle;
         bool isGameOver = GameManager.Instance.currentState == GameManager.GameState.GameOver;
 
+        // 준비 패널은 더 이상 사용하지 않음 (로비에서 바로 배틀 시작)
         if (preparationPanel != null)
-            preparationPanel.SetActive(isPreparation);
+            preparationPanel.SetActive(false);
 
         if (gameOverPanel != null)
             gameOverPanel.SetActive(isGameOver);
 
-        // 캐릭터 버튼 활성화
+        // 캐릭터 버튼은 준비 단계와 배틀 단계 모두에서 활성화
         foreach (GameObject btn in characterButtons)
         {
             if (btn != null)
-                btn.SetActive(isBattle);
+                btn.SetActive(isPreparation || isBattle);
         }
     }
 
@@ -224,19 +279,8 @@ namespace TwelveGame.Battle
             battlePreviewPanel.SetActive(false);
     }
 
-    void OnStartBattleClick()
-    {
-        // 준비 완료 확인
-        if (GameManager.Instance.xTeamPool.Count >= 10 && GameManager.Instance.oTeamPool.Count >= 10)
-        {
-            GameManager.Instance.currentState = GameManager.GameState.Battle;
-            UpdateUI();
-        }
-        else
-        {
-            Debug.Log("양 팀 모두 10개의 캐릭터를 선택해야 합니다!");
-        }
-    }
+    // 배틀 시작 버튼 제거됨 - 로비에서 바로 배틀씬 진입 시 자동 시작
+    // void OnStartBattleClick() - 더 이상 사용되지 않음
 
     void OnRestartClick()
     {
@@ -250,42 +294,65 @@ namespace TwelveGame.Battle
 
         gameOverPanel.SetActive(true);
         
-        string result = "";
+        // 승자 결정
+        string winner = "";
+        string resultIcon = "";
+        
         if (GameManager.Instance.xTeamScore > GameManager.Instance.oTeamScore)
         {
-            result = "X팀 승리! (2-0)";
+            winner = "X팀 승리!";
+            resultIcon = "🏆";
         }
         else if (GameManager.Instance.oTeamScore > GameManager.Instance.xTeamScore)
         {
-            result = "O팀 승리! (0-2)";
+            winner = "O팀 승리!";
+            resultIcon = "🏆";
         }
         else
         {
-            result = "무승부! (1-1)";
+            winner = "무승부!";
+            resultIcon = "🤝";
         }
-        
-        winnerText.text = result;
+
+        // A타일과 B타일 점유 현황 표시
+        var aTileCount = GameManager.Instance.GetTileTeamCount(0);
+        var bTileCount = GameManager.Instance.GetTileTeamCount(1);
+
+        winnerText.text = $"{resultIcon} {winner}\n\n" +
+                         $"최종 점수: X팀 {GameManager.Instance.xTeamScore}점 - O팀 {GameManager.Instance.oTeamScore}점\n\n" +
+                         $"A타일: {aTileCount.xCount} vs {aTileCount.oCount}\n" +
+                         $"B타일: {bTileCount.xCount} vs {bTileCount.oCount}\n\n" +
+                         $"총 {GameManager.Instance.currentTurnNumber-1}턴 진행";
     }
 
     // 캐릭터 버튼에 랜덤 캐릭터 표시
     public void UpdateCharacterButtons()
     {
-        List<CharacterData> currentPool = GameManager.Instance.currentTurn == GameManager.Team.X ? 
-                                          GameManager.Instance.xTeamPool : 
-                                          GameManager.Instance.oTeamPool;
+        List<CharacterData> currentHand = GameManager.Instance.GetCurrentHand();
 
-        for (int i = 0; i < characterButtons.Length && i < buttonImages.Length; i++)
+        for (int i = 0; i < characterButtons.Length; i++)
         {
-            if (currentPool.Count > 0)
+            if (characterButtons[i] != null)
             {
-                // 랜덤 캐릭터 선택 (실제로는 버튼 클릭 시 선택)
-                CharacterData randomChar = currentPool[Random.Range(0, currentPool.Count)];
+                bool hasCharacter = i < currentHand.Count;
+                characterButtons[i].SetActive(hasCharacter);
                 
-                if (buttonImages[i] != null && randomChar.characterIcon != null)
-                    buttonImages[i].sprite = randomChar.characterIcon;
+                if (hasCharacter && buttonImages != null && i < buttonImages.Length && buttonImages[i] != null)
+                {
+                    CharacterData character = currentHand[i];
                     
-                if (buttonTexts[i] != null)
-                    buttonTexts[i].text = "?"; // 클릭 전까지는 물음표
+                    // 캐릭터 이미지 설정
+                    if (character.characterIcon != null)
+                    {
+                        buttonImages[i].sprite = character.characterIcon;
+                    }
+                    
+                    // 캐릭터 이름 설정
+                    if (buttonTexts != null && i < buttonTexts.Length && buttonTexts[i] != null)
+                    {
+                        buttonTexts[i].text = character.characterName;
+                    }
+                }
             }
         }
     }

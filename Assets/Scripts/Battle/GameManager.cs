@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 
@@ -40,6 +41,16 @@ namespace TwelveGame.Battle
     public GameState currentState = GameState.Preparation;
     public Team currentTurn;
     public bool isFirstPlayer = true; // 첫 턴 랜덤 결정용
+    
+    [Header("턴 관리")]
+    public int currentTurnNumber = 1; // 현재 턴 수 (1턴부터 시작)
+    public int maxTurns = 20; // 최대 턴 수 (밸런싱 조정)
+    
+    [Header("시작 설정")]
+    [Tooltip("배틀씬 진입 시 자동으로 게임을 시작할지 여부")]
+    public bool autoStartGame = true; // 로비에서 배틀씬 전환 시 바로 시작
+    [Tooltip("게임 시작 전 대기 시간 (초)")]
+    public float startDelay = 0f;
 
     [Header("보드 설정")]
     public const int BOARD_WIDTH = 6;
@@ -52,6 +63,14 @@ namespace TwelveGame.Battle
     [Header("캐릭터 풀")]
     public List<CharacterData> xTeamPool = new List<CharacterData>();
     public List<CharacterData> oTeamPool = new List<CharacterData>();
+    
+    [Header("캐릭터 덱 시스템")]
+    private List<CharacterData> xTeamDeck = new List<CharacterData>(); // X팀 덱 (무작위 순서)
+    private List<CharacterData> oTeamDeck = new List<CharacterData>(); // O팀 덱 (무작위 순서)
+    private List<CharacterData> xTeamHand = new List<CharacterData>(); // X팀 현재 손패 (4장)
+    private List<CharacterData> oTeamHand = new List<CharacterData>(); // O팀 현재 손패 (4장)
+    private CharacterData xTeamNextCard; // X팀 다음 카드
+    private CharacterData oTeamNextCard; // O팀 다음 카드
     
     // 사용된 캐릭터 추적
     public Dictionary<CharacterData, int> xTeamUsageCount = new Dictionary<CharacterData, int>();
@@ -78,11 +97,56 @@ namespace TwelveGame.Battle
 
     void Start()
     {
+        if (autoStartGame)
+        {
+            // 자동 시작 모드
+            if (startDelay > 0)
+            {
+                StartCoroutine(DelayedGameStart());
+            }
+            else
+            {
+                StartGameImmediately();
+            }
+        }
+        else
+        {
+            // 수동 시작 모드 - 대기 상태
+            currentState = GameState.Preparation;
+            Debug.Log("게임이 대기 상태입니다. StartGameManually()를 호출하여 시작하세요.");
+            UpdateUI();
+        }
+    }
+    
+    System.Collections.IEnumerator DelayedGameStart()
+    {
+        Debug.Log($"게임이 {startDelay}초 후에 자동으로 시작됩니다...");
+        yield return new WaitForSeconds(startDelay);
+        StartGameImmediately();
+    }
+    
+    void StartGameImmediately()
+    {
         InitializeGame();
-        
-        // 준비 단계로 시작
         currentState = GameState.Preparation;
         UpdateUI();
+        Debug.Log("게임이 자동으로 시작되었습니다 (Preparation 상태)");
+    }
+    
+    [ContextMenu("게임 수동 시작")]
+    public void StartGameManually()
+    {
+        if (currentState == GameState.Preparation && !autoStartGame)
+        {
+            InitializeGame();
+            currentState = GameState.Preparation;
+            UpdateUI();
+            Debug.Log("게임이 수동으로 시작되었습니다 (Preparation 상태)");
+        }
+        else
+        {
+            Debug.LogWarning("게임을 시작할 수 없습니다. 현재 상태: " + currentState);
+        }
     }
 
     void InitializeGame()
@@ -124,6 +188,73 @@ namespace TwelveGame.Battle
         {
             Debug.LogWarning("O팀 캐릭터 풀이 비어있습니다. 에디터에서 캐릭터를 할당하세요.");
         }
+
+        // 덱과 손패 초기화
+        InitializeDecksAndHands();
+    }
+
+    void InitializeDecksAndHands()
+    {
+        // X팀 덱 생성 및 셔플
+        xTeamDeck.Clear();
+        xTeamDeck.AddRange(xTeamPool);
+        ShuffleDeck(xTeamDeck);
+
+        // O팀 덱 생성 및 셔플
+        oTeamDeck.Clear();
+        oTeamDeck.AddRange(oTeamPool);
+        ShuffleDeck(oTeamDeck);
+
+        // 초기 손패 뽑기 (각 팀당 4장)
+        DrawInitialHands();
+
+        Debug.Log($"덱 초기화 완료 - X팀 덱: {xTeamDeck.Count}장, O팀 덱: {oTeamDeck.Count}장");
+    }
+
+    void ShuffleDeck(List<CharacterData> deck)
+    {
+        for (int i = 0; i < deck.Count; i++)
+        {
+            CharacterData temp = deck[i];
+            int randomIndex = Random.Range(i, deck.Count);
+            deck[i] = deck[randomIndex];
+            deck[randomIndex] = temp;
+        }
+    }
+
+    void DrawInitialHands()
+    {
+        // X팀 손패 뽑기
+        xTeamHand.Clear();
+        for (int i = 0; i < 4 && xTeamDeck.Count > 0; i++)
+        {
+            xTeamHand.Add(xTeamDeck[0]);
+            xTeamDeck.RemoveAt(0);
+        }
+
+        // X팀 다음 카드 뽑기
+        if (xTeamDeck.Count > 0)
+        {
+            xTeamNextCard = xTeamDeck[0];
+            xTeamDeck.RemoveAt(0);
+        }
+
+        // O팀 손패 뽑기
+        oTeamHand.Clear();
+        for (int i = 0; i < 4 && oTeamDeck.Count > 0; i++)
+        {
+            oTeamHand.Add(oTeamDeck[0]);
+            oTeamDeck.RemoveAt(0);
+        }
+
+        // O팀 다음 카드 뽑기
+        if (oTeamDeck.Count > 0)
+        {
+            oTeamNextCard = oTeamDeck[0];
+            oTeamDeck.RemoveAt(0);
+        }
+
+        Debug.Log($"초기 손패 뽑기 완료 - X팀: {xTeamHand.Count}장, O팀: {oTeamHand.Count}장");
     }
 
 
@@ -205,6 +336,9 @@ namespace TwelveGame.Battle
             
             // 공격 처리
             BattleSystem.Instance.ProcessCharacterAttack(newChar);
+            
+            // 사용한 캐릭터를 손패에서 제거하고 다음 카드 뽑기
+            UseCharacterFromHand(selectedButtonIndex);
         }
 
         // 선택 초기화
@@ -330,6 +464,13 @@ namespace TwelveGame.Battle
     {
         // 턴 변경
         currentTurn = currentTurn == Team.X ? Team.O : Team.X;
+        
+        // X팀 턴이 시작될 때마다 턴 수 증가 (한 라운드 완료)
+        if (currentTurn == Team.X)
+        {
+            currentTurnNumber++;
+            Debug.Log($"=== {currentTurnNumber}턴 시작 ===");
+        }
 
         // 게임 종료 확인
         if (CheckGameEnd())
@@ -342,83 +483,158 @@ namespace TwelveGame.Battle
         }
     }
 
-    public void StartBattle()
+    // StartBattle 메서드는 더 이상 사용되지 않음 (자동 시작으로 변경)
+    // public void StartBattle() - 배틀은 씬 진입 시 자동으로 시작됨
+
+    [System.Serializable]
+    public struct TileTeamCount
     {
-        if (xTeamPool.Count < 10 || oTeamPool.Count < 10)
+        public int xCount;
+        public int oCount;
+        
+        public TileTeamCount(int x, int o)
         {
-            Debug.LogError("양쪽 모두 10개의 캐릭터를 선택해야 합니다.");
-            return;
+            xCount = x;
+            oCount = o;
         }
-        
-        currentState = GameState.Battle;
-        
-        // 첫 턴 랜덤 결정
-        currentTurn = Random.Range(0, 2) == 0 ? Team.X : Team.O;
-        
-        UpdateUI();
-        
-        Debug.Log($"배틀 시작! 첫 턴: {currentTurn} 팀");
     }
-    
 
-    
-    public void OnCharacterButtonClick(int buttonIndex)
+    public TileTeamCount GetTileTeamCount(int boardIndex)
     {
-        if (currentState != GameState.Battle) return;
+        int xCount = 0;
+        int oCount = 0;
 
-        // 버튼에서 랜덤 캐릭터 선택
-        List<CharacterData> currentPool = currentTurn == Team.X ? xTeamPool : oTeamPool;
-        Dictionary<CharacterData, int> usageCount = currentTurn == Team.X ? xTeamUsageCount : oTeamUsageCount;
-        
-        // 사용 가능한 캐릭터 필터링
-        List<CharacterData> availableCharacters = new List<CharacterData>();
-        foreach (var character in currentPool)
+        // 해당 보드의 모든 타일을 확인
+        for (int x = 0; x < BOARD_WIDTH; x++)
         {
-            int count = usageCount.ContainsKey(character) ? usageCount[character] : 0;
-            if (count < maxUsagePerCharacter)
+            for (int y = 0; y < BOARD_HEIGHT; y++)
             {
-                availableCharacters.Add(character);
+                Character character = boardState[boardIndex, x, y];
+                if (character != null)
+                {
+                    if (character.team == Team.X)
+                        xCount++;
+                    else if (character.team == Team.O)
+                        oCount++;
+                }
             }
         }
+
+        return new TileTeamCount(xCount, oCount);
+    }
+
+    public CharacterData GetNextCharacter()
+    {
+        // 현재 턴의 다음 캐릭터 반환
+        return currentTurn == Team.X ? xTeamNextCard : oTeamNextCard;
+    }
+
+    public List<CharacterData> GetCurrentHand()
+    {
+        // 현재 턴의 손패 반환
+        return currentTurn == Team.X ? xTeamHand : oTeamHand;
+    }
+
+    public CharacterData GetCharacterFromHand(int index)
+    {
+        List<CharacterData> currentHand = GetCurrentHand();
+        if (index >= 0 && index < currentHand.Count)
+        {
+            return currentHand[index];
+        }
+        return null;
+    }
+
+    void UseCharacterFromHand(int handIndex)
+    {
+        List<CharacterData> currentHand = GetCurrentHand();
+        List<CharacterData> currentDeck = currentTurn == Team.X ? xTeamDeck : oTeamDeck;
         
-        if (availableCharacters.Count == 0)
+        if (handIndex < 0 || handIndex >= currentHand.Count) return;
+
+        // 손패에서 사용한 캐릭터 제거
+        CharacterData usedCharacter = currentHand[handIndex];
+        currentHand.RemoveAt(handIndex);
+
+        // 다음 카드를 손패로 이동
+        if (currentTurn == Team.X && xTeamNextCard != null)
         {
-            Debug.Log("사용 가능한 캐릭터가 없습니다!");
-            return;
+            currentHand.Add(xTeamNextCard);
+            
+            // 새로운 다음 카드 뽑기
+            if (xTeamDeck.Count > 0)
+            {
+                xTeamNextCard = xTeamDeck[0];
+                xTeamDeck.RemoveAt(0);
+            }
+            else
+            {
+                xTeamNextCard = null;
+            }
+        }
+        else if (currentTurn == Team.O && oTeamNextCard != null)
+        {
+            currentHand.Add(oTeamNextCard);
+            
+            // 새로운 다음 카드 뽑기
+            if (oTeamDeck.Count > 0)
+            {
+                oTeamNextCard = oTeamDeck[0];
+                oTeamDeck.RemoveAt(0);
+            }
+            else
+            {
+                oTeamNextCard = null;
+            }
         }
 
-        selectedCharacter = availableCharacters[Random.Range(0, availableCharacters.Count)];
-        selectedButtonIndex = buttonIndex;
+        Debug.Log($"{currentTurn}팀이 {usedCharacter.characterName} 사용. 손패: {currentHand.Count}장, 덱: {currentDeck.Count}장");
+    }
 
-        // UI 업데이트
-        if (UIManager.Instance != null)
+    public void OnCharacterButtonClick(int buttonIndex)
+    {
+        if (currentState != GameState.Battle && currentState != GameState.Preparation) return;
+
+        // 현재 손패에서 캐릭터 선택
+        CharacterData character = GetCharacterFromHand(buttonIndex);
+        
+        if (character != null)
         {
-            UIManager.Instance.HighlightButton(buttonIndex);
-            UIManager.Instance.ShowCharacterInfo(selectedCharacter);
+            selectedCharacter = character;
+            selectedButtonIndex = buttonIndex;
+            
+            // UI 업데이트
+            if (UIManager.Instance != null)
+            {
+                UIManager.Instance.HighlightButton(buttonIndex);
+                UIManager.Instance.ShowCharacterInfo(selectedCharacter);
+            }
+            
+            Debug.Log($"{currentTurn} 팀이 {selectedCharacter.characterName} 선택 (손패 {buttonIndex}번째)");
         }
-
-        Debug.Log($"선택된 캐릭터: {selectedCharacter.characterName}");
+        else
+        {
+            Debug.LogWarning($"유효하지 않은 손패 인덱스: {buttonIndex}");
+        }
     }
     
     bool CheckGameEnd()
     {
-        // 모든 캐릭터가 배치되었는지 확인
-        int totalCharacters = 0;
-        for (int b = 0; b < BOARD_COUNT; b++)
+        // 35턴 도달 시 게임 종료
+        if (currentTurnNumber > maxTurns)
         {
-            for (int x = 0; x < BOARD_WIDTH; x++)
-            {
-                for (int y = 0; y < BOARD_HEIGHT; y++)
-                {
-                    if (boardState[b, x, y] != null)
-                        totalCharacters++;
-                }
-            }
+            Debug.Log($"최대 턴 수({maxTurns}턴) 도달로 게임 종료");
+            return true;
         }
         
-        // 각 팀당 10개씩, 총 20개 캐릭터가 배치되면 종료
-        // 또는 더 이상 배치할 수 없는 상황이면 종료
-        return totalCharacters >= 20 || !CanAnyonePlaceCharacter();
+        // 더 이상 배치할 수 없는 상황이면 종료
+        if (!CanAnyonePlaceCharacter())
+        {
+            Debug.Log("더 이상 배치할 수 없어 게임 종료");
+            return true;
+        }
+        
+        return false;
     }
     
     bool CanAnyonePlaceCharacter()
@@ -453,53 +669,66 @@ namespace TwelveGame.Battle
 
     void CalculateFinalScore()
     {
-        // 각 보드별 점수 계산
-        int boardAXCount = 0, boardAOCount = 0;
-        int boardBXCount = 0, boardBOCount = 0;
-
-        // 보드 A (위쪽) 계산
-        for (int x = 0; x < BOARD_WIDTH; x++)
+        // A타일과 B타일별 점유율 계산
+        var aTileCount = GetTileTeamCount(0); // A타일
+        var bTileCount = GetTileTeamCount(1); // B타일
+        
+        int xTeamPoints = 0;
+        int oTeamPoints = 0;
+        
+        // A타일 승부 판정
+        if (aTileCount.xCount > aTileCount.oCount)
         {
-            for (int y = 0; y < BOARD_HEIGHT; y++)
-            {
-                if (boardState[0, x, y] != null)
-                {
-                    if (boardState[0, x, y].team == Team.X)
-                        boardAXCount++;
-                    else
-                        boardAOCount++;
-                }
-            }
+            xTeamPoints++;
+            Debug.Log($"A타일: X팀 승리 ({aTileCount.xCount} vs {aTileCount.oCount})");
+        }
+        else if (aTileCount.oCount > aTileCount.xCount)
+        {
+            oTeamPoints++;
+            Debug.Log($"A타일: O팀 승리 ({aTileCount.oCount} vs {aTileCount.xCount})");
+        }
+        else
+        {
+            Debug.Log($"A타일: 무승부 ({aTileCount.xCount} vs {aTileCount.oCount})");
+        }
+        
+        // B타일 승부 판정
+        if (bTileCount.xCount > bTileCount.oCount)
+        {
+            xTeamPoints++;
+            Debug.Log($"B타일: X팀 승리 ({bTileCount.xCount} vs {bTileCount.oCount})");
+        }
+        else if (bTileCount.oCount > bTileCount.xCount)
+        {
+            oTeamPoints++;
+            Debug.Log($"B타일: O팀 승리 ({bTileCount.oCount} vs {bTileCount.xCount})");
+        }
+        else
+        {
+            Debug.Log($"B타일: 무승부 ({bTileCount.xCount} vs {bTileCount.oCount})");
+        }
+        
+        // 최종 점수 설정
+        xTeamScore = xTeamPoints;
+        oTeamScore = oTeamPoints;
+        
+        Debug.Log($"=== 최종 결과 ===");
+        Debug.Log($"X팀: {xTeamPoints}점, O팀: {oTeamPoints}점");
+        
+        if (xTeamPoints > oTeamPoints)
+        {
+            Debug.Log("🏆 X팀 승리!");
+        }
+        else if (oTeamPoints > xTeamPoints)
+        {
+            Debug.Log("🏆 O팀 승리!");
+        }
+        else
+        {
+            Debug.Log("🤝 무승부!");
         }
 
-        // 보드 B (아래쪽) 계산
-        for (int x = 0; x < BOARD_WIDTH; x++)
-        {
-            for (int y = 0; y < BOARD_HEIGHT; y++)
-            {
-                if (boardState[1, x, y] != null)
-                {
-                    if (boardState[1, x, y].team == Team.X)
-                        boardBXCount++;
-                    else
-                        boardBOCount++;
-                }
-            }
-        }
-
-        // 점수 계산
-        xTeamScore = 0;
-        oTeamScore = 0;
-
-        // 보드 A 점수
-        if (boardAXCount > boardAOCount) xTeamScore++;
-        else if (boardAOCount > boardAXCount) oTeamScore++;
-
-        // 보드 B 점수
-        if (boardBXCount > boardBOCount) xTeamScore++;
-        else if (boardBOCount > boardBXCount) oTeamScore++;
-
-        UpdateUI();
+        // 기존 코드는 이미 위에서 새로운 방식으로 처리됨
     }
 
     void UpdateUI()
