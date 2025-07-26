@@ -4,6 +4,7 @@ using System.IO;
 using System.Collections.Generic;
 using System.Linq;
 using TacticalTileGame.Data;
+using GuildMaster.Data; // SkillDataSO를 위해 추가
 
 namespace TacticalTileGame.Editor
 {
@@ -178,7 +179,7 @@ namespace TacticalTileGame.Editor
                     csvData[headers[j]] = values[j];
                 }
                 
-                TacticalSkillDataSO skillData = ScriptableObject.CreateInstance<TacticalSkillDataSO>();
+                SkillDataSO skillData = ScriptableObject.CreateInstance<SkillDataSO>();
                 skillData.InitializeFromCSV(csvData);
                 
                 string assetPath = Path.Combine(outputFolder, $"{skillData.skillId}.asset");

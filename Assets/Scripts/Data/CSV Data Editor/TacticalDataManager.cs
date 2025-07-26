@@ -38,7 +38,7 @@ namespace TacticalTileGame.Data
         [SerializeField] private string dialogueDataPath = "ScriptableObjects/Dialogues";
         
         [Header("로드된 데이터")]
-        private Dictionary<string, TacticalSkillDataSO> skillDatabase = new Dictionary<string, TacticalSkillDataSO>();
+        private Dictionary<string, SkillDataSO> skillDatabase = new Dictionary<string, SkillDataSO>();
         // StoryDialogueDataSO 타입이 삭제되어 주석 처리
         // private Dictionary<string, StoryDialogueDataSO> dialogueDatabase = new Dictionary<string, StoryDialogueDataSO>();
         
@@ -96,7 +96,7 @@ namespace TacticalTileGame.Data
         /// </summary>
         private void LoadSkillData()
         {
-            TacticalSkillDataSO[] skills = Resources.LoadAll<TacticalSkillDataSO>(skillDataPath);
+            SkillDataSO[] skills = Resources.LoadAll<SkillDataSO>(skillDataPath);
             
             skillDatabase.Clear();
             
@@ -134,7 +134,7 @@ namespace TacticalTileGame.Data
                 
                 foreach (string skillId in character.skillIds)
                 {
-                    if (skillDatabase.TryGetValue(skillId, out TacticalSkillDataSO skill))
+                    if (skillDatabase.TryGetValue(skillId, out SkillDataSO skill))
                     {
                         character.skills.Add(skill);
                     }
@@ -201,9 +201,9 @@ namespace TacticalTileGame.Data
         /// <summary>
         /// ID로 스킬 데이터 가져오기
         /// </summary>
-        public TacticalSkillDataSO GetSkill(string skillId)
+        public SkillDataSO GetSkill(string skillId)
         {
-            if (skillDatabase.TryGetValue(skillId, out TacticalSkillDataSO skill))
+            if (skillDatabase.TryGetValue(skillId, out SkillDataSO skill))
             {
                 return skill;
             }
@@ -213,7 +213,7 @@ namespace TacticalTileGame.Data
         /// <summary>
         /// 클래스별 사용 가능한 스킬 목록 가져오기
         /// </summary>
-        public List<TacticalSkillDataSO> GetSkillsByClass(CharacterClass characterClass)
+        public List<SkillDataSO> GetSkillsByClass(CharacterClass characterClass)
         {
             return skillDatabase.Values
                 .Where(skill => skill.requiredClass == characterClass)
@@ -223,7 +223,7 @@ namespace TacticalTileGame.Data
         /// <summary>
         /// 모든 스킬 목록 가져오기
         /// </summary>
-        public List<TacticalSkillDataSO> GetAllSkills()
+        public List<SkillDataSO> GetAllSkills()
         {
             return skillDatabase.Values.ToList();
         }

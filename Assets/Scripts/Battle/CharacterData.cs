@@ -60,7 +60,7 @@ public class CharacterData : ScriptableObject
     public GameObject characterPrefab; // 전술 게임용 프리팹
     public float baseCritRate = 0.1f; // 기본 크리티컬 확률
     public List<string> skillIds = new List<string>(); // 스킬 ID 목록
-    public List<TacticalSkillDataSO> skills = new List<TacticalSkillDataSO>(); // 스킬 객체 목록
+    public List<SkillDataSO> skills = new List<SkillDataSO>(); // 스킬 객체 목록 (통합)
     public string attackPatternCSV = ""; // CSV 패턴 문자열
     public int maxLevel = 50; // 최대 레벨
     public CharacterRarity tacticalRarity = CharacterRarity.Common; // 전술 게임용 레어도

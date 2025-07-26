@@ -2,6 +2,7 @@ using UnityEngine;
 using System;
 using System.Collections.Generic;
 using GuildMaster.Battle; // JobClass를 위해 추가
+using TacticalTileGame.Data; // CharacterClass를 위해 추가
 
 namespace GuildMaster.Data
 {
@@ -48,6 +49,15 @@ namespace GuildMaster.Data
         [Header("Advanced Properties")]
         public float criticalMultiplier = 1.5f;
         public float statusChance = 1.0f;
+        
+        [Header("타일 기반 스킬 범위 (TacticalSkillDataSO에서 통합)")]
+        public List<Vector2Int> skillPattern = new List<Vector2Int>(); // 타일 패턴
+        public string skillPatternCSV; // CSV에서 읽어온 패턴 문자열
+        
+        [Header("상태 효과 리스트 (TacticalSkillDataSO에서 통합)")]
+        public List<TacticalStatusEffect> tacticalStatusEffects = new List<TacticalStatusEffect>();
+        public CharacterClass requiredClass = CharacterClass.Warrior; // TacticalSkillDataSO에서 통합
+        public GameObject particleEffectPrefab; // TacticalSkillDataSO에서 통합
         public int maxTargets = 1;
         public bool piercing = false;
         public float castTime = 0f;
@@ -247,6 +257,65 @@ namespace GuildMaster.Data
             }
         }
         
+        /// <summary>
+        /// CSV 데이터로부터 스킬 데이터 생성 (TacticalSkillDataSO에서 통합)
+        /// </summary>
+        public void InitializeFromCSV(Dictionary<string, string> csvData)
+        {
+            if (csvData.ContainsKey("id")) skillId = csvData["id"];
+            if (csvData.ContainsKey("name")) skillName = csvData["name"];
+            if (csvData.ContainsKey("description")) description = csvData["description"];
+            
+            if (csvData.ContainsKey("type"))
+            {
+                // 타입 매핑 (TacticalSkillDataSO 형식을 SkillDataSO 형식으로)
+                string typeStr = csvData["type"].ToLower();
+                skillType = typeStr switch
+                {
+                    "damage" => SkillType.Physical,
+                    "heal" => SkillType.Healing,
+                    "buff" => SkillType.Buff,
+                    "debuff" => SkillType.Debuff,
+                    "summon" => SkillType.Summon,
+                    "special" => SkillType.Utility,
+                    _ => SkillType.Physical
+                };
+            }
+            
+            if (csvData.ContainsKey("target"))
+            {
+                string targetStr = csvData["target"].ToLower();
+                targetType = targetStr switch
+                {
+                    "self" => TargetType.Self,
+                    "ally" => TargetType.Single,
+                    "enemy" => TargetType.Single,
+                    "all" => TargetType.AOE,
+                    "empty" => TargetType.Area,
+                    _ => TargetType.Single
+                };
+            }
+            
+            if (csvData.ContainsKey("damage") && int.TryParse(csvData["damage"], out int dmg))
+                damage = dmg;
+            if (csvData.ContainsKey("healing") && int.TryParse(csvData["healing"], out int heal))
+                healing = heal;
+            if (csvData.ContainsKey("manaCost") && int.TryParse(csvData["manaCost"], out int mana))
+                manaCost = mana;
+            if (csvData.ContainsKey("cooldown") && float.TryParse(csvData["cooldown"], out float cd))
+                cooldown = cd;
+            if (csvData.ContainsKey("requiredLevel") && int.TryParse(csvData["requiredLevel"], out int reqLvl))
+                requiredLevel = reqLvl;
+            
+            // 패턴 문자열 저장
+            if (csvData.ContainsKey("pattern"))
+                skillPatternCSV = csvData["pattern"];
+                
+            // 애니메이션 및 효과
+            if (csvData.ContainsKey("animation")) animationName = csvData["animation"];
+            if (csvData.ContainsKey("sound")) soundEffectName = csvData["sound"];
+        }
+
         /// <summary>
         /// 스킬이 대상에게 사용 가능한지 확인
         /// </summary>
@@ -451,5 +520,40 @@ namespace GuildMaster.Data
                 _ => targetType.ToString()
             };
         }
+    }
+    
+    /// <summary>
+    /// 타일 전략 게임용 상태 효과 (TacticalSkillDataSO에서 통합)
+    /// </summary>
+    [System.Serializable]
+    public class TacticalStatusEffect
+    {
+        public TacticalStatusEffectType effectType;
+        public float duration;
+        public int value;
+        
+        public TacticalStatusEffect(TacticalStatusEffectType type, float dur, int val)
+        {
+            effectType = type;
+            duration = dur;
+            value = val;
+        }
+    }
+    
+    /// <summary>
+    /// 타일 전략 게임용 상태 효과 타입 (TacticalSkillDataSO에서 통합)
+    /// </summary>
+    public enum TacticalStatusEffectType
+    {
+        Poison,     // 독
+        Burn,       // 화상
+        Freeze,     // 빙결
+        Stun,       // 기절
+        Silence,    // 침묵
+        Slow,       // 둔화
+        AttackUp,   // 공격력 증가
+        DefenseUp,  // 방어력 증가
+        SpeedUp,    // 속도 증가
+        Regeneration // 재생
     }
 }
