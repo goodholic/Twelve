@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEditor;
 using System.Collections.Generic;
+using TwelveGame.Battle; // GameManager 참조를 위해 추가
 
 #if UNITY_EDITOR
 public class CharacterCreator : EditorWindow

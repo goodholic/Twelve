@@ -2,6 +2,7 @@ using UnityEngine;
 using System;
 using System.Collections; // IEnumerator를 위해 추가
 using System.Collections.Generic;
+using TwelveGame.Battle; // GameManager 참조를 위해 추가
 using System.Linq;
 // using GuildMaster.Core; // ResourceType removed
 

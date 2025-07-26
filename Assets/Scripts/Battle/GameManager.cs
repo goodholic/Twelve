@@ -2,7 +2,13 @@ using UnityEngine;
 using System.Collections.Generic;
 using TMPro;
 
-public class GameManager : MonoBehaviour
+namespace TwelveGame.Battle
+{
+    /// <summary>
+    /// Twelve Game의 핵심 게임 관리자
+    /// 게임 상태, 턴 관리, 보드 상태, 점수 등을 총괄 관리합니다
+    /// </summary>
+    public class GameManager : MonoBehaviour
 {
     private static GameManager instance;
     public static GameManager Instance
@@ -506,9 +512,9 @@ public class GameManager : MonoBehaviour
     }
 }
 
-// 캐릭터 인스턴스 클래스
-[System.Serializable]
-public class Character : MonoBehaviour
+    // 캐릭터 인스턴스 클래스 (TwelveGame.Battle 네임스페이스 내부)
+    [System.Serializable]
+    public class Character : MonoBehaviour
 {
     public CharacterData characterData;
     public GameManager.Team team;
@@ -516,4 +522,5 @@ public class Character : MonoBehaviour
     public int x;
     public int y;
     public int currentHP;
+}
 }

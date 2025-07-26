@@ -3,7 +3,13 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 
-public class AIPlayer : MonoBehaviour
+namespace TwelveGame.Battle
+{
+    /// <summary>
+    /// Twelve Game의 AI 플레이어 시스템
+    /// 컴퓨터 상대방의 전략적 행동을 제어합니다
+    /// </summary>
+    public class AIPlayer : MonoBehaviour
 {
     [Header("AI 설정")]
     public bool isAIEnabled = false;
@@ -254,8 +260,8 @@ public class AIPlayer : MonoBehaviour
                y >= 0 && y < GameManager.BOARD_HEIGHT;
     }
     
-    // AI 행동 데이터
-    class AIAction
+        // AI 행동 데이터 (TwelveGame.Battle 네임스페이스 내부)
+        class AIAction
     {
         public CharacterData character;
         public int boardIndex;
@@ -263,4 +269,5 @@ public class AIPlayer : MonoBehaviour
         public int y;
         public float score;
     }
+}
 }

@@ -2,6 +2,7 @@ using UnityEngine;
 using TMPro;
 using UnityEngine.UI;
 using System.Collections;
+using TwelveGame.Battle; // GameManager 참조를 위해 추가
 using GuildMaster.Core;
 using System.Collections.Generic;
 

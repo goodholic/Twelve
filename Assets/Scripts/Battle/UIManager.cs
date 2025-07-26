@@ -3,7 +3,13 @@ using UnityEngine.UI;
 using TMPro;
 using System.Collections.Generic;
 
-public class UIManager : MonoBehaviour
+namespace TwelveGame.Battle
+{
+    /// <summary>
+    /// Twelve Game의 전투 시스템 UI 관리자
+    /// 게임 상태, 캐릭터 선택, 점수 등의 UI를 담당합니다
+    /// </summary>
+    public class UIManager : MonoBehaviour
 {
     private static UIManager instance;
     public static UIManager Instance
@@ -283,4 +289,5 @@ public class UIManager : MonoBehaviour
             }
         }
     }
+}
 }

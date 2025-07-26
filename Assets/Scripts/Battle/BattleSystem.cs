@@ -1,7 +1,13 @@
 using UnityEngine;
 using System.Collections.Generic;
 
-public class BattleSystem : MonoBehaviour
+namespace TwelveGame.Battle
+{
+    /// <summary>
+    /// Twelve Game의 전투 계산 시스템
+    /// 캐릭터 간의 전투 시뮬레이션과 결과 처리를 담당합니다
+    /// </summary>
+    public class BattleSystem : MonoBehaviour
 {
     private static BattleSystem instance;
     public static BattleSystem Instance
@@ -173,18 +179,24 @@ public class BattleSystem : MonoBehaviour
     }
 }
 
-// 전투 결과
-public class BattleResult
+    // 전투 결과 클래스 (TwelveGame.Battle 네임스페이스 내부)
+    public class BattleResult
 {
     public bool canPlace = true;
     public bool attackerSurvives = true;
     public bool defenderSurvives = false;
 }
 
-// 미리보기 결과
-public class PreviewResult
-{
-    public bool canPlace;
-    public bool willKillDefender;
-    public bool willDie;
+        // 미리보기 결과 (TwelveGame.Battle 네임스페이스 내부)
+    public class PreviewResult
+    {
+        public bool isValid = false;
+        public bool showPreview = false;
+        public BattleResult battleResult;
+        
+        // 기존 코드 호환성을 위한 속성들
+        public bool canPlace = true;
+        public bool willKillDefender = false;
+        public bool willDie = false;
+    }
 }

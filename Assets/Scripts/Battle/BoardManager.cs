@@ -2,7 +2,13 @@ using UnityEngine;
 using TMPro;
 using System.Collections.Generic;
 
-public class BoardManager : MonoBehaviour
+namespace TwelveGame.Battle
+{
+    /// <summary>
+    /// Twelve Game의 보드 관리 시스템
+    /// 게임 보드의 타일, 캐릭터 배치, 시각화를 담당합니다
+    /// </summary>
+    public class BoardManager : MonoBehaviour
 {
     [Header("보드 설정")]
     public GameObject tilePrefab;
@@ -300,4 +306,5 @@ public class TileObject : MonoBehaviour
         
         return Sprite.Create(texture, new Rect(0, 0, 64, 64), new Vector2(0.5f, 0.5f), 64);
     }
+}
 }
