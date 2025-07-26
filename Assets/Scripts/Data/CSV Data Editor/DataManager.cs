@@ -31,7 +31,10 @@ namespace GuildMaster.Battle
             }
         }
         
-        private Dictionary<string, CSVCharacter> characterDatabase = new Dictionary<string, CSVCharacter>();
+        [Header("통합 데이터베이스")]
+        [SerializeField] private CharacterDatabaseSO mainDatabase;
+        [SerializeField] private string mainDatabasePath = "CharacterDatabase";
+        
         private bool isDataLoaded = false;
         
         private void Awake()
@@ -50,61 +53,28 @@ namespace GuildMaster.Battle
         
         private void LoadGameData()
         {
-            // CSV 파일에서 캐릭터 데이터 로드
-            LoadCharacterData();
+            // 통합 데이터베이스에서 캐릭터 데이터 로드
+            LoadMainDatabase();
             isDataLoaded = true;
         }
         
-        private void LoadCharacterData()
+        private void LoadMainDatabase()
         {
-            // 실제로는 CSV 파일을 읽어야 하지만, 여기서는 샘플 데이터 생성
-            CreateSampleCharacters();
-        }
-        
-        private void CreateSampleCharacters()
-        {
-            // 각 직업별로 샘플 캐릭터 생성
-            var jobClasses = System.Enum.GetValues(typeof(JobClass)).Cast<JobClass>().ToList();
-            var rarities = System.Enum.GetValues(typeof(CharacterRarity)).Cast<CharacterRarity>().ToList();
-            
-            int characterId = 1;
-            
-            foreach (var jobClass in jobClasses)
+            if (mainDatabase == null)
             {
-                foreach (var rarity in rarities)
+                mainDatabase = Resources.Load<CharacterDatabaseSO>(mainDatabasePath);
+                if (mainDatabase == null)
                 {
-                    CSVCharacter character = new CSVCharacter
-                    {
-                        characterID = $"char_{characterId:D3}",
-                        characterName = $"{JobClassSystem.GetJobClassName(jobClass)} {characterId}",
-                        jobClass = jobClass,
-                        level = GetLevelByRarity(rarity),
-                        rarity = rarity,
-                        
-                        // 레어도에 따른 기본 스탯
-                        baseHP = (int)GetBaseStatByRarity(100, rarity),
-                        baseMP = (int)GetBaseStatByRarity(50, rarity),
-                        baseAttack = (int)GetBaseStatByRarity(20, rarity),
-                        baseDefense = (int)GetBaseStatByRarity(15, rarity),
-                        baseMagicPower = (int)GetBaseStatByRarity(25, rarity),
-                        baseSpeed = (int)GetBaseStatByRarity(10, rarity),
-                        baseCritRate = 0.05f + (int)rarity * 0.02f,
-                        baseCritDamage = 1.5f + (int)rarity * 0.1f,
-                        baseAccuracy = 0.9f + (int)rarity * 0.02f,
-                        baseEvasion = 0.05f + (int)rarity * 0.02f,
-                        
-                        skillIDs = new List<int> { 101, 102, 103 },
-                        description = $"{rarity} 등급의 {JobClassSystem.GetJobClassName(jobClass)}"
-                    };
-                    
-                    characterDatabase[character.characterID] = character;
-                    characterId++;
-                    
-                    // 각 직업당 2개의 캐릭터만 생성 (테스트용)
-                    if (characterId % 2 == 0) break;
+                    Debug.LogError($"CharacterDatabaseSO not found at path: {mainDatabasePath}");
+                    return;
                 }
             }
+            
+            mainDatabase.Initialize();
+            Debug.Log($"Main database loaded with {mainDatabase.characters.Count} characters");
         }
+        
+        // 구 CreateSampleCharacters 메서드 제거됨 - 통합 데이터베이스 사용
         
         private int GetLevelByRarity(CharacterRarity rarity)
         {
@@ -126,39 +96,49 @@ namespace GuildMaster.Battle
         }
         
         /// <summary>
-        /// 모든 캐릭터 가져오기
+        /// 모든 캐릭터 가져오기 (통합 데이터베이스 사용)
         /// </summary>
         public List<CSVCharacter> GetAllCharacters()
         {
-            return characterDatabase.Values.ToList();
+            if (mainDatabase == null) return new List<CSVCharacter>();
+            return mainDatabase.GetAllCSVCharacters();
         }
         
         /// <summary>
-        /// 특정 캐릭터 가져오기
+        /// 특정 캐릭터 가져오기 (통합 데이터베이스 사용)
         /// </summary>
         public CSVCharacter GetCharacter(string characterID)
         {
-            if (characterDatabase.ContainsKey(characterID))
-                return characterDatabase[characterID];
+            if (mainDatabase == null)
+            {
+                Debug.LogError("Main database is null");
+                return null;
+            }
             
-            Debug.LogWarning($"Character not found: {characterID}");
-            return null;
+            var character = mainDatabase.GetCSVCharacter(characterID);
+            if (character == null)
+            {
+                Debug.LogWarning($"Character with ID {characterID} not found in main database");
+            }
+            return character;
         }
         
         /// <summary>
-        /// 직업별 캐릭터 가져오기
+        /// 직업별 캐릭터 가져오기 (통합 데이터베이스 사용)
         /// </summary>
         public List<CSVCharacter> GetCharactersByJob(JobClass jobClass)
         {
-            return characterDatabase.Values.Where(c => c.jobClass == jobClass).ToList();
+            if (mainDatabase == null) return new List<CSVCharacter>();
+            return mainDatabase.GetAllCSVCharacters().Where(c => c.jobClass == jobClass).ToList();
         }
         
         /// <summary>
-        /// 레어도별 캐릭터 가져오기
+        /// 레어도별 캐릭터 가져오기 (통합 데이터베이스 사용)
         /// </summary>
         public List<CSVCharacter> GetCharactersByRarity(CharacterRarity rarity)
         {
-            return characterDatabase.Values.Where(c => c.rarity == rarity).ToList();
+            if (mainDatabase == null) return new List<CSVCharacter>();
+            return mainDatabase.GetAllCSVCharacters().Where(c => c.rarity == rarity).ToList();
         }
     }
 }

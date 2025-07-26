@@ -15,7 +15,6 @@ namespace GuildMaster.Editor
         private string scriptableObjectPath = "Assets/Data/ScriptableObjects";
         
         private bool createIndividualCharacters = true;
-        private bool createCharacterDatabase = true;
         private bool convertDialogues = true;
         
         [MenuItem("Tools/GuildMaster/CSV to ScriptableObject Converter")]
@@ -55,7 +54,6 @@ namespace GuildMaster.Editor
             
             GUILayout.Label("Conversion Options", EditorStyles.boldLabel);
             createIndividualCharacters = EditorGUILayout.Toggle("Create Individual Characters", createIndividualCharacters);
-            createCharacterDatabase = EditorGUILayout.Toggle("Create Character Database", createCharacterDatabase);
             convertDialogues = EditorGUILayout.Toggle("Convert Dialogue CSVs", convertDialogues);
             
             GUILayout.Space(20);
@@ -81,7 +79,7 @@ namespace GuildMaster.Editor
         
         void ConvertCharacterData()
         {
-            if (!createIndividualCharacters && !createCharacterDatabase) return;
+            if (!createIndividualCharacters) return;
             
             string csvPath = Path.Combine(Application.dataPath, csvFolderPath.Substring(7), "character_data.csv");
             if (!File.Exists(csvPath))
@@ -138,15 +136,7 @@ namespace GuildMaster.Editor
                 allCharacters.Add(character);
             }
             
-            // Create database
-            if (createCharacterDatabase)
-            {
-                string dbPath = Path.Combine(scriptableObjectPath, "CharacterDatabase.asset");
-                CharacterDatabase database = CreateOrLoadAsset<CharacterDatabase>(dbPath);
-                // List<CharacterData>를 List<CSVCharacter>로 변환
-                database.characters = allCharacters.Select(c => CharacterConverter.FromCharacterData(c)).ToList();
-                EditorUtility.SetDirty(database);
-            }
+            // CharacterDatabase 생성 기능 제거됨 (TacticalCharacterData는 유지)
             
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();

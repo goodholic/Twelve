@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections.Generic;
 using System.Linq;
+using GuildMaster.Data;
 
 namespace TacticalTileGame.Data
 {
@@ -28,20 +29,18 @@ namespace TacticalTileGame.Data
             }
         }
         
-        [Header("데이터 경로")]
-        [SerializeField] private string characterDataPath = "ScriptableObjects/Characters";
+        [Header("통합 데이터베이스")]
+        [SerializeField] private CharacterDatabaseSO mainDatabase;
+        [SerializeField] private string mainDatabasePath = "CharacterDatabase";
+        
+        [Header("추가 데이터 경로")]
         [SerializeField] private string skillDataPath = "ScriptableObjects/Skills";
         [SerializeField] private string dialogueDataPath = "ScriptableObjects/Dialogues";
         
         [Header("로드된 데이터")]
-        private Dictionary<string, TacticalCharacterDataSO> characterDatabase = new Dictionary<string, TacticalCharacterDataSO>();
         private Dictionary<string, TacticalSkillDataSO> skillDatabase = new Dictionary<string, TacticalSkillDataSO>();
         // StoryDialogueDataSO 타입이 삭제되어 주석 처리
         // private Dictionary<string, StoryDialogueDataSO> dialogueDatabase = new Dictionary<string, StoryDialogueDataSO>();
-        
-        [Header("캐시된 데이터")]
-        private Dictionary<CharacterClass, List<TacticalCharacterDataSO>> charactersByClass = new Dictionary<CharacterClass, List<TacticalCharacterDataSO>>();
-        private Dictionary<CharacterRarity, List<TacticalCharacterDataSO>> charactersByRarity = new Dictionary<CharacterRarity, List<TacticalCharacterDataSO>>();
         
         private void Awake()
         {
@@ -69,38 +68,27 @@ namespace TacticalTileGame.Data
             // 스킬 참조 연결
             LinkSkillsToCharacters();
             
-            Debug.Log($"Data Loading Complete - Characters: {characterDatabase.Count}, Skills: {skillDatabase.Count}");
+            int characterCount = mainDatabase != null ? mainDatabase.tacticalCharacters.Count : 0;
+            Debug.Log($"Data Loading Complete - Characters: {characterCount}, Skills: {skillDatabase.Count}");
         }
         
         /// <summary>
-        /// 캐릭터 데이터 로드
+        /// 메인 데이터베이스 로드 (통합된 CharacterDatabaseSO 사용)
         /// </summary>
         private void LoadCharacterData()
         {
-            TacticalCharacterDataSO[] characters = Resources.LoadAll<TacticalCharacterDataSO>(characterDataPath);
-            
-            characterDatabase.Clear();
-            charactersByClass.Clear();
-            charactersByRarity.Clear();
-            
-            foreach (var character in characters)
+            if (mainDatabase == null)
             {
-                characterDatabase[character.characterId] = character;
-                
-                // 클래스별 분류
-                if (!charactersByClass.ContainsKey(character.characterClass))
+                mainDatabase = Resources.Load<CharacterDatabaseSO>(mainDatabasePath);
+                if (mainDatabase == null)
                 {
-                    charactersByClass[character.characterClass] = new List<TacticalCharacterDataSO>();
+                    Debug.LogError($"CharacterDatabaseSO not found at path: {mainDatabasePath}");
+                    return;
                 }
-                charactersByClass[character.characterClass].Add(character);
-                
-                // 레어도별 분류
-                if (!charactersByRarity.ContainsKey(character.rarity))
-                {
-                    charactersByRarity[character.rarity] = new List<TacticalCharacterDataSO>();
-                }
-                charactersByRarity[character.rarity].Add(character);
             }
+            
+            mainDatabase.Initialize();
+            Debug.Log($"Main database loaded with {mainDatabase.characters.Count} base characters and {mainDatabase.tacticalCharacters.Count} tactical characters");
         }
         
         /// <summary>
@@ -140,7 +128,7 @@ namespace TacticalTileGame.Data
         /// </summary>
         private void LinkSkillsToCharacters()
         {
-            foreach (var character in characterDatabase.Values)
+            foreach (var character in mainDatabase.GetAllTacticalCharacters())
             {
                 character.skills.Clear();
                 
@@ -161,47 +149,49 @@ namespace TacticalTileGame.Data
         #region 캐릭터 관련 메서드
         
         /// <summary>
-        /// ID로 캐릭터 데이터 가져오기
+        /// ID로 캐릭터 데이터 가져오기 (통합 데이터베이스 사용)
         /// </summary>
-        public TacticalCharacterDataSO GetCharacter(string characterId)
+        public CharacterData GetCharacter(string characterId)
         {
-            if (characterDatabase.TryGetValue(characterId, out TacticalCharacterDataSO character))
+            if (mainDatabase == null)
             {
-                return character;
+                Debug.LogError("Main database is null");
+                return null;
             }
-            return null;
+            
+            var character = mainDatabase.GetTacticalCharacter(characterId);
+            if (character == null)
+            {
+                Debug.LogWarning($"Character with ID '{characterId}' not found in main database");
+            }
+            return character;
         }
         
         /// <summary>
-        /// 클래스별 캐릭터 목록 가져오기
+        /// 클래스별 캐릭터 목록 가져오기 (통합 데이터베이스 사용)
         /// </summary>
-        public List<TacticalCharacterDataSO> GetCharactersByClass(CharacterClass characterClass)
+        public List<CharacterData> GetCharactersByClass(CharacterClass characterClass)
         {
-            if (charactersByClass.TryGetValue(characterClass, out List<TacticalCharacterDataSO> characters))
-            {
-                return new List<TacticalCharacterDataSO>(characters);
-            }
-            return new List<TacticalCharacterDataSO>();
+            if (mainDatabase == null) return new List<CharacterData>();
+            return mainDatabase.GetTacticalCharactersByClass(characterClass);
         }
         
         /// <summary>
-        /// 레어도별 캐릭터 목록 가져오기
+        /// 레어도별 캐릭터 목록 가져오기 (통합 데이터베이스 사용)
         /// </summary>
-        public List<TacticalCharacterDataSO> GetCharactersByRarity(CharacterRarity rarity)
+        public List<CharacterData> GetCharactersByRarity(CharacterRarity rarity)
         {
-            if (charactersByRarity.TryGetValue(rarity, out List<TacticalCharacterDataSO> characters))
-            {
-                return new List<TacticalCharacterDataSO>(characters);
-            }
-            return new List<TacticalCharacterDataSO>();
+            if (mainDatabase == null) return new List<CharacterData>();
+            return mainDatabase.GetTacticalCharactersByRarity(rarity);
         }
         
         /// <summary>
-        /// 모든 캐릭터 목록 가져오기
+        /// 모든 캐릭터 목록 가져오기 (통합 데이터베이스 사용)
         /// </summary>
-        public List<TacticalCharacterDataSO> GetAllCharacters()
+        public List<CharacterData> GetAllCharacters()
         {
-            return characterDatabase.Values.ToList();
+            if (mainDatabase == null) return new List<CharacterData>();
+            return mainDatabase.GetAllTacticalCharacters();
         }
         
         #endregion

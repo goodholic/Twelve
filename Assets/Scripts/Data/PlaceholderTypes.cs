@@ -40,12 +40,7 @@ public class CSVCharacter
     public string description;
 }
 
-[CreateAssetMenu(fileName = "CharacterDatabase", menuName = "Data/Character Database")]
-public class CharacterDatabase : ScriptableObject
-{
-    public List<CSVCharacter> characters = new List<CSVCharacter>();
-    public List<CSVCharacter> currentRegisteredCharacters = new List<CSVCharacter>();
-}
+// CharacterDatabase 클래스 제거됨 - CharacterDatabase 생성 기능만 제거, TacticalCharacterData는 유지
 
 public static class JobClassSystem
 {

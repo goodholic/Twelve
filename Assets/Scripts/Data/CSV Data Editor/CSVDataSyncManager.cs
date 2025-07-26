@@ -241,16 +241,8 @@ namespace GuildMaster.Editor
             
             try
             {
-                // Export character data
-                string dbPath = Path.Combine(SO_FOLDER_PATH, "CharacterDatabase.asset");
-                var database = AssetDatabase.LoadAssetAtPath<CharacterDatabase>(dbPath);
-                
-                if (database != null)
-                {
-                    ExportCharacterData(database);
-                }
-                
-                LogOperation("Export completed successfully!");
+                // CharacterDatabase 내보내기 기능 제거됨 (TacticalCharacterData는 유지)
+                LogOperation("Character Database export feature has been removed");
             }
             catch (Exception e)
             {
@@ -270,7 +262,8 @@ namespace GuildMaster.Editor
             LogOperation("Starting bidirectional sync...");
             
             string csvPath = Path.Combine(CSV_FOLDER_PATH, "character_data.csv");
-            string soPath = Path.Combine(SO_FOLDER_PATH, "CharacterDatabase.asset");
+            // CharacterDatabase 생성 기능 제거됨 - 통합 데이터베이스 사용
+            string soPath = ""; // 사용되지 않음
             
             if (File.Exists(csvPath) && File.Exists(soPath))
             {
@@ -296,92 +289,16 @@ namespace GuildMaster.Editor
 
         private void ImportCharacterData(string csvPath)
         {
-            var lines = File.ReadAllLines(csvPath);
-            if (lines.Length <= 1) return;
-            
-            string dbPath = Path.Combine(SO_FOLDER_PATH, "CharacterDatabase.asset");
-            var database = AssetDatabase.LoadAssetAtPath<CharacterDatabase>(dbPath);
-            
-            if (database == null)
-            {
-                database = ScriptableObject.CreateInstance<CharacterDatabase>();
-                AssetDatabase.CreateAsset(database, dbPath);
-            }
-            
-            var characters = new List<CSVCharacter>();
-            
-            for (int i = 1; i < lines.Length; i++)
-            {
-                var values = ParseCSVLine(lines[i]);
-                if (values.Length >= 19)
-                {
-                    var character = new CSVCharacter
-                    {
-                        id = values[0],
-                        characterID = values[0],
-                        name = values[1],
-                        characterName = values[1],
-                        jobClass = ParseJobClass(values[2]),
-                        level = int.Parse(values[3]),
-                        rarity = ParseCharacterRarity(values[4]),
-                        baseHP = int.Parse(values[5]),
-                        baseMP = int.Parse(values[6]),
-                        baseAttack = int.Parse(values[7]),
-                        baseDefense = int.Parse(values[8]),
-                        baseMagicPower = int.Parse(values[9]),
-                        baseSpeed = int.Parse(values[10]),
-                        critRate = float.Parse(values[11]),
-                        critDamage = float.Parse(values[12]),
-                        accuracy = float.Parse(values[13]),
-                        evasion = float.Parse(values[14]),
-                        skill1Id = values[15],
-                        skill2Id = values[16],
-                        skill3Id = values[17],
-                        description = values[18]
-                    };
-                    
-                    // Validate if enabled
-                    if (validateBeforeSync)
-                    {
-                        ValidateCSVCharacterData(character);
-                    }
-                    
-                    // Apply filters
-                    if (ApplyFilters(character))
-                    {
-                        characters.Add(character);
-                    }
-                }
-            }
-            
-            database.characters = characters;
-            EditorUtility.SetDirty(database);
-            AssetDatabase.SaveAssets();
-            
-            LogOperation($"Imported {characters.Count} characters");
+            // CharacterDatabase 가져오기 기능 제거됨 (TacticalCharacterData는 유지)
+            LogOperation("Character Database import feature has been removed");
+            return;
         }
 
-        private void ExportCharacterData(CharacterDatabase database)
+        private void ExportCharacterData()
         {
-            var sb = new StringBuilder();
-            sb.AppendLine("ID,Name,JobClass,Level,Rarity,HP,MP,Attack,Defense,MagicPower,Speed,CritRate,CritDamage,Accuracy,Evasion,Skill1,Skill2,Skill3,Description");
-            
-            foreach (var character in database.characters)
-            {
-                if (ApplyFilters(character))
-                {
-                    sb.AppendLine($"{character.id},{character.name},{character.jobClass},{character.level}," +
-                        $"{character.rarity},{character.baseHP},{character.baseMP},{character.baseAttack}," +
-                        $"{character.baseDefense},{character.baseMagicPower},{character.baseSpeed}," +
-                        $"{character.critRate},{character.critDamage},{character.accuracy},{character.evasion}," +
-                        $"{character.skill1Id},{character.skill2Id},{character.skill3Id},\"{character.description}\"");
-                }
-            }
-            
-            string csvPath = Path.Combine(CSV_FOLDER_PATH, "character_data.csv");
-            File.WriteAllText(csvPath, sb.ToString());
-            
-            LogOperation($"Exported {database.characters.Count} characters");
+            // CharacterDatabase 내보내기 기능 제거됨 (TacticalCharacterData는 유지)
+            LogOperation("ExportCharacterData method is no longer supported");
+            return;
         }
 
         private bool ApplyFilters(CSVCharacter character)
@@ -574,36 +491,10 @@ namespace GuildMaster.Editor
             validationErrors.Clear();
             LogOperation("Starting data validation...");
             
-            string dbPath = Path.Combine(SO_FOLDER_PATH, "CharacterDatabase.asset");
-            var database = AssetDatabase.LoadAssetAtPath<CharacterDatabase>(dbPath);
-            
-            if (database != null && database.characters != null)
-            {
-                foreach (var character in database.characters)
-                {
-                                            ValidateCSVCharacterData(character);
-                }
-                
-                if (validationErrors.Count == 0)
-                {
-                    LogOperation("Validation complete: No errors found!");
-                    EditorUtility.DisplayDialog("Validation Passed", "All data validated successfully!", "OK");
-                }
-                else
-                {
-                    LogOperation($"Validation complete: Found {validationErrors.Count} errors");
-                    foreach (var error in validationErrors)
-                    {
-                        Debug.LogError($"[Validation] {error}");
-                    }
-                    EditorUtility.DisplayDialog("Validation Failed", 
-                        $"Found {validationErrors.Count} validation errors.\nCheck the console for details.", "OK");
-                }
-            }
-            else
-            {
-                LogOperation("No database found to validate");
-            }
+            // CharacterDatabase 검증 기능 제거됨 (TacticalCharacterData는 유지)
+            LogOperation("Character Database validation feature has been removed");
+            EditorUtility.DisplayDialog("Validation", "Character Database validation feature has been removed", "OK");
+            // 주석 처리된 검증 코드 제거됨
         }
         
         private void CreateBackup()

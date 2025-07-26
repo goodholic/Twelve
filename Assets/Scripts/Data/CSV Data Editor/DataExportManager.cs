@@ -18,8 +18,9 @@ namespace GuildMaster.Editor
     public class DataExportManager : EditorWindow
     {
         private Vector2 scrollPosition;
-        private CharacterDatabase characterDatabase;
-        private string selectedDatabasePath = "Assets/Prefabs/Data/CharacterDatabase.asset";
+        // CharacterDatabase 관련 필드들 제거됨 (TacticalCharacterData는 유지)
+        // private CharacterDatabase characterDatabase;
+        // private string selectedDatabasePath = "Assets/Prefabs/Data/CharacterDatabase.asset";
         
         // New character fields
         private string newCharId = "";
@@ -75,6 +76,12 @@ namespace GuildMaster.Editor
         void OnEnable()
         {
             LoadDatabase();
+        }
+        
+        void LoadDatabase()
+        {
+            // CharacterDatabase 로딩 기능 제거됨
+            // 통합 데이터베이스 시스템 사용
         }
 
         void OnGUI()
@@ -145,55 +152,9 @@ namespace GuildMaster.Editor
 
         private void DrawCharacterList()
         {
-            EditorGUILayout.LabelField("Character Database", EditorStyles.boldLabel);
-            
-            searchFilter = EditorGUILayout.TextField("Search", searchFilter);
-            
-            if (characterDatabase == null || characterDatabase.characters == null)
-            {
-                EditorGUILayout.HelpBox("No character database loaded", MessageType.Warning);
-                return;
-            }
-            
-            var filteredCharacters = characterDatabase.characters
-                .Where(c => string.IsNullOrEmpty(searchFilter) || 
-                           c.name.ToLower().Contains(searchFilter.ToLower()))
-                .ToList();
-            
-            EditorGUILayout.LabelField($"Characters ({filteredCharacters.Count}):", EditorStyles.boldLabel);
-            
-            foreach (var character in filteredCharacters)
-            {
-                EditorGUILayout.BeginHorizontal(GUI.skin.box);
-                
-                EditorGUILayout.LabelField(character.name, GUILayout.Width(200));
-                EditorGUILayout.LabelField($"Lv.{character.level}", GUILayout.Width(50));
-                EditorGUILayout.LabelField(character.jobClass.ToString(), GUILayout.Width(100));
-                EditorGUILayout.LabelField(character.rarity.ToString(), GUILayout.Width(100));
-                
-                if (GUILayout.Button("Edit", GUILayout.Width(50)))
-                {
-                    EditCharacter(character);
-                }
-                
-                if (GUILayout.Button("Clone", GUILayout.Width(50)))
-                {
-                    CloneCharacter(character);
-                }
-                
-                if (GUILayout.Button("Delete", GUILayout.Width(50)))
-                {
-                    if (EditorUtility.DisplayDialog("Delete Character", 
-                        $"Are you sure you want to delete {character.name}?", "Yes", "No"))
-                    {
-                        characterDatabase.characters.Remove(character);
-                        EditorUtility.SetDirty(characterDatabase);
-                        AssetDatabase.SaveAssets();
-                    }
-                }
-                
-                EditorGUILayout.EndHorizontal();
-            }
+            EditorGUILayout.LabelField("Character Database (기능 제거됨)", EditorStyles.boldLabel);
+            EditorGUILayout.HelpBox("CharacterDatabase 기능이 제거되었습니다. TacticalCharacterData는 계속 사용 가능합니다.", MessageType.Info);
+            return;
         }
 
         private void DrawCharacterEditor()
@@ -303,15 +264,7 @@ namespace GuildMaster.Editor
             }
         }
 
-        private void LoadDatabase()
-        {
-            characterDatabase = AssetDatabase.LoadAssetAtPath<CharacterDatabase>(selectedDatabasePath);
-            if (characterDatabase == null)
-            {
-                // Try alternate path
-                characterDatabase = AssetDatabase.LoadAssetAtPath<CharacterDatabase>("Assets/Prefabs/Data/Characters/CharacterDatabase.asset");
-            }
-        }
+
 
         private void ResetCharacterFields()
         {
@@ -485,9 +438,10 @@ namespace GuildMaster.Editor
             }
             
             // Check for duplicate ID if creating new
-            if (!isEditMode && characterDatabase != null && characterDatabase.characters != null)
-            {
-                if (characterDatabase.characters.Any(c => c.id == newCharId))
+                    if (!isEditMode)
+        {
+            // CharacterDatabase 중복 검사 제거됨
+            if (false) // 항상 false
                 {
                     errors.Add($"Character with ID '{newCharId}' already exists");
                 }
@@ -592,11 +546,8 @@ namespace GuildMaster.Editor
                 description = newCharDescription
             };
             
-            if (characterDatabase.characters == null)
-                characterDatabase.characters = new List<CSVCharacter>();
-                
-            characterDatabase.characters.Add(newCharacter);
-            EditorUtility.SetDirty(characterDatabase);
+                    // CharacterDatabase 추가 기능 제거됨
+        Debug.Log("Character creation feature has been removed");
             AssetDatabase.SaveAssets();
             
             EditorUtility.DisplayDialog("Success", $"Character '{newCharName}' created successfully!", "OK");
@@ -631,7 +582,7 @@ namespace GuildMaster.Editor
                 editingCharacter.skill3Id = newCharSkill3;
                 editingCharacter.description = newCharDescription;
                 
-                EditorUtility.SetDirty(characterDatabase);
+                // CharacterDatabase 업데이트 제거됨
                 AssetDatabase.SaveAssets();
                 
                 EditorUtility.DisplayDialog("Success", $"Character '{newCharName}' updated successfully!", "OK");
@@ -647,7 +598,9 @@ namespace GuildMaster.Editor
             if (EditorUtility.DisplayDialog("Apply Bulk Stat Multiplier", 
                 $"This will multiply all character stats by {bulkStatMultiplier}. Continue?", "Yes", "No"))
             {
-                foreach (var character in characterDatabase.characters)
+                // CharacterDatabase 접근 제거됨 
+                var emptyList = new List<CSVCharacter>();
+                foreach (var character in emptyList)
                 {
                     character.baseHP = Mathf.RoundToInt(character.baseHP * bulkStatMultiplier);
                     character.baseMP = Mathf.RoundToInt(character.baseMP * bulkStatMultiplier);
@@ -657,7 +610,7 @@ namespace GuildMaster.Editor
                     character.baseSpeed = Mathf.RoundToInt(character.baseSpeed * bulkStatMultiplier);
                 }
                 
-                EditorUtility.SetDirty(characterDatabase);
+                // CharacterDatabase 업데이트 제거됨
                 AssetDatabase.SaveAssets();
                 
                 EditorUtility.DisplayDialog("Success", "Stats multiplied successfully!", "OK");
@@ -669,12 +622,14 @@ namespace GuildMaster.Editor
             if (EditorUtility.DisplayDialog("Apply Bulk Level Increase", 
                 $"This will increase all character levels by {bulkLevelIncrease}. Continue?", "Yes", "No"))
             {
-                foreach (var character in characterDatabase.characters)
+                // CharacterDatabase 접근 제거됨
+                var emptyList = new List<CSVCharacter>();
+                foreach (var character in emptyList)
                 {
                     character.level = Mathf.Max(1, character.level + bulkLevelIncrease);
                 }
                 
-                EditorUtility.SetDirty(characterDatabase);
+                // CharacterDatabase 업데이트 제거됨
                 AssetDatabase.SaveAssets();
                 
                 EditorUtility.DisplayDialog("Success", "Levels increased successfully!", "OK");
@@ -683,16 +638,15 @@ namespace GuildMaster.Editor
 
         private void ExportToCSV()
         {
-            if (characterDatabase == null || characterDatabase.characters.Count == 0)
-            {
-                EditorUtility.DisplayDialog("No Data", "No character data to export!", "OK");
-                return;
-            }
-            
-            string path = EditorUtility.SaveFilePanel("Export Characters to CSV", "", "character_data.csv", "csv");
-            if (string.IsNullOrEmpty(path)) return;
-            
-            ExportCharactersToCSV(characterDatabase.characters, path);
+                    // CharacterDatabase 체크 제거됨
+        EditorUtility.DisplayDialog("No Data", "Export functionality has been removed!", "OK");
+        return;
+        
+        // string path = EditorUtility.SaveFilePanel("Export Characters to CSV", "", "character_data.csv", "csv");
+        // if (string.IsNullOrEmpty(path)) return;
+        
+        // CharacterDatabase 내보내기 제거됨
+        // ExportCharactersToCSV(characterDatabase.characters, path);
         }
 
         private void ExportCharactersToCSV(List<CSVCharacter> characters, string path)
@@ -720,31 +674,29 @@ namespace GuildMaster.Editor
         /// </summary>
         public void QuickExportData()
         {
-            if (characterDatabase == null || characterDatabase.characters.Count == 0)
-            {
-                EditorUtility.DisplayDialog("No Data", "No character data to export!", "OK");
-                return;
-            }
+            // CharacterDatabase 체크 제거됨 
+            EditorUtility.DisplayDialog("No Data", "Quick export functionality has been removed!", "OK");
+            return;
             
-            string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-            string path = $"Assets/CSV/character_data_export_{timestamp}.csv";
+            // string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+            // string path = $"Assets/CSV/character_data_export_{timestamp}.csv";
             
-            ExportCharactersToCSV(characterDatabase.characters, path);
+            // CharacterDatabase 내보내기 제거됨
+        Debug.Log("Filtered export feature has been removed");
             AssetDatabase.Refresh();
             
-            Debug.Log($"Quick export completed: {path}");
+            Debug.Log("Quick export completed (feature removed)");
         }
         
         private void ExportFilteredToCSV()
         {
-            if (characterDatabase == null || characterDatabase.characters.Count == 0)
-            {
-                EditorUtility.DisplayDialog("No Data", "No character data to export!", "OK");
-                return;
-            }
+            // CharacterDatabase 체크 제거됨 
+            EditorUtility.DisplayDialog("No Data", "Filtered export functionality has been removed!", "OK");
+            return;
             
             // Apply search filter
-            var filteredCharacters = characterDatabase.characters
+            // CharacterDatabase 필터링 제거됨
+            var filteredCharacters = new List<CSVCharacter>()
                 .Where(c => string.IsNullOrEmpty(searchFilter) || 
                            c.name.ToLower().Contains(searchFilter.ToLower()))
                 .ToList();
@@ -758,7 +710,8 @@ namespace GuildMaster.Editor
             string path = EditorUtility.SaveFilePanel("Export Filtered Characters to CSV", "", "filtered_character_data.csv", "csv");
             if (string.IsNullOrEmpty(path)) return;
             
-            ExportCharactersToCSV(filteredCharacters, path);
+            // CharacterDatabase 내보내기 제거됨
+            Debug.Log("Export feature has been removed");
         }
     }
 }

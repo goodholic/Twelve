@@ -134,7 +134,7 @@ namespace TacticalTileGame.Editor
                 }
                 
                 // ScriptableObject 생성
-                TacticalCharacterDataSO characterData = ScriptableObject.CreateInstance<TacticalCharacterDataSO>();
+                CharacterData characterData = ScriptableObject.CreateInstance<CharacterData>();
                 characterData.InitializeFromCSV(csvData);
                 
                 // 파일로 저장

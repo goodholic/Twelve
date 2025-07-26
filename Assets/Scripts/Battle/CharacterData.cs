@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections.Generic;
 using GuildMaster.Data;
+using TacticalTileGame.Data;
 
 [CreateAssetMenu(fileName = "NewCharacter", menuName = "OX Game/Character Data")]
 public class CharacterData : ScriptableObject
@@ -50,8 +51,19 @@ public class CharacterData : ScriptableObject
     public int baseMP = 50; // 기본 MP
     public int baseAttack = 10; // 기본 공격력
     public int baseDefense = 5; // 기본 방어력
-    public int baseMagicPower = 10; // 기본 마법력
-    public int baseSpeed = 10; // 기본 속도
+    public int baseMagicPower = 0; // 기본 마법력
+    public int baseSpeed = 5; // 기본 속도
+    
+    // TacticalCharacterDataSO에서 통합된 속성들
+    public string characterId = ""; // 전술 게임용 ID (id와 동기화)  
+    public string description = ""; // 캐릭터 설명
+    public GameObject characterPrefab; // 전술 게임용 프리팹
+    public float baseCritRate = 0.1f; // 기본 크리티컬 확률
+    public List<string> skillIds = new List<string>(); // 스킬 ID 목록
+    public List<TacticalSkillDataSO> skills = new List<TacticalSkillDataSO>(); // 스킬 객체 목록
+    public string attackPatternCSV = ""; // CSV 패턴 문자열
+    public int maxLevel = 50; // 최대 레벨
+    public CharacterRarity tacticalRarity = CharacterRarity.Common; // 전술 게임용 레어도
     public float critRate = 0.1f; // 크리티컬 확률
     public float critDamage = 150.0f; // 크리티컬 데미지
     public float accuracy = 95.0f; // 명중률
@@ -59,8 +71,6 @@ public class CharacterData : ScriptableObject
     public string skill1Id = ""; // 스킬 1 ID
     public string skill2Id = ""; // 스킬 2 ID  
     public string skill3Id = ""; // 스킬 3 ID
-    public string description = ""; // 캐릭터 설명
-
     [Header("공격 패턴")]
     public AttackPattern attackPattern;
     
@@ -97,7 +107,7 @@ public enum RangeType
     Magic           // 마법
 }
 
-// 공격 패턴 관리자
+// 런타임 공격 패턴 관리자 (에디터용은 CharacterAttackPatternEditor.cs에 별도 존재)
 public static class AttackPatternManager
 {
     public static List<Vector2Int> GetPattern(AttackPattern pattern)
@@ -154,9 +164,127 @@ public static class AttackPatternManager
         return positions;
     }
 
-    // 건너편 보드 공격 여부 확인
     public static bool IsCrossBoardAttack(AttackPattern pattern)
     {
         return pattern == AttackPattern.CrossBoard;
+    }
+}
+
+/// <summary>
+/// 통합된 CharacterData용 확장 메서드들
+/// </summary>
+public static class CharacterDataExtensions
+{
+    /// <summary>
+    /// CSV 데이터로부터 캐릭터 데이터 초기화 (TacticalCharacterDataSO에서 통합)
+    /// </summary>
+    public static void InitializeFromCSV(this CharacterData character, Dictionary<string, string> csvData)
+    {
+        if (csvData.ContainsKey("id"))
+        {
+            character.id = csvData["id"];
+            character.characterId = csvData["id"]; // 동기화
+        }
+        if (csvData.ContainsKey("name"))
+        {
+            character.characterName = csvData["name"];
+        }
+        if (csvData.ContainsKey("description"))
+        {
+            character.description = csvData["description"];
+        }
+        
+        // 스탯 파싱
+        if (csvData.ContainsKey("hp") && int.TryParse(csvData["hp"], out int hp))
+        {
+            character.baseHP = hp;
+            character.maxHP = hp;
+        }
+        if (csvData.ContainsKey("attack") && int.TryParse(csvData["attack"], out int atk))
+        {
+            character.baseAttack = atk;
+            character.attackPower = atk; // 동기화
+        }
+        if (csvData.ContainsKey("defense") && int.TryParse(csvData["defense"], out int def))
+            character.baseDefense = def;
+        if (csvData.ContainsKey("magic") && int.TryParse(csvData["magic"], out int mag))
+            character.baseMagicPower = mag;
+        if (csvData.ContainsKey("speed") && int.TryParse(csvData["speed"], out int spd))
+            character.baseSpeed = spd;
+        if (csvData.ContainsKey("critRate") && float.TryParse(csvData["critRate"], out float crit))
+            character.baseCritRate = crit;
+        
+        // 공격 패턴 파싱
+        if (csvData.ContainsKey("attackPattern"))
+        {
+            character.attackPatternCSV = csvData["attackPattern"];
+            character.customPattern = ParseAttackPatternFromString(character.attackPatternCSV);
+            if (character.customPattern.Count > 0)
+            {
+                character.attackPattern = AttackPattern.Custom;
+            }
+        }
+        
+        // 스킬 ID 파싱
+        if (csvData.ContainsKey("skills"))
+        {
+            string[] skills = csvData["skills"].Split(',');
+            character.skillIds.Clear();
+            foreach (string skillId in skills)
+            {
+                if (!string.IsNullOrEmpty(skillId.Trim()))
+                {
+                    character.skillIds.Add(skillId.Trim());
+                }
+            }
+        }
+        
+        // 클래스와 레어도 파싱
+        if (csvData.ContainsKey("class") && System.Enum.TryParse<JobClass>(csvData["class"], out JobClass charClass))
+            character.jobClass = charClass;
+        if (csvData.ContainsKey("rarity") && System.Enum.TryParse<CharacterRarity>(csvData["rarity"], out CharacterRarity charRarity))
+            character.tacticalRarity = charRarity;
+    }
+    
+    /// <summary>
+    /// 실제 공격 가능한 타일 위치 계산 (TacticalCharacterDataSO에서 통합)
+    /// </summary>
+    public static List<Vector2Int> GetAttackableTiles(this CharacterData character, Vector2Int characterPosition)
+    {
+        List<Vector2Int> attackableTiles = new List<Vector2Int>();
+        
+        List<Vector2Int> pattern = character.GetAttackPositions();
+        if (pattern != null)
+        {
+            foreach (var offset in pattern)
+            {
+                attackableTiles.Add(characterPosition + offset);
+            }
+        }
+        
+        return attackableTiles;
+    }
+    
+    /// <summary>
+    /// 공격 패턴 문자열 파싱 (TacticalCharacterDataSO에서 통합)
+    /// </summary>
+    private static List<Vector2Int> ParseAttackPatternFromString(string patternString)
+    {
+        List<Vector2Int> pattern = new List<Vector2Int>();
+        if (string.IsNullOrEmpty(patternString)) return pattern;
+        
+        string[] positions = patternString.Split(';');
+        foreach (string pos in positions)
+        {
+            string[] coords = pos.Split(',');
+            if (coords.Length == 2)
+            {
+                if (int.TryParse(coords[0], out int x) && int.TryParse(coords[1], out int y))
+                {
+                    pattern.Add(new Vector2Int(x, y));
+                }
+            }
+        }
+        return pattern;
     }
 }
