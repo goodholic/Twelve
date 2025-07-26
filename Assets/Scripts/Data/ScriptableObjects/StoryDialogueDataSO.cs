@@ -7,7 +7,7 @@ namespace TileConquest.Data
     /// <summary>
     /// 스토리/대화 데이터를 관리하는 ScriptableObject
     /// </summary>
-    [CreateAssetMenu(fileName = "StoryDialogueData", menuName = "TileConquest/Story Dialogue", order = 5)]
+    [CreateAssetMenu(fileName = "StoryDialogueData", menuName = "Twelve Game/Story/Dialogue Data", order = 1)]
     public class StoryDialogueDataSO : ScriptableObject
     {
         [Header("스토리 정보")]

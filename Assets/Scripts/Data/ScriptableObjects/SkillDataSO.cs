@@ -10,7 +10,7 @@ namespace GuildMaster.Data
     /// 스킬 데이터 ScriptableObject
     /// CSV 데이터를 기반으로 생성되는 스킬 데이터
     /// </summary>
-    [CreateAssetMenu(fileName = "SkillData", menuName = "GuildMaster/Data/SkillData", order = 8)]
+    [CreateAssetMenu(fileName = "SkillData", menuName = "Twelve Game/Data/Skill Data", order = 1)]
     public class SkillDataSO : ScriptableObject
     {
         [Header("Skill Identity")]

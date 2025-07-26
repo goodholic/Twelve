@@ -12,7 +12,7 @@ namespace GuildMaster.Data
     /// 통합 캐릭터 데이터베이스 - 모든 캐릭터 데이터의 중앙 관리소
     /// UI, 전술게임, CSV 시스템이 모두 이를 참조합니다
     /// </summary>
-    [CreateAssetMenu(fileName = "CharacterDatabaseSO", menuName = "GuildMaster/Data/Character Database SO")]
+    [CreateAssetMenu(fileName = "CharacterDatabaseSO", menuName = "Twelve Game/Data/Character Database")]
     public class CharacterDatabaseSO : ScriptableObject
     {
             [SerializeField] public List<CharacterDataSO> characters = new List<CharacterDataSO>();

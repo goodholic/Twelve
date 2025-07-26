@@ -183,7 +183,7 @@ public static class CharacterConverter
 }
 
 // StoryDialogueDataSO 플레이스홀더
-[CreateAssetMenu(fileName = "StoryDialogue", menuName = "Story/Dialogue Data")]
+[CreateAssetMenu(fileName = "StoryDialogue", menuName = "Twelve Game/Story/Dialogue (Legacy)")]
 public class StoryDialogueDataSO : ScriptableObject
 {
     public string dialogueId;
@@ -204,7 +204,7 @@ public class StoryDialogueDataSO : ScriptableObject
 }
 
 // StoryCharacterSO 플레이스홀더
-[CreateAssetMenu(fileName = "StoryCharacter", menuName = "Story/Character")]
+[CreateAssetMenu(fileName = "StoryCharacter", menuName = "Twelve Game/Story/Character (Legacy)")]
 public class StoryCharacterSO : ScriptableObject
 {
     public string characterId;
@@ -223,7 +223,7 @@ public class StoryCharacterSO : ScriptableObject
 }
 
 // StoryDialogueSO 플레이스홀더
-[CreateAssetMenu(fileName = "StoryDialogue", menuName = "Story/Dialogue")]
+[CreateAssetMenu(fileName = "StoryDialogue", menuName = "Twelve Game/Story/Simple Dialogue (Legacy)")]
 public class StoryDialogueSO : ScriptableObject
 {
     public string dialogueId;

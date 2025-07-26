@@ -5,7 +5,7 @@ namespace GuildMaster.Core
     /// <summary>
     /// 게임 전체 설정을 관리하는 중앙 집중식 설정 클래스
     /// </summary>
-    [CreateAssetMenu(fileName = "GameConfig", menuName = "GuildMaster/Game Config")]
+    [CreateAssetMenu(fileName = "GameConfig", menuName = "Twelve Game/Settings/Game Config")]
     public class GameConfig : ScriptableObject
     {
         [Header("Game Version")]

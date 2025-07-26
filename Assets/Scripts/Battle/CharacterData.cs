@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using GuildMaster.Data;
 using TacticalTileGame.Data;
 
-[CreateAssetMenu(fileName = "NewCharacter", menuName = "OX Game/Character Data")]
+[CreateAssetMenu(fileName = "NewCharacter", menuName = "Twelve Game/Characters/Character Data")]
 public class CharacterData : ScriptableObject
 {
     [Header("기본 정보")]

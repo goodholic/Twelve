@@ -5,7 +5,7 @@ using System.Collections.Generic;
 #if UNITY_EDITOR
 public class CharacterCreator : EditorWindow
 {
-    [MenuItem("Tools/OX Game/Create Default Characters")]
+    [MenuItem("Tools/Twelve Game/Create Default Characters")]
     public static void CreateDefaultCharacters()
     {
         string folderPath = "Assets/Characters";
@@ -173,7 +173,7 @@ public class CharacterPoolAssigner : EditorWindow
 {
     private GameManager gameManager;
     
-    [MenuItem("Tools/OX Game/Assign Character Pools")]
+    [MenuItem("Tools/Twelve Game/Assign Character Pools")]
     public static void ShowWindow()
     {
         GetWindow<CharacterPoolAssigner>("캐릭터 풀 할당");

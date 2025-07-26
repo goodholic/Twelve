@@ -5,7 +5,7 @@ using GuildMaster.Data;
 
 namespace GuildMaster.Battle
 {
-    [CreateAssetMenu(fileName = "AIBehavior", menuName = "GuildMaster/AI/Behavior")]
+    [CreateAssetMenu(fileName = "AIBehavior", menuName = "Twelve Game/AI/Behavior")]
     public class AIBehaviorSO : ScriptableObject
     {
         [Header("AI Identity")]
