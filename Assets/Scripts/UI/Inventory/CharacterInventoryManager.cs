@@ -5,8 +5,6 @@ using UnityEngine.UI;
 using TMPro;
 using System.Linq;
 using GuildMaster.Data;
-using GuildMaster.Game;
-using CharacterData = GuildMaster.Data.CharacterData;
 
 public class CharacterInventoryManager : MonoBehaviour
 {
@@ -78,7 +76,7 @@ public class CharacterInventoryManager : MonoBehaviour
             {
                 if (cData != null)
                 {
-                    gachaPool.Add(cData);
+                    gachaPool.Add(ConvertToCharacterData(cData));
                     Debug.LogError($"[CharacterInventoryManager] 가챠풀에 추가: {cData.characterName}");
                 }
                 else
@@ -99,7 +97,7 @@ public class CharacterInventoryManager : MonoBehaviour
             Debug.LogError("[CharacterInventoryManager] 가챠풀이 비어있음 - 대안 로딩 방법들 시도 중...");
             
             // 1) Resources에서 로드 시도
-            var resourceDB = Resources.Load<CharacterDatabaseObject>("CharacterDatabase");
+            var resourceDB = Resources.Load<CharacterDatabaseSO>("CharacterDatabase");
             if (resourceDB != null && resourceDB.characters != null && resourceDB.characters.Count > 0)
             {
                 Debug.LogError($"[CharacterInventoryManager] Resources에서 발견됨: {resourceDB.characters.Count}개 캐릭터");
@@ -109,7 +107,7 @@ public class CharacterInventoryManager : MonoBehaviour
                 {
                     if (cData != null)
                     {
-                        gachaPool.Add(cData);
+                        gachaPool.Add(ConvertToCharacterData(cData));
                         Debug.LogError($"[CharacterInventoryManager] 리소스에서 가챠풀에 추가: {cData.characterName}");
                     }
                 }
@@ -119,7 +117,7 @@ public class CharacterInventoryManager : MonoBehaviour
             if (gachaPool.Count == 0)
             {
                 Debug.LogError("[CharacterInventoryManager] 직접 에셋 로드 시도...");
-                var directDB = UnityEngine.Resources.LoadAll<CharacterDatabaseObject>("");
+                var directDB = UnityEngine.Resources.LoadAll<CharacterDatabaseSO>("");
                 if (directDB != null && directDB.Length > 0)
                 {
                     foreach (var db in directDB)
@@ -137,11 +135,11 @@ public class CharacterInventoryManager : MonoBehaviour
                                 Debug.LogError($"[CharacterInventoryManager] 유효한 DB 발견: {db.name}");
                                 characterDatabaseObject = db;
                                 
-                                foreach (var cData in db.characters)
-                                {
-                                    if (cData != null)
-                                    {
-                                        gachaPool.Add(cData);
+                                                    foreach (var cData in db.characters)
+                    {
+                        if (cData != null)
+                        {
+                            gachaPool.Add(ConvertToCharacterData(cData));
                                         Debug.LogError($"[CharacterInventoryManager] 직접로드에서 가챠풀에 추가: {cData.characterName}");
                                     }
                                 }
@@ -471,7 +469,7 @@ public class CharacterInventoryManager : MonoBehaviour
                 {
                     if (cData != null)
                     {
-                        gachaPool.Add(cData);
+                        gachaPool.Add(ConvertToCharacterData(cData));
                         Debug.LogError($"[CharacterInventoryManager] 강제 초기화 - 가챠풀 추가: {cData.characterName}");
                     }
                 }
@@ -772,6 +770,24 @@ public class CharacterInventoryManager : MonoBehaviour
         return null;
     }
 
+    // CharacterDataSO를 CharacterData로 변환하는 헬퍼 메서드
+    private CharacterData ConvertToCharacterData(CharacterDataSO characterDataSO)
+    {
+        if (characterDataSO == null) return null;
+        
+        CharacterData characterData = ScriptableObject.CreateInstance<CharacterData>();
+        characterData.characterName = characterDataSO.characterName;
+        characterData.characterIcon = characterDataSO.portrait;
+        characterData.buttonIcon = characterDataSO.portrait;
+        characterData.hp = characterDataSO.baseHP;
+        characterData.attackPower = characterDataSO.baseAttack;
+        characterData.level = characterDataSO.baseLevel;
+        characterData.maxHP = characterDataSO.baseHP;
+        characterData.health = characterDataSO.baseHP;
+        
+        return characterData;
+    }
+
     [System.Serializable]
     private class SaveData
     {
@@ -800,7 +816,11 @@ public class CharacterInventoryManager : MonoBehaviour
             CharacterData defaultChar = new CharacterData();
             defaultChar.characterName = $"RandomChar_{i}";
             defaultChar.moveSpeed = 1f;
-            defaultChar.rangeType = i % 3 == 0 ? "Melee" : (i % 3 == 1 ? "Ranged" : "Magic");
+            string rangeTypeString = i % 3 == 0 ? "Melee" : (i % 3 == 1 ? "Ranged" : "Magic");
+            if (System.Enum.TryParse<RangeType>(rangeTypeString, out RangeType parsedRangeType))
+                defaultChar.rangeType = parsedRangeType;
+            else
+                defaultChar.rangeType = RangeType.Melee;
             defaultChar.isAreaAttack = (i % 4 == 0);
             defaultChar.isBuffSupport = (i % 5 == 0);
             defaultChar.level = 1;

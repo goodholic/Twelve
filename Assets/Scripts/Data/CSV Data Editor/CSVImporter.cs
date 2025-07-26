@@ -3,7 +3,8 @@ using UnityEditor;
 using System.IO;
 using System.Collections.Generic;
 using GuildMaster.Battle;
-using GuildMaster.Game;
+using GuildMaster.Data;
+using TacticalTileGame.Data;
 
 namespace GuildMaster.Editor
 {

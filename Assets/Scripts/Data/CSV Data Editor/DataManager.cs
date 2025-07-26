@@ -2,7 +2,8 @@ using UnityEngine;
 using System.Collections.Generic;
 using System.Linq;
 
-using GuildMaster.Game;
+using GuildMaster.Data;
+using TacticalTileGame.Data;
 
 namespace GuildMaster.Battle
 {
@@ -30,7 +31,7 @@ namespace GuildMaster.Battle
             }
         }
         
-        private Dictionary<string, Character> characterDatabase = new Dictionary<string, Character>();
+        private Dictionary<string, CSVCharacter> characterDatabase = new Dictionary<string, CSVCharacter>();
         private bool isDataLoaded = false;
         
         private void Awake()
@@ -72,7 +73,7 @@ namespace GuildMaster.Battle
             {
                 foreach (var rarity in rarities)
                 {
-                    Character character = new Character
+                    CSVCharacter character = new CSVCharacter
                     {
                         characterID = $"char_{characterId:D3}",
                         characterName = $"{JobClassSystem.GetJobClassName(jobClass)} {characterId}",
@@ -81,12 +82,12 @@ namespace GuildMaster.Battle
                         rarity = rarity,
                         
                         // 레어도에 따른 기본 스탯
-                        baseHP = GetBaseStatByRarity(100, rarity),
-                        baseMP = GetBaseStatByRarity(50, rarity),
-                        baseAttack = GetBaseStatByRarity(20, rarity),
-                        baseDefense = GetBaseStatByRarity(15, rarity),
-                        baseMagicPower = GetBaseStatByRarity(25, rarity),
-                        baseSpeed = GetBaseStatByRarity(10, rarity),
+                        baseHP = (int)GetBaseStatByRarity(100, rarity),
+                        baseMP = (int)GetBaseStatByRarity(50, rarity),
+                        baseAttack = (int)GetBaseStatByRarity(20, rarity),
+                        baseDefense = (int)GetBaseStatByRarity(15, rarity),
+                        baseMagicPower = (int)GetBaseStatByRarity(25, rarity),
+                        baseSpeed = (int)GetBaseStatByRarity(10, rarity),
                         baseCritRate = 0.05f + (int)rarity * 0.02f,
                         baseCritDamage = 1.5f + (int)rarity * 0.1f,
                         baseAccuracy = 0.9f + (int)rarity * 0.02f,
@@ -127,7 +128,7 @@ namespace GuildMaster.Battle
         /// <summary>
         /// 모든 캐릭터 가져오기
         /// </summary>
-        public List<Character> GetAllCharacters()
+        public List<CSVCharacter> GetAllCharacters()
         {
             return characterDatabase.Values.ToList();
         }
@@ -135,7 +136,7 @@ namespace GuildMaster.Battle
         /// <summary>
         /// 특정 캐릭터 가져오기
         /// </summary>
-        public Character GetCharacter(string characterID)
+        public CSVCharacter GetCharacter(string characterID)
         {
             if (characterDatabase.ContainsKey(characterID))
                 return characterDatabase[characterID];
@@ -147,7 +148,7 @@ namespace GuildMaster.Battle
         /// <summary>
         /// 직업별 캐릭터 가져오기
         /// </summary>
-        public List<Character> GetCharactersByJob(JobClass jobClass)
+        public List<CSVCharacter> GetCharactersByJob(JobClass jobClass)
         {
             return characterDatabase.Values.Where(c => c.jobClass == jobClass).ToList();
         }
@@ -155,7 +156,7 @@ namespace GuildMaster.Battle
         /// <summary>
         /// 레어도별 캐릭터 가져오기
         /// </summary>
-        public List<Character> GetCharactersByRarity(CharacterRarity rarity)
+        public List<CSVCharacter> GetCharactersByRarity(CharacterRarity rarity)
         {
             return characterDatabase.Values.Where(c => c.rarity == rarity).ToList();
         }

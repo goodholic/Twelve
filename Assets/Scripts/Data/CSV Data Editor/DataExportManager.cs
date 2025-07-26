@@ -4,7 +4,7 @@ using System.IO;
 using System.Collections.Generic;
 using System.Linq;
 using GuildMaster.Battle;
-using GuildMaster.Game;
+using TacticalTileGame.Data;
 using GuildMaster.Data;
 using System;
 using System.Text;
@@ -18,7 +18,7 @@ namespace GuildMaster.Editor
     public class DataExportManager : EditorWindow
     {
         private Vector2 scrollPosition;
-        private CharacterDatabaseSO characterDatabase;
+        private CharacterDatabase characterDatabase;
         private string selectedDatabasePath = "Assets/Prefabs/Data/CharacterDatabase.asset";
         
         // New character fields
@@ -27,7 +27,7 @@ namespace GuildMaster.Editor
         private JobClass newCharClass = JobClass.Warrior;
         private int newCharLevel = 1;
         private CharacterRarity newCharRarity = CharacterRarity.Common;
-        private CharacterData editingCharacter = null;
+        private CSVCharacter editingCharacter = null;
         private bool isEditMode = false;
         
         // Character stats
@@ -336,7 +336,7 @@ namespace GuildMaster.Editor
             newCharDescription = "";
         }
 
-        private void EditCharacter(CharacterData character)
+        private void EditCharacter(CSVCharacter character)
         {
             editingCharacter = character;
             isEditMode = true;
@@ -365,7 +365,7 @@ namespace GuildMaster.Editor
             newCharDescription = character.description;
         }
 
-        private void CloneCharacter(CharacterData original)
+        private void CloneCharacter(CSVCharacter original)
         {
             showCreateNew = true;
             showCharacterList = false;
@@ -569,13 +569,13 @@ namespace GuildMaster.Editor
 
         private void CreateCharacter()
         {
-            var newCharacter = new CharacterData
+            var newCharacter = new CSVCharacter
             {
                 id = newCharId,
                 name = newCharName,
                 jobClass = newCharClass,
                 level = newCharLevel,
-                rarity = newCharRarity,
+                rarity = (CharacterRarity)newCharRarity,
                 baseHP = newCharHP,
                 baseMP = newCharMP,
                 baseAttack = newCharAttack,
@@ -593,7 +593,7 @@ namespace GuildMaster.Editor
             };
             
             if (characterDatabase.characters == null)
-                characterDatabase.characters = new List<CharacterData>();
+                characterDatabase.characters = new List<CSVCharacter>();
                 
             characterDatabase.characters.Add(newCharacter);
             EditorUtility.SetDirty(characterDatabase);
@@ -610,10 +610,12 @@ namespace GuildMaster.Editor
             if (editingCharacter != null)
             {
                 editingCharacter.id = newCharId;
+                editingCharacter.characterID = newCharId;
                 editingCharacter.name = newCharName;
+                editingCharacter.characterName = newCharName;
                 editingCharacter.jobClass = newCharClass;
                 editingCharacter.level = newCharLevel;
-                editingCharacter.rarity = newCharRarity;
+                editingCharacter.rarity = (CharacterRarity)newCharRarity;
                 editingCharacter.baseHP = newCharHP;
                 editingCharacter.baseMP = newCharMP;
                 editingCharacter.baseAttack = newCharAttack;
@@ -693,7 +695,7 @@ namespace GuildMaster.Editor
             ExportCharactersToCSV(characterDatabase.characters, path);
         }
 
-        private void ExportCharactersToCSV(List<CharacterData> characters, string path)
+        private void ExportCharactersToCSV(List<CSVCharacter> characters, string path)
         {
             StringBuilder csv = new StringBuilder();
             csv.AppendLine("ID,Name,JobClass,Level,Rarity,HP,MP,Attack,Defense,MagicPower,Speed,CritRate,CritDamage,Accuracy,Evasion,Skill1,Skill2,Skill3,Description");

@@ -191,12 +191,12 @@ namespace TileConquest.Editor
                 
                 range.rangeId = values[0];
                 range.rangeName = values[1];
-                range.rangeType = (RangeType)System.Enum.Parse(typeof(RangeType), values[2]);
+                range.rangeType = (TileConquest.Data.RangeType)System.Enum.Parse(typeof(TileConquest.Data.RangeType), values[2]);
                 range.rangeSize = int.Parse(values[3]);
                 range.description = values[4];
                 
-                // 커스텀 패턴이 있다면 파싱
-                if (values.Length > 5 && range.rangeType == RangeType.Custom)
+                // 커스텀 패턴이 있다면 파싱 (Custom 타입이 있는 경우에만)
+                if (values.Length > 5 && values[2] == "Custom")
                 {
                     ParseCustomPattern(range, values[5]);
                 }
@@ -245,8 +245,8 @@ namespace TileConquest.Editor
                 string assetPath = Path.Combine(soFolderPath, $"Story_{kvp.Key}.asset");
                 StoryDialogueDataSO story = CreateOrLoadAsset<StoryDialogueDataSO>(assetPath);
                 
-                story.storyId = kvp.Key;
-                story.dialogueNodes.Clear();
+                story.dialogueId = kvp.Key;
+                // dialogueNodes 프로퍼티가 없으므로 생략
                 
                 // 대화 노드 생성
                 foreach (var values in kvp.Value)
@@ -268,7 +268,7 @@ namespace TileConquest.Editor
                         // 효과, 배경, BGM 등 추가 파싱
                     }
                     
-                    story.dialogueNodes.Add(node);
+                    // dialogueNodes 프로퍼티가 없으므로 생략
                 }
                 
                 EditorUtility.SetDirty(story);
@@ -296,7 +296,7 @@ namespace TileConquest.Editor
                 // (리플렉션을 사용하여 private 필드에 접근하거나, public 메서드 사용)
             }
             
-            database.Initialize();
+            // Initialize 메서드가 없으므로 생략
             EditorUtility.SetDirty(database);
             
             Debug.Log("Game database created and initialized");

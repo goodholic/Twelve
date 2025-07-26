@@ -1,6 +1,9 @@
 using UnityEngine;
 using System.Collections.Generic;
 using System.Linq;
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 using GuildMaster.Battle; // JobClass를 위해 추가
 
 namespace GuildMaster.Data
@@ -120,7 +123,9 @@ namespace GuildMaster.Data
             if (tile != null)
             {
                 tile.isConquered = true;
+#if UNITY_EDITOR
                 EditorUtility.SetDirty(this);
+#endif
             }
         }
         
@@ -162,7 +167,9 @@ namespace GuildMaster.Data
             {
                 tile.isConquered = false;
             }
+#if UNITY_EDITOR
             EditorUtility.SetDirty(this);
+#endif
         }
         
         public float GetConquestProgress()

@@ -70,6 +70,7 @@ namespace GuildMaster.Data
         public string characterName;
         public JobClass jobClass;
         public int baseLevel;
+        public int level = 1; // CSV Editor에서 사용하는 level 속성
         public Rarity rarity;
         public int baseHP;
         public int baseMP;

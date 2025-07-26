@@ -5,8 +5,6 @@ using TMPro;
 using System.Collections;
 using System.Linq;
 using GuildMaster.Data;
-using GuildMaster.Game;
-using CharacterData = GuildMaster.Data.CharacterData;
 
 public class BookPanelManager : MonoBehaviour
 {
@@ -105,7 +103,16 @@ public class BookPanelManager : MonoBehaviour
         }
 
         // 2) DB 캐릭터 목록 + 인벤토리(덱 포함)에서 보유한 목록
-        List<CharacterData> dbChars = characterDatabaseObject.characters;
+        List<CharacterData> dbChars = new List<CharacterData>();
+        if (characterDatabaseObject.characters != null)
+        {
+            foreach (var charDataSO in characterDatabaseObject.characters)
+            {
+                CharacterData convertedChar = ConvertToCharacterData(charDataSO);
+                if (convertedChar != null)
+                    dbChars.Add(convertedChar);
+            }
+        }
         List<CharacterData> ownedList = characterInventory.GetAllCharactersWithDuplicates();
         int dbCount = (dbChars != null) ? dbChars.Count : 0;
 
@@ -220,7 +227,16 @@ public class BookPanelManager : MonoBehaviour
             return;
         }
 
-        List<CharacterData> dbChars = characterDatabaseObject.characters;
+        List<CharacterData> dbChars = new List<CharacterData>();
+        if (characterDatabaseObject.characters != null)
+        {
+            foreach (var charDataSO in characterDatabaseObject.characters)
+            {
+                CharacterData convertedChar = ConvertToCharacterData(charDataSO);
+                if (convertedChar != null)
+                    dbChars.Add(convertedChar);
+            }
+        }
         List<CharacterData> ownedList = characterInventory.GetAllCharactersWithDuplicates();
         int dbCount = (dbChars != null) ? dbChars.Count : 0;
 
@@ -269,5 +285,23 @@ public class BookPanelManager : MonoBehaviour
                 return true;
         }
         return false;
+    }
+
+    // CharacterDataSO를 CharacterData로 변환하는 헬퍼 메서드
+    private CharacterData ConvertToCharacterData(CharacterDataSO characterDataSO)
+    {
+        if (characterDataSO == null) return null;
+        
+        CharacterData characterData = ScriptableObject.CreateInstance<CharacterData>();
+        characterData.characterName = characterDataSO.characterName;
+        characterData.characterIcon = characterDataSO.portrait;
+        characterData.buttonIcon = characterDataSO.portrait;
+        characterData.hp = characterDataSO.baseHP;
+        characterData.attackPower = characterDataSO.baseAttack;
+        characterData.level = characterDataSO.baseLevel;
+        characterData.maxHP = characterDataSO.baseHP;
+        characterData.health = characterDataSO.baseHP;
+        
+        return characterData;
     }
 }

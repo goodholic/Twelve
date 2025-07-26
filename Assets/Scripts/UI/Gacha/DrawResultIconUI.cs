@@ -31,7 +31,7 @@ public class DrawResultIconUI : MonoBehaviour
     /// UI 정보를 설정합니다.
     /// </summary>
     /// <param name="character">표시할 캐릭터 데이터</param>
-    public void SetCharacterInfo(GuildMaster.Data.CharacterData character)
+    public void SetCharacterInfo(CharacterData character)
     {
         if (character == null) return;
         

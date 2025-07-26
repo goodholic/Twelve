@@ -93,7 +93,9 @@ namespace GuildMaster.Battle
             }
         }
         
-        public float EvaluateTarget(CharacterUnit unit, CharacterUnit target, BattleContext context)
+        // CharacterUnit 타입이 삭제되어 주석 처리
+        /*
+        public float EvaluateTarget(GameObject unit, GameObject target, BattleContext context)
         {
             float score = 0f;
             
@@ -105,28 +107,34 @@ namespace GuildMaster.Battle
             
             return score;
         }
+        */
         
-        float EvaluateTargetCondition(CharacterUnit unit, CharacterUnit target, TargetPriority.TargetCondition condition, BattleContext context)
+        float EvaluateTargetCondition(GameObject unit, GameObject target, TargetPriority.TargetCondition condition, BattleContext context)
         {
+            CharacterUnit targetUnit = target.GetComponent<CharacterUnit>();
+            CharacterUnit unitComponent = unit.GetComponent<CharacterUnit>();
+            
+            if (targetUnit == null) return 0.5f;
+            
             switch (condition)
             {
                 case TargetPriority.TargetCondition.LowestHP:
-                    return 1f - (target.currentHP / (float)target.maxHP);
+                    return 1f - (targetUnit.currentHP / (float)targetUnit.maxHP);
                     
                 case TargetPriority.TargetCondition.HighestHP:
-                    return target.currentHP / (float)target.maxHP;
+                    return targetUnit.currentHP / (float)targetUnit.maxHP;
                     
                 case TargetPriority.TargetCondition.LowestDefense:
-                    return 1f - (target.defense / 100f);
+                    return 1f - (targetUnit.defense / 100f);
                     
                 case TargetPriority.TargetCondition.HighestAttack:
-                    return target.attackPower / 100f;
+                    return targetUnit.attackPower / 100f;
                     
                 case TargetPriority.TargetCondition.IsHealer:
-                    return IsHealer(target.jobClass) ? 1f : 0f;
+                    return IsHealer(targetUnit.jobClass) ? 1f : 0f;
                     
                 case TargetPriority.TargetCondition.IsDamageDealer:
-                    return IsDamageDealer(target.jobClass) ? 1f : 0f;
+                    return IsDamageDealer(targetUnit.jobClass) ? 1f : 0f;
                     
                 case TargetPriority.TargetCondition.ClosestTarget:
                     float maxDistance = 10f;
@@ -139,10 +147,10 @@ namespace GuildMaster.Battle
                     return dist / maxDist;
                     
                 case TargetPriority.TargetCondition.MostBuffed:
-                    return target.activeBuffs.Count / 5f;
+                    return targetUnit.activeBuffs.Count / 5f;
                     
                 case TargetPriority.TargetCondition.MostDebuffed:
-                    return target.activeDebuffs.Count / 5f;
+                    return targetUnit.activeDebuffs.Count / 5f;
                     
                 default:
                     return 0.5f;

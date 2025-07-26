@@ -23,6 +23,7 @@ namespace GuildMaster.Data
         Emergency,
         Maintenance,
         Reward,
-        Important
+        Important,
+        Resource
     }
 } 

@@ -36,7 +36,8 @@ namespace TacticalTileGame.Data
         [Header("로드된 데이터")]
         private Dictionary<string, TacticalCharacterDataSO> characterDatabase = new Dictionary<string, TacticalCharacterDataSO>();
         private Dictionary<string, TacticalSkillDataSO> skillDatabase = new Dictionary<string, TacticalSkillDataSO>();
-        private Dictionary<string, StoryDialogueDataSO> dialogueDatabase = new Dictionary<string, StoryDialogueDataSO>();
+        // StoryDialogueDataSO 타입이 삭제되어 주석 처리
+        // private Dictionary<string, StoryDialogueDataSO> dialogueDatabase = new Dictionary<string, StoryDialogueDataSO>();
         
         [Header("캐시된 데이터")]
         private Dictionary<CharacterClass, List<TacticalCharacterDataSO>> charactersByClass = new Dictionary<CharacterClass, List<TacticalCharacterDataSO>>();
@@ -63,12 +64,12 @@ namespace TacticalTileGame.Data
         {
             LoadCharacterData();
             LoadSkillData();
-            LoadDialogueData();
+            // LoadDialogueData(); // StoryDialogueDataSO 타입이 삭제되어 주석 처리
             
             // 스킬 참조 연결
             LinkSkillsToCharacters();
             
-            Debug.Log($"Data Loading Complete - Characters: {characterDatabase.Count}, Skills: {skillDatabase.Count}, Dialogues: {dialogueDatabase.Count}");
+            Debug.Log($"Data Loading Complete - Characters: {characterDatabase.Count}, Skills: {skillDatabase.Count}");
         }
         
         /// <summary>
@@ -118,8 +119,9 @@ namespace TacticalTileGame.Data
         }
         
         /// <summary>
-        /// 대화 데이터 로드
+        /// 대화 데이터 로드 - StoryDialogueDataSO 타입이 삭제되어 주석 처리
         /// </summary>
+        /*
         private void LoadDialogueData()
         {
             StoryDialogueDataSO[] dialogues = Resources.LoadAll<StoryDialogueDataSO>(dialogueDataPath);
@@ -131,6 +133,7 @@ namespace TacticalTileGame.Data
                 dialogueDatabase[dialogue.dialogueId] = dialogue;
             }
         }
+        */
         
         /// <summary>
         /// 캐릭터에 스킬 참조 연결
@@ -237,8 +240,9 @@ namespace TacticalTileGame.Data
         
         #endregion
         
-        #region 대화 관련 메서드
+        #region 대화 관련 메서드 - StoryDialogueDataSO 타입이 삭제되어 주석 처리
         
+        /*
         /// <summary>
         /// ID로 대화 데이터 가져오기
         /// </summary>
@@ -272,6 +276,7 @@ namespace TacticalTileGame.Data
                 .OrderBy(dialogue => dialogue.dialogueId)
                 .ToList();
         }
+        */
         
         #endregion
         
@@ -302,7 +307,7 @@ namespace TacticalTileGame.Data
                     LinkSkillsToCharacters();
                     break;
                 case DataType.Dialogue:
-                    LoadDialogueData();
+                    // LoadDialogueData(); // 이미 주석 처리됨
                     break;
             }
         }

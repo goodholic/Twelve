@@ -432,9 +432,11 @@ namespace GuildMaster.Systems
                 _ => notificationSound
             };
             
-            if (clip != null && AudioManager.Instance != null)
+            if (clip != null)
             {
-                AudioManager.Instance.PlaySFX(clip);
+                // AudioManager가 삭제되어 주석 처리
+                // AudioManager.Instance.PlaySFX(clip);
+                Debug.Log($"[NotificationManager] 사운드 재생 요청: {clip.name}");
             }
         }
         

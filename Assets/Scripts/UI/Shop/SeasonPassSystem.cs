@@ -844,7 +844,7 @@ namespace GuildMaster.Systems
         
         void ApplyReward(RewardItem reward)
         {
-            var gameManager = Core.GameManager.Instance;
+            var gameManager = GameManager.Instance;
             if (gameManager == null) return;
             
             switch (reward.type)

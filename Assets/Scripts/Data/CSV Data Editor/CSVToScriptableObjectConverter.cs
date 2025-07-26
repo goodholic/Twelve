@@ -2,8 +2,9 @@ using UnityEngine;
 using UnityEditor;
 using System.IO;
 using System.Collections.Generic;
+using System.Linq;
 using GuildMaster.Battle;
-using GuildMaster.Game;
+using TacticalTileGame.Data;
 using GuildMaster.Data;
 
 namespace GuildMaster.Editor
@@ -112,7 +113,7 @@ namespace GuildMaster.Editor
                 character.characterName = values[1];
                 character.jobClass = ParseJobClass(values[2]);
                 character.level = int.Parse(values[3]);
-                character.rarity = ParseCharacterRarity(values[4]);
+                character.rarity = RarityConverter.ToRarity(ParseCharacterRarity(values[4]));
                 character.baseHP = int.Parse(values[5]);
                 character.baseMP = int.Parse(values[6]);
                 character.baseAttack = int.Parse(values[7]);
@@ -142,7 +143,8 @@ namespace GuildMaster.Editor
             {
                 string dbPath = Path.Combine(scriptableObjectPath, "CharacterDatabase.asset");
                 CharacterDatabase database = CreateOrLoadAsset<CharacterDatabase>(dbPath);
-                database.characters = allCharacters;
+                // List<CharacterData>를 List<CSVCharacter>로 변환
+                database.characters = allCharacters.Select(c => CharacterConverter.FromCharacterData(c)).ToList();
                 EditorUtility.SetDirty(database);
             }
             

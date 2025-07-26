@@ -222,7 +222,16 @@ namespace TacticalTileGame.Editor
                 }
                 
                 StoryDialogueDataSO dialogueData = ScriptableObject.CreateInstance<StoryDialogueDataSO>();
-                dialogueData.InitializeFromCSV(csvData);
+                // csvData가 Dictionary인 경우 처리
+                if (csvData is Dictionary<string, string> dict)
+                {
+                    var csvLine = string.Join(",", dict.Values);
+                    dialogueData.InitializeFromCSV(csvLine);
+                }
+                else
+                {
+                    dialogueData.InitializeFromCSV(csvData?.ToString() ?? "");
+                }
                 
                 string assetPath = Path.Combine(outputFolder, $"{dialogueData.dialogueId}.asset");
                 AssetDatabase.CreateAsset(dialogueData, assetPath);

@@ -281,7 +281,7 @@ namespace GuildMaster.Tutorial
             yield return new WaitForSeconds(2f);
             
             // GameManager에게 게임 시작 신호
-            if (GuildMaster.Core.GameManager.Instance != null)
+            if (GameManager.Instance != null)
             {
                 // 게임 시작 로직 (StartGame 메서드가 없는 경우 대체)
                 Debug.Log("[TutorialManager] 게임 시작 신호 전송");
@@ -325,7 +325,7 @@ namespace GuildMaster.Tutorial
             HideHighlight();
             
             // GameManager에게 게임 시작 신호 (튜토리얼 완료 후)
-            if (GuildMaster.Core.GameManager.Instance != null)
+            if (GameManager.Instance != null)
             {
                 // 게임 시작 로직 (StartGame 메서드가 없는 경우 대체)
                 Debug.Log("[TutorialManager] 튜토리얼 완료 후 게임 시작 신호 전송");

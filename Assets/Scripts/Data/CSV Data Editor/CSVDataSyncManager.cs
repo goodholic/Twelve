@@ -4,7 +4,7 @@ using System.IO;
 using System.Collections.Generic;
 using System.Linq;
 using GuildMaster.Battle;
-using GuildMaster.Game;
+using TacticalTileGame.Data;
 using GuildMaster.Data;
 using System;
 using System.Text;
@@ -36,7 +36,7 @@ namespace GuildMaster.Editor
         
         // Preview mode
         private bool showPreview = false;
-        private List<CharacterData> previewCharacters = new List<CharacterData>();
+        private List<CSVCharacter> previewCharacters = new List<CSVCharacter>();
         
         // Data validation
         private bool validateBeforeSync = true;
@@ -308,20 +308,22 @@ namespace GuildMaster.Editor
                 AssetDatabase.CreateAsset(database, dbPath);
             }
             
-            var characters = new List<CharacterData>();
+            var characters = new List<CSVCharacter>();
             
             for (int i = 1; i < lines.Length; i++)
             {
                 var values = ParseCSVLine(lines[i]);
                 if (values.Length >= 19)
                 {
-                    var character = new CharacterData
+                    var character = new CSVCharacter
                     {
                         id = values[0],
+                        characterID = values[0],
                         name = values[1],
+                        characterName = values[1],
                         jobClass = ParseJobClass(values[2]),
                         level = int.Parse(values[3]),
-                        rarity = ParseRarity(values[4]),
+                        rarity = ParseCharacterRarity(values[4]),
                         baseHP = int.Parse(values[5]),
                         baseMP = int.Parse(values[6]),
                         baseAttack = int.Parse(values[7]),
@@ -341,7 +343,7 @@ namespace GuildMaster.Editor
                     // Validate if enabled
                     if (validateBeforeSync)
                     {
-                        ValidateCharacterData(character);
+                        ValidateCSVCharacterData(character);
                     }
                     
                     // Apply filters
@@ -359,7 +361,7 @@ namespace GuildMaster.Editor
             LogOperation($"Imported {characters.Count} characters");
         }
 
-        private void ExportCharacterData(CharacterDatabaseSO database)
+        private void ExportCharacterData(CharacterDatabase database)
         {
             var sb = new StringBuilder();
             sb.AppendLine("ID,Name,JobClass,Level,Rarity,HP,MP,Attack,Defense,MagicPower,Speed,CritRate,CritDamage,Accuracy,Evasion,Skill1,Skill2,Skill3,Description");
@@ -382,7 +384,7 @@ namespace GuildMaster.Editor
             LogOperation($"Exported {database.characters.Count} characters");
         }
 
-        private bool ApplyFilters(CharacterData character)
+        private bool ApplyFilters(CSVCharacter character)
         {
             if (!string.IsNullOrEmpty(searchFilter) && 
                 !character.name.ToLower().Contains(searchFilter.ToLower()))
@@ -433,12 +435,15 @@ namespace GuildMaster.Editor
                     var values = ParseCSVLine(lines[i]);
                     if (values.Length >= 19)
                     {
-                        previewCharacters.Add(new CharacterData
+                        previewCharacters.Add(new CSVCharacter
                         {
+                            id = values[0],
+                            characterID = values[0],
                             name = values[1],
+                            characterName = values[1],
                             level = int.Parse(values[3]),
                             jobClass = ParseJobClass(values[2]),
-                            rarity = ParseRarity(values[4])
+                            rarity = ParseCharacterRarity(values[4])
                         });
                     }
                 }
@@ -512,7 +517,7 @@ namespace GuildMaster.Editor
             };
         }
 
-        private CharacterRarity ParseRarity(string rarity)
+        private CharacterRarity ParseCharacterRarity(string rarity)
         {
             return rarity switch
             {
@@ -531,7 +536,7 @@ namespace GuildMaster.Editor
             Debug.Log($"[CSV Sync] {message}");
         }
         
-        private void ValidateCharacterData(CharacterData character)
+        private void ValidateCSVCharacterData(CSVCharacter character)
         {
             if (string.IsNullOrEmpty(character.id))
             {
@@ -576,7 +581,7 @@ namespace GuildMaster.Editor
             {
                 foreach (var character in database.characters)
                 {
-                    ValidateCharacterData(character);
+                                            ValidateCSVCharacterData(character);
                 }
                 
                 if (validationErrors.Count == 0)

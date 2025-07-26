@@ -1,6 +1,5 @@
 using UnityEngine;
 using System.Collections.Generic;
-using AttackPattern = GuildMaster.Data.AttackPatternType;
 
 namespace TacticalTileGame.Data
 {
@@ -26,7 +25,7 @@ namespace TacticalTileGame.Data
         public float critRate = 0.1f;
         
         [Header("공격 범위")]
-        public AttackPattern attackPattern;
+        public List<Vector2Int> attackPattern = new List<Vector2Int>();
         public string attackPatternCSV; // CSV에서 읽어온 패턴 문자열
         
         [Header("스킬")]
@@ -65,7 +64,7 @@ namespace TacticalTileGame.Data
             if (csvData.ContainsKey("attackPattern"))
             {
                 attackPatternCSV = csvData["attackPattern"];
-                attackPattern = AttackPattern.ParseFromString(attackPatternCSV);
+                attackPattern = ParseAttackPatternFromString(attackPatternCSV);
             }
             
             // 스킬 ID 파싱
@@ -98,7 +97,7 @@ namespace TacticalTileGame.Data
             
             if (attackPattern != null)
             {
-                foreach (var offset in attackPattern.attackTiles)
+                foreach (var offset in attackPattern)
                 {
                     Vector2Int targetTile = characterPosition + offset;
                     attackableTiles.Add(targetTile);
@@ -106,6 +105,28 @@ namespace TacticalTileGame.Data
             }
             
             return attackableTiles;
+        }
+        
+        /// <summary>
+        /// 문자열에서 공격 패턴 파싱
+        /// </summary>
+        private List<Vector2Int> ParseAttackPatternFromString(string patternString)
+        {
+            List<Vector2Int> pattern = new List<Vector2Int>();
+            if (string.IsNullOrEmpty(patternString)) return pattern;
+            
+            // 예: "0,0;1,0;-1,0" 형식으로 파싱
+            string[] positions = patternString.Split(';');
+            foreach (string pos in positions)
+            {
+                string[] coords = pos.Split(',');
+                if (coords.Length == 2 && int.TryParse(coords[0], out int x) && int.TryParse(coords[1], out int y))
+                {
+                    pattern.Add(new Vector2Int(x, y));
+                }
+            }
+            
+            return pattern;
         }
     }
     

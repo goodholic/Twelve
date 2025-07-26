@@ -10,7 +10,6 @@ using UnityEditor.Experimental.SceneManagement;
 using System.Collections.Generic;
 using GuildMaster.Battle;
 using GuildMaster.Data;
-using GuildMaster.Game;
 
 /// <summary>
 /// 에디터 내에서 문제가 되는 참조들을 정리하기 위한 유틸리티:
