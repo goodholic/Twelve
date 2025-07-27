@@ -152,6 +152,10 @@ public static class QuickCharacterCreator
                 character.attackPattern = AttackPattern.Line;
                 character.rangeType = RangeType.Ranged;
                 break;
+            case JobClass.Gunner:
+                character.attackPattern = AttackPattern.CrossBoard; // 건너편 공격 (A↔B 타일)
+                character.rangeType = RangeType.Ranged;
+                break;
             default:
                 character.attackPattern = AttackPattern.Cross;
                 character.rangeType = RangeType.Melee;
@@ -228,6 +232,8 @@ public static class QuickCharacterCreator
                 return 2.0f;
             case JobClass.Archer:
                 return 3.0f;
+            case JobClass.Gunner:
+                return 4.0f; // 건너편 공격용 긴 사거리
             default:
                 return 1.0f;
         }

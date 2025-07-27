@@ -79,6 +79,12 @@ namespace GuildMaster.CSV
                     character.attackRange = 3.0f;
                     break;
                     
+                case JobClass.Gunner:
+                    character.attackPattern = AttackPattern.CrossBoard; // 건너편 공격 (A↔B 타일)
+                    character.rangeType = RangeType.Ranged;
+                    character.attackRange = 4.0f; // 긴 사거리
+                    break;
+                    
                 default:
                     character.attackPattern = AttackPattern.Cross;
                     character.rangeType = RangeType.Melee;

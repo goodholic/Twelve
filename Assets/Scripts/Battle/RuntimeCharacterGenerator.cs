@@ -211,6 +211,10 @@ public class RuntimeCharacterGenerator : MonoBehaviour
                 character.attackPattern = AttackPattern.Line; // 직선 원거리
                 character.rangeType = RangeType.Ranged;
                 break;
+            case JobClass.Gunner:
+                character.attackPattern = AttackPattern.CrossBoard; // 건너편 공격 (A↔B 타일)
+                character.rangeType = RangeType.Ranged;
+                break;
             default:
                 character.attackPattern = AttackPattern.Cross;
                 character.rangeType = RangeType.Melee;

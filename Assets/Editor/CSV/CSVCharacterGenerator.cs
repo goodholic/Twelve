@@ -157,7 +157,7 @@ public class CSVCharacterGenerator
             case "Rogue": return JobClass.Rogue;
             case "Sage": return JobClass.Sage;
             case "Archer": return JobClass.Archer;
-            case "Gunner": return JobClass.Archer; // Gunner는 enum에 없으므로 Archer로 처리
+            case "Gunner": return JobClass.Gunner;
             default: return JobClass.None;
         }
     }
@@ -228,6 +228,11 @@ public class CSVCharacterGenerator
                 characterData.rangeType = RangeType.Ranged;
                 break;
                 
+            case JobClass.Gunner:
+                characterData.attackPattern = AttackPattern.CrossBoard; // 건너편 공격 (A↔B 타일)
+                characterData.rangeType = RangeType.Ranged;
+                break;
+                
             default:
                 characterData.attackPattern = AttackPattern.Cross;
                 characterData.rangeType = RangeType.Melee;
@@ -277,6 +282,9 @@ public class CSVCharacterGenerator
                 
             case JobClass.Archer:
                 return 3.0f; // 원거리
+                
+            case JobClass.Gunner:
+                return 4.0f; // 건너편 공격용 긴 사거리
                 
             default:
                 return 1.0f;
