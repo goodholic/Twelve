@@ -19,8 +19,6 @@ MonoBehaviour:
   attackPower: 50
   spawnPrefab: {fileID: 0}
   motionPrefab: {fileID: 0}
-  moveSpeed: 1
-  cost: 1
   level: 1
   currentExp: 0
   initialStar: 1

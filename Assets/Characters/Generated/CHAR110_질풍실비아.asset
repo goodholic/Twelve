@@ -1,0 +1,71 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d5f475cc5c8e7174bb2879d35ae17ecf, type: 3}
+  m_Name: "CHAR110_\uC9C8\uD48D\uC2E4\uBE44\uC544"
+  m_EditorClassIdentifier: GuildMaster::CharacterData
+  characterName: "\uC9C8\uD48D\uC758 \uC2E4\uBE44\uC544"
+  characterIcon: {fileID: 0}
+  buttonIcon: {fileID: 0}
+  hp: 595
+  attackPower: 182
+  spawnPrefab: {fileID: 0}
+  motionPrefab: {fileID: 0}
+  animationType: 1
+  idleVideo: {fileID: 0}
+  attackVideo: {fileID: 0}
+  loopVideos: 1
+  videoScale: 1
+  moveSpeed: 1
+  cost: 3
+  level: 1
+  currentExp: 0
+  initialStar: 3
+  rangeType: 0
+  isAreaAttack: 0
+  isBuffSupport: 0
+  maxHP: 595
+  health: 595
+  star: 3
+  starLevel: 3
+  race: Human
+  expToNextLevel: 100
+  attackRange: 1
+  attackSpeed: 1
+  areaAttackRadius: 1
+  isFreeSlotOnly: 0
+  frontSprite: {fileID: 0}
+  backSprite: {fileID: 0}
+  characterIndex: 0
+  characterSprite: {fileID: 0}
+  id: CHAR110
+  jobClass: 5
+  rarity: 2
+  baseHP: 595
+  baseMP: 140
+  baseAttack: 182
+  baseDefense: 66
+  baseMagicPower: 88
+  characterId: 
+  description: "\uBC14\uB78C\uCC98\uB7FC \uBE60\uB974\uACE0 \uB0A0\uB835\uD55C \uB3C4\uC801"
+  characterPrefab: {fileID: 0}
+  baseCritRate: 0.18
+  skillId: SKILL_R004
+  skill: {fileID: 0}
+  attackPatternCSV: 
+  maxLevel: 50
+  tacticalRarity: 2
+  critRate: 0.18
+  critDamage: 180
+  accuracy: 95
+  evasion: 20
+  attackPattern: 1
+  customPattern: []

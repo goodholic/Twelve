@@ -173,7 +173,7 @@ public static class InspectorHandlerHelper
     /// <summary>
     /// 메뉴를 통해 모든 네트워크 컴포넌트 플래그 정리
     /// </summary>
-    [MenuItem("Tools/Fusion/인스펙터 정리 실행")]
+    [MenuItem("Twelve/🛠️ Development Tools/인스펙터 정리 실행")]
     public static void CleanupAllNetworkInspectorFlags()
     {
         CleanAllNetworkBehaviourFlags(silent: false);
@@ -182,11 +182,11 @@ public static class InspectorHandlerHelper
     /// <summary>
     /// 자동 인스펙터 정리 활성화/비활성화 메뉴
     /// </summary>
-    [MenuItem("Tools/Fusion/자동 인스펙터 정리 활성화")]
+    [MenuItem("Twelve/🛠️ Development Tools/자동 인스펙터 정리 활성화")]
     public static void ToggleAutoClean()
     {
         _autoCleanEnabled = !_autoCleanEnabled;
-        Menu.SetChecked("Tools/Fusion/자동 인스펙터 정리 활성화", _autoCleanEnabled);
+        Menu.SetChecked("Twelve/🛠️ Development Tools/자동 인스펙터 정리 활성화", _autoCleanEnabled);
         
         EditorPrefs.SetBool("FusionAutoCleanEnabled", _autoCleanEnabled);
         

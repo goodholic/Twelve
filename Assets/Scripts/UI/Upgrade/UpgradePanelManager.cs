@@ -341,7 +341,7 @@ public class UpgradePanelManager : MonoBehaviour
             hpBar.sizeDelta = new Vector2(character.maxHP / 2f, hpBar.sizeDelta.y);
 
         if (moveSpeedBar != null)
-            moveSpeedBar.sizeDelta = new Vector2(character.moveSpeed * 30f, moveSpeedBar.sizeDelta.y);
+            moveSpeedBar.sizeDelta = new Vector2(30f, moveSpeedBar.sizeDelta.y); // 기본값으로 설정
 
         if (attackRangeBar != null)
             attackRangeBar.sizeDelta = new Vector2(character.attackRange * 30f, attackRangeBar.sizeDelta.y);

@@ -20,7 +20,7 @@ using GuildMaster.Data;
 /// </summary>
 public static class EditorCleanupUtility
 {
-    [MenuItem("Tools/Cleanup/Fix Serialization Issues")]
+    [MenuItem("Twelve/🛠️ Development Tools/Fix Serialization Issues")]
     public static void FixSerializationIssues()
     {
         // 씬 내 모든 게임오브젝트 스캔
@@ -371,7 +371,7 @@ public static class EditorCleanupUtility
     }
 #endif
 
-    [MenuItem("Tools/Cleanup/Force Refresh Scene")]
+    [MenuItem("Twelve/🛠️ Development Tools/Force Refresh Scene")]
     public static void ForceRefreshScene()
     {
         if (EditorUtility.DisplayDialog(
@@ -398,7 +398,7 @@ public static class EditorCleanupUtility
         }
     }
 
-    [MenuItem("Tools/Cleanup/Clear Selection and Reload Inspectors")]
+    [MenuItem("Twelve/🛠️ Development Tools/Clear Selection and Reload Inspectors")]
     public static void ClearSelectionAndReloadInspectors()
     {
         // 현재 선택된 항목 해제

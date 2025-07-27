@@ -334,13 +334,11 @@ public class CharacterInventoryManager : MonoBehaviour
     {
         CharacterData copy = new CharacterData();
         copy.characterName = template.characterName;
-        copy.moveSpeed = template.moveSpeed;
         copy.rangeType = template.rangeType;
         copy.isAreaAttack = template.isAreaAttack;
         copy.isBuffSupport = template.isBuffSupport;
         copy.spawnPrefab = template.spawnPrefab;
         copy.buttonIcon = template.buttonIcon;
-        copy.cost = template.cost;
         copy.level = template.level;
         copy.currentExp = 0;
         copy.initialStar = template.initialStar;
@@ -815,7 +813,6 @@ public class CharacterInventoryManager : MonoBehaviour
         {
             CharacterData defaultChar = new CharacterData();
             defaultChar.characterName = $"RandomChar_{i}";
-            defaultChar.moveSpeed = 1f;
             string rangeTypeString = i % 3 == 0 ? "Melee" : (i % 3 == 1 ? "Ranged" : "Magic");
             if (System.Enum.TryParse<RangeType>(rangeTypeString, out RangeType parsedRangeType))
                 defaultChar.rangeType = parsedRangeType;
@@ -828,7 +825,6 @@ public class CharacterInventoryManager : MonoBehaviour
             defaultChar.initialStar = 1;
             defaultChar.race = (i % 3 == 0) ? "Human" : (i % 3 == 1) ? "Elf" : "Dwarf";
             defaultChar.isFreeSlotOnly = false;
-            defaultChar.cost = 1 + (i % 3);
             defaultChar.spawnPrefab = null;
             defaultChar.buttonIcon = null;
             defaultChar.frontSprite = null;

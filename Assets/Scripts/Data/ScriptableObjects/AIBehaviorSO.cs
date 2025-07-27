@@ -292,9 +292,9 @@ namespace GuildMaster.Battle
         bool IsDamageDealer(JobClass jobClass)
         {
             return jobClass == JobClass.Warrior || 
-                   jobClass == JobClass.Assassin || 
+                   jobClass == JobClass.Rogue || 
                    jobClass == JobClass.Mage ||
-                   jobClass == JobClass.Ranger;
+                   jobClass == JobClass.Gunner;
         }
         
         public string GetBehaviorDescription()

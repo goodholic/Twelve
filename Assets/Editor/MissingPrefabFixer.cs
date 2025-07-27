@@ -6,7 +6,7 @@ using UnityEngine.SceneManagement;
 
 public class MissingPrefabFixer : EditorWindow
 {
-    [MenuItem("Tools/Missing Prefab Fixer")]
+    [MenuItem("Twelve/🛠️ Development Tools/Missing Prefab Fixer")]
     public static void ShowWindow()
     {
         GetWindow<MissingPrefabFixer>("Missing Prefab Fixer");

@@ -346,8 +346,8 @@ namespace TwelveGame.Battle
         selectedButtonIndex = -1;
 
         // UI 업데이트
-        UIManager.Instance.UpdateCharacterButtons();
-        UIManager.Instance.HighlightButton(-1);
+        BattleUIManager.Instance.UpdateCharacterButtons();
+        BattleUIManager.Instance.HighlightButton(-1);
         
         // 턴 종료
         EndTurn();
@@ -604,11 +604,11 @@ namespace TwelveGame.Battle
             selectedButtonIndex = buttonIndex;
             
             // UI 업데이트
-            if (UIManager.Instance != null)
-            {
-                UIManager.Instance.HighlightButton(buttonIndex);
-                UIManager.Instance.ShowCharacterInfo(selectedCharacter);
-            }
+                    if (BattleUIManager.Instance != null)
+        {
+            BattleUIManager.Instance.HighlightButton(buttonIndex);
+            BattleUIManager.Instance.ShowCharacterInfo(selectedCharacter);
+        }
             
             Debug.Log($"{currentTurn} 팀이 {selectedCharacter.characterName} 선택 (손패 {buttonIndex}번째)");
         }
@@ -662,9 +662,9 @@ namespace TwelveGame.Battle
         // 20턴까지 살아남은 캐릭터들의 승리 카운트 증가
         RecordSurvivorVictories();
         
-        if (UIManager.Instance != null)
+        if (BattleUIManager.Instance != null)
         {
-            UIManager.Instance.ShowGameOver();
+            BattleUIManager.Instance.ShowGameOver();
         }
         
         Debug.Log($"게임 종료! 최종 점수 - X팀: {xTeamScore}, O팀: {oTeamScore}");
@@ -786,11 +786,234 @@ namespace TwelveGame.Battle
     [System.Serializable]
     public class Character : MonoBehaviour
 {
+    [Header("캐릭터 기본 정보")]
     public CharacterData characterData;
     public GameManager.Team team;
     public int boardIndex;
     public int x;
     public int y;
     public int currentHP;
+    
+    [Header("애니메이션 컨트롤러")]
+    public Animator spriteAnimator; // 기존 스프라이트 애니메이션용
+            public GuildMaster.Battle.PNGSequenceController pngSequenceController; // PNG 시퀀스 애니메이션용
+    
+    private void Awake()
+    {
+        InitializeAnimationControllers();
+    }
+    
+    private void Start()
+    {
+        if (characterData != null)
+        {
+            currentHP = characterData.maxHP;
+            SetupAnimation();
+        }
+    }
+    
+    /// <summary>
+    /// 애니메이션 컨트롤러 초기화
+    /// </summary>
+    private void InitializeAnimationControllers()
+    {
+        // 기존 Animator 컴포넌트 찾기
+        if (spriteAnimator == null)
+        {
+            spriteAnimator = GetComponent<Animator>();
+        }
+        
+        // PNGSequenceController 컴포넌트 찾기 또는 생성
+        if (pngSequenceController == null)
+        {
+            pngSequenceController = GetComponent<GuildMaster.Battle.PNGSequenceController>();
+            if (pngSequenceController == null && characterData != null && characterData.animationType == AnimationType.PNGSequence)
+            {
+                pngSequenceController = gameObject.AddComponent<GuildMaster.Battle.PNGSequenceController>();
+            }
+        }
+    }
+    
+    /// <summary>
+    /// 캐릭터 데이터에 따른 애니메이션 설정
+    /// </summary>
+    private void SetupAnimation()
+    {
+        if (characterData == null) return;
+        
+        switch (characterData.animationType)
+        {
+            case AnimationType.Sprite:
+                // 스프라이트 애니메이션 사용
+                if (spriteAnimator != null)
+                {
+                    spriteAnimator.enabled = true;
+                }
+                            if (pngSequenceController != null)
+            {
+                pngSequenceController.enabled = false;
+            }
+                break;
+                
+
+                
+            case AnimationType.PNGSequence:
+                // PNG 시퀀스 애니메이션 사용 (권장!)
+                if (spriteAnimator != null)
+                {
+                    spriteAnimator.enabled = false;
+                }
+                            if (pngSequenceController != null)
+            {
+                pngSequenceController.enabled = true;
+                pngSequenceController.SetCharacterData(characterData);
+            }
+                break;
+        }
+    }
+    
+    /// <summary>
+    /// 공격 애니메이션 재생 (attack.mp4)
+    /// </summary>
+    public void PlayAttackAnimation()
+    {
+        if (characterData == null) return;
+        
+        switch (characterData.animationType)
+        {
+            case AnimationType.Sprite:
+                if (spriteAnimator != null)
+                {
+                    spriteAnimator.SetTrigger("Attack");
+                }
+                break;
+                
+            case AnimationType.PNGSequence:
+                        if (pngSequenceController != null)
+        {
+            pngSequenceController.PlayAttackAnimation();
+        }
+                break;
+        }
+    }
+    
+    /// <summary>
+    /// 스킬 애니메이션 재생 (attack과 동일)
+    /// </summary>
+    public void PlaySkillAnimation()
+    {
+        // 스킬은 attack 애니메이션과 동일하게 처리
+        PlayAttackAnimation();
+    }
+    
+    /// <summary>
+    /// 이동 애니메이션 재생 (idle 재생)
+    /// </summary>
+    public void PlayWalkAnimation()
+    {
+        // 이동도 idle 동영상으로 처리
+        PlayIdleAnimation();
+    }
+    
+    /// <summary>
+    /// 대기 애니메이션 재생 (idle.mp4)
+    /// </summary>
+    public void PlayIdleAnimation()
+    {
+        if (characterData == null) return;
+        
+        switch (characterData.animationType)
+        {
+            case AnimationType.Sprite:
+                if (spriteAnimator != null)
+                {
+                    spriteAnimator.SetBool("IsWalking", false);
+                }
+                break;
+                
+            case AnimationType.PNGSequence:
+                        if (pngSequenceController != null)
+        {
+            pngSequenceController.PlayAnimation(GuildMaster.Battle.PNGSequenceController.CharacterAnimationState.Idle);
+        }
+                break;
+        }
+    }
+    
+    /// <summary>
+    /// 죽음 효과 재생 (연기로 사라짐)
+    /// </summary>
+    public void PlayDeathAnimation()
+    {
+        if (characterData == null) return;
+        
+        switch (characterData.animationType)
+        {
+            case AnimationType.Sprite:
+                if (spriteAnimator != null)
+                {
+                    spriteAnimator.SetTrigger("Death");
+                }
+                // 스프라이트 캐릭터도 연기 효과 추가 가능
+                StartCoroutine(PlaySpriteDeathEffect());
+                break;
+                
+            case AnimationType.PNGSequence:
+                        if (pngSequenceController != null)
+        {
+            pngSequenceController.PlayDeathEffect(); // 연기 효과로 사라짐
+        }
+                break;
+        }
+    }
+    
+    /// <summary>
+    /// 스프라이트 캐릭터용 죽음 효과
+    /// </summary>
+    private IEnumerator PlaySpriteDeathEffect()
+    {
+        yield return new WaitForSeconds(1.0f); // 죽음 애니메이션 재생 시간
+        
+        // 연기 파티클 효과 (있다면)
+        ParticleSystem smokeParticle = GetComponentInChildren<ParticleSystem>();
+        if (smokeParticle != null)
+        {
+            smokeParticle.Play();
+            yield return new WaitForSeconds(1.0f);
+        }
+        
+        // 페이드 아웃
+        SpriteRenderer spriteRenderer = GetComponent<SpriteRenderer>();
+        if (spriteRenderer != null)
+        {
+            float fadeTime = 1.0f;
+            float elapsed = 0;
+            Color originalColor = spriteRenderer.color;
+            
+            while (elapsed < fadeTime)
+            {
+                elapsed += Time.deltaTime;
+                float alpha = Mathf.Lerp(1.0f, 0.0f, elapsed / fadeTime);
+                spriteRenderer.color = new Color(originalColor.r, originalColor.g, originalColor.b, alpha);
+                yield return null;
+            }
+        }
+        
+        gameObject.SetActive(false);
+        Debug.Log($"[Character] {gameObject.name}: Sprite death effect completed");
+    }
+    
+    /// <summary>
+    /// 캐릭터 데이터 설정 (런타임에서 변경 시 사용)
+    /// </summary>
+    public void SetCharacterData(CharacterData newData)
+    {
+        characterData = newData;
+        if (characterData != null)
+        {
+            currentHP = characterData.maxHP;
+            SetupAnimation();
+        }
+    }
 }
 }

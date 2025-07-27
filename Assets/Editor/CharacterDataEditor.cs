@@ -110,7 +110,7 @@ public class AttackPatternVisualizerWindow_Legacy : EditorWindow
     private CharacterData selectedCharacter;
     private GameObject previewObject;
     
-    [MenuItem("Tools/Twelve Game/Attack Pattern Visualizer")]
+    [MenuItem("Twelve/🛠️ Development Tools/Attack Pattern Visualizer")]
     public static void ShowWindow()
     {
         // AttackPatternVisualizerWindow 제거됨 - CharacterAttackPatternEditor 사용

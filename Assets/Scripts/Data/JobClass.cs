@@ -13,11 +13,9 @@ namespace GuildMaster.Data
         Mage = 3,       // 마법사 - 원거리 마법 공격
         Priest = 4,     // 성직자 - 힐링과 버프
         Rogue = 5,      // 도적 - 빠른 속도와 크리티컬
-        Assassin = 6,   // 암살자 - 치명타 특화
+        Sage = 6,       // 현자 - 만능형
         Archer = 7,     // 궁수 - 원거리 물리 공격
-        Ranger = 8,     // 레인저 - 원거리 + 자연 마법
-        Sage = 9,       // 현자 - 만능형
-        Bard = 10,      // 바드 - 지원형
+        Gunner = 8,     // 총사 - 원거리 화기 공격
         All = 999       // 모든 직업
     }
 }
@@ -38,11 +36,9 @@ namespace TacticalTileGame.Data
         Mage = 3,
         Priest = 4,
         Rogue = 5,
-        Assassin = 6,
+        Sage = 6,
         Archer = 7,
-        Ranger = 8,
-        Sage = 9,
-        Bard = 10,
+        Gunner = 8,
         All = 999
     }
     

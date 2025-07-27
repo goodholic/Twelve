@@ -6,7 +6,7 @@ using TwelveGame.Battle; // GameManager 참조를 위해 추가
 #if UNITY_EDITOR
 public class CharacterCreator : EditorWindow
 {
-    [MenuItem("Tools/Twelve Game/Create Default Characters")]
+    [MenuItem("Twelve/🛠️ Development Tools/Create Default Characters")]
     public static void CreateDefaultCharacters()
     {
         string folderPath = "Assets/Characters";
@@ -174,7 +174,7 @@ public class CharacterPoolAssigner : EditorWindow
 {
     private GameManager gameManager;
     
-    [MenuItem("Tools/Twelve Game/Assign Character Pools")]
+    [MenuItem("Twelve/🛠️ Development Tools/Assign Character Pools")]
     public static void ShowWindow()
     {
         GetWindow<CharacterPoolAssigner>("캐릭터 풀 할당");

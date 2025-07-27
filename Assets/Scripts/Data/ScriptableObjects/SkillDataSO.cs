@@ -482,9 +482,9 @@ namespace GuildMaster.Data
                 JobClass.Archer => "궁수",
                 JobClass.Mage => "마법사",
                 JobClass.Priest => "사제",
-                JobClass.Ranger => "레인저",
                 JobClass.Rogue => "도적",
-                JobClass.Bard => "음유시인",
+                JobClass.Sage => "현자",
+                JobClass.Gunner => "총사",
                 _ => jobClass.ToString()
             };
         }
