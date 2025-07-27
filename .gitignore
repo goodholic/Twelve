@@ -109,3 +109,5 @@ gemini_env/
 .Spotlight-V100
 .Trashes
 Thumbs.db
+
+*.png
