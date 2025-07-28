@@ -59,10 +59,9 @@ public class GachaManager : MonoBehaviour
     [SerializeField] private AudioClip drawSound;
     [SerializeField] private AudioClip rareDrawSound;
 
-    // 캐릭터 데이터베이스 참조 - CharacterCSVDatabase 대신 GameObject로 참조
+    // 캐릭터 데이터베이스 참조 - CharacterDatabaseSO 직접 참조
     [Header("데이터베이스")]
-    [SerializeField] private GameObject characterDatabaseObject;
-    private Component characterDatabase;
+    [SerializeField] private CharacterDatabaseSO characterDatabase;
     
     // 뽑기 기록
     private List<GachaResult> drawHistory = new List<GachaResult>();
@@ -84,6 +83,30 @@ public class GachaManager : MonoBehaviour
 
     private void Start()
     {
+        // 약간의 지연 후 초기화 (CharacterInventoryManager가 먼저 초기화되도록)
+        StartCoroutine(DelayedInitialize());
+    }
+    
+    private IEnumerator DelayedInitialize()
+    {
+        // 1프레임 대기
+        yield return null;
+        
+        // CharacterInventoryManager가 준비될 때까지 대기
+        float timeout = 5f; // 5초 타임아웃
+        float elapsed = 0f;
+        
+        while (CharacterInventoryManager.Instance == null && elapsed < timeout)
+        {
+            yield return new WaitForSeconds(0.1f);
+            elapsed += 0.1f;
+        }
+        
+        if (CharacterInventoryManager.Instance == null)
+        {
+            Debug.LogWarning("[GachaManager] CharacterInventoryManager를 찾을 수 없어 직접 로드를 시도합니다.");
+        }
+        
         InitializeGachaSystem();
     }
 
@@ -109,29 +132,37 @@ public class GachaManager : MonoBehaviour
     /// </summary>
     private void LoadCharacterDatabase()
     {
-        // CharacterCSVDatabase 컴포넌트를 동적으로 찾기
-        if (characterDatabaseObject != null)
+        // CharacterDatabaseSO가 연결되었는지 확인
+        if (characterDatabase == null)
         {
-            characterDatabase = characterDatabaseObject.GetComponent("CharacterCSVDatabase");
-        }
-        else
-        {
-            // Scene에서 CharacterCSVDatabase 찾기
-            GameObject dbObject = GameObject.Find("CharacterCSVDatabase");
-            if (dbObject != null)
+            // 1. CharacterInventoryManager에서 데이터베이스 가져오기 (우선 순위)
+            if (CharacterInventoryManager.Instance != null)
             {
-                characterDatabase = dbObject.GetComponent("CharacterCSVDatabase");
-                characterDatabaseObject = dbObject;
+                characterDatabase = CharacterInventoryManager.Instance.GetCharacterDatabase();
+                if (characterDatabase != null)
+                {
+                    Debug.Log("[GachaManager] CharacterInventoryManager에서 데이터베이스 가져옴");
+                }
+            }
+            
+            // 2. 여전히 null이면 Resources에서 로드 시도
+            if (characterDatabase == null)
+            {
+                characterDatabase = Resources.Load<CharacterDatabaseSO>("Data/CharacterDatabase");
+                
+                if (characterDatabase == null)
+                {
+                    Debug.LogError("[GachaManager] CharacterDatabaseSO를 찾을 수 없습니다!");
+                    Debug.LogError("[GachaManager] CharacterInventoryManager가 없거나 데이터베이스가 할당되지 않았습니다.");
+                    return;
+                }
             }
         }
         
-        if (characterDatabase == null)
-        {
-            Debug.LogError("[GachaManager] CharacterCSVDatabase를 찾을 수 없습니다!");
-            return;
-        }
+        // 데이터베이스 초기화
+        characterDatabase.Initialize();
         
-        Debug.Log("[GachaManager] CharacterCSVDatabase 로드 완료");
+        Debug.Log($"[GachaManager] CharacterDatabaseSO 로드 완료 - Characters: {characterDatabase.characters.Count}, Tactical: {characterDatabase.tacticalCharacters.Count}");
     }
 
     /// <summary>

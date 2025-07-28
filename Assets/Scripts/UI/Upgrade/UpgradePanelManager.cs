@@ -110,27 +110,48 @@ public class UpgradePanelManager : MonoBehaviour
     /// </summary>
     public void SetUpgradeRegisteredSlotsFromDeck()
     {
-        // DeckPanelManager가 제거되어 더 이상 덱에서 데이터를 가져올 수 없음
-        // if (deckPanelManager == null)
-        // {
-        //     Debug.LogWarning("[UpgradePanelManager] deckPanelManager가 null");
-        //     return;
-        // }
-        //
-        // registeredSet2_Up = deckPanelManager.registeredCharactersSet2;
-        
-        Debug.LogWarning("[UpgradePanelManager] DeckPanelManager가 제거되어 덱 데이터를 가져올 수 없습니다.");
-
-        if (registeredSet2_Up == null || registeredSet2_Up.Length < 10)
+        // CharacterInventoryManager를 사용하여 덱 데이터 가져오기
+        if (CharacterInventoryManager.Instance == null)
         {
-            Debug.LogWarning("[UpgradePanelManager] registeredSet2_Up가 올바르지 않음");
+            Debug.LogWarning("[UpgradePanelManager] CharacterInventoryManager.Instance가 null");
             return;
         }
 
-        // 슬롯 시각 갱신
-        for (int i = 0; i < 10; i++)
+        try
         {
-            UpdateUpgradeRegisteredImage(i);
+            // CharacterInventoryManager에서 덱 캐릭터들 가져오기
+            var deckCharacters = CharacterInventoryManager.Instance.GetOwnedCharacters();
+            
+            // registeredSet2_Up 배열 초기화 (10개 슬롯)
+            if (registeredSet2_Up == null || registeredSet2_Up.Length != 10)
+            {
+                registeredSet2_Up = new CharacterData[10];
+            }
+
+            // 덱 캐릭터들을 registeredSet2_Up에 할당 (최대 10개)
+            for (int i = 0; i < 10; i++)
+            {
+                if (i < deckCharacters.Count)
+                {
+                    registeredSet2_Up[i] = deckCharacters[i];
+                }
+                else
+                {
+                    registeredSet2_Up[i] = null;
+                }
+            }
+
+            Debug.Log($"[UpgradePanelManager] 덱에서 {deckCharacters.Count}개 캐릭터를 업그레이드 슬롯에 할당");
+
+            // 슬롯 시각 갱신
+            for (int i = 0; i < 10; i++)
+            {
+                UpdateUpgradeRegisteredImage(i);
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[UpgradePanelManager] SetUpgradeRegisteredSlotsFromDeck 오류: {e.Message}");
         }
     }
 
@@ -172,11 +193,19 @@ public class UpgradePanelManager : MonoBehaviour
     /// </summary>
     public void SetupUpgradeButtons()
     {
-        if (upgradeButtons == null || upgradeButtons.Count < 10)
+        if (upgradeButtons == null)
         {
-            Debug.LogWarning("[UpgradePanelManager] upgradeButtons가 10개 미만!");
+            Debug.LogWarning("[UpgradePanelManager] upgradeButtons가 null입니다!");
             return;
         }
+
+        if (upgradeButtons.Count == 0)
+        {
+            Debug.LogWarning("[UpgradePanelManager] upgradeButtons가 비어있습니다! Inspector에서 버튼들을 할당하세요.");
+            return;
+        }
+
+        Debug.Log($"[UpgradePanelManager] {upgradeButtons.Count}개의 업그레이드 버튼 설정 중...");
 
         for (int i = 0; i < upgradeButtons.Count; i++)
         {
@@ -187,7 +216,13 @@ public class UpgradePanelManager : MonoBehaviour
                 int copyIndex = i;
                 btn.onClick.AddListener(() => OnClickUpgradeButton(copyIndex));
             }
+            else
+            {
+                Debug.LogWarning($"[UpgradePanelManager] upgradeButtons[{i}]가 null입니다!");
+            }
         }
+        
+        Debug.Log($"[UpgradePanelManager] 업그레이드 버튼 설정 완료 - {upgradeButtons.Count}개");
     }
 
     /// <summary>

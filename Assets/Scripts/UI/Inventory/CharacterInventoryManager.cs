@@ -19,7 +19,16 @@ public class CharacterInventoryManager : MonoBehaviour
                 instance = FindFirstObjectByType<CharacterInventoryManager>();
                 if (instance == null)
                 {
-                    Debug.LogWarning("[CharacterInventoryManager] No instance found in scene!");
+                    Debug.LogWarning("[CharacterInventoryManager] Scene에 인스턴스가 없어 자동 생성합니다.");
+                    
+                    // 자동으로 GameObject 생성
+                    GameObject go = new GameObject("CharacterInventoryManager");
+                    instance = go.AddComponent<CharacterInventoryManager>();
+                    
+                    // DontDestroyOnLoad 설정으로 Scene 간 유지
+                    DontDestroyOnLoad(go);
+                    
+                    Debug.Log("[CharacterInventoryManager] 자동 생성 완료 및 DontDestroyOnLoad 설정됨");
                 }
             }
             return instance;
@@ -28,11 +37,22 @@ public class CharacterInventoryManager : MonoBehaviour
 
     [Header("ScriptableObject DB 참조")]
     [SerializeField] public CharacterDatabaseSO characterDatabaseObject;
+    
+    /// <summary>
+    /// 다른 매니저들이 데이터베이스에 접근할 수 있도록 하는 public 프로퍼티
+    /// </summary>
+    public CharacterDatabaseSO GetCharacterDatabase()
+    {
+        return characterDatabaseObject;
+    }
 
     [SerializeField] private List<CharacterData> ownedCharacters = new List<CharacterData>();
     private List<CharacterData> deckCharacters = new List<CharacterData>();
 
     private List<CharacterData> gachaPool = new List<CharacterData>();
+    
+    // 초기화 상태 확인 플래그
+    private bool isInitialized = false;
 
     // ===============================
     // 200칸짜리 공유 배열 (인벤토리)
@@ -51,25 +71,57 @@ public class CharacterInventoryManager : MonoBehaviour
         }
         instance = this;
         
-        Debug.LogError("[CharacterInventoryManager] ===== AWAKE CALLED =====");
+        // Scene 간 유지 설정
+        DontDestroyOnLoad(gameObject);
         
-        Debug.LogError($"[CharacterInventoryManager] characterDatabaseObject null 체크: {characterDatabaseObject == null}");
+        Debug.Log("[CharacterInventoryManager] ===== AWAKE CALLED =====");
+        
+        Debug.Log($"[CharacterInventoryManager] characterDatabaseObject null 체크: {characterDatabaseObject == null}");
         
         if (characterDatabaseObject == null)
         {
-            Debug.LogError("[CharacterInventoryManager] DB가 연결되지 않았습니다!");
-            Debug.LogError("[CharacterInventoryManager] characterDatabaseObject가 null이므로 Awake() 종료");
-            return;
+            Debug.LogWarning("[CharacterInventoryManager] characterDatabaseObject가 null입니다. 자동 할당을 시도합니다.");
+            
+            // 1. Resources에서 CharacterDatabase 찾기
+            characterDatabaseObject = Resources.Load<CharacterDatabaseSO>("Data/CharacterDatabase");
+            
+            if (characterDatabaseObject == null)
+            {
+                // 2. 기본 경로에서 찾기
+                #if UNITY_EDITOR
+                characterDatabaseObject = UnityEditor.AssetDatabase.LoadAssetAtPath<CharacterDatabaseSO>("Assets/Prefabs/Data/Characters/CharacterDatabaseSO.asset");
+                #endif
+            }
+            
+            if (characterDatabaseObject == null)
+            {
+                // 3. FindObjectOfType으로 Scene에서 찾기
+                characterDatabaseObject = FindFirstObjectByType<CharacterDatabaseSO>();
+            }
+            
+            if (characterDatabaseObject == null)
+            {
+                Debug.LogError("[CharacterInventoryManager] 모든 방법으로 CharacterDatabaseSO를 찾을 수 없습니다!");
+                Debug.LogError("[CharacterInventoryManager] characterDatabaseObject가 null이므로 Awake() 종료");
+                return;
+            }
+            else
+            {
+                Debug.Log($"[CharacterInventoryManager] CharacterDatabaseSO 자동 할당 성공: {characterDatabaseObject.name}");
+            }
         }
         
-        Debug.LogError("[CharacterInventoryManager] DB 연결 확인됨, 계속 진행...");
+        Debug.Log("[CharacterInventoryManager] DB 연결 확인됨, 계속 진행...");
 
-        Debug.LogError($"[CharacterInventoryManager] 데이터베이스 연결됨: {characterDatabaseObject.name}");
-        Debug.LogError($"[CharacterInventoryManager] 데이터베이스 캐릭터 수: {characterDatabaseObject.characters.Count}");
-        Debug.LogError($"[CharacterInventoryManager] characterDatabaseObject.characters가 null인가: {characterDatabaseObject.characters == null}");
+        Debug.Log($"[CharacterInventoryManager] 데이터베이스 연결됨: {characterDatabaseObject.name}");
+        Debug.Log($"[CharacterInventoryManager] 데이터베이스 캐릭터 수: {characterDatabaseObject.characters.Count}");
+        Debug.Log($"[CharacterInventoryManager] characterDatabaseObject.characters가 null인가: {characterDatabaseObject.characters == null}");
 
         // 가챠 풀 구성
         gachaPool.Clear();
+        
+        // 먼저 characters 배열 확인
+        bool foundCharacters = false;
         if (characterDatabaseObject.characters != null && characterDatabaseObject.characters.Count > 0)
         {
             foreach (var cData in characterDatabaseObject.characters)
@@ -77,7 +129,8 @@ public class CharacterInventoryManager : MonoBehaviour
                 if (cData != null)
                 {
                     gachaPool.Add(ConvertToCharacterData(cData));
-                    Debug.LogError($"[CharacterInventoryManager] 가챠풀에 추가: {cData.characterName}");
+                    Debug.LogError($"[CharacterInventoryManager] 가챠풀에 추가 (characters): {cData.characterName}");
+                    foundCharacters = true;
                 }
                 else
                 {
@@ -85,10 +138,32 @@ public class CharacterInventoryManager : MonoBehaviour
                 }
             }
         }
-        else
+        
+        // characters 배열이 비어있다면 tacticalCharacters 배열 확인
+        if (!foundCharacters && characterDatabaseObject.tacticalCharacters != null && characterDatabaseObject.tacticalCharacters.Count > 0)
         {
-            Debug.LogError($"[CharacterInventoryManager] characterDatabaseObject.characters 배열이 비어있거나 null입니다!");
-            Debug.LogError($"[CharacterInventoryManager] 배열 길이: {(characterDatabaseObject.characters != null ? characterDatabaseObject.characters.Count : -1)}");
+            Debug.Log($"[CharacterInventoryManager] characters 배열이 비어있음, tacticalCharacters 배열 사용: {characterDatabaseObject.tacticalCharacters.Count}개");
+            foreach (var tacticalData in characterDatabaseObject.tacticalCharacters)
+            {
+                if (tacticalData != null)
+                {
+                    // TacticalCharacterData를 CharacterData로 변환하여 가챠풀에 추가
+                    var convertedData = ConvertTacticalToCharacterData(tacticalData);
+                    if (convertedData != null)
+                    {
+                        gachaPool.Add(convertedData);
+                        Debug.Log($"[CharacterInventoryManager] 가챠풀에 추가 (tacticalCharacters): {convertedData.characterName}");
+                        foundCharacters = true;
+                    }
+                }
+            }
+        }
+        
+        if (!foundCharacters)
+        {
+            Debug.LogError($"[CharacterInventoryManager] 모든 캐릭터 배열이 비어있거나 null입니다!");
+            Debug.LogError($"[CharacterInventoryManager] characters 길이: {(characterDatabaseObject.characters != null ? characterDatabaseObject.characters.Count : -1)}");
+            Debug.LogError($"[CharacterInventoryManager] tacticalCharacters 길이: {(characterDatabaseObject.tacticalCharacters != null ? characterDatabaseObject.tacticalCharacters.Count : -1)}");
         }
         
         // 가챠풀이 비어있다면 대안 로딩 방법들 시도 (배열이 존재하든 안하든 관계없이)
@@ -163,7 +238,10 @@ public class CharacterInventoryManager : MonoBehaviour
         Debug.Log("[CharacterInventoryManager] LoadCharacters() 호출");
         LoadCharacters();
         
-        Debug.Log($"[CharacterInventoryManager] Awake() 완료 - 인벤토리: {ownedCharacters.Count}개");
+        // 초기화 완료 플래그 설정
+        isInitialized = true;
+        
+        Debug.Log($"[CharacterInventoryManager] Awake() 완료 - 인벤토리: {ownedCharacters.Count}개, 초기화 상태: {isInitialized}");
     }
 
     // --------------------------------------
@@ -332,7 +410,7 @@ public class CharacterInventoryManager : MonoBehaviour
 
     private CharacterData CreateNewCharacter(CharacterData template)
     {
-        CharacterData copy = new CharacterData();
+        CharacterData copy = ScriptableObject.CreateInstance<CharacterData>();
         copy.characterName = template.characterName;
         copy.rangeType = template.rangeType;
         copy.isAreaAttack = template.isAreaAttack;
@@ -448,40 +526,23 @@ public class CharacterInventoryManager : MonoBehaviour
 
     public List<CharacterData> GetOwnedCharacters()
     {
-        Debug.LogError($"[CharacterInventoryManager] ===== GetOwnedCharacters() 호출 =====");
-        Debug.LogError($"[CharacterInventoryManager] 현재 ownedCharacters.Count: {ownedCharacters.Count}");
-        Debug.LogError($"[CharacterInventoryManager] 현재 gachaPool.Count: {gachaPool.Count}");
+        Debug.Log($"[CharacterInventoryManager] ===== GetOwnedCharacters() 호출 =====");
         
-        // 초기화 확인 및 강제 초기화
-        if (ownedCharacters.Count == 0 && gachaPool.Count == 0)
+        // 완전 초기화 강제 실행
+        if (!isInitialized)
         {
-            Debug.LogError("[CharacterInventoryManager] 초기화되지 않은 상태 감지 - 강제 초기화 수행");
-            
-            if (characterDatabaseObject != null)
-            {
-                Debug.LogError("[CharacterInventoryManager] characterDatabaseObject 사용 가능, 강제 초기화 진행");
-                
-                // 가챠 풀 재구성
-                gachaPool.Clear();
-                foreach (var cData in characterDatabaseObject.characters)
-                {
-                    if (cData != null)
-                    {
-                        gachaPool.Add(ConvertToCharacterData(cData));
-                        Debug.LogError($"[CharacterInventoryManager] 강제 초기화 - 가챠풀 추가: {cData.characterName}");
-                    }
-                }
-                Debug.LogError($"[CharacterInventoryManager] 강제 초기화 - gachaPool 재구성 완료: {gachaPool.Count}개");
-                
-                // 캐릭터 재로드
-                Debug.LogError("[CharacterInventoryManager] LoadCharacters() 강제 호출");
-                LoadCharacters();
-                Debug.LogError($"[CharacterInventoryManager] 강제 초기화 후 ownedCharacters.Count: {ownedCharacters.Count}");
-            }
-            else
-            {
-                Debug.LogError("[CharacterInventoryManager] characterDatabaseObject가 null이므로 강제 초기화 불가");
-            }
+            Debug.LogWarning("[CharacterInventoryManager] 초기화되지 않은 상태 - 강제 완전 초기화 실행");
+            ForceCompleteInitialization();
+        }
+        
+        Debug.Log($"[CharacterInventoryManager] 현재 ownedCharacters.Count: {ownedCharacters.Count}");
+        Debug.Log($"[CharacterInventoryManager] 현재 gachaPool.Count: {gachaPool.Count}");
+        
+        // 여전히 소유 캐릭터가 없다면 기본 캐릭터 생성
+        if (ownedCharacters.Count == 0 && gachaPool.Count > 0)
+        {
+            Debug.LogWarning("[CharacterInventoryManager] 소유 캐릭터가 없어 기본 캐릭터 생성");
+            CreateDefaultOwnedCharacters();
         }
         
         for (int i = 0; i < ownedCharacters.Count && i < 5; i++)
@@ -489,6 +550,117 @@ public class CharacterInventoryManager : MonoBehaviour
             Debug.Log($"[CharacterInventoryManager] ownedCharacters[{i}]: {ownedCharacters[i]?.characterName ?? "null"}");
         }
         return new List<CharacterData>(ownedCharacters);
+    }
+    
+    /// <summary>
+    /// 강제 완전 초기화 - Awake()가 호출되지 않은 경우 사용
+    /// </summary>
+    private void ForceCompleteInitialization()
+    {
+        Debug.LogWarning("[CharacterInventoryManager] ForceCompleteInitialization() 시작");
+        
+        try
+        {
+            // 1. Database 자동 할당
+            if (characterDatabaseObject == null)
+            {
+                Debug.LogWarning("[CharacterInventoryManager] Database 자동 할당 시도");
+                
+                // Resources에서 찾기
+                characterDatabaseObject = Resources.Load<CharacterDatabaseSO>("Data/CharacterDatabase");
+                
+                if (characterDatabaseObject == null)
+                {
+                    // 기본 경로에서 찾기
+                    #if UNITY_EDITOR
+                    characterDatabaseObject = UnityEditor.AssetDatabase.LoadAssetAtPath<CharacterDatabaseSO>("Assets/Prefabs/Data/Characters/CharacterDatabaseSO.asset");
+                    #endif
+                }
+                
+                if (characterDatabaseObject != null)
+                {
+                    Debug.Log($"[CharacterInventoryManager] Database 자동 할당 성공: {characterDatabaseObject.name}");
+                }
+                else
+                {
+                    Debug.LogError("[CharacterInventoryManager] Database 자동 할당 실패");
+                    return;
+                }
+            }
+            
+            // 2. 가챠풀 구성
+            gachaPool.Clear();
+            if (characterDatabaseObject.characters != null && characterDatabaseObject.characters.Count > 0)
+            {
+                foreach (var cData in characterDatabaseObject.characters)
+                {
+                    if (cData != null)
+                    {
+                        gachaPool.Add(ConvertToCharacterData(cData));
+                    }
+                }
+            }
+            else if (characterDatabaseObject.tacticalCharacters != null && characterDatabaseObject.tacticalCharacters.Count > 0)
+            {
+                foreach (var tacticalData in characterDatabaseObject.tacticalCharacters)
+                {
+                    if (tacticalData != null)
+                    {
+                        gachaPool.Add(tacticalData);
+                    }
+                }
+            }
+            
+            Debug.Log($"[CharacterInventoryManager] 강제 초기화 - gachaPool 구성 완료: {gachaPool.Count}개");
+            
+            // 3. 캐릭터 로드
+            LoadCharacters();
+            
+            // 4. 초기화 완료 표시
+            isInitialized = true;
+            
+            Debug.Log($"[CharacterInventoryManager] 강제 완전 초기화 완료 - 소유 캐릭터: {ownedCharacters.Count}개");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[CharacterInventoryManager] 강제 초기화 중 오류: {e.Message}");
+        }
+    }
+    
+    /// <summary>
+    /// 기본 소유 캐릭터 생성 (gachaPool에서 처음 8개)
+    /// </summary>
+    private void CreateDefaultOwnedCharacters()
+    {
+        if (gachaPool.Count == 0)
+        {
+            Debug.LogWarning("[CharacterInventoryManager] gachaPool이 비어있어 기본 캐릭터 생성 불가");
+            return;
+        }
+        
+        Debug.Log($"[CharacterInventoryManager] 기본 소유 캐릭터 생성 시작 - gachaPool: {gachaPool.Count}개");
+        
+        int maxCharacters = Mathf.Min(8, gachaPool.Count);
+        for (int i = 0; i < maxCharacters; i++)
+        {
+            if (gachaPool[i] != null)
+            {
+                CharacterData newChar = CreateNewCharacter(gachaPool[i]);
+                ownedCharacters.Add(newChar);
+                Debug.Log($"[CharacterInventoryManager] 기본 캐릭터 추가: {gachaPool[i].characterName}");
+            }
+        }
+        
+        // sharedSlotData200 업데이트
+        for (int i = 0; i < ownedCharacters.Count && i < sharedSlotData200.Length; i++)
+        {
+            sharedSlotData200[i] = ownedCharacters[i];
+        }
+        
+        // 저장
+        SaveCharacters();
+        
+        Debug.Log($"[CharacterInventoryManager] 기본 소유 캐릭터 생성 완료: {ownedCharacters.Count}개");
     }
 
     public List<CharacterData> GetAllCharactersWithDuplicates()
@@ -667,36 +839,53 @@ public class CharacterInventoryManager : MonoBehaviour
 
     private void LoadCharacters()
     {
-        Debug.LogError("[CharacterInventoryManager] ===== LoadCharacters() 시작 =====");
+        Debug.Log("[CharacterInventoryManager] ===== LoadCharacters() 시작 =====");
         ownedCharacters.Clear();
         deckCharacters.Clear();
 
         bool hasKey = PlayerPrefs.HasKey(PLAYER_PREFS_OWNED_KEY);
-        Debug.LogError($"[CharacterInventoryManager] PlayerPrefs 키 '{PLAYER_PREFS_OWNED_KEY}' 존재: {hasKey}");
+        Debug.Log($"[CharacterInventoryManager] PlayerPrefs 키 '{PLAYER_PREFS_OWNED_KEY}' 존재: {hasKey}");
 
         if (!hasKey)
         {
             Debug.LogError("[CharacterInventoryManager] 저장된 데이터 없음. 기본 로드 실행.");
             Debug.LogError($"[CharacterInventoryManager] gachaPool 개수: {gachaPool.Count}");
             
-            // 기본 캐릭터 추가 (8개의 RandomChar)
+            // gachaPool에서 기본 캐릭터 추가 (최대 8개)
             int addedCount = 0;
-            for (int i = 0; i < 8; i++)
+            int maxCharacters = Mathf.Min(8, gachaPool.Count);
+            
+            for (int i = 0; i < maxCharacters; i++)
             {
-                string charName = $"RandomChar_{i}";
-                Debug.Log($"[CharacterInventoryManager] 찾는 캐릭터: {charName}");
-                var template = FindTemplateByName(charName);
-                
-                if (template != null)
+                if (gachaPool[i] != null)
                 {
-                    CharacterData newChar = CreateNewCharacter(template);
+                    CharacterData newChar = CreateNewCharacter(gachaPool[i]);
                     ownedCharacters.Add(newChar);
                     addedCount++;
-                    Debug.Log($"[CharacterInventoryManager] 기본 캐릭터 추가 성공: {charName}");
+                    Debug.Log($"[CharacterInventoryManager] 기본 캐릭터 추가 성공: {gachaPool[i].characterName}");
                 }
                 else
                 {
-                    Debug.LogWarning($"[CharacterInventoryManager] 템플릿을 찾을 수 없음: {charName}");
+                    Debug.LogWarning($"[CharacterInventoryManager] gachaPool[{i}]가 null입니다");
+                }
+            }
+            
+            // gachaPool이 비어있다면 이전 방식 시도 (RandomChar_ 형태)
+            if (addedCount == 0 && gachaPool.Count == 0)
+            {
+                Debug.LogWarning("[CharacterInventoryManager] gachaPool이 비어있어 RandomChar_ 형태로 시도");
+                for (int i = 0; i < 8; i++)
+                {
+                    string charName = $"RandomChar_{i}";
+                    var template = FindTemplateByName(charName);
+                    
+                    if (template != null)
+                    {
+                        CharacterData newChar = CreateNewCharacter(template);
+                        ownedCharacters.Add(newChar);
+                        addedCount++;
+                        Debug.Log($"[CharacterInventoryManager] RandomChar 추가 성공: {charName}");
+                    }
                 }
             }
             
@@ -784,6 +973,13 @@ public class CharacterInventoryManager : MonoBehaviour
         characterData.health = characterDataSO.baseHP;
         
         return characterData;
+    }
+
+    // TacticalCharacterData를 CharacterData로 변환하는 헬퍼 메서드
+    private CharacterData ConvertTacticalToCharacterData(CharacterData tacticalData)
+    {
+        // tacticalCharacters는 이미 CharacterData 타입이므로 그대로 반환
+        return tacticalData;
     }
 
     [System.Serializable]

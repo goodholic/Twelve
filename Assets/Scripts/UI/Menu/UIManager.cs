@@ -31,7 +31,6 @@ namespace GuildMaster.UI
         [Header("UI Panels")]
         [SerializeField] private Canvas mainCanvas;
         [SerializeField] private GameObject loadingScreen;
-        [SerializeField] private GameObject mainMenuPanel;
         [SerializeField] private GameObject gameplayUI;
         [SerializeField] private GameObject inventoryPanel;
         [SerializeField] private GameObject settingsPanel;
@@ -56,7 +55,6 @@ namespace GuildMaster.UI
         void InitializeUI()
         {
             // UI 패널들을 딕셔너리에 등록
-            if (mainMenuPanel != null) uiPanels["MainMenu"] = mainMenuPanel;
             if (gameplayUI != null) uiPanels["Gameplay"] = gameplayUI;
             if (inventoryPanel != null) uiPanels["Inventory"] = inventoryPanel;
             if (settingsPanel != null) uiPanels["Settings"] = settingsPanel;

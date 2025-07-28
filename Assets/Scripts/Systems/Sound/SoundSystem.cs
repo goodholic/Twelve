@@ -52,7 +52,6 @@ namespace GuildMaster.Systems
         
         public enum MusicCategory
         {
-            MainMenu,
             Guild,
             Battle,
             Victory,
@@ -258,16 +257,6 @@ namespace GuildMaster.Systems
         
         void AddDefaultMusicTracks()
         {
-            // 메인 메뉴
-            musicTracks.Add(new MusicTrack
-            {
-                trackId = "main_menu",
-                trackName = "Main Menu Theme",
-                category = MusicCategory.MainMenu,
-                fadeInTime = 2f,
-                fadeOutTime = 1f
-            });
-            
             // 길드 테마
             musicTracks.Add(new MusicTrack
             {

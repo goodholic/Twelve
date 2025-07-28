@@ -81,11 +81,14 @@ namespace GuildMaster.Data
             
             // CharacterData 룩업 테이블 생성 (통합된 전술 캐릭터)
             tacticalLookup = new Dictionary<string, CharacterData>();
-            foreach (var tactical in tacticalCharacters)
+            if (tacticalCharacters != null)
             {
-                if (!string.IsNullOrEmpty(tactical.characterId) && !tacticalLookup.ContainsKey(tactical.characterId))
+                foreach (var tactical in tacticalCharacters)
                 {
-                    tacticalLookup.Add(tactical.characterId, tactical);
+                    if (tactical != null && !string.IsNullOrEmpty(tactical.characterId) && !tacticalLookup.ContainsKey(tactical.characterId))
+                    {
+                        tacticalLookup.Add(tactical.characterId, tactical);
+                    }
                 }
             }
         }

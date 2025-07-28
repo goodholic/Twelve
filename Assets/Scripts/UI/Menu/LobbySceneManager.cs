@@ -123,8 +123,10 @@ public class LobbySceneManager : MonoBehaviour
 
     private void Awake()
     {
+        Debug.Log("[LobbySceneManager] ===== Awake() 시작 =====");
         SetupPanels();
         if (explainText) explainText.text = "";
+        Debug.Log("[LobbySceneManager] Awake() 완료");
     }
 
     // =========================================================================
@@ -137,32 +139,62 @@ public class LobbySceneManager : MonoBehaviour
 
     private void Start()
     {
-        // 1) 스테이지 정보 로드
-        InitializeStages();
-        LoadGame();
-
-        // (★ 수정) savedCharacterDatabase를 강제로 DB에 덮어쓰는 로직 제거
-
-        UpdateStageUI();
-        UpdateGoldAndDiamondUI();
-
-        // 덱/업그레이드 패널들 UI 갱신 - DeckPanelManager 타입이 제거되어 주석 처리
-        // DeckPanelManager deckPanel = FindFirstObjectByType<DeckPanelManager>();
-        // if (deckPanel != null)
-        // {
-        //     deckPanel.RefreshInventoryUI();
-        // }
-        UpgradePanelManager upm = FindFirstObjectByType<UpgradePanelManager>();
-        if (upm != null)
+        Debug.Log("[LobbySceneManager] ===== Start() 시작 =====");
+        
+        try
         {
-            upm.RefreshDisplay();
-            upm.SetUpgradeRegisteredSlotsFromDeck();
+            // 1) 스테이지 정보 로드
+            Debug.Log("[LobbySceneManager] InitializeStages() 호출");
+            InitializeStages();
+            
+            Debug.Log("[LobbySceneManager] LoadGame() 호출");
+            LoadGame();
+
+            // (★ 수정) savedCharacterDatabase를 강제로 DB에 덮어쓰는 로직 제거
+
+            Debug.Log("[LobbySceneManager] UpdateStageUI() 호출");
+            UpdateStageUI();
+            
+            Debug.Log("[LobbySceneManager] UpdateGoldAndDiamondUI() 호출");
+            UpdateGoldAndDiamondUI();
+
+            // 덱/업그레이드 패널들 UI 갱신 - DeckPanelManager 타입이 제거되어 주석 처리
+            // DeckPanelManager deckPanel = FindFirstObjectByType<DeckPanelManager>();
+            // if (deckPanel != null)
+            // {
+            //     deckPanel.RefreshInventoryUI();
+            // }
+            
+            Debug.Log("[LobbySceneManager] UpgradePanelManager 찾는 중...");
+            UpgradePanelManager upm = FindFirstObjectByType<UpgradePanelManager>();
+            if (upm != null)
+            {
+                Debug.Log("[LobbySceneManager] UpgradePanelManager 발견, UI 갱신 중...");
+                upm.RefreshDisplay();
+                upm.SetUpgradeRegisteredSlotsFromDeck();
+            }
+            else
+            {
+                Debug.Log("[LobbySceneManager] UpgradePanelManager를 찾을 수 없음");
+            }
+
+            // 아이템 인벤토리 패널은 상시 활성
+            if (itemInventoryPanel != null)
+            {
+                Debug.Log("[LobbySceneManager] itemInventoryPanel 활성화");
+                itemInventoryPanel.SetActive(true);
+            }
+            else
+            {
+                Debug.Log("[LobbySceneManager] itemInventoryPanel이 null입니다");
+            }
+            
+            Debug.Log("[LobbySceneManager] ===== Start() 완료 =====");
         }
-
-        // 아이템 인벤토리 패널은 상시 활성
-        if (itemInventoryPanel != null)
+        catch (System.Exception e)
         {
-            itemInventoryPanel.SetActive(true);
+            Debug.LogError($"[LobbySceneManager] Start()에서 오류 발생: {e.Message}");
+            Debug.LogError($"[LobbySceneManager] StackTrace: {e.StackTrace}");
         }
     }
 
@@ -286,17 +318,35 @@ public class LobbySceneManager : MonoBehaviour
         }
 
         // 스테이지가 잠금 해제 상태일 때만 해당 스테이지 게임 오브젝트 활성화
-        if (!locked && stageSprites != null)
+        if (!locked)
         {
+            if (stageSprites == null)
+            {
+                Debug.LogWarning("[LobbySceneManager] stageSprites가 null입니다! Inspector에서 스테이지 프리팹들을 할당하세요.");
+                return;
+            }
+            
+            if (stageSprites.Length == 0)
+            {
+                Debug.LogWarning("[LobbySceneManager] stageSprites가 비어있습니다! Inspector에서 스테이지 프리팹들을 할당하세요.");
+                return;
+            }
+            
             // 현재 스테이지에 맞는 프리팹 활성화
             if (currentStageIndex < stageSprites.Length && stageSprites[currentStageIndex] != null)
             {
                 stageSprites[currentStageIndex].SetActive(true);
+                Debug.Log($"[LobbySceneManager] 스테이지 {currentStageIndex+1} 프리팹 활성화");
             }
             else
             {
-                Debug.LogWarning($"[LobbySceneManager] 스테이지 {currentStageIndex+1}의 프리팹이 없거나 인덱스가 범위를 벗어났습니다.");
+                Debug.LogWarning($"[LobbySceneManager] 스테이지 {currentStageIndex+1}의 프리팹이 없거나 인덱스가 범위를 벗어났습니다. " +
+                               $"currentStageIndex: {currentStageIndex}, stageSprites.Length: {stageSprites.Length}");
             }
+        }
+        else
+        {
+            Debug.Log($"[LobbySceneManager] 스테이지 {currentStageIndex+1}이 잠금 상태입니다.");
         }
 
         for (int i = 0; i < 5; i++)
@@ -413,14 +463,14 @@ public class LobbySceneManager : MonoBehaviour
         // 덱 검증 없이 진행
         Debug.LogWarning("[LobbySceneManager] DeckPanelManager가 제거되어 덱 검증 없이 게임 시작");
 
-        Debug.Log($"Stage {currentStageIndex + 1} 입장 -> GameScene 이동");
+        Debug.Log($"Stage {currentStageIndex + 1} 입장 -> BattleScene 이동");
 
         if (itemInventoryPanel != null)
         {
             itemInventoryPanel.SetActive(true);
         }
 
-        SceneManager.LoadScene("GameScene");
+        SceneManager.LoadScene("BattleScene");
     }
 
     public void RecordStageAttempt(int attemptIndex, bool isWin)
@@ -469,30 +519,72 @@ public class LobbySceneManager : MonoBehaviour
 
     private void SetupPanels()
     {
+        Debug.Log("[LobbySceneManager] SetupPanels() 시작");
+        
         allPanels.Clear();
-        if (profilePanel) { profilePanel.SetActive(false); allPanels.Add(profilePanel); }
-        if (optionPanel) { optionPanel.SetActive(false); allPanels.Add(optionPanel); }
-        if (shopPanel) { shopPanel.SetActive(false); allPanels.Add(shopPanel); }
-        if (drawPanel) { drawPanel.SetActive(false); allPanels.Add(drawPanel); }
-        if (clanPanel) { clanPanel.SetActive(false); allPanels.Add(clanPanel); }
-        if (characterPanel) { characterPanel.SetActive(false); allPanels.Add(characterPanel); }
+        if (profilePanel) { profilePanel.SetActive(false); allPanels.Add(profilePanel); Debug.Log("[LobbySceneManager] profilePanel 설정"); }
+        else Debug.Log("[LobbySceneManager] profilePanel이 null");
+        
+        if (optionPanel) { optionPanel.SetActive(false); allPanels.Add(optionPanel); Debug.Log("[LobbySceneManager] optionPanel 설정"); }
+        else Debug.Log("[LobbySceneManager] optionPanel이 null");
+        
+        if (shopPanel) { shopPanel.SetActive(false); allPanels.Add(shopPanel); Debug.Log("[LobbySceneManager] shopPanel 설정"); }
+        else Debug.Log("[LobbySceneManager] shopPanel이 null");
+        
+        if (drawPanel) { drawPanel.SetActive(false); allPanels.Add(drawPanel); Debug.Log("[LobbySceneManager] drawPanel 설정"); }
+        else Debug.Log("[LobbySceneManager] drawPanel이 null");
+        
+        if (clanPanel) { clanPanel.SetActive(false); allPanels.Add(clanPanel); Debug.Log("[LobbySceneManager] clanPanel 설정"); }
+        else Debug.Log("[LobbySceneManager] clanPanel이 null");
+        
+        if (characterPanel) { characterPanel.SetActive(false); allPanels.Add(characterPanel); Debug.Log("[LobbySceneManager] characterPanel 설정"); }
+        else Debug.Log("[LobbySceneManager] characterPanel이 null");
 
-        if (deckObject) deckObject.SetActive(false);
-        if (upgradeObject) upgradeObject.SetActive(false);
+        if (deckObject) 
+        {
+            deckObject.SetActive(false);
+            Debug.Log("[LobbySceneManager] deckObject 비활성화");
+        }
+        else Debug.Log("[LobbySceneManager] deckObject가 null");
+        
+        if (upgradeObject) 
+        {
+            upgradeObject.SetActive(false);
+            Debug.Log("[LobbySceneManager] upgradeObject 비활성화");
+        }
+        else Debug.Log("[LobbySceneManager] upgradeObject가 null");
 
-        if (friendGameObject) friendGameObject.SetActive(false);
-        if (rankingGameObject) rankingGameObject.SetActive(false);
+        if (friendGameObject) 
+        {
+            friendGameObject.SetActive(false);
+            Debug.Log("[LobbySceneManager] friendGameObject 비활성화");
+        }
+        else Debug.Log("[LobbySceneManager] friendGameObject가 null");
+        
+        if (rankingGameObject) 
+        {
+            rankingGameObject.SetActive(false);
+            Debug.Log("[LobbySceneManager] rankingGameObject 비활성화");
+        }
+        else Debug.Log("[LobbySceneManager] rankingGameObject가 null");
 
         if (itemPanel)
         {
             itemPanel.SetActive(false);
             allPanels.Add(itemPanel);
+            Debug.Log("[LobbySceneManager] itemPanel 설정");
         }
+        else Debug.Log("[LobbySceneManager] itemPanel이 null");
+        
         if (itemInventoryPanel)
         {
             itemInventoryPanel.SetActive(false);
             allPanels.Add(itemInventoryPanel);
+            Debug.Log("[LobbySceneManager] itemInventoryPanel 설정");
         }
+        else Debug.Log("[LobbySceneManager] itemInventoryPanel이 null");
+        
+        Debug.Log($"[LobbySceneManager] SetupPanels() 완료 - 총 {allPanels.Count}개 패널 등록");
     }
 
     private void CloseAllPanels()

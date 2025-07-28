@@ -72,11 +72,19 @@ public class BookPanelManager : MonoBehaviour
     public void RefreshBookPanel()
     {
         if (!CheckCommonReferences()) return;
-        if (bookSlots == null || bookSlots.Count == 0)
+        if (bookSlots == null)
         {
-            Debug.LogWarning("[BookPanelManager] bookSlots가 비어있습니다.");
+            Debug.LogWarning("[BookPanelManager] bookSlots가 null입니다!");
             return;
         }
+        
+        if (bookSlots.Count == 0)
+        {
+            Debug.LogWarning("[BookPanelManager] bookSlots가 비어있습니다. Inspector에서 Book Slot들을 할당하세요.");
+            return;
+        }
+        
+        Debug.Log($"[BookPanelManager] {bookSlots.Count}개의 북 슬롯으로 패널 새로고침 중...");
 
         bookSlotInfos.Clear();
 
