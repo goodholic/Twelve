@@ -2313,6 +2313,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 4142626704106249238, guid: c7a792c4b2c59e64d90cafaed5b61313, type: 3}
       insertIndex: -1
       addedObject: {fileID: 641710835}
+    - targetCorrespondingSourceObject: {fileID: 4142626704106249238, guid: c7a792c4b2c59e64d90cafaed5b61313, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 641710837}
   m_SourcePrefab: {fileID: 100100000, guid: c7a792c4b2c59e64d90cafaed5b61313, type: 3}
 --- !u!1 &641710834 stripped
 GameObject:
@@ -2338,6 +2341,8 @@ MonoBehaviour:
   maxTurns: 20
   autoStartGame: 1
   startDelay: 0
+  characterDatabase: {fileID: 11400000, guid: 9b4d131515e8d2d4284f08e0eb4cb077, type: 2}
+  loadAllCharactersAtStart: 1
   xTeamPool:
   - {fileID: 0}
   - {fileID: 0}
@@ -2471,6 +2476,20 @@ MonoBehaviour:
   - {fileID: 1887714741}
   - {fileID: 611087531}
   selectedCharacter: {fileID: 0}
+--- !u!114 &641710837
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 641710834}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d06c208acfec79741a80b94e8f26c3b9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GuildMaster::RuntimeCharacterGenerator
+  generateOnStart: 1
+  generateNow: 0
 --- !u!1 &652769506
 GameObject:
   m_ObjectHideFlags: 0
@@ -5778,16 +5797,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 98084ad1bd317e249a2a94960b4faeb4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: GuildMaster::GuildMaster.Battle.VideoCharacterController
-  videoPlayer: {fileID: 0}
-  displayImage: {fileID: 0}
-  renderTexture: {fileID: 0}
-  characterData: {fileID: 0}
-  idleMovieClip: {fileID: 0}
-  attackMovieClip: {fileID: 0}
-  forceAlphaBlending: 1
-  currentState: 0
-  testInEditor: 0
-  testState: 0
 --- !u!1 &1312866233
 GameObject:
   m_ObjectHideFlags: 0
@@ -9158,11 +9167,61 @@ PrefabInstance:
       propertyPath: 'characterButtons.Array.data[3]'
       value: 
       objectReference: {fileID: 611087531}
-    m_RemovedComponents: []
+    m_RemovedComponents:
+    - {fileID: 8964244131812738769, guid: 4a91b126595bff84188c98d5a2efe299, type: 3}
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 3735720747908920864, guid: 4a91b126595bff84188c98d5a2efe299, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 5125945266372120555}
   m_SourcePrefab: {fileID: 100100000, guid: 4a91b126595bff84188c98d5a2efe299, type: 3}
+--- !u!1 &5125945266372120554 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 3735720747908920864, guid: 4a91b126595bff84188c98d5a2efe299, type: 3}
+  m_PrefabInstance: {fileID: 5125945266372120553}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &5125945266372120555
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5125945266372120554}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0f0bb8ee3b0319c4b9f67365780de8b0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GuildMaster::TwelveGame.Battle.BattleUIManager
+  currentTurnText: {fileID: 318106629}
+  scoreText: {fileID: 1312866235}
+  gameStateText: {fileID: 1107735475}
+  characterButtons:
+  - {fileID: 220692985}
+  - {fileID: 1938777827}
+  - {fileID: 1887714741}
+  - {fileID: 611087531}
+  buttonImages:
+  - {fileID: 1430781977}
+  - {fileID: 1195945722}
+  - {fileID: 1428940972}
+  - {fileID: 836260207}
+  buttonTexts: []
+  nextCharacterCard: {fileID: 1244227034}
+  nextCharacterImage: {fileID: 652769509}
+  nextCharacterText: {fileID: 0}
+  preparationPanel: {fileID: 747418166}
+  aTileCountText: {fileID: 1318817097}
+  bTileCountText: {fileID: 1750178009}
+  gameOverPanel: {fileID: 1575608255}
+  winnerText: {fileID: 2055036110}
+  restartButton: {fileID: 1062738225}
+  characterInfoPanel: {fileID: 975736772}
+  characterNameText: {fileID: 992017978}
+  characterDescText: {fileID: 682088630}
+  attackPatternPreview: {fileID: 741852335}
+  battlePreviewPanel: {fileID: 942434369}
+  previewText: {fileID: 1195544809}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

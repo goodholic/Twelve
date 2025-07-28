@@ -29,7 +29,15 @@ public class RuntimeCharacterGenerator : MonoBehaviour
     [ContextMenu("Generate Characters")]
     public void GenerateAllCharacters()
     {
-        Debug.Log("🚀 캐릭터 생성 시작...");
+        GenerateTestCharacters();
+    }
+    
+    /// <summary>
+    /// 테스트용 캐릭터 생성 (외부에서 호출 가능)
+    /// </summary>
+    public void GenerateTestCharacters()
+    {
+        Debug.Log("🚀 테스트 캐릭터 생성 시작...");
         
         // CSV 데이터
         var characterData = new (string id, string name, string job, string rarity, int hp, int mp, int atk, int def, int mag, float crit, float critDmg, float acc, float eva, string skill, string desc)[]
@@ -258,19 +266,80 @@ public class RuntimeCharacterGenerator : MonoBehaviour
     #if UNITY_EDITOR
     private void CreateDatabase(List<CharacterData> characters)
     {
-        CharacterDatabaseSO database = ScriptableObject.CreateInstance<CharacterDatabaseSO>();
-        database.tacticalCharacters = characters;
-        database.characters = new List<CharacterDataSO>();
+        string mainPath = "Assets/Prefabs/Data/Characters/CharacterDatabaseSO.asset";
+        CharacterDatabaseSO database;
         
-        string path = "Assets/Characters/Generated/CharacterDatabase.asset";
-        UnityEditor.AssetDatabase.CreateAsset(database, path);
+        // 기존 데이터베이스가 있으면 업데이트, 없으면 새로 생성
+        database = UnityEditor.AssetDatabase.LoadAssetAtPath<CharacterDatabaseSO>(mainPath);
+        
+        if (database == null)
+        {
+            database = ScriptableObject.CreateInstance<CharacterDatabaseSO>();
+            
+            // 폴더 생성
+            string directory = System.IO.Path.GetDirectoryName(mainPath);
+            if (!System.IO.Directory.Exists(directory))
+            {
+                System.IO.Directory.CreateDirectory(directory);
+            }
+            
+            UnityEditor.AssetDatabase.CreateAsset(database, mainPath);
+            Debug.Log($"📚 새 CharacterDatabaseSO 생성: {mainPath}");
+        }
+        else
+        {
+            Debug.Log($"📚 기존 CharacterDatabaseSO 업데이트: {mainPath}");
+        }
+        
+        // 캐릭터 데이터 설정
+        database.tacticalCharacters = new List<CharacterData>(characters);
+        if (database.characters == null)
+            database.characters = new List<CharacterDataSO>();
+        
+        // 변경사항 저장
+        UnityEditor.EditorUtility.SetDirty(database);
+        UnityEditor.AssetDatabase.SaveAssets();
         
         database.Initialize();
         
-        Debug.Log($"📚 캐릭터 데이터베이스 생성: {path}");
+        Debug.Log($"✅ CharacterDatabaseSO 업데이트 완료: {characters.Count}개 캐릭터");
+        
+        // Resources 폴더에도 복사
+        CopyToResources(database, mainPath);
         
         UnityEditor.Selection.activeObject = database;
         UnityEditor.EditorGUIUtility.PingObject(database);
+    }
+    
+    private void CopyToResources(CharacterDatabaseSO database, string sourcePath)
+    {
+        try
+        {
+            string resourcesDir = "Assets/Resources";
+            string dataDir = "Assets/Resources/Data";
+            string targetPath = "Assets/Resources/Data/CharacterDatabase.asset";
+            
+            // 폴더 생성
+            if (!System.IO.Directory.Exists(resourcesDir))
+                System.IO.Directory.CreateDirectory(resourcesDir);
+                
+            if (!System.IO.Directory.Exists(dataDir))
+                System.IO.Directory.CreateDirectory(dataDir);
+            
+            // 기존 파일 삭제 후 복사
+            if (System.IO.File.Exists(targetPath))
+                UnityEditor.AssetDatabase.DeleteAsset(targetPath);
+                
+            if (UnityEditor.AssetDatabase.CopyAsset(sourcePath, targetPath))
+            {
+                UnityEditor.AssetDatabase.Refresh();
+                Debug.Log($"📁 CharacterDatabaseSO를 Resources 폴더로 복사: {targetPath}");
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning($"⚠️ Resources 폴더 복사 실패: {e.Message}");
+        }
     }
     #endif
 } 

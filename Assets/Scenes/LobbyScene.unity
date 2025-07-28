@@ -192667,8 +192667,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 68ad1287cb3990c49941d32419388b4b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: GuildMaster::BookPanelManager
-  characterDatabaseObject: {fileID: 0}
-  characterInventory: {fileID: 0}
+  characterDatabaseObject: {fileID: 11400000, guid: 9b4d131515e8d2d4284f08e0eb4cb077, type: 2}
+  characterInventory: {fileID: 5675032046359040188}
   bookSlots: []
   portraitImages: []
   ownedColor: {r: 1, g: 1, b: 1, a: 1}
@@ -205543,7 +205543,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0886b9ed5487f5e4bbb2cb99989d5e7e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: GuildMaster::CharacterInventoryManager
-  characterDatabaseObject: {fileID: 0}
+  characterDatabaseObject: {fileID: 11400000, guid: 9b4d131515e8d2d4284f08e0eb4cb077, type: 2}
   ownedCharacters: []
   sharedSlotData200:
   - {fileID: 0}

@@ -2,6 +2,7 @@ using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 using TMPro;
+using GuildMaster.Data; // CharacterDatabaseSO 사용을 위해 추가
 
 namespace TwelveGame.Battle
 {
@@ -60,6 +61,10 @@ namespace TwelveGame.Battle
     // 보드 상태 [보드인덱스(0=A, 1=B), x, y]
     public Character[,,] boardState = new Character[BOARD_COUNT, BOARD_WIDTH, BOARD_HEIGHT];
 
+    [Header("캐릭터 데이터베이스")]
+    [SerializeField] private CharacterDatabaseSO characterDatabase;
+    [SerializeField] private bool loadAllCharactersAtStart = true; // 배틀 시작 시 모든 캐릭터 제공
+    
     [Header("캐릭터 풀")]
     public List<CharacterData> xTeamPool = new List<CharacterData>();
     public List<CharacterData> oTeamPool = new List<CharacterData>();
@@ -97,6 +102,9 @@ namespace TwelveGame.Battle
 
     void Start()
     {
+        // CharacterDatabaseSO 로드 및 초기화
+        LoadCharacterDatabase();
+        
         if (autoStartGame)
         {
             // 자동 시작 모드
@@ -166,27 +174,152 @@ namespace TwelveGame.Battle
             }
         }
 
-        // 캐릭터 풀 초기화 (나중에 CharacterData로 채움)
+        // 캐릭터 풀 초기화 (CharacterDatabaseSO에서 로드)
         InitializeCharacterPools();
 
         // UI 업데이트
         UpdateUI();
     }
 
+    /// <summary>
+    /// CharacterDatabaseSO에서 캐릭터 데이터 로드
+    /// </summary>
+    private void LoadCharacterDatabase()
+    {
+        // 1. Inspector에서 할당된 데이터베이스 확인
+        if (characterDatabase == null)
+        {
+            Debug.Log("🔍 CharacterDatabaseSO를 자동으로 찾는 중...");
+            
+            // 2. Resources 폴더에서 로드 시도
+            characterDatabase = Resources.Load<CharacterDatabaseSO>("Data/CharacterDatabase");
+            
+            if (characterDatabase == null)
+            {
+                // 3. 기본 경로에서 로드 시도
+                #if UNITY_EDITOR
+                characterDatabase = UnityEditor.AssetDatabase.LoadAssetAtPath<CharacterDatabaseSO>("Assets/Prefabs/Data/Characters/CharacterDatabaseSO.asset");
+                
+                // 4. Generated 폴더에서도 시도
+                if (characterDatabase == null)
+                {
+                    characterDatabase = UnityEditor.AssetDatabase.LoadAssetAtPath<CharacterDatabaseSO>("Assets/Characters/Generated/CharacterDatabaseSO.asset");
+                }
+                #endif
+            }
+        }
+
+        if (characterDatabase == null)
+        {
+            Debug.LogError("❌ CharacterDatabaseSO를 찾을 수 없습니다!");
+            Debug.LogError("🔧 해결 방법: Unity 메뉴 → Twelve → ⚡ Quick Tools → 🎮 배틀용 캐릭터 DB 생성");
+            CreateEmptyCharacterPools();
+            return;
+        }
+        else
+        {
+            Debug.Log($"✅ CharacterDatabaseSO 발견: {characterDatabase.name}");
+        }
+
+        // 데이터베이스 초기화
+        characterDatabase.Initialize();
+
+        // 배틀 시작 시 모든 캐릭터 제공
+        if (loadAllCharactersAtStart)
+        {
+            LoadAllCharactersForBattle();
+        }
+
+        Debug.Log($"✅ 캐릭터 데이터베이스 로드 완료: {characterDatabase.GetAllTacticalCharacters().Count}개 캐릭터");
+    }
+
+    /// <summary>
+    /// 배틀용으로 모든 캐릭터를 양 팀에 제공
+    /// </summary>
+    private void LoadAllCharactersForBattle()
+    {
+        if (characterDatabase == null) return;
+
+        var allCharacters = characterDatabase.GetAllTacticalCharacters();
+        
+        if (allCharacters.Count == 0)
+        {
+            Debug.LogWarning("⚠️ CharacterDatabaseSO에 캐릭터가 없습니다. 자동으로 생성합니다...");
+            CreateTestCharacters(); // 테스트용 캐릭터 생성
+            
+            // 생성 후 다시 로드 시도
+            if (characterDatabase != null)
+            {
+                characterDatabase.Initialize();
+                var newCharacters = characterDatabase.GetAllTacticalCharacters();
+                if (newCharacters.Count > 0)
+                {
+                    xTeamPool.Clear();
+                    oTeamPool.Clear();
+                    xTeamPool.AddRange(newCharacters);
+                    oTeamPool.AddRange(newCharacters);
+                    Debug.Log($"🎮 자동 생성 후 캐릭터 풀 초기화 완료: 각 팀 {newCharacters.Count}개 캐릭터");
+                    return;
+                }
+            }
+            
+            Debug.LogError("❌ 캐릭터 자동 생성 실패. 수동으로 생성해주세요.");
+            return;
+        }
+
+        // 양 팀 모두에게 동일한 캐릭터 풀 제공
+        xTeamPool.Clear();
+        oTeamPool.Clear();
+        
+        xTeamPool.AddRange(allCharacters);
+        oTeamPool.AddRange(allCharacters);
+
+        Debug.Log($"🎮 배틀 캐릭터 풀 초기화 완료: 각 팀 {allCharacters.Count}개 캐릭터");
+    }
+
+    /// <summary>
+    /// 빈 캐릭터 풀 생성 (데이터베이스가 없을 때)
+    /// </summary>
+    private void CreateEmptyCharacterPools()
+    {
+        xTeamPool.Clear();
+        oTeamPool.Clear();
+        Debug.LogWarning("⚠️ 캐릭터 데이터베이스가 없어서 빈 풀로 시작합니다.");
+    }
+
+    /// <summary>
+    /// 테스트용 캐릭터 생성 (데이터가 없을 때)
+    /// </summary>
+    private void CreateTestCharacters()
+    {
+        Debug.Log("🔧 테스트용 캐릭터 생성 중...");
+        
+        // RuntimeCharacterGenerator 사용하여 테스트 캐릭터 생성
+        var generator = FindObjectOfType<RuntimeCharacterGenerator>();
+        if (generator != null)
+        {
+            #if UNITY_EDITOR
+            generator.GenerateTestCharacters();
+            // 생성 후 다시 로드 시도
+            if (characterDatabase != null)
+            {
+                LoadAllCharactersForBattle();
+            }
+            #endif
+        }
+        else
+        {
+            Debug.LogWarning("⚠️ RuntimeCharacterGenerator를 찾을 수 없습니다. 수동으로 캐릭터를 생성하거나 CSV 데이터를 임포트하세요.");
+        }
+    }
+
     void InitializeCharacterPools()
     {
-        // 캐릭터 데이터는 별도로 정의하고 여기서 풀에 추가
-        // Resources 폴더나 ScriptableObject로 관리하는 것을 권장
-        
-        // 임시로 기본 캐릭터 생성 (실제로는 에디터에서 할당)
-        if (xTeamPool.Count == 0)
+        // CharacterDatabaseSO에서 이미 로드됨
+        if (xTeamPool.Count == 0 || oTeamPool.Count == 0)
         {
-            Debug.LogWarning("X팀 캐릭터 풀이 비어있습니다. 에디터에서 캐릭터를 할당하세요.");
-        }
-        
-        if (oTeamPool.Count == 0)
-        {
-            Debug.LogWarning("O팀 캐릭터 풀이 비어있습니다. 에디터에서 캐릭터를 할당하세요.");
+            Debug.LogWarning("⚠️ 캐릭터 풀이 비어있습니다. CharacterDatabaseSO를 확인하세요.");
+            return;
         }
 
         // 덱과 손패 초기화

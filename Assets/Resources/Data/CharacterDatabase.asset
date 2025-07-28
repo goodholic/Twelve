@@ -9,218 +9,24 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4757ad45659c0cb48aa0ef569cfe1d09, type: 3}
+  m_Script: {fileID: 0}
   m_Name: CharacterDatabase
-  m_EditorClassIdentifier: Assembly-CSharp::CharacterDatabase
+  m_EditorClassIdentifier: GuildMaster:GuildMaster.Data:CharacterDatabaseSO
   characters: []
-  currentRegisteredCharacters:
-  - id: 
-    name: 
-    jobClass: 0
-    level: 0
-    rarity: 0
-    baseHP: 0
-    baseMP: 0
-    baseAttack: 0
-    baseDefense: 0
-    baseMagicPower: 0
-    baseSpeed: 0
-    critRate: 0
-    critDamage: 0
-    accuracy: 0
-    evasion: 0
-    skill1Id: 
-    skill2Id: 
-    skill3Id: 
-    description: 
-    iconSprite: {fileID: 0}
-    modelPrefab: {fileID: 0}
-  - id: 
-    name: 
-    jobClass: 0
-    level: 0
-    rarity: 0
-    baseHP: 0
-    baseMP: 0
-    baseAttack: 0
-    baseDefense: 0
-    baseMagicPower: 0
-    baseSpeed: 0
-    critRate: 0
-    critDamage: 0
-    accuracy: 0
-    evasion: 0
-    skill1Id: 
-    skill2Id: 
-    skill3Id: 
-    description: 
-    iconSprite: {fileID: 0}
-    modelPrefab: {fileID: 0}
-  - id: 
-    name: 
-    jobClass: 0
-    level: 0
-    rarity: 0
-    baseHP: 0
-    baseMP: 0
-    baseAttack: 0
-    baseDefense: 0
-    baseMagicPower: 0
-    baseSpeed: 0
-    critRate: 0
-    critDamage: 0
-    accuracy: 0
-    evasion: 0
-    skill1Id: 
-    skill2Id: 
-    skill3Id: 
-    description: 
-    iconSprite: {fileID: 0}
-    modelPrefab: {fileID: 0}
-  - id: 
-    name: 
-    jobClass: 0
-    level: 0
-    rarity: 0
-    baseHP: 0
-    baseMP: 0
-    baseAttack: 0
-    baseDefense: 0
-    baseMagicPower: 0
-    baseSpeed: 0
-    critRate: 0
-    critDamage: 0
-    accuracy: 0
-    evasion: 0
-    skill1Id: 
-    skill2Id: 
-    skill3Id: 
-    description: 
-    iconSprite: {fileID: 0}
-    modelPrefab: {fileID: 0}
-  - id: 
-    name: 
-    jobClass: 0
-    level: 0
-    rarity: 0
-    baseHP: 0
-    baseMP: 0
-    baseAttack: 0
-    baseDefense: 0
-    baseMagicPower: 0
-    baseSpeed: 0
-    critRate: 0
-    critDamage: 0
-    accuracy: 0
-    evasion: 0
-    skill1Id: 
-    skill2Id: 
-    skill3Id: 
-    description: 
-    iconSprite: {fileID: 0}
-    modelPrefab: {fileID: 0}
-  - id: 
-    name: 
-    jobClass: 0
-    level: 0
-    rarity: 0
-    baseHP: 0
-    baseMP: 0
-    baseAttack: 0
-    baseDefense: 0
-    baseMagicPower: 0
-    baseSpeed: 0
-    critRate: 0
-    critDamage: 0
-    accuracy: 0
-    evasion: 0
-    skill1Id: 
-    skill2Id: 
-    skill3Id: 
-    description: 
-    iconSprite: {fileID: 0}
-    modelPrefab: {fileID: 0}
-  - id: 
-    name: 
-    jobClass: 0
-    level: 0
-    rarity: 0
-    baseHP: 0
-    baseMP: 0
-    baseAttack: 0
-    baseDefense: 0
-    baseMagicPower: 0
-    baseSpeed: 0
-    critRate: 0
-    critDamage: 0
-    accuracy: 0
-    evasion: 0
-    skill1Id: 
-    skill2Id: 
-    skill3Id: 
-    description: 
-    iconSprite: {fileID: 0}
-    modelPrefab: {fileID: 0}
-  - id: 
-    name: 
-    jobClass: 0
-    level: 0
-    rarity: 0
-    baseHP: 0
-    baseMP: 0
-    baseAttack: 0
-    baseDefense: 0
-    baseMagicPower: 0
-    baseSpeed: 0
-    critRate: 0
-    critDamage: 0
-    accuracy: 0
-    evasion: 0
-    skill1Id: 
-    skill2Id: 
-    skill3Id: 
-    description: 
-    iconSprite: {fileID: 0}
-    modelPrefab: {fileID: 0}
-  - id: 
-    name: 
-    jobClass: 0
-    level: 0
-    rarity: 0
-    baseHP: 0
-    baseMP: 0
-    baseAttack: 0
-    baseDefense: 0
-    baseMagicPower: 0
-    baseSpeed: 0
-    critRate: 0
-    critDamage: 0
-    accuracy: 0
-    evasion: 0
-    skill1Id: 
-    skill2Id: 
-    skill3Id: 
-    description: 
-    iconSprite: {fileID: 0}
-    modelPrefab: {fileID: 0}
-  - id: 
-    name: 
-    jobClass: 0
-    level: 0
-    rarity: 0
-    baseHP: 0
-    baseMP: 0
-    baseAttack: 0
-    baseDefense: 0
-    baseMagicPower: 0
-    baseSpeed: 0
-    critRate: 0
-    critDamage: 0
-    accuracy: 0
-    evasion: 0
-    skill1Id: 
-    skill2Id: 
-    skill3Id: 
-    description: 
-    iconSprite: {fileID: 0}
-    modelPrefab: {fileID: 0}
+  tacticalCharacters:
+  - {fileID: 11400000, guid: be549bed8a4b7584faf78edcf92a6ef1, type: 2}
+  - {fileID: 11400000, guid: e516ba3ad39c4e5409948da5c140189c, type: 2}
+  - {fileID: 11400000, guid: c73d23f13d6f7a743bd9b7969f5c6537, type: 2}
+  - {fileID: 11400000, guid: 9c8dacde09b54f740b42f86e3e88a810, type: 2}
+  - {fileID: 11400000, guid: 7344e26a4a3601a4ca7afd26f27c0e91, type: 2}
+  - {fileID: 11400000, guid: 2f431fe8399e03f408f44ca2019bff1f, type: 2}
+  - {fileID: 11400000, guid: 93d57bfcc31d5e64b99c568e171a2807, type: 2}
+  - {fileID: 11400000, guid: a941a4cb3de3ba240b48e67996b87456, type: 2}
+  - {fileID: 11400000, guid: 29ce24282267a3641b7b38abbcfc523c, type: 2}
+  - {fileID: 11400000, guid: 4ace29f3b7dcdcb47b971ff2016b0bec, type: 2}
+  - {fileID: 11400000, guid: 940f0e0994d7df44e873d8e77b4c206b, type: 2}
+  - {fileID: 11400000, guid: e4342053c85f4b3499ad7cffc1bb9dc1, type: 2}
+  - {fileID: 11400000, guid: cb4b9e18ee683964081c08d8b3be04f4, type: 2}
+  - {fileID: 11400000, guid: 90308a0b41bc34b4b9f2993343b1c61d, type: 2}
+  - {fileID: 11400000, guid: 1ce424d3495909d48975378193b61bf1, type: 2}
+  - {fileID: 11400000, guid: 58d8345854ff2ad47aef3bd42269f776, type: 2}

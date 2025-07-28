@@ -23,8 +23,52 @@ namespace GuildMaster.Data
         
         public void Initialize()
         {
-            Debug.Log($"통합 CharacterDatabase initialized - Characters: {characters.Count}, Tactical: {tacticalCharacters.Count}");
+            // CSV 데이터가 없으면 자동으로 로드 시도
+            if (tacticalCharacters.Count == 0)
+            {
+                AutoLoadFromCSV();
+            }
+
+            // 룩업 테이블 생성
+            BuildLookupTables();
             
+            Debug.Log($"✅ CharacterDatabase 초기화 완료 - Characters: {characters.Count}, Tactical: {tacticalCharacters.Count}");
+        }
+
+        /// <summary>
+        /// CSV에서 자동으로 데이터 로드
+        /// </summary>
+        private void AutoLoadFromCSV()
+        {
+            #if UNITY_EDITOR
+            try
+            {
+                Debug.Log("🔄 CSV에서 캐릭터 데이터 자동 로드 중...");
+                
+                // RuntimeCharacterGenerator를 통해 테스트 캐릭터 생성
+                var generator = FindObjectOfType<RuntimeCharacterGenerator>();
+                if (generator != null)
+                {
+                    generator.GenerateTestCharacters();
+                }
+                else
+                {
+                    // CSV 매니저를 통해 데이터 로드 시도
+                    GuildMaster.CSV.CSVDataSystemManager.ImportCharacterData();
+                }
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning($"⚠️ CSV 자동 로드 실패: {e.Message}");
+            }
+            #endif
+        }
+
+        /// <summary>
+        /// 룩업 테이블 구성
+        /// </summary>
+        private void BuildLookupTables()
+        {
             // CharacterDataSO 룩업 테이블 생성
             characterLookup = new Dictionary<string, CharacterDataSO>();
             foreach (var character in characters)
@@ -35,15 +79,15 @@ namespace GuildMaster.Data
                 }
             }
             
-                    // CharacterData 룩업 테이블 생성 (통합된 전술 캐릭터)
-        tacticalLookup = new Dictionary<string, CharacterData>();
-        foreach (var tactical in tacticalCharacters)
-        {
-            if (!string.IsNullOrEmpty(tactical.characterId) && !tacticalLookup.ContainsKey(tactical.characterId))
+            // CharacterData 룩업 테이블 생성 (통합된 전술 캐릭터)
+            tacticalLookup = new Dictionary<string, CharacterData>();
+            foreach (var tactical in tacticalCharacters)
             {
-                tacticalLookup.Add(tactical.characterId, tactical);
+                if (!string.IsNullOrEmpty(tactical.characterId) && !tacticalLookup.ContainsKey(tactical.characterId))
+                {
+                    tacticalLookup.Add(tactical.characterId, tactical);
+                }
             }
-        }
         }
         
         public CharacterDataSO GetCharacter(string id)
@@ -103,6 +147,80 @@ namespace GuildMaster.Data
         {
             return new List<CharacterData>(tacticalCharacters);
         }
+
+        /// <summary>
+        /// 데이터베이스에 캐릭터 추가 (에디터 전용)
+        /// </summary>
+        #if UNITY_EDITOR
+        public void AddCharacters(List<CharacterData> newCharacters)
+        {
+            if (newCharacters == null) return;
+
+            tacticalCharacters.Clear();
+            tacticalCharacters.AddRange(newCharacters);
+            
+            // CharacterData를 CharacterDataSO로 변환하여 characters 리스트에도 추가
+            SyncCharacterDataSOFromTactical();
+            
+            UnityEditor.EditorUtility.SetDirty(this);
+            UnityEditor.AssetDatabase.SaveAssets();
+            
+            Debug.Log($"✅ CharacterDatabaseSO에 {newCharacters.Count}개 캐릭터 추가됨 (양쪽 리스트 동기화)");
+            
+            // 룩업 테이블 재구성
+            BuildLookupTables();
+        }
+
+        /// <summary>
+        /// tacticalCharacters에서 characters로 데이터 동기화
+        /// </summary>
+        private void SyncCharacterDataSOFromTactical()
+        {
+            characters.Clear();
+            
+            foreach (var tacticalChar in tacticalCharacters)
+            {
+                var characterDataSO = ScriptableObject.CreateInstance<CharacterDataSO>();
+                
+                // 기본 정보 복사
+                characterDataSO.id = tacticalChar.characterId;
+                characterDataSO.characterName = tacticalChar.characterName;
+                characterDataSO.jobClass = tacticalChar.jobClass;
+                characterDataSO.level = tacticalChar.level;
+                characterDataSO.rarity = tacticalChar.rarity;
+                characterDataSO.description = tacticalChar.description;
+                characterDataSO.skillId = ""; // tacticalChar에는 skillId가 없으므로 빈 값
+                
+                // 기본 스탯 복사
+                characterDataSO.baseHP = tacticalChar.baseHP;
+                characterDataSO.baseMP = tacticalChar.baseMP;
+                characterDataSO.baseAttack = tacticalChar.baseAttack;
+                characterDataSO.baseDefense = tacticalChar.baseDefense;
+                characterDataSO.baseMagicPower = tacticalChar.baseMagicPower;
+                
+                // 전투 스탯 복사
+                characterDataSO.critRate = tacticalChar.critRate;
+                characterDataSO.critDamage = tacticalChar.critDamage;
+                characterDataSO.accuracy = tacticalChar.accuracy;
+                characterDataSO.evasion = tacticalChar.evasion;
+                
+                characters.Add(characterDataSO);
+            }
+            
+            Debug.Log($"🔄 {characters.Count}개 CharacterDataSO 생성 및 동기화 완료");
+        }
+
+        public void ClearAllCharacters()
+        {
+            characters.Clear();
+            tacticalCharacters.Clear();
+            
+            UnityEditor.EditorUtility.SetDirty(this);
+            UnityEditor.AssetDatabase.SaveAssets();
+            
+            Debug.Log("🧹 CharacterDatabaseSO 모든 캐릭터 삭제됨");
+        }
+        #endif
         
         // === CSV 데이터와의 호환성을 위한 메서드들 ===
         public CSVCharacter GetCSVCharacter(string id)

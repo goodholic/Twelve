@@ -10,13 +10,13 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d5f475cc5c8e7174bb2879d35ae17ecf, type: 3}
-  m_Name: "CHAR107_\uB300\uC0AC\uC81C\uC548\uC824\uB9AC\uCE74"
+  m_Name: "CHAR116_\uC30D\uAD8C\uCD1D\uCE74\uBC00\uB77C"
   m_EditorClassIdentifier: GuildMaster::CharacterData
-  characterName: "\uB300\uC0AC\uC81C \uC548\uC824\uB9AC\uCE74"
+  characterName: "\uC30D\uAD8C\uCD1D \uCE74\uBC00\uB77C"
   characterIcon: {fileID: 0}
   buttonIcon: {fileID: 0}
-  hp: 850
-  attackPower: 50
+  hp: 675
+  attackPower: 210
   spawnPrefab: {fileID: 0}
   motionPrefab: {fileID: 0}
   animationType: 1
@@ -28,16 +28,16 @@ MonoBehaviour:
   level: 1
   currentExp: 0
   initialStar: 4
-  rangeType: 2
+  rangeType: 1
   isAreaAttack: 0
   isBuffSupport: 0
-  maxHP: 850
-  health: 850
+  maxHP: 675
+  health: 675
   star: 4
   starLevel: 4
   race: Human
   expToNextLevel: 100
-  attackRange: 2
+  attackRange: 3
   attackSpeed: 1
   areaAttackRadius: 1
   isFreeSlotOnly: 0
@@ -45,27 +45,27 @@ MonoBehaviour:
   backSprite: {fileID: 0}
   characterIndex: 0
   characterSprite: {fileID: 0}
-  id: CHAR107
-  jobClass: 4
+  id: CHAR116
+  jobClass: 7
   rarity: 3
-  baseHP: 850
-  baseMP: 525
-  baseAttack: 50
-  baseDefense: 80
-  baseMagicPower: 300
+  baseHP: 675
+  baseMP: 90
+  baseAttack: 210
+  baseDefense: 81
+  baseMagicPower: 45
   characterId: 
-  description: "\uC0DD\uBA85\uC758 \uAE30\uC801\uC744 \uD589\uD558\uB294 \uC131\uC2A4\uB7EC\uC6B4
-    \uC0AC\uC81C"
+  description: "\uC591\uC190\uC758 \uAD8C\uCD1D\uC73C\uB85C \uD654\uB824\uD55C \uC0AC\uACA9\uC220\uC744
+    \uC120\uBCF4\uC774\uB294 \uC5EC\uCD1D\uC7A1\uC774"
   characterPrefab: {fileID: 0}
-  baseCritRate: 0.08
-  skillId: SKILL_P001
+  baseCritRate: 0.2
+  skillId: SKILL_G004
   skill: {fileID: 0}
   attackPatternCSV: 
   maxLevel: 50
   tacticalRarity: 3
-  critRate: 0.08
-  critDamage: 135
-  accuracy: 99
-  evasion: 8
-  attackPattern: 0
+  critRate: 0.2
+  critDamage: 190
+  accuracy: 98
+  evasion: 9
+  attackPattern: 2
   customPattern: []
