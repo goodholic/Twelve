@@ -8,14 +8,14 @@ using System.Linq;
 /// </summary>
 public static class PNGImportSettingsTool
 {
-    [MenuItem("Twelve/🖼️ PNG 임포트 설정 도구/📁 Video 폴더 PNG 설정 적용")]
-    public static void ApplyPNGSettingsToVideoFolder()
+    [MenuItem("Twelve/🖼️ PNG 도구/📁 Video 폴더 PNG 설정 적용")]
+    public static void ApplyVideoFolderPNGSettings()
     {
-        ApplyPNGSettingsToFolder("Assets/Video");
+        ApplyPNGSettings("Assets/Video");
     }
     
-    [MenuItem("Twelve/🖼️ PNG 임포트 설정 도구/📂 폴더 선택하여 PNG 설정 적용")]
-    public static void ApplyPNGSettingsToSelectedFolder()
+    [MenuItem("Twelve/🖼️ PNG 도구/📂 폴더 선택하여 PNG 설정 적용")]
+    public static void ApplySelectedFolderPNGSettings()
     {
         string selectedFolder = EditorUtility.OpenFolderPanel("PNG 설정을 적용할 폴더 선택", "Assets", "");
         if (!string.IsNullOrEmpty(selectedFolder))
@@ -23,7 +23,7 @@ public static class PNGImportSettingsTool
             string relativePath = FileUtil.GetProjectRelativePath(selectedFolder);
             if (!string.IsNullOrEmpty(relativePath))
             {
-                ApplyPNGSettingsToFolder(relativePath);
+                ApplyPNGSettings(relativePath);
             }
             else
             {
@@ -53,7 +53,7 @@ public static class PNGImportSettingsTool
         return Selection.objects.OfType<Texture2D>().Any();
     }
     
-    private static void ApplyPNGSettingsToFolder(string folderPath)
+    private static void ApplyPNGSettings(string folderPath)
     {
         if (!Directory.Exists(folderPath))
         {
@@ -197,8 +197,8 @@ public static class PNGImportSettingsTool
         Debug.Log($"[PNG Import Tool] 🎉 PNG 임포트 설정 적용 완료 - {processedCount}개 파일 처리됨");
     }
     
-    [MenuItem("Twelve/🖼️ PNG 임포트 설정 도구/🔍 Video 폴더 PNG 설정 확인")]
-    public static void CheckPNGSettingsInVideoFolder()
+    [MenuItem("Twelve/🖼️ PNG 도구/🔍 Video 폴더 PNG 설정 확인")]
+    public static void CheckVideoFolderPNGSettings()
     {
         CheckPNGSettingsInFolder("Assets/Video");
     }

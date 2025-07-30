@@ -18,7 +18,7 @@ namespace TwelveGame.Battle
         get
         {
             if (instance == null)
-                instance = FindObjectOfType<BattleUIManager>();
+                instance = FindFirstObjectByType<BattleUIManager>();
             return instance;
         }
     }
@@ -65,7 +65,19 @@ namespace TwelveGame.Battle
 
     void Start()
     {
+        Debug.Log("🚀 BattleUIManager Start() 호출됨");
         InitializeUI();
+        
+        // 2초 후에 강제로 업데이트 (GameManager 초기화 완료 대기)
+        StartCoroutine(DelayedForceUpdate());
+    }
+    
+    System.Collections.IEnumerator DelayedForceUpdate()
+    {
+        yield return new WaitForSeconds(2f);
+        Debug.Log("⏰ BattleUIManager 지연 업데이트 시작");
+        UpdateCharacterButtons();
+        UpdateUI();
     }
 
     void InitializeUI()
@@ -162,9 +174,17 @@ namespace TwelveGame.Battle
             if (nextCharacter != null)
             {
                 // 다음 캐릭터 이미지 설정
-                if (nextCharacterImage != null && nextCharacter.characterIcon != null)
+                if (nextCharacterImage != null)
                 {
-                    nextCharacterImage.sprite = nextCharacter.characterIcon;
+                    if (nextCharacter.characterIcon != null)
+                    {
+                        nextCharacterImage.sprite = nextCharacter.characterIcon;
+                    }
+                    else
+                    {
+                        // 캐릭터 아이콘이 없을 때 기본 스프라이트 생성
+                        nextCharacterImage.sprite = CreateDefaultCharacterSprite(nextCharacter.characterName);
+                    }
                 }
                 
                 // 다음 캐릭터 이름 설정
@@ -172,6 +192,11 @@ namespace TwelveGame.Battle
                 {
                     nextCharacterText.text = nextCharacter.characterName;
                 }
+            }
+            else if (nextCharacterImage != null)
+            {
+                // 다음 캐릭터가 없으면 이미지를 null로 설정
+                nextCharacterImage.sprite = null;
             }
         }
     }
@@ -329,7 +354,16 @@ namespace TwelveGame.Battle
     // 캐릭터 버튼에 랜덤 캐릭터 표시
     public void UpdateCharacterButtons()
     {
+        Debug.Log("🔄 UpdateCharacterButtons 호출됨");
+        
+        if (GameManager.Instance == null)
+        {
+            Debug.LogError("❌ GameManager.Instance가 null입니다!");
+            return;
+        }
+        
         List<CharacterData> currentHand = GameManager.Instance.GetCurrentHand();
+        Debug.Log($"📋 현재 손패: {(currentHand != null ? currentHand.Count : 0)}장");
 
         for (int i = 0; i < characterButtons.Length; i++)
         {
@@ -346,6 +380,13 @@ namespace TwelveGame.Battle
                     if (character.characterIcon != null)
                     {
                         buttonImages[i].sprite = character.characterIcon;
+                        Debug.Log($"✅ 캐릭터 '{character.characterName}' 아이콘 설정됨");
+                    }
+                    else
+                    {
+                        // 캐릭터 아이콘이 없을 때 기본 스프라이트 생성
+                        buttonImages[i].sprite = CreateDefaultCharacterSprite(character.characterName);
+                        Debug.Log($"🎨 캐릭터 '{character.characterName}' 기본 스프라이트 생성됨");
                     }
                     
                     // 캐릭터 이름 설정
@@ -354,8 +395,59 @@ namespace TwelveGame.Battle
                         buttonTexts[i].text = character.characterName;
                     }
                 }
+                else if (buttonImages != null && i < buttonImages.Length && buttonImages[i] != null)
+                {
+                    // 캐릭터가 없는 버튼은 이미지를 null로 설정
+                    buttonImages[i].sprite = null;
+                }
             }
         }
+    }
+    
+    /// <summary>
+    /// 캐릭터 아이콘이 없을 때 사용할 기본 스프라이트 생성
+    /// </summary>
+    private Sprite CreateDefaultCharacterSprite(string characterName)
+    {
+        // 캐릭터 이름에 따라 다른 색상 사용
+        Color color = GetCharacterColor(characterName);
+        
+        Texture2D texture = new Texture2D(64, 64);
+        Color[] pixels = new Color[64 * 64];
+        
+        // 테두리가 있는 단색 스프라이트 생성
+        for (int x = 0; x < 64; x++)
+        {
+            for (int y = 0; y < 64; y++)
+            {
+                if (x < 2 || x >= 62 || y < 2 || y >= 62)
+                {
+                    pixels[x + y * 64] = Color.black; // 테두리
+                }
+                else
+                {
+                    pixels[x + y * 64] = color; // 내부 색상
+                }
+            }
+        }
+        
+        texture.SetPixels(pixels);
+        texture.Apply();
+        
+        return Sprite.Create(texture, new Rect(0, 0, 64, 64), new Vector2(0.5f, 0.5f), 64);
+    }
+    
+    /// <summary>
+    /// 캐릭터 이름에 따라 고유한 색상 반환
+    /// </summary>
+    private Color GetCharacterColor(string characterName)
+    {
+        if (string.IsNullOrEmpty(characterName)) return Color.gray;
+        
+        // 캐릭터 이름의 해시코드를 기반으로 색상 생성
+        int hash = characterName.GetHashCode();
+        float hue = (hash % 360) / 360f;
+        return Color.HSVToRGB(hue, 0.7f, 0.9f);
     }
 }
 }

@@ -8,8 +8,8 @@ using System.Collections.Generic;
 using System.Linq;
 
 /// <summary>
-/// Unity 인스펙터에서 안전하게 객체를 편집할 수 있도록 지원하는 헬퍼 클래스입니다.
-/// 이 클래스는 Photon Fusion의 네트워크 컴포넌트에서 발생하는 인스펙터 오류를 방지합니다.
+/// Inspector 정리 및 자동 관리 기능을 제공합니다.
+/// Unity Inspector 탭에서 접근 가능합니다.
 /// </summary>
 [InitializeOnLoad]
 public static class InspectorHandlerHelper
@@ -18,21 +18,18 @@ public static class InspectorHandlerHelper
     private static readonly HashSet<int> _flaggedInstances = new HashSet<int>();
     
     // 마지막 클린업 수행 시간
-    private static double _lastCleanupTime;
+    private static double _lastCleanupTime = 0;
     
-    // 2초마다 자동 정리 수행 여부
-    private static bool _autoCleanEnabled = true;
+    // 자동 정리 활성화 여부
+    private static bool _autoCleanEnabled = false;
     
-    /// <summary>
-    /// 에디터 시작 시 호출되는 정적 생성자
-    /// </summary>
     static InspectorHandlerHelper()
     {
-        EditorApplication.update += OnEditorUpdate;
-        EditorApplication.delayCall += OnEditorStart;
+        // 에디터 시작시 자동 정리 설정 로드
+        _autoCleanEnabled = EditorPrefs.GetBool("FusionAutoCleanEnabled", false);
         
-        // 인스펙터 정리 메뉴 항목을 Dynamic으로 설정
-        Menu.SetChecked("Tools/Fusion/자동 인스펙터 정리 활성화", _autoCleanEnabled);
+        EditorApplication.update += OnEditorUpdate;
+        Debug.Log("[InspectorHandlerHelper] 인스펙터 핸들러가 초기화되었습니다.");
     }
     
     /// <summary>
@@ -173,7 +170,7 @@ public static class InspectorHandlerHelper
     /// <summary>
     /// 메뉴를 통해 모든 네트워크 컴포넌트 플래그 정리
     /// </summary>
-    [MenuItem("Twelve/🛠️ Development Tools/인스펙터 정리 실행")]
+    // [MenuItem("Twelve/🛠️ Development Tools/인스펙터 정리 실행")]
     public static void CleanupAllNetworkInspectorFlags()
     {
         CleanAllNetworkBehaviourFlags(silent: false);
@@ -182,11 +179,28 @@ public static class InspectorHandlerHelper
     /// <summary>
     /// 자동 인스펙터 정리 활성화/비활성화 메뉴
     /// </summary>
-    [MenuItem("Twelve/🛠️ Development Tools/자동 인스펙터 정리 활성화")]
+    // [MenuItem("Twelve/🛠️ Development Tools/자동 인스펙터 정리 활성화")]
     public static void ToggleAutoClean()
     {
         _autoCleanEnabled = !_autoCleanEnabled;
         Menu.SetChecked("Twelve/🛠️ Development Tools/자동 인스펙터 정리 활성화", _autoCleanEnabled);
+        
+        EditorPrefs.SetBool("FusionAutoCleanEnabled", _autoCleanEnabled);
+        
+        Debug.Log($"[InspectorHandlerHelper] 자동 인스펙터 정리가 {(_autoCleanEnabled ? "활성화" : "비활성화")}되었습니다.");
+    }
+
+    [MenuItem("Tools/Unity Inspector/인스펙터 정리 실행")]
+    public static void CleanInspector()
+    {
+        CleanupAllNetworkInspectorFlags();
+    }
+    
+    [MenuItem("Tools/Unity Inspector/자동 인스펙터 정리 활성화")]
+    public static void EnableAutoCleanup()
+    {
+        _autoCleanEnabled = !_autoCleanEnabled;
+        Menu.SetChecked("Tools/Unity Inspector/자동 인스펙터 정리 활성화", _autoCleanEnabled);
         
         EditorPrefs.SetBool("FusionAutoCleanEnabled", _autoCleanEnabled);
         

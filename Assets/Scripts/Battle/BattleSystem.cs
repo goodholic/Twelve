@@ -15,7 +15,7 @@ namespace TwelveGame.Battle
         get
         {
             if (instance == null)
-                instance = FindObjectOfType<BattleSystem>();
+                instance = FindFirstObjectByType<BattleSystem>();
             return instance;
         }
     }

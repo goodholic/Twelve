@@ -731,6 +731,8 @@ public class LobbySceneManager : MonoBehaviour
     private readonly string tutorialStr =
 @"1. 5×5 칸 중 원하는 곳을 클릭해 캐릭터를 소환하되...
 (이하 생략)";
+    // 스토리 문자열 - 향후 스토리 모드에서 사용 예정
+#pragma warning disable CS0414
     private readonly string storyStr =
 @"1. X/O 두 세력간 전쟁...
 (이하 생략)";

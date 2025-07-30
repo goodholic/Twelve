@@ -13,11 +13,22 @@ public class CanvasMonitor : MonoBehaviour
     [Tooltip("수동으로 모니터링할 Canvas들")]
     public Canvas[] canvasesToMonitor;
     
-    [Tooltip("모니터링 간격 (초)")]
-    public float monitorInterval = 0.1f;
+    [Tooltip("모니터링 간격 (초) - 매우 빠른 감지를 위해 낮게 설정")]
+    public float monitorInterval = 0.01f; // 훨씬 더 빠른 체크
+    
+    [Header("고급 추적 설정")]
+    [Tooltip("Simulation Canvas만 집중 모니터링")]
+    public bool focusOnSimulationCanvas = true;
+    
+    [Tooltip("GameObject 상태 변화도 추적")]
+    public bool trackGameObjectState = true;
+    
+    [Tooltip("CanvasGroup 상태도 추적")]
+    public bool trackCanvasGroup = true;
     
     private Canvas[] allCanvases;
     private bool[] lastCanvasStates;
+    private bool[] lastGameObjectStates;
     private string[] canvasNames;
     
     void Start()
@@ -63,6 +74,7 @@ public class CanvasMonitor : MonoBehaviour
         }
         
         lastCanvasStates = new bool[allCanvases.Length];
+        lastGameObjectStates = new bool[allCanvases.Length];
         canvasNames = new string[allCanvases.Length];
         
         for (int i = 0; i < allCanvases.Length; i++)
@@ -70,6 +82,7 @@ public class CanvasMonitor : MonoBehaviour
             if (allCanvases[i] != null)
             {
                 lastCanvasStates[i] = allCanvases[i].enabled;
+                lastGameObjectStates[i] = allCanvases[i].gameObject.activeInHierarchy;
                 canvasNames[i] = allCanvases[i].gameObject.name;
                 
                 Debug.Log($"[CanvasMonitor] 📌 Canvas '{canvasNames[i]}' 초기 상태: {(lastCanvasStates[i] ? "활성화" : "비활성화")}");
@@ -90,25 +103,157 @@ public class CanvasMonitor : MonoBehaviour
                 if (allCanvases[i] == null) continue;
                 
                 bool currentState = allCanvases[i].enabled;
+                bool currentGameObjectState = allCanvases[i].gameObject.activeInHierarchy;
+                
+                // 비활성화 감지 - 이전 상태가 활성화였는데 현재 비활성화인 경우
+                bool wasActive = lastCanvasStates[i] && lastGameObjectStates[i];
+                bool isActive = currentState && currentGameObjectState;
+                bool justDeactivated = wasActive && !isActive;
                 
                 // 상태 변화 감지
-                if (currentState != lastCanvasStates[i])
+                if (currentState != lastCanvasStates[i] || currentGameObjectState != lastGameObjectStates[i])
                 {
-                    string stateChange = currentState ? "❇️ 활성화됨" : "❌ 비활성화됨";
+                    string canvasStateChange = currentState ? "❇️ Canvas 활성화됨" : "❌ Canvas 비활성화됨";
+                    string gameObjectStateChange = currentGameObjectState ? "❇️ GameObject 활성화됨" : "❌ GameObject 비활성화됨";
                     
-                    Debug.LogWarning($"[CanvasMonitor] 🚨 Canvas '{canvasNames[i]}' 상태 변화: {stateChange}");
-                    Debug.LogWarning($"[CanvasMonitor] 📍 프레임: {Time.frameCount}, 시간: {Time.time:F2}초");
+                    // Simulation Canvas인 경우 특별히 강조 표시
+                    bool isSimulationCanvas = canvasNames[i].Contains("Simulation");
+                    string prefix = isSimulationCanvas ? "🚨🚨🚨 [SIMULATION CANVAS] 🚨🚨🚨" : "";
                     
+                    // 비활성화는 에러, 활성화는 경고로 구분
+                    bool isDeactivation = !currentState || !currentGameObjectState;
+                    
+                    if (justDeactivated)
+                    {
+                        // 방금 비활성화된 경우 - 가장 중요한 정보!
+                        Debug.LogError($"{prefix}[CanvasMonitor] ⚠️⚠️⚠️ CANVAS 비활성화 감지! ⚠️⚠️⚠️");
+                        Debug.LogError($"[CanvasMonitor] Canvas '{canvasNames[i]}' 상태 변화:");
+                        Debug.LogError($"  ├─ {canvasStateChange}");
+                        Debug.LogError($"  ├─ {gameObjectStateChange}");
+                        Debug.LogError($"  ├─ 프레임: {Time.frameCount}, 시간: {Time.time:F2}초");
+                        Debug.LogError($"  ├─ ⚠️ Canvas 비활성화 감지! 원인 분석 중...");
+                        Debug.LogError($"  ├─ 📍 비활성화 시점 스택 트레이스:");
+                        Debug.LogError(System.Environment.StackTrace);
+                        
+                        // Unity 내부 스택 정보도 출력
+                        Debug.LogError($"  ├─ 🔍 더 많은 정보:");
+                        Debug.LogError($"  ├─   Canvas.enabled: {allCanvases[i].enabled}");
+                        Debug.LogError($"  ├─   GameObject.activeSelf: {allCanvases[i].gameObject.activeSelf}");
+                        Debug.LogError($"  ├─   GameObject.activeInHierarchy: {allCanvases[i].gameObject.activeInHierarchy}");
+                    }
+                    else if (isDeactivation)
+                    {
+                        // 비활성화 상태 - 진짜 문제
+                        Debug.LogError($"{prefix}[CanvasMonitor] Canvas '{canvasNames[i]}' 상태 변화:");
+                        Debug.LogError($"  ├─ {canvasStateChange}");
+                        Debug.LogError($"  ├─ {gameObjectStateChange}");
+                        Debug.LogError($"  ├─ 프레임: {Time.frameCount}, 시간: {Time.time:F2}초");
+                        Debug.LogError($"  ├─ ⚠️ Canvas 비활성화 감지! 원인 분석 중...");
+                        Debug.LogError($"  ├─ 📍 스택 트레이스:");
+                        Debug.LogError(System.Environment.StackTrace);
+                    }
+                    else
+                    {
+                        // 활성화는 복구 - LogWarning 사용  
+                        Debug.LogWarning($"{prefix}[CanvasMonitor] Canvas '{canvasNames[i]}' 상태 변화:");
+                        Debug.LogWarning($"  ├─ {canvasStateChange}");
+                        Debug.LogWarning($"  ├─ {gameObjectStateChange}");
+                        Debug.LogWarning($"  ├─ 프레임: {Time.frameCount}, 시간: {Time.time:F2}초");
+                        Debug.LogWarning($"  ├─ ✅ Canvas 복구됨!");
+                    }
+                    
+                    // CanvasGroup 상태도 확인
+                    if (trackCanvasGroup)
+                    {
+                        CanvasGroup canvasGroup = allCanvases[i].GetComponent<CanvasGroup>();
+                        if (canvasGroup != null)
+                        {
+                            if (isDeactivation)
+                            {
+                                Debug.LogError($"  ├─ CanvasGroup alpha: {canvasGroup.alpha}");
+                                Debug.LogError($"  ├─ CanvasGroup interactable: {canvasGroup.interactable}");
+                            }
+                            else
+                            {
+                                Debug.LogWarning($"  ├─ CanvasGroup alpha: {canvasGroup.alpha}");
+                                Debug.LogWarning($"  ├─ CanvasGroup interactable: {canvasGroup.interactable}");
+                            }
+                        }
+                    }
+                    
+                    // MMTouchControls 컴포넌트 확인
+                    Component mmTouchControls = null;
+                    try 
+                    {
+                        // 동적으로 MMTouchControls 타입 검색
+                        var mmTouchControlsType = System.Type.GetType("MoreMountains.Tools.MMTouchControls, Assembly-CSharp");
+                        if (mmTouchControlsType != null)
+                        {
+                            mmTouchControls = allCanvases[i].GetComponent(mmTouchControlsType);
+                        }
+                    }
+                    catch (System.Exception)
+                    {
+                        // MoreMountains 네임스페이스가 없는 경우 무시
+                        mmTouchControls = null;
+                    }
+                    
+                    if (mmTouchControls != null)
+                    {
+                        if (isDeactivation)
+                        {
+                            Debug.LogError($"  ├─ ⚠️ MMTouchControls 발견! 이것이 비활성화 원인일 수 있습니다!");
+                        }
+                        else
+                        {
+                            Debug.LogWarning($"  ├─ ✅ MMTouchControls 발견했지만 Canvas는 활성화 상태입니다.");
+                        }
+                        
+                        // 리플렉션으로 프로퍼티 값 가져오기 (안전함)
+                        try
+                        {
+                            var type = mmTouchControls.GetType();
+                            var isMobileProp = type.GetProperty("IsMobile");
+                            var forcedModeProp = type.GetProperty("ForcedMode");
+                            var autoDetectionField = type.GetField("AutoMobileDetection");
+                            
+                            if (isMobileProp != null)
+                            {
+                                string logMsg = $"  ├─ MMTouchControls.IsMobile: {isMobileProp.GetValue(mmTouchControls)}";
+                                if (isDeactivation) Debug.LogError(logMsg);
+                                else Debug.LogWarning(logMsg);
+                            }
+                            if (forcedModeProp != null)
+                            {
+                                string logMsg = $"  ├─ MMTouchControls.ForcedMode: {forcedModeProp.GetValue(mmTouchControls)}";
+                                if (isDeactivation) Debug.LogError(logMsg);
+                                else Debug.LogWarning(logMsg);
+                            }
+                            if (autoDetectionField != null)
+                            {
+                                string logMsg = $"  ├─ MMTouchControls.AutoMobileDetection: {autoDetectionField.GetValue(mmTouchControls)}";
+                                if (isDeactivation) Debug.LogError(logMsg);
+                                else Debug.LogWarning(logMsg);
+                            }
+                        }
+                        catch (System.Exception e)
+                        {
+                            string logMsg = $"  ├─ MMTouchControls 속성 읽기 실패: {e.Message}";
+                            if (isDeactivation) Debug.LogError(logMsg);
+                            else Debug.LogWarning(logMsg);
+                        }
+                    }
+                      
                     // 스택 트레이스로 어디서 변경되었는지 추적
-                    Debug.LogWarning($"[CanvasMonitor] 📊 호출 스택:\n{System.Environment.StackTrace}");
-                    
-                    // GameObject 활성화 상태도 확인
-                    Debug.LogWarning($"[CanvasMonitor] 🎮 GameObject '{canvasNames[i]}' 활성화 상태: {allCanvases[i].gameObject.activeInHierarchy}");
+                    string stackMsg = $"  ├─ 📊 호출 스택:\n{System.Environment.StackTrace}";
+                    if (isDeactivation) Debug.LogError(stackMsg);
+                    else Debug.LogWarning(stackMsg);
                     
                     lastCanvasStates[i] = currentState;
+                    lastGameObjectStates[i] = currentGameObjectState;
                     
                     // 비활성화된 경우 원인 추가 분석
-                    if (!currentState)
+                    if (!currentState || !currentGameObjectState)
                     {
                         AnalyzeCanvasDeactivation(allCanvases[i], i);
                     }

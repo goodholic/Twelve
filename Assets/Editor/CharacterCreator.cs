@@ -6,7 +6,38 @@ using TwelveGame.Battle; // GameManager 참조를 위해 추가
 #if UNITY_EDITOR
 public class CharacterCreator : EditorWindow
 {
-    [MenuItem("Twelve/🛠️ Development Tools/Create Default Characters")]
+    // TwelveToolsManager를 통해서만 접근 - 직접 메뉴 항목 제거
+    // [MenuItem("Twelve/🛠️ Development Tools/Character Creator")]
+    public static void ShowWindow()
+    {
+        var window = GetWindow<CharacterCreator>("Character Creator");
+        window.titleContent = new GUIContent("➕ Character Creator");
+        window.minSize = new Vector2(400, 300);
+        window.Show();
+    }
+
+    void OnGUI()
+    {
+        GUILayout.Label("➕ 캐릭터 생성 도구", EditorStyles.boldLabel);
+        EditorGUILayout.Space();
+        
+        EditorGUILayout.HelpBox("기본 캐릭터들을 자동으로 생성합니다.", MessageType.Info);
+        
+        if (GUILayout.Button("🎮 기본 캐릭터 생성", GUILayout.Height(35)))
+        {
+            CreateDefaultCharacters();
+        }
+        
+        EditorGUILayout.Space();
+        
+        if (GUILayout.Button("🎯 캐릭터 풀 할당 도구", GUILayout.Height(35)))
+        {
+            CharacterPoolAssigner.ShowWindow();
+        }
+    }
+
+    // 개별 메뉴 항목들은 Development Tools에서 제거
+    // [MenuItem("Twelve/🛠️ Development Tools/Create Default Characters")]
     public static void CreateDefaultCharacters()
     {
         string folderPath = "Assets/Characters";
@@ -174,7 +205,8 @@ public class CharacterPoolAssigner : EditorWindow
 {
     private GameManager gameManager;
     
-    [MenuItem("Twelve/🛠️ Development Tools/Assign Character Pools")]
+    // TwelveToolsManager를 통해서만 접근 - 직접 메뉴 항목 제거  
+    // [MenuItem("Twelve/🛠️ Development Tools/Assign Character Pools")]
     public static void ShowWindow()
     {
         GetWindow<CharacterPoolAssigner>("캐릭터 풀 할당");

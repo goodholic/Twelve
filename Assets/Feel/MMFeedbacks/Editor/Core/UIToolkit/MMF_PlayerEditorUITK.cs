@@ -382,11 +382,6 @@ namespace MoreMountains.Feedbacks
 				return;
 			}
 
-			if (!_initialized)
-			{
-				return;
-			}
-
 			serializedObject.Update();
 			CacheFeedbacksListProperty();
 			RedrawFeedbacksList();
@@ -1305,23 +1300,12 @@ namespace MoreMountains.Feedbacks
 			{
 				return;
 			}
-			
-			if (!_initialized)
-			{
-				return;
-			}
-			
 			serializedObject.Update();
 			ClearDictionaries();
 			DrawEmptyListState();
 			BindListViewToData();
 			DrawAutomaticShakerSetupButton(); 
-			
-			if (_feedbacksListView != null)
-			{
-				_feedbacksListView.Rebuild();
-			}
-			
+			_feedbacksListView.Rebuild();
 			UpdateFeedbacksListLabel();
 		}
 
@@ -1567,10 +1551,6 @@ namespace MoreMountains.Feedbacks
 		
 		protected virtual void BindListViewToData()
 		{
-			if (_feedbacksListView == null || TargetMmfPlayer == null || TargetMmfPlayer.FeedbacksList == null)
-			{
-				return;
-			}
 			_feedbacksListView.itemsSource = TargetMmfPlayer.FeedbacksList;
 		}
 

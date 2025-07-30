@@ -9,7 +9,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 6950899989110132374}
-  - component: {fileID: 8964244131812738769}
+  - component: {fileID: 4293622256172848518}
   m_Layer: 0
   m_Name: UIManager
   m_TagString: Untagged
@@ -32,7 +32,7 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &8964244131812738769
+--- !u!114 &4293622256172848518
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -41,29 +41,11 @@ MonoBehaviour:
   m_GameObject: {fileID: 3735720747908920864}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fe5c07d0183af3047934949f3c3984f7, type: 3}
+  m_Script: {fileID: 11500000, guid: e45280dfa1e480645b697df70d3175b4, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: GuildMaster::TwelveGame.Battle.UIManager
-  currentTurnText: {fileID: 0}
-  scoreText: {fileID: 0}
-  gameStateText: {fileID: 0}
-  characterButtons:
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  buttonImages: []
-  buttonTexts: []
-  preparationPanel: {fileID: 0}
-  startBattleButton: {fileID: 0}
-  xTeamCountText: {fileID: 0}
-  oTeamCountText: {fileID: 0}
-  gameOverPanel: {fileID: 0}
-  winnerText: {fileID: 0}
-  restartButton: {fileID: 0}
-  characterInfoPanel: {fileID: 0}
-  characterNameText: {fileID: 0}
-  characterDescText: {fileID: 0}
-  attackPatternPreview: {fileID: 0}
-  battlePreviewPanel: {fileID: 0}
-  previewText: {fileID: 0}
+  m_EditorClassIdentifier: GuildMaster::GuildMaster.UI.UIManager
+  mainCanvas: {fileID: 0}
+  loadingScreen: {fileID: 0}
+  gameplayUI: {fileID: 0}
+  inventoryPanel: {fileID: 0}
+  settingsPanel: {fileID: 0}

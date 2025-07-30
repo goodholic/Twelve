@@ -18,7 +18,7 @@ namespace TwelveGame.Battle
         get
         {
             if (instance == null)
-                instance = FindObjectOfType<GameManager>();
+                instance = FindFirstObjectByType<GameManager>();
             return instance;
         }
     }
@@ -102,6 +102,8 @@ namespace TwelveGame.Battle
 
     void Start()
     {
+        Debug.Log("🚀 GameManager Start() 호출됨");
+        
         // CharacterDatabaseSO 로드 및 초기화
         LoadCharacterDatabase();
         
@@ -179,6 +181,18 @@ namespace TwelveGame.Battle
 
         // UI 업데이트
         UpdateUI();
+        
+        // BattleUIManager 강제 업데이트
+        if (BattleUIManager.Instance != null)
+        {
+            Debug.Log("🔄 BattleUIManager 강제 업데이트");
+            BattleUIManager.Instance.UpdateCharacterButtons();
+            BattleUIManager.Instance.UpdateUI();
+        }
+        else
+        {
+            Debug.LogWarning("⚠️ BattleUIManager.Instance가 null입니다!");
+        }
     }
 
     /// <summary>
@@ -275,6 +289,17 @@ namespace TwelveGame.Battle
         oTeamPool.AddRange(allCharacters);
 
         Debug.Log($"🎮 배틀 캐릭터 풀 초기화 완료: 각 팀 {allCharacters.Count}개 캐릭터");
+        
+        // 캐릭터 아이콘 상태 확인
+        int iconCount = 0;
+        foreach (var character in allCharacters)
+        {
+            if (character.characterIcon != null)
+                iconCount++;
+            else
+                Debug.LogWarning($"⚠️ 캐릭터 '{character.characterName}'의 아이콘이 null입니다.");
+        }
+        Debug.Log($"📊 아이콘이 있는 캐릭터: {iconCount}/{allCharacters.Count}");
     }
 
     /// <summary>
@@ -295,7 +320,7 @@ namespace TwelveGame.Battle
         Debug.Log("🔧 테스트용 캐릭터 생성 중...");
         
         // RuntimeCharacterGenerator 사용하여 테스트 캐릭터 생성
-        var generator = FindObjectOfType<RuntimeCharacterGenerator>();
+        var generator = FindFirstObjectByType<RuntimeCharacterGenerator>();
         if (generator != null)
         {
             #if UNITY_EDITOR
@@ -560,7 +585,7 @@ namespace TwelveGame.Battle
         teamText.color = Color.white;
         
         // 보드 매니저에 업데이트 요청
-        BoardManager boardManager = FindObjectOfType<BoardManager>();
+        BoardManager boardManager = FindFirstObjectByType<BoardManager>();
         if (boardManager != null)
         {
             boardManager.RefreshBoard();

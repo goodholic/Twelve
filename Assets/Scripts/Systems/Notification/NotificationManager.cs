@@ -20,7 +20,7 @@ namespace GuildMaster.Systems
             {
                 if (_instance == null)
                 {
-                    _instance = FindObjectOfType<NotificationManager>();
+                    _instance = FindFirstObjectByType<NotificationManager>();
                     if (_instance == null)
                     {
                         GameObject go = new GameObject("NotificationManager");
@@ -124,7 +124,7 @@ namespace GuildMaster.Systems
             // UI 컴포넌트 찾기
             if (notificationContainer == null)
             {
-                var canvas = FindObjectOfType<Canvas>();
+                var canvas = FindFirstObjectByType<Canvas>();
                 if (canvas != null)
                 {
                     GameObject container = new GameObject("NotificationContainer");

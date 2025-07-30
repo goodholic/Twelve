@@ -20,9 +20,21 @@ using GuildMaster.Data;
 /// </summary>
 public static class EditorCleanupUtility
 {
-    [MenuItem("Twelve/🛠️ Development Tools/Fix Serialization Issues")]
+    [MenuItem("Tools/Unity Editor/Fix Serialization Issues")]
     public static void FixSerializationIssues()
     {
+        bool confirmed = EditorUtility.DisplayDialog(
+            "직렬화 문제 해결",
+            "다음 작업을 수행합니다:\n\n" +
+            "• 모든 씬의 더티 플래그 정리\n" +
+            "• 프리팹 연결 상태 확인\n" +
+            "• 에셋 데이터베이스 새로고침\n" +
+            "• 임시 파일 정리\n\n" +
+            "계속하시겠습니까?",
+            "실행", "취소");
+            
+        if (!confirmed) return;
+
         // 씬 내 모든 게임오브젝트 스캔
         GameObject[] allObjects = Object.FindObjectsByType<GameObject>(FindObjectsSortMode.None);
         Debug.Log($"객체 {allObjects.Length}개 검사 중...");
@@ -371,34 +383,41 @@ public static class EditorCleanupUtility
     }
 #endif
 
-    [MenuItem("Twelve/🛠️ Development Tools/Force Refresh Scene")]
+    [MenuItem("Tools/Unity Scene/Force Refresh Scene")]
     public static void ForceRefreshScene()
     {
-        if (EditorUtility.DisplayDialog(
-            "Force Refresh Scene",
-            "This will close and reopen the current scene to reset all serialization states.\n\n" +
-            "Any unsaved changes will be lost. Continue?",
-            "Yes, Reload Scene",
-            "Cancel"
-        ))
+        Debug.Log("[EditorCleanupUtility] 씬 강제 새로고침을 시작합니다...");
+        
+        // 현재 씬 정보 저장
+        string currentScenePath = EditorSceneManager.GetActiveScene().path;
+        
+        try
         {
-            string currentScenePath = UnityEngine.SceneManagement.SceneManager.GetActiveScene().path;
+            // 씬을 다시 로드하여 강제 새로고침
             if (!string.IsNullOrEmpty(currentScenePath))
             {
-                if (EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
-                {
-                    EditorSceneManager.OpenScene(currentScenePath, OpenSceneMode.Single);
-                    Debug.Log("씬을 다시 로드했습니다: " + currentScenePath);
-                }
+                EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo();
+                EditorSceneManager.OpenScene(currentScenePath, OpenSceneMode.Single);
+                
+                Debug.Log($"✅ 씬이 성공적으로 새로고침되었습니다: {currentScenePath}");
             }
             else
             {
-                Debug.LogWarning("현재 씬이 저장되지 않아 다시 로드할 수 없습니다.");
+                Debug.LogWarning("❓ 활성 씬이 저장되지 않았습니다. 먼저 씬을 저장해주세요.");
             }
         }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"❌ 씬 새로고침 실패: {e.Message}");
+        }
+        
+        // 에셋 데이터베이스도 새로고침
+        AssetDatabase.Refresh();
+        
+        EditorUtility.DisplayDialog("완료", "씬 강제 새로고침이 완료되었습니다.", "확인");
     }
-
-    [MenuItem("Twelve/🛠️ Development Tools/Clear Selection and Reload Inspectors")]
+    
+    [MenuItem("Tools/Unity Editor/Clear Selection and Reload Inspectors")]
     public static void ClearSelectionAndReloadInspectors()
     {
         // 현재 선택된 항목 해제
@@ -430,3 +449,4 @@ public static class EditorCleanupUtility
     }
 }
 #endif
+

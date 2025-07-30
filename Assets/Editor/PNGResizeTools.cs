@@ -10,31 +10,31 @@ using System.Linq;
 /// </summary>
 public static class PNGResizeTools
 {
-    [MenuItem("Twelve/🖼️ PNG 최적화 도구/📱 모바일 최적화 (720x540)")]
-    public static void ResizeForMobile()
+    [MenuItem("Twelve/🖼️ PNG 도구/📱 모바일 최적화 (720x540)")]
+    public static void OptimizeForMobile()
     {
-        ResizePNGsInVideoFolder(720, 540, "모바일 최적화");
+        ResizePNGsInVideoFolder(720, 540, "모바일");
     }
-    
-    [MenuItem("Twelve/🖼️ PNG 최적화 도구/💻 PC 중간 품질 (960x720)")]
-    public static void ResizeForPC()
+
+    [MenuItem("Twelve/🖼️ PNG 도구/💻 PC 중간 품질 (960x720)")]
+    public static void OptimizeForPC()
     {
-        ResizePNGsInVideoFolder(960, 720, "PC 중간 품질");
+        ResizePNGsInVideoFolder(960, 720, "PC");
     }
-    
-    [MenuItem("Twelve/🖼️ PNG 최적화 도구/🎮 균형 최적화 (840x630)")]
-    public static void ResizeForCrossPlatform()
+
+    [MenuItem("Twelve/🖼️ PNG 도구/🎮 균형 최적화 (840x630)")]
+    public static void OptimizeForBalance()
     {
-        ResizePNGsInVideoFolder(840, 630, "크로스 플랫폼 균형");
+        ResizePNGsInVideoFolder(840, 630, "균형");
     }
-    
-    [MenuItem("Twelve/🖼️ PNG 최적화 도구/📊 현재 크기 분석")]
+
+    [MenuItem("Twelve/🖼️ PNG 도구/📊 현재 크기 분석")]
     public static void AnalyzeCurrentSizes()
     {
         AnalyzePNGSizes();
     }
-    
-    [MenuItem("Twelve/🖼️ PNG 최적화 도구/💾 원본 백업 생성")]
+
+    [MenuItem("Twelve/🖼️ PNG 도구/💾 원본 백업 생성")]
     public static void CreateBackup()
     {
         CreateOriginalBackup();

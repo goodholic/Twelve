@@ -25,7 +25,7 @@ public class PNGSequenceTools : EditorWindow
         public int estimatedFrameRate = 12;
     }
     
-    [MenuItem("Twelve/🖼️ PNG 시퀀스 도구/PNG 시퀀스 자동 설정")]
+    [MenuItem("Twelve/🖼️ PNG 도구/PNG 시퀀스 자동 설정")]
     public static void ShowWindow()
     {
         PNGSequenceTools window = GetWindow<PNGSequenceTools>("🖼️ PNG 시퀀스 자동 설정");
@@ -107,7 +107,7 @@ public class PNGSequenceTools : EditorWindow
         }
         else
         {
-            EditorGUILayout.HelpBox("📁 PNG 시퀀스를 스캔하려면 '🔍 PNG 시퀀스 스캔' 버튼을 클릭하세요.", MessageType.Info);
+            EditorGUILayout.HelpBox("�� PNG 시퀀스를 스캔하려면 '🔍 PNG 시퀀스 스캔' 버튼을 클릭하세요.", MessageType.Info);
         }
     }
     

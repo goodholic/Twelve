@@ -75,7 +75,7 @@ public class CharacterEndingManager : MonoBehaviour
         get
         {
             if (instance == null)
-                instance = FindObjectOfType<CharacterEndingManager>();
+                instance = FindFirstObjectByType<CharacterEndingManager>();
             return instance;
         }
     }

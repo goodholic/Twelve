@@ -20,7 +20,7 @@ namespace GuildMaster.Systems
             {
                 if (_instance == null)
                 {
-                    _instance = FindObjectOfType<LeaderboardSystem>();
+                    _instance = FindFirstObjectByType<LeaderboardSystem>();
                     if (_instance == null)
                     {
                         GameObject go = new GameObject("LeaderboardSystem");

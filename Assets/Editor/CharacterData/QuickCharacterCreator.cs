@@ -259,7 +259,7 @@ public static class QuickCharacterCreator
 
 public class QuickCharacterCreatorMenu
 {
-    [MenuItem("Tools/Quick Create Characters")]
+    [MenuItem("Twelve/👥 캐릭터 생성/빠른 캐릭터 생성")]
     public static void CreateCharacters()
     {
         QuickCharacterCreator.CreateAllCharacters();

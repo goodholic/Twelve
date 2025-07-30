@@ -20,6 +20,14 @@ public class CanvasProtector : MonoBehaviour
     [Tooltip("강제 활성화 로그 출력")]
     public bool enableDebugLogs = true;
     
+    [Header("고급 보호 설정")]
+    [Tooltip("MMTouchControls 등의 외부 스크립트로부터 보호")]
+    public bool ignoreExternalDeactivation = true;
+    
+    [Tooltip("보호 강도 (낮을수록 더 자주 체크)")]
+    [Range(0.01f, 1.0f)]
+    public float advancedProtectionInterval = 0.05f;
+    
     private Canvas[] protectedCanvases;
     private string[] canvasNames;
     private bool isProtectionActive = false;
@@ -88,7 +96,7 @@ public class CanvasProtector : MonoBehaviour
     {
         while (isProtectionActive)
         {
-            yield return new WaitForSeconds(protectionInterval);
+            yield return new WaitForSeconds(ignoreExternalDeactivation ? advancedProtectionInterval : protectionInterval);
             
             if (protectedCanvases == null) continue;
             
@@ -96,22 +104,55 @@ public class CanvasProtector : MonoBehaviour
             {
                 if (protectedCanvases[i] == null) continue;
                 
-                // Canvas 컴포넌트가 비활성화되었다면 즉시 재활성화
-                if (!protectedCanvases[i].enabled)
+                // 고급 보호: MMTouchControls 등의 외부 비활성화 무시
+                if (ignoreExternalDeactivation)
                 {
-                    protectedCanvases[i].enabled = true;
+                    // GameObject 자체가 비활성화되었다면 즉시 재활성화
+                    if (!protectedCanvases[i].gameObject.activeSelf)
+                    {
+                        protectedCanvases[i].gameObject.SetActive(true);
+                        
+                        if (enableDebugLogs)
+                            Debug.LogWarning($"[CanvasProtector] 🚨 GameObject '{canvasNames[i]}' 강제 재활성화!");
+                    }
                     
-                    if (enableDebugLogs)
-                        Debug.LogWarning($"[CanvasProtector] 🚨 Canvas '{canvasNames[i]}' 강제 재활성화!");
+                    // Canvas 컴포넌트가 비활성화되었다면 즉시 재활성화
+                    if (!protectedCanvases[i].enabled)
+                    {
+                        protectedCanvases[i].enabled = true;
+                        
+                        if (enableDebugLogs)
+                            Debug.LogWarning($"[CanvasProtector] 🚨 Canvas '{canvasNames[i]}' 강제 재활성화!");
+                    }
+                    
+                    // CanvasGroup alpha 값도 보호
+                    CanvasGroup canvasGroup = protectedCanvases[i].GetComponent<CanvasGroup>();
+                    if (canvasGroup != null && canvasGroup.alpha < 0.1f)
+                    {
+                        canvasGroup.alpha = 1.0f;
+                        
+                        if (enableDebugLogs)
+                            Debug.LogWarning($"[CanvasProtector] 🚨 CanvasGroup '{canvasNames[i]}' alpha 복원!");
+                    }
                 }
-                
-                // GameObject 자체가 비활성화되었다면 재활성화
-                if (!protectedCanvases[i].gameObject.activeSelf)
+                else
                 {
-                    protectedCanvases[i].gameObject.SetActive(true);
+                    // 기본 보호
+                    if (!protectedCanvases[i].enabled)
+                    {
+                        protectedCanvases[i].enabled = true;
+                        
+                        if (enableDebugLogs)
+                            Debug.LogWarning($"[CanvasProtector] 🚨 Canvas '{canvasNames[i]}' 강제 재활성화!");
+                    }
                     
-                    if (enableDebugLogs)
-                        Debug.LogWarning($"[CanvasProtector] 🚨 GameObject '{canvasNames[i]}' 강제 재활성화!");
+                    if (!protectedCanvases[i].gameObject.activeSelf)
+                    {
+                        protectedCanvases[i].gameObject.SetActive(true);
+                        
+                        if (enableDebugLogs)
+                            Debug.LogWarning($"[CanvasProtector] 🚨 GameObject '{canvasNames[i]}' 강제 재활성화!");
+                    }
                 }
             }
         }

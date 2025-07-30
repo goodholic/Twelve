@@ -17,7 +17,7 @@ namespace GuildMaster.Systems
             {
                 if (_instance == null)
                 {
-                    _instance = FindObjectOfType<SettingsSystem>();
+                    _instance = FindFirstObjectByType<SettingsSystem>();
                     if (_instance == null)
                     {
                         GameObject go = new GameObject("SettingsSystem");
@@ -188,7 +188,7 @@ namespace GuildMaster.Systems
         void ApplyGameplaySettings()
         {
             // 전투 속도
-            var battleSystem = FindObjectOfType<MonoBehaviour>(); // BattleAnimationSystem 대신 임시 처리
+            var battleSystem = FindFirstObjectByType<MonoBehaviour>(); // BattleAnimationSystem 대신 임시 처리
             if (battleSystem != null && battleSystem.GetType().Name == "BattleAnimationSystem")
             {
                 // battleSystem.SetAnimationSpeed(currentSettings.battleSpeed); // 임시 주석 처리
@@ -209,7 +209,7 @@ namespace GuildMaster.Systems
         void ApplyUISettings()
         {
             // UI 스케일
-            var canvasScaler = FindObjectOfType<CanvasScaler>();
+            var canvasScaler = FindFirstObjectByType<CanvasScaler>();
             if (canvasScaler != null)
             {
                 canvasScaler.scaleFactor = currentSettings.uiScale;
@@ -240,7 +240,7 @@ namespace GuildMaster.Systems
             }
             
             // 텍스트 크기
-            var textComponents = FindObjectsOfType<TextMeshProUGUI>();
+            var textComponents = FindObjectsByType<TextMeshProUGUI>(FindObjectsSortMode.None);
             foreach (var text in textComponents)
             {
                 // Unity의 tag 시스템을 사용하지 않고 컴포넌트 이름으로 확인

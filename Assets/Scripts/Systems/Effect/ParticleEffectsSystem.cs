@@ -14,7 +14,7 @@ namespace GuildMaster.Systems
             {
                 if (_instance == null)
                 {
-                    _instance = FindObjectOfType<ParticleEffectsSystem>();
+                    _instance = FindFirstObjectByType<ParticleEffectsSystem>();
                     if (_instance == null)
                     {
                         GameObject go = new GameObject("ParticleEffectsSystem");

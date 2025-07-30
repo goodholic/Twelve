@@ -116,21 +116,19 @@ namespace Twelve.Editor
         /// <summary>
         /// PNG 시퀀스 빠른 설정 가이드
         /// </summary>
-        [MenuItem("Twelve/⚡ Quick Tools/🖼️ PNG 시퀀스 빠른 가이드", false, 104)]
         public static void ShowPNGSequenceQuickGuide()
         {
-            Debug.Log("=== 🖼️ PNG 시퀀스 투명배경 빠른 가이드 ===");
-            Debug.Log("📁 1. PNG 시퀀스 파일들을 Assets/Video/ 폴더에 배치");
-            Debug.Log("📝 2. 파일명에 'idle' 또는 'attack' 키워드 포함");
-            Debug.Log("🛠️ 3. Unity 메뉴 → Twelve → 🖼️ PNG 시퀀스 도구 → 📁 Video 폴더에서 빠른 설정");
-            Debug.Log("🎬 4. 새 CharacterData 생성 또는 기존 CharacterData 선택");
-            Debug.Log("✨ 5. 자동으로 감지하여 할당 완료!");
-            Debug.Log("==========================================");
-            Debug.Log("🚫 비디오 코덱 문제 완전 해결!");
-            Debug.Log("🖼️ PNG 시퀀스는 완벽한 투명배경을 지원합니다!");
-            Debug.Log("💡 팁: 영문 파일명 사용 (character_idle_01.png)");
-            Debug.Log("🛠️ 자동 설정: Twelve → 🖼️ PNG 시퀀스 도구");
-            Debug.Log("==========================================");
+            string message = "📋 PNG 시퀀스 빠른 설정 가이드\n\n" +
+                           "이 기능은 다음으로 이동되었습니다:\n\n" +
+                           "• Twelve → 🖼️ PNG 도구 → PNG 시퀀스 자동 설정\n" +
+                           "• Twelve → 🏠 도구 관리자 → 에셋 관리 탭\n\n" +
+                           "🎯 사용법:\n" +
+                           "1️⃣ Video 폴더에 PNG 시퀀스 넣기\n" +
+                           "2️⃣ PNG 도구에서 '시퀀스 스캔' 클릭\n" +
+                           "3️⃣ '애니메이션 생성' 클릭\n\n" +
+                           "💡 팁: 파일명은 숫자 순서로 정렬되어야 합니다.";
+            
+            EditorUtility.DisplayDialog("🖼️ PNG 시퀀스 빠른 가이드", message, "확인");
         }
         
         /// <summary>
@@ -164,19 +162,27 @@ namespace Twelve.Editor
             }
         }
         
-        /// <summary>
-        /// 프로젝트 정리 도구
-        /// </summary>
+        // Clean Project는 EditorCleanupUtility와 중복 - 제거
+        /*
         [MenuItem("Twelve/⚡ Quick Tools/Clean Project", false, 102)]
         public static void CleanProject()
         {
-            Debug.Log("🧹 프로젝트 정리 시작...");
+            bool result = EditorUtility.DisplayDialog("프로젝트 정리", 
+                "다음 작업을 수행합니다:\n\n" +
+                "• 빈 폴더 삭제\n" +
+                "• .meta 파일 정리\n" +
+                "• 임시 파일 삭제\n" +
+                "• 캐시 새로고침\n\n" +
+                "계속하시겠습니까?", "정리 시작", "취소");
             
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
-            
-            Debug.Log("✅ 프로젝트 정리 완료!");
+            if (result)
+            {
+                AssetDatabase.DeleteAsset("Assets/EmptyFolderToDelete");
+                AssetDatabase.Refresh();
+                Debug.Log("✅ 프로젝트 정리가 완료되었습니다!");
+            }
         }
+        */
         
         #endregion
         
@@ -655,31 +661,27 @@ namespace Twelve.Editor
         }
 
         /// <summary>
-        /// Inspector 에러 진단 및 수정
+        /// Inspector 에러 진단은 Development Tools에서 접근 가능 - 제거
         /// </summary>
+        /*
         [MenuItem("Twelve/⚡ Quick Tools/🔍 Inspector 에러 진단", false, 110)]
         public static void DiagnoseInspectorErrors()
         {
-            Debug.Log("🔍 Inspector 에러 진단 시작...");
+            Debug.Log("🔍 Inspector 에러 진단을 시작합니다...");
             
-            // 1. Missing Components 검사
-            Debug.Log("1️⃣ Missing Components 검사 중...");
-            FindAndReportMissingComponents();
+            // Selection 관련 문제 확인
+            if (Selection.activeObject == null)
+            {
+                Debug.Log("ℹ️ 현재 선택된 객체가 없습니다.");
+            }
+            else
+            {
+                Debug.Log($"✅ 선택된 객체: {Selection.activeObject.name} ({Selection.activeObject.GetType()})");
+            }
             
-            // 2. Null References 검사
-            Debug.Log("2️⃣ Null References 검사 중...");
-            CheckNullReferences();
-            
-            // 3. Inspector 선택 초기화
-            Debug.Log("3️⃣ Inspector 선택 초기화...");
-            Selection.activeGameObject = null;
-            
-            // 4. 에디터 새로고침
-            Debug.Log("4️⃣ 에디터 새로고침...");
-            UnityEditor.AssetDatabase.Refresh();
-            
-            Debug.Log("✅ Inspector 에러 진단 완료!");
+            EditorUtility.DisplayDialog("Inspector 진단 완료", "콘솔 로그를 확인하세요.", "확인");
         }
+        */
 
         /// <summary>
         /// 안전한 배틀씬 설정 (에러 방지)
@@ -964,14 +966,14 @@ namespace Twelve.Editor
                 GuildMaster.CSV.CSVDataSystemManager.ImportCharacterData();
             }
             
-            if (GUILayout.Button("🖼️ PNG 시퀀스 빠른 가이드"))
-            {
-                TwelveProjectTools.ShowPNGSequenceQuickGuide();
-            }
-            
             if (GUILayout.Button("🧹 프로젝트 정리"))
             {
-                TwelveProjectTools.CleanProject();
+                // CleanProject 메서드는 제거됨 - EditorCleanupUtility 사용 안내
+                EditorUtility.DisplayDialog("프로젝트 정리", 
+                    "프로젝트 정리 기능은 다음으로 이동되었습니다:\n\n" +
+                    "• Twelve → 🛠️ Development Tools → Fix Serialization Issues\n" +
+                    "• Twelve → 🏠 도구 관리자 → 프로젝트 유틸 탭\n\n" +
+                    "더 강력하고 안전한 정리 도구를 사용하세요.", "확인");
             }
             
             GUILayout.Space(20);

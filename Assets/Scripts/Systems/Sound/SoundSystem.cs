@@ -15,7 +15,7 @@ namespace GuildMaster.Systems
             {
                 if (_instance == null)
                 {
-                    _instance = FindObjectOfType<SoundSystem>();
+                    _instance = FindFirstObjectByType<SoundSystem>();
                     if (_instance == null)
                     {
                         GameObject go = new GameObject("SoundSystem");

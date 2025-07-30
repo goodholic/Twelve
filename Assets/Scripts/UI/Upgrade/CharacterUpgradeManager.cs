@@ -56,10 +56,10 @@ namespace GuildMaster.UI
                 
             // 매니저 참조 찾기
             if (inventoryManager == null)
-                inventoryManager = FindObjectOfType<CharacterInventoryManager>();
+                inventoryManager = FindFirstObjectByType<CharacterInventoryManager>();
                 
             if (lobbyManager == null)
-                lobbyManager = FindObjectOfType<LobbySceneManager>();
+                lobbyManager = FindFirstObjectByType<LobbySceneManager>();
         }
         
         /// <summary>

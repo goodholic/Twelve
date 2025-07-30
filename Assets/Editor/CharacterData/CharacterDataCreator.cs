@@ -3,7 +3,7 @@ using UnityEditor;
 
 public class CharacterDataCreator
 {
-    [MenuItem("Tools/Create Test Character Data")]
+    [MenuItem("Twelve/👥 캐릭터 생성/테스트 캐릭터 데이터 생성")]
     public static void CreateTestCharacterData()
     {
         // CharacterData ScriptableObject 생성
@@ -31,7 +31,7 @@ public class CharacterDataCreator
         Debug.Log("💡 Inspector에서 PNG 시퀀스 자동 설정 도구를 사용하거나 Idle/Attack PNG Sequence 필드에 PNG 파일들을 할당하세요!");
     }
     
-    [MenuItem("Tools/Create PNG Sequence Character Data")]
+    [MenuItem("Twelve/👥 캐릭터 생성/PNG 시퀀스 캐릭터 데이터 생성")]
     public static void CreatePNGSequenceCharacterData()
     {
         // 새로운 CharacterData 생성

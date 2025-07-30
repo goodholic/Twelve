@@ -288,7 +288,15 @@ public class TileObject : MonoBehaviour
         characterVisual.transform.localPosition = Vector3.zero;
         
         SpriteRenderer charSprite = characterVisual.AddComponent<SpriteRenderer>();
-        charSprite.sprite = character.characterData.characterIcon;
+        if (character.characterData.characterIcon != null)
+        {
+            charSprite.sprite = character.characterData.characterIcon;
+        }
+        else
+        {
+            // 캐릭터 아이콘이 없을 때 팀 색상으로 기본 스프라이트 생성
+            charSprite.sprite = CreateDefaultTileCharacterSprite(character.team);
+        }
         charSprite.sortingOrder = 1;
         
         // 팀 표시
@@ -342,6 +350,49 @@ public class TileObject : MonoBehaviour
         texture.Apply();
         
         return Sprite.Create(texture, new Rect(0, 0, 64, 64), new Vector2(0.5f, 0.5f), 64);
+    }
+    
+    // 타일에 표시할 캐릭터용 기본 스프라이트 생성
+    Sprite CreateDefaultTileCharacterSprite(GameManager.Team team)
+    {
+        Color color = team == GameManager.Team.X ? new Color(0.2f, 0.6f, 1f) : new Color(1f, 0.4f, 0.2f); // 파란색 vs 주황색
+        
+        Texture2D texture = new Texture2D(48, 48);
+        Color[] pixels = new Color[48 * 48];
+        
+        // 원형 모양의 스프라이트 생성
+        Vector2 center = new Vector2(24, 24);
+        float radius = 20f;
+        
+        for (int x = 0; x < 48; x++)
+        {
+            for (int y = 0; y < 48; y++)
+            {
+                Vector2 pos = new Vector2(x, y);
+                float distance = Vector2.Distance(pos, center);
+                
+                if (distance <= radius)
+                {
+                    if (distance > radius - 2)
+                    {
+                        pixels[x + y * 48] = Color.black; // 테두리
+                    }
+                    else
+                    {
+                        pixels[x + y * 48] = color; // 내부 색상
+                    }
+                }
+                else
+                {
+                    pixels[x + y * 48] = Color.clear; // 투명
+                }
+            }
+        }
+        
+        texture.SetPixels(pixels);
+        texture.Apply();
+        
+        return Sprite.Create(texture, new Rect(0, 0, 48, 48), new Vector2(0.5f, 0.5f), 48);
     }
 }
 }

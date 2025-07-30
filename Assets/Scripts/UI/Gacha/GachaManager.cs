@@ -36,7 +36,8 @@ public class GachaManager : MonoBehaviour
     [SerializeField] private int guaranteedStarLevel = 2;   // 10연차 보장 등급
 
     [Header("확률 설정")]
-    [SerializeField] private float star1Probability = 70f;  // 1성 확률 (70%)
+#pragma warning disable CS0414
+    [SerializeField] private float star1Probability = 70f;  // 1성 확률 (70%) - 향후 사용 예정
     [SerializeField] private float star2Probability = 25f;  // 2성 확률 (25%)
     [SerializeField] private float star3Probability = 5f;   // 3성 확률 (5%)
 

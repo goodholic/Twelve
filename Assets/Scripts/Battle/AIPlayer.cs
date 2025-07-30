@@ -37,7 +37,7 @@ namespace TwelveGame.Battle
     void Start()
     {
         gameManager = GameManager.Instance;
-        boardManager = FindObjectOfType<BoardManager>();
+        boardManager = FindFirstObjectByType<BoardManager>();
     }
     
     void Update()

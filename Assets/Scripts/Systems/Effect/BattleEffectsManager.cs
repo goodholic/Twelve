@@ -17,7 +17,7 @@ namespace GuildMaster.Battle
             {
                 if (_instance == null)
                 {
-                    _instance = FindObjectOfType<BattleEffectsManager>();
+                    _instance = FindFirstObjectByType<BattleEffectsManager>();
                     if (_instance == null)
                     {
                         GameObject go = new GameObject("BattleEffectsManager");

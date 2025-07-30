@@ -7,8 +7,24 @@ using TacticalTileGame.Data;
 
 public class CSVCharacterGenerator
 {
+    // 기존 Data Management 카테고리와 중복되므로 제거하고 통합
+    // 대신 기존 "Twelve/📊 Data Management/CSV 임포터"를 사용하세요
+    /*
     [MenuItem("Tools/Generate Characters from CSV")]
     public static void GenerateCharactersFromCSV()
+    {
+        string csvPath = "Assets/CSV/character_csv_data.txt";
+        
+        if (!File.Exists(csvPath))
+        {
+            Debug.LogError($"CSV 파일을 찾을 수 없습니다: {csvPath}");
+            return;
+        }
+    */
+    
+    // 대신 Data Management와 통합된 메서드 제공
+    [MenuItem("Twelve/📊 Data Management/CSV에서 캐릭터 생성")]
+    public static void GenerateCharactersFromCSVIntegrated()
     {
         string csvPath = "Assets/CSV/character_csv_data.txt";
         

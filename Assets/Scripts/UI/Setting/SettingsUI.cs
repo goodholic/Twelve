@@ -169,9 +169,8 @@ namespace GuildMaster.UI
         
         public void SetUIScale(float scale)
         {
-            // UI 스케일 적용
-            if (UIManager.Instance != null)
-                UIManager.Instance.SetUIScale(scale);
+            // UI 스케일 적용 - UIManager가 삭제됨으로 PlayerPrefs에 저장만 함
+            PlayerPrefs.SetFloat("UIScale", scale);
         }
         
         public void SetLanguage(int languageIndex)

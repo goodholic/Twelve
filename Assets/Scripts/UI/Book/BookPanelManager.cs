@@ -274,14 +274,39 @@ public class BookPanelManager : MonoBehaviour
     {
         if (characterDatabaseObject == null)
         {
-            Debug.LogWarning("[BookPanelManager] characterDatabaseObject가 null입니다!");
-            return false;
+            Debug.LogWarning("[BookPanelManager] characterDatabaseObject가 null입니다! 자동 할당을 시도합니다.");
+            
+            // CharacterDatabaseSO 자동 할당 시도
+            var foundDatabase = Resources.Load<CharacterDatabaseSO>("CharacterDatabaseSO");
+            if (foundDatabase != null)
+            {
+                characterDatabaseObject = foundDatabase;
+                Debug.Log("[BookPanelManager] CharacterDatabaseSO 자동 할당 성공: " + foundDatabase.name);
+            }
+            else
+            {
+                Debug.LogError("[BookPanelManager] CharacterDatabaseSO를 찾을 수 없습니다!");
+                return false;
+            }
         }
+        
         if (characterInventory == null)
         {
-            Debug.LogWarning("[BookPanelManager] characterInventory가 null입니다!");
-            return false;
+            Debug.LogWarning("[BookPanelManager] characterInventory가 null입니다! 자동 할당을 시도합니다.");
+            
+            // CharacterInventoryManager 자동 할당 시도
+            characterInventory = CharacterInventoryManager.Instance;
+            if (characterInventory != null)
+            {
+                Debug.Log("[BookPanelManager] CharacterInventoryManager 자동 할당 성공");
+            }
+            else
+            {
+                Debug.LogError("[BookPanelManager] CharacterInventoryManager를 찾을 수 없습니다!");
+                return false;
+            }
         }
+        
         return true;
     }
 

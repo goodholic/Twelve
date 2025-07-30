@@ -46,7 +46,7 @@ namespace GuildMaster.Data
                 Debug.Log("🔄 CSV에서 캐릭터 데이터 자동 로드 중...");
                 
                 // RuntimeCharacterGenerator를 통해 테스트 캐릭터 생성
-                var generator = FindObjectOfType<RuntimeCharacterGenerator>();
+                var generator = FindFirstObjectByType<RuntimeCharacterGenerator>();
                 if (generator != null)
                 {
                     generator.GenerateTestCharacters();

@@ -30,7 +30,7 @@ namespace GuildMaster.UI
             get
             {
                 if (_instance == null)
-                    _instance = FindObjectOfType<NotificationUI>();
+                    _instance = FindFirstObjectByType<NotificationUI>();
                 return _instance;
             }
         }
