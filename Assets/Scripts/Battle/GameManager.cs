@@ -62,7 +62,8 @@ namespace TwelveGame.Battle
     public Character[,,] boardState = new Character[BOARD_COUNT, BOARD_WIDTH, BOARD_HEIGHT];
 
     [Header("캐릭터 데이터베이스")]
-    [SerializeField] private CharacterDatabaseSO characterDatabase;
+    [SerializeField] private CharacterDatabaseSO _characterDatabase;
+    public CharacterDatabaseSO characterDatabase => _characterDatabase;
     [SerializeField] private bool loadAllCharactersAtStart = true; // 배틀 시작 시 모든 캐릭터 제공
     
     [Header("캐릭터 풀")]
@@ -72,8 +73,8 @@ namespace TwelveGame.Battle
     [Header("캐릭터 덱 시스템")]
     private List<CharacterData> xTeamDeck = new List<CharacterData>(); // X팀 덱 (무작위 순서)
     private List<CharacterData> oTeamDeck = new List<CharacterData>(); // O팀 덱 (무작위 순서)
-    private List<CharacterData> xTeamHand = new List<CharacterData>(); // X팀 현재 손패 (4장)
-    private List<CharacterData> oTeamHand = new List<CharacterData>(); // O팀 현재 손패 (4장)
+    public List<CharacterData> xTeamHand = new List<CharacterData>(); // X팀 현재 손패 (4장)
+    public List<CharacterData> oTeamHand = new List<CharacterData>(); // O팀 현재 손패 (4장)
     private CharacterData xTeamNextCard; // X팀 다음 카드
     private CharacterData oTeamNextCard; // O팀 다음 카드
     
@@ -93,7 +94,7 @@ namespace TwelveGame.Battle
 
     // 현재 선택된 캐릭터
     public CharacterData selectedCharacter;
-    private int selectedButtonIndex = -1;
+    public int selectedButtonIndex = -1;
 
     void Awake()
     {
@@ -178,6 +179,14 @@ namespace TwelveGame.Battle
 
         // 캐릭터 풀 초기화 (CharacterDatabaseSO에서 로드)
         InitializeCharacterPools();
+        
+        // 초기화 검증
+        if ((xTeamPool.Count == 0 || oTeamPool.Count == 0) ||
+            (xTeamHand.Count == 0 && oTeamHand.Count == 0))
+        {
+            Debug.LogError("❌ 캐릭터 초기화 실패! 강제 재초기화 시도...");
+            ForceReinitializeCharacters();
+        }
 
         // UI 업데이트
         UpdateUI();
@@ -201,29 +210,29 @@ namespace TwelveGame.Battle
     private void LoadCharacterDatabase()
     {
         // 1. Inspector에서 할당된 데이터베이스 확인
-        if (characterDatabase == null)
+        if (_characterDatabase == null)
         {
             Debug.Log("🔍 CharacterDatabaseSO를 자동으로 찾는 중...");
             
             // 2. Resources 폴더에서 로드 시도
-            characterDatabase = Resources.Load<CharacterDatabaseSO>("Data/CharacterDatabase");
+            _characterDatabase = Resources.Load<CharacterDatabaseSO>("Data/CharacterDatabase");
             
-            if (characterDatabase == null)
+            if (_characterDatabase == null)
             {
                 // 3. 기본 경로에서 로드 시도
                 #if UNITY_EDITOR
-                characterDatabase = UnityEditor.AssetDatabase.LoadAssetAtPath<CharacterDatabaseSO>("Assets/Prefabs/Data/Characters/CharacterDatabaseSO.asset");
+                _characterDatabase = UnityEditor.AssetDatabase.LoadAssetAtPath<CharacterDatabaseSO>("Assets/Prefabs/Data/Characters/CharacterDatabaseSO.asset");
                 
                 // 4. Generated 폴더에서도 시도
-                if (characterDatabase == null)
+                if (_characterDatabase == null)
                 {
-                    characterDatabase = UnityEditor.AssetDatabase.LoadAssetAtPath<CharacterDatabaseSO>("Assets/Characters/Generated/CharacterDatabaseSO.asset");
+                    _characterDatabase = UnityEditor.AssetDatabase.LoadAssetAtPath<CharacterDatabaseSO>("Assets/Characters/Generated/CharacterDatabaseSO.asset");
                 }
                 #endif
             }
         }
 
-        if (characterDatabase == null)
+        if (_characterDatabase == null)
         {
             Debug.LogError("❌ CharacterDatabaseSO를 찾을 수 없습니다!");
             Debug.LogError("🔧 해결 방법: Unity 메뉴 → Twelve → ⚡ Quick Tools → 🎮 배틀용 캐릭터 DB 생성");
@@ -232,11 +241,14 @@ namespace TwelveGame.Battle
         }
         else
         {
-            Debug.Log($"✅ CharacterDatabaseSO 발견: {characterDatabase.name}");
+            Debug.Log($"✅ CharacterDatabaseSO 발견: {_characterDatabase.name}");
         }
 
         // 데이터베이스 초기화
-        characterDatabase.Initialize();
+        _characterDatabase.Initialize();
+        
+        // 캐릭터 이미지 자동 할당 (최초 1회)
+        AutoAssignCharacterImagesIfNeeded();
 
         // 배틀 시작 시 모든 캐릭터 제공
         if (loadAllCharactersAtStart)
@@ -244,7 +256,7 @@ namespace TwelveGame.Battle
             LoadAllCharactersForBattle();
         }
 
-        Debug.Log($"✅ 캐릭터 데이터베이스 로드 완료: {characterDatabase.GetAllTacticalCharacters().Count}개 캐릭터");
+        Debug.Log($"✅ 캐릭터 데이터베이스 로드 완료: {_characterDatabase.GetAllTacticalCharacters().Count}개 캐릭터");
     }
 
     /// <summary>
@@ -252,9 +264,9 @@ namespace TwelveGame.Battle
     /// </summary>
     private void LoadAllCharactersForBattle()
     {
-        if (characterDatabase == null) return;
+        if (_characterDatabase == null) return;
 
-        var allCharacters = characterDatabase.GetAllTacticalCharacters();
+        var allCharacters = _characterDatabase.GetAllTacticalCharacters();
         
         if (allCharacters.Count == 0)
         {
@@ -264,8 +276,8 @@ namespace TwelveGame.Battle
             // 생성 후 다시 로드 시도
             if (characterDatabase != null)
             {
-                characterDatabase.Initialize();
-                var newCharacters = characterDatabase.GetAllTacticalCharacters();
+                _characterDatabase.Initialize();
+                var newCharacters = _characterDatabase.GetAllTacticalCharacters();
                 if (newCharacters.Count > 0)
                 {
                     xTeamPool.Clear();
@@ -300,6 +312,143 @@ namespace TwelveGame.Battle
                 Debug.LogWarning($"⚠️ 캐릭터 '{character.characterName}'의 아이콘이 null입니다.");
         }
         Debug.Log($"📊 아이콘이 있는 캐릭터: {iconCount}/{allCharacters.Count}");
+    }
+    
+    /// <summary>
+    /// 강제로 캐릭터 재초기화 (비상용)
+    /// </summary>
+    void ForceReinitializeCharacters()
+    {
+        Debug.Log("🚨 강제 캐릭터 재초기화 시작");
+        
+        // 1. 캐릭터 풀이 비어있으면 테스트 캐릭터 생성
+        if (xTeamPool.Count == 0 || oTeamPool.Count == 0)
+        {
+            CreateFallbackCharacters();
+        }
+        
+        // 2. 덱과 손패 강제 재생성
+        if (xTeamPool.Count > 0 && oTeamPool.Count > 0)
+        {
+            InitializeDecksAndHands();
+            
+            // 3. UI 강제 업데이트
+            if (BattleUIManager.Instance != null)
+            {
+                BattleUIManager.Instance.UpdateCharacterButtons();
+                BattleUIManager.Instance.UpdateUI();
+            }
+        }
+        
+        Debug.Log("🚨 강제 재초기화 완료");
+    }
+    
+    /// <summary>
+    /// 비상용 테스트 캐릭터 생성
+    /// </summary>
+    void CreateFallbackCharacters()
+    {
+        Debug.Log("🔧 비상용 테스트 캐릭터 생성 중...");
+        
+        List<CharacterData> fallbackCharacters = new List<CharacterData>();
+        
+        // 기본 캐릭터 4개 생성
+        for (int i = 1; i <= 4; i++)
+        {
+            CharacterData character = new CharacterData
+            {
+                characterName = $"테스트캐릭터{i}",
+                maxHP = 100,
+                attackPower = 50,
+                characterIcon = null, // 기본 스프라이트 사용
+                attackPattern = (AttackPattern)(i % 4) // 다양한 공격 패턴
+            };
+            fallbackCharacters.Add(character);
+        }
+        
+        // 양 팀에 할당
+        xTeamPool.Clear();
+        oTeamPool.Clear();
+        xTeamPool.AddRange(fallbackCharacters);
+        oTeamPool.AddRange(fallbackCharacters);
+        
+        Debug.Log($"✅ 비상용 캐릭터 {fallbackCharacters.Count}개 생성 완료");
+    }
+    
+    /// <summary>
+    /// 캐릭터 이미지가 할당되지 않은 경우 자동 할당
+    /// </summary>
+    void AutoAssignCharacterImagesIfNeeded()
+    {
+        if (_characterDatabase == null) return;
+        
+        var allCharacters = _characterDatabase.GetAllTacticalCharacters();
+        if (allCharacters.Count == 0) return;
+        
+        // 이미지가 없는 캐릭터가 있는지 확인
+        int nullIconCount = 0;
+        foreach (var character in allCharacters)
+        {
+            if (character.characterIcon == null)
+                nullIconCount++;
+        }
+        
+        if (nullIconCount == 0)
+        {
+            Debug.Log("✅ 모든 캐릭터에 이미지가 할당되어 있습니다.");
+            return;
+        }
+        
+        Debug.Log($"🖼️ {nullIconCount}개 캐릭터에 이미지가 없어서 자동 할당 시작...");
+        
+        #if UNITY_EDITOR
+        // 이미지 경로들
+        string[] imagePaths = {
+            "Assets/Images/1.png",
+            "Assets/Images/2.png", 
+            "Assets/Images/3.png",
+            "Assets/Images/4.png",
+            "Assets/Images/5.png",
+            "Assets/Images/6.png",
+            "Assets/Images/7.png",
+            "Assets/Images/8.png",
+            "Assets/Images/9.jpg",
+            "Assets/Images/10.jpg",
+            "Assets/Images/11.jpg",
+            "Assets/Images/12.jpg",
+            "Assets/Images/13.jpg",
+            "Assets/Images/14.jpg",
+            "Assets/Images/15.jpg",
+            "Assets/Images/16.jpg"
+        };
+        
+        int assignedCount = 0;
+        for (int i = 0; i < allCharacters.Count && i < imagePaths.Length; i++)
+        {
+            var character = allCharacters[i];
+            if (character.characterIcon == null)
+            {
+                string imagePath = imagePaths[i % imagePaths.Length];
+                Sprite sprite = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>(imagePath);
+                
+                if (sprite != null)
+                {
+                    character.characterIcon = sprite;
+                    character.buttonIcon = sprite;
+                    UnityEditor.EditorUtility.SetDirty(character);
+                    assignedCount++;
+                    Debug.Log($"✅ '{character.characterName}'에 {imagePath} 자동 할당");
+                }
+            }
+        }
+        
+        if (assignedCount > 0)
+        {
+            UnityEditor.EditorUtility.SetDirty(_characterDatabase);
+            UnityEditor.AssetDatabase.SaveAssets();
+            Debug.Log($"🎉 {assignedCount}개 캐릭터 이미지 자동 할당 완료");
+        }
+        #endif
     }
 
     /// <summary>
@@ -367,6 +516,8 @@ namespace TwelveGame.Battle
         DrawInitialHands();
 
         Debug.Log($"덱 초기화 완료 - X팀 덱: {xTeamDeck.Count}장, O팀 덱: {oTeamDeck.Count}장");
+        Debug.Log($"손패 초기화 완료 - X팀 손패: {xTeamHand.Count}장, O팀 손패: {oTeamHand.Count}장");
+        Debug.Log($"다음 카드 - X팀: {xTeamNextCard?.characterName ?? "없음"}, O팀: {oTeamNextCard?.characterName ?? "없음"}");
     }
 
     void ShuffleDeck(List<CharacterData> deck)
@@ -419,12 +570,31 @@ namespace TwelveGame.Battle
 
     public void OnTileClick(int boardIndex, int x, int y)
     {
-        if (currentState != GameState.Battle || selectedCharacter == null) return;
+        Debug.Log($"⭐ 타일 클릭됨: 보드{boardIndex}, 위치({x},{y})");
+        
+        if (currentState != GameState.Battle)
+        {
+            Debug.LogWarning($"⚠️ 게임 상태가 잘못됨: {currentState}. 타일 클릭 무효.");
+            return;
+        }
+        
+        if (selectedCharacter == null)
+        {
+            Debug.LogWarning("⚠️ 캐릭터가 선택되지 않았습니다! 먼저 하단 카드를 클릭하세요.");
+            return;
+        }
+
+        Debug.Log($"🎯 선택된 캐릭터 '{selectedCharacter.characterName}'를 배치 시도...");
 
         // 배치 가능 여부 확인
         if (CanPlaceCharacter(boardIndex, x, y))
         {
+            Debug.Log($"✅ 배치 가능! 캐릭터 배치 실행...");
             PlaceCharacter(boardIndex, x, y);
+        }
+        else
+        {
+            Debug.LogWarning($"❌ 해당 위치에 배치할 수 없습니다: 보드{boardIndex}, 위치({x},{y})");
         }
     }
 
@@ -467,9 +637,13 @@ namespace TwelveGame.Battle
         // 새 캐릭터 배치 (공격자가 생존하는 경우만)
         if (battleResult == null || battleResult.attackerSurvives)
         {
+            Debug.Log($"🚀 캐릭터 '{selectedCharacter.characterName}' 배치 시작!");
+            
             // 캐릭터 오브젝트 생성
             GameObject charObj = new GameObject($"Character_{selectedCharacter.characterName}");
             charObj.transform.position = GetWorldPosition(boardIndex, x, y);
+            
+            Debug.Log($"📍 캐릭터 배치 위치: {GetWorldPosition(boardIndex, x, y)}");
             
             // Character 컴포넌트 추가 및 초기화
             Character newChar = charObj.AddComponent<Character>();
@@ -482,6 +656,8 @@ namespace TwelveGame.Battle
             
             boardState[boardIndex, x, y] = newChar;
             
+            Debug.Log($"✅ 캐릭터 '{selectedCharacter.characterName}' boardState[{boardIndex},{x},{y}]에 배치 완료!");
+            
             // 캐릭터 사용 횟수 업데이트
             Dictionary<CharacterData, int> usageCount = currentTurn == Team.X ? xTeamUsageCount : oTeamUsageCount;
             if (usageCount.ContainsKey(selectedCharacter))
@@ -492,6 +668,13 @@ namespace TwelveGame.Battle
             // 시각적 표현 추가
             CreateCharacterVisualComponents(charObj, newChar);
             
+            // 보드 시각적 새로고침
+            if (BoardManager.Instance != null)
+            {
+                BoardManager.Instance.RefreshBoard();
+                Debug.Log($"🔄 보드 시각적 새로고침 완료");
+            }
+            
             // 공격 처리
             BattleSystem.Instance.ProcessCharacterAttack(newChar);
             
@@ -500,6 +683,7 @@ namespace TwelveGame.Battle
         }
 
         // 선택 초기화
+        Debug.Log($"🔄 캐릭터 선택 초기화됨");
         selectedCharacter = null;
         selectedButtonIndex = -1;
 
@@ -684,13 +868,65 @@ namespace TwelveGame.Battle
     public CharacterData GetNextCharacter()
     {
         // 현재 턴의 다음 캐릭터 반환
-        return currentTurn == Team.X ? xTeamNextCard : oTeamNextCard;
+        var nextCard = currentTurn == Team.X ? xTeamNextCard : oTeamNextCard;
+        Debug.Log($"🔮 GetNextCharacter 호출 - {currentTurn}팀, 다음 카드: {nextCard?.characterName ?? "null"}");
+        
+        if (nextCard != null)
+        {
+            string iconStatus = nextCard.characterIcon != null ? nextCard.characterIcon.name : "null";
+            Debug.Log($"🖼️ 다음 카드 '{nextCard.characterName}' 이미지 상태: {iconStatus}");
+        }
+        
+        // 다음 카드가 없으면 덱에서 뽑기 시도
+        if (nextCard == null)
+        {
+            Debug.LogWarning($"⚠️ {currentTurn}팀 다음 카드가 null! 덱에서 뽑기 시도...");
+            TryDrawNextCard();
+            nextCard = currentTurn == Team.X ? xTeamNextCard : oTeamNextCard;
+            Debug.Log($"🔮 덱에서 뽑은 후 - 다음 카드: {nextCard?.characterName ?? "여전히 null"}");
+        }
+        
+        return nextCard;
+    }
+    
+    /// <summary>
+    /// 다음 카드를 덱에서 뽑기 시도
+    /// </summary>
+    void TryDrawNextCard()
+    {
+        if (currentTurn == Team.X && xTeamDeck.Count > 0)
+        {
+            xTeamNextCard = xTeamDeck[0];
+            xTeamDeck.RemoveAt(0);
+            Debug.Log($"✅ X팀 다음 카드 뽑기: {xTeamNextCard.characterName}");
+        }
+        else if (currentTurn == Team.O && oTeamDeck.Count > 0)
+        {
+            oTeamNextCard = oTeamDeck[0];
+            oTeamDeck.RemoveAt(0);
+            Debug.Log($"✅ O팀 다음 카드 뽑기: {oTeamNextCard.characterName}");
+        }
+        else
+        {
+            Debug.LogWarning($"⚠️ {currentTurn}팀 덱이 비어있어서 다음 카드를 뽑을 수 없습니다!");
+        }
     }
 
     public List<CharacterData> GetCurrentHand()
     {
         // 현재 턴의 손패 반환
-        return currentTurn == Team.X ? xTeamHand : oTeamHand;
+        var hand = currentTurn == Team.X ? xTeamHand : oTeamHand;
+        Debug.Log($"📋 GetCurrentHand 호출 - {currentTurn}팀, {hand?.Count ?? 0}장");
+        
+        if (hand != null && hand.Count > 0)
+        {
+            for (int i = 0; i < hand.Count; i++)
+            {
+                Debug.Log($"  [{i}] {hand[i]?.characterName ?? "null"} - 아이콘: {(hand[i]?.characterIcon != null ? "있음" : "없음")}");
+            }
+        }
+        
+        return hand;
     }
 
     public CharacterData GetCharacterFromHand(int index)
@@ -746,12 +982,20 @@ namespace TwelveGame.Battle
             }
         }
 
-        Debug.Log($"{currentTurn}팀이 {usedCharacter.characterName} 사용. 손패: {currentHand.Count}장, 덱: {currentDeck.Count}장");
+        Debug.Log($"🎉 {currentTurn}팀이 '{usedCharacter.characterName}' 배치 완료!");
+        Debug.Log($"📊 현재 상태 - 손패: {currentHand.Count}장, 덱: {currentDeck.Count}장");
+        Debug.Log($"🔄 턴이 {(currentTurn == Team.X ? Team.O : Team.X)}팀으로 넘어갑니다!");
     }
 
     public void OnCharacterButtonClick(int buttonIndex)
     {
-        if (currentState != GameState.Battle && currentState != GameState.Preparation) return;
+        Debug.Log($"🎯 GameManager.OnCharacterButtonClick({buttonIndex}) 호출됨");
+        
+        if (currentState != GameState.Battle && currentState != GameState.Preparation)
+        {
+            Debug.LogWarning($"⚠️ 게임 상태가 잘못됨: {currentState}. 캐릭터 선택 불가.");
+            return;
+        }
 
         // 현재 손패에서 캐릭터 선택
         CharacterData character = GetCharacterFromHand(buttonIndex);
@@ -761,18 +1005,20 @@ namespace TwelveGame.Battle
             selectedCharacter = character;
             selectedButtonIndex = buttonIndex;
             
-            // UI 업데이트
-                    if (BattleUIManager.Instance != null)
-        {
-            BattleUIManager.Instance.HighlightButton(buttonIndex);
-            BattleUIManager.Instance.ShowCharacterInfo(selectedCharacter);
-        }
+            Debug.Log($"✅ {currentTurn}팀이 '{selectedCharacter.characterName}' 선택! (손패 {buttonIndex}번째)");
+            Debug.Log($"📍 이제 별 타일을 클릭하면 캐릭터가 배치됩니다!");
+            Debug.Log($"🔍 현재 선택된 캐릭터: {selectedCharacter.characterName}, 선택 버튼: {selectedButtonIndex}");
             
-            Debug.Log($"{currentTurn} 팀이 {selectedCharacter.characterName} 선택 (손패 {buttonIndex}번째)");
+            // UI 업데이트
+            if (BattleUIManager.Instance != null)
+            {
+                BattleUIManager.Instance.HighlightButton(buttonIndex);
+                BattleUIManager.Instance.ShowCharacterInfo(selectedCharacter);
+            }
         }
         else
         {
-            Debug.LogWarning($"유효하지 않은 손패 인덱스: {buttonIndex}");
+            Debug.LogError($"❌ 유효하지 않은 손패 인덱스: {buttonIndex}");
         }
     }
     

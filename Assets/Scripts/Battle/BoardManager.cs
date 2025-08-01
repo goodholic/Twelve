@@ -1,6 +1,7 @@
 using UnityEngine;
 using TMPro;
 using System.Collections.Generic;
+using System.Collections;
 
 namespace TwelveGame.Battle
 {
@@ -9,7 +10,29 @@ namespace TwelveGame.Battle
     /// 게임 보드의 타일, 캐릭터 배치, 시각화를 담당합니다
     /// </summary>
     public class BoardManager : MonoBehaviour
-{
+    {
+        private static BoardManager instance;
+        public static BoardManager Instance
+        {
+            get
+            {
+                if (instance == null)
+                    instance = FindFirstObjectByType<BoardManager>();
+                return instance;
+            }
+        }
+
+        void Awake()
+        {
+            if (instance == null)
+            {
+                instance = this;
+            }
+            else if (instance != this)
+            {
+                Destroy(gameObject);
+            }
+        }
     [Header("보드 설정")]
     [Tooltip("A타일들 (6x3=18개, 왼쪽 위에서 아래로 순서)")]
     public Transform[] aTiles = new Transform[18];
@@ -75,7 +98,10 @@ namespace TwelveGame.Battle
 
                     TileObject tile = tileObj.GetComponent<TileObject>();
                     if (tile == null)
+                    {
                         tile = tileObj.AddComponent<TileObject>();
+                        Debug.Log($"🔧 타일 {tileObj.name}에 TileObject 컴포넌트 추가");
+                    }
 
                     tile.Initialize(boardIndex, x, y, this);
                     tiles[boardIndex, x, y] = tile;
@@ -145,7 +171,16 @@ namespace TwelveGame.Battle
 
     public void OnTileClick(TileObject tile)
     {
-        GameManager.Instance.OnTileClick(tile.boardIndex, tile.x, tile.y);
+        Debug.Log($"🖱️ BoardManager.OnTileClick 호출됨: 보드{tile.boardIndex}, 위치({tile.x},{tile.y})");
+        
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.OnTileClick(tile.boardIndex, tile.x, tile.y);
+        }
+        else
+        {
+            Debug.LogError("❌ GameManager.Instance가 null입니다!");
+        }
     }
 
     void ShowAttackPreview(TileObject centerTile)
@@ -248,13 +283,32 @@ public class TileObject : MonoBehaviour
         if (spriteRenderer == null)
             spriteRenderer = gameObject.AddComponent<SpriteRenderer>();
             
-        // 기본 타일 스프라이트 설정 (나중에 실제 스프라이트로 교체)
-        spriteRenderer.sprite = CreateDefaultTileSprite();
+        // 기존 스프라이트가 있으면 유지, 없으면 기본 스프라이트 설정
+        if (spriteRenderer.sprite == null)
+        {
+            spriteRenderer.sprite = CreateDefaultTileSprite();
+            Debug.Log($"🎨 타일 {name}에 기본 스프라이트 설정");
+        }
+        else
+        {
+            Debug.Log($"✅ 타일 {name}의 기존 스프라이트 유지: {spriteRenderer.sprite.name}");
+        }
         
-        // 콜라이더 추가
+        // 콜라이더 추가 및 설정
         BoxCollider2D collider = GetComponent<BoxCollider2D>();
         if (collider == null)
-            gameObject.AddComponent<BoxCollider2D>();
+        {
+            collider = gameObject.AddComponent<BoxCollider2D>();
+            Debug.Log($"🔳 타일 {name}에 BoxCollider2D 추가됨");
+        }
+        
+        // 콜라이더 크기 설정 (타일 크기에 맞게)
+        collider.size = Vector2.one;
+        
+        Debug.Log($"✅ 타일 {name} 초기화 완료 (보드{boardIndex}, 위치{x},{y}, 콜라이더: {collider != null})");
+        
+        // 레이어 확인
+        Debug.Log($"🎯 타일 {name} 레이어: {gameObject.layer}, 태그: {gameObject.tag}");
     }
     
     void OnMouseEnter()
@@ -269,7 +323,16 @@ public class TileObject : MonoBehaviour
     
     void OnMouseDown()
     {
-        boardManager.OnTileClick(this);
+        Debug.Log($"🖱️ 타일 OnMouseDown 감지됨: {name} (보드{boardIndex}, 위치{x},{y})");
+        
+        if (boardManager != null)
+        {
+            boardManager.OnTileClick(this);
+        }
+        else
+        {
+            Debug.LogError("❌ boardManager가 null입니다!");
+        }
     }
     
     public void SetColor(Color color)
@@ -305,6 +368,13 @@ public class TileObject : MonoBehaviour
         teamText.fontSize = 2;
         teamText.alignment = TextAlignmentOptions.Center;
         teamText.sortingOrder = 2;
+        
+        // 🎭 캐릭터 애니메이터 추가
+        TwelveGame.Battle.CharacterAnimator animator = characterVisual.AddComponent<TwelveGame.Battle.CharacterAnimator>();
+        
+        // 🚀 배치 시 Attack 애니메이션 실행
+        Debug.Log($"🎬 캐릭터 '{character.characterData.characterName}' 배치 - Attack 애니메이션 시작!");
+        animator.PlayAttackAnimation();
     }
     
     public void ClearCharacter()
